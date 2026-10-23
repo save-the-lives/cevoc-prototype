@@ -176,18 +176,32 @@ export function NoticeResult() {
           </h2>
           {app.demo.media ? (
             <div className="cevoc-video">
-              {resolveVideo(manifest, video.slot) ? (
-                <video controls preload="metadata" poster={resolveImage(manifest, 0, 'offence-1.svg')} src={resolveVideo(manifest, video.slot)}>
+              <figure style={{ margin: 0 }}>
+                <video
+                  key={video.id}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  poster={video.poster ? asset(`placeholders/${video.poster}`) : undefined}
+                  src={resolveVideo(manifest, video.slot, video.fallback)}
+                >
                   Your browser can't play this video.
                 </video>
-              ) : (
-                <div className="cevoc-video__placeholder">
-                  <img src={asset('placeholders/video-poster.svg')} alt="" />
-                  <p>Sample video not yet supplied. Add an MP4 to <code>public/assets/media</code> and run <code>npm run assets:scan</code>.</p>
-                </div>
-              )}
+                <figcaption className="cevoc-gallery__caption">
+                  {video.title} · {video.id} · no audio
+                </figcaption>
+              </figure>
+              <div className="cevoc-actions">
+                <a
+                  className="nsw-button nsw-button--dark-outline"
+                  href={resolveVideo(manifest, video.slot, video.fallback)}
+                  download={`${n.number}-${video.id}-SAMPLE.mp4`}
+                >
+                  Download video
+                </a>
+              </div>
               <Alert type="warning" title="Proposed capability: not approved">
-                <p>Video access is subject to Legal, Prosecutions, privacy and security decisions. It's shown here only to demonstrate that the architecture can support it.</p>
+                <p>Video access is subject to Legal, Prosecutions, privacy and security decisions. It's shown here only to demonstrate that the architecture can support it. This is a generated sample clip, not real footage.</p>
               </Alert>
             </div>
           ) : (

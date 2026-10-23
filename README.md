@@ -16,8 +16,8 @@ Open http://127.0.0.1:5173 (bound to your machine only). Vite reloads the page a
 
 | Penalty notice | Registration | Scenario |
 |---|---|---|
-| 3162457890 | CEV123 | Speed offence, 2 images |
-| 3162457891 | RLC456 | Red-light offence, 1 withdrawn image, future video |
+| 3162457890 | CEV123 | Speed offence, 2 images, sample video |
+| 3162457891 | RLC456 | Red-light offence, 1 withdrawn image, sample video |
 | 3162457892 | ERR999 | Source system unavailable |
 
 Officer sign-in is mocked. Choose an identity to see role-based access, including a signed-in user with no CEVOC role.
@@ -32,7 +32,7 @@ Use **Prototype controls** (bottom right) to simulate an outage, show the future
   ```
   Files go to `public/assets/fetched` and are listed in `public/assets/manifest.json`.
   Image order maps to slots in `src/data/mockData.js`: 0–2 offence images, 3–5 camera sites.
-- Videos: copy MP4 files into `public/assets/media`, then run `npm run assets:scan`.
+- Videos: two generated sample clips ship in `public/assets/placeholders` (labelled SAMPLE). To use other footage, copy MP4 files into `public/assets/media` and run `npm run assets:scan`. Supplied videos replace the bundled clips: first video goes to the speed offence, second to the red-light offence.
 - Brand: put an approved NSW Government logo at `public/assets/brand/nsw-government-logo.svg`. Until then a text lockup is shown.
 
 ## Structure

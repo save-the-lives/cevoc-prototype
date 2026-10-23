@@ -25,7 +25,9 @@ export function resolveImage(manifest, slot, fallback) {
   return asset(`placeholders/${fallback}`);
 }
 
-export function resolveVideo(manifest, slot) {
+// Supplied videos (public/assets/media via manifest) take priority; otherwise the bundled sample clip is used.
+export function resolveVideo(manifest, slot, fallback) {
   const vids = manifest.videos || [];
-  return vids.length ? asset(vids[(slot || 0) % vids.length].file) : null;
+  if (vids.length && slot != null) return asset(vids[slot % vids.length].file);
+  return fallback ? asset(`placeholders/${fallback}`) : null;
 }

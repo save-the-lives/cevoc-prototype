@@ -75,7 +75,7 @@ export const NOTICES = [
       { id: 'IMG-0901', caption: 'Primary image: vehicle in detection zone', slot: 0, fallback: 'offence-1.svg', status: 'published' },
       { id: 'IMG-0902', caption: 'Number plate detail', slot: 1, fallback: 'offence-2.svg', status: 'published' },
     ],
-    media: [],
+    media: [{ id: 'VID-0901', title: 'Speed detection sequence (8 seconds)', slot: 0, fallback: 'sample-speed.mp4', poster: 'sample-speed-poster.jpg', status: 'future' }],
   },
   {
     number: '3162457891',
@@ -90,7 +90,7 @@ export const NOTICES = [
       { id: 'IMG-0812', caption: 'Image 2: vehicle in intersection', slot: 0, fallback: 'offence-1.svg', status: 'published' },
       { id: 'IMG-0813', caption: 'Image 3: number plate detail', slot: 1, fallback: 'offence-2.svg', status: 'withdrawn' },
     ],
-    media: [{ id: 'VID-0811', title: 'Red-light sequence video', slot: 0, status: 'future' }],
+    media: [{ id: 'VID-0811', title: 'Red-light sequence (8 seconds)', slot: 1, fallback: 'sample-redlight.mp4', poster: 'sample-redlight-poster.jpg', status: 'future' }],
   },
   {
     number: '3162457892',
@@ -128,7 +128,7 @@ export const ROLES = [
 ];
 
 export const SAMPLES = [
-  { label: 'Speed offence (2 images)', number: '3162457890', rego: 'CEV123' },
-  { label: 'Red-light offence (1 withdrawn image, video placeholder)', number: '3162457891', rego: 'RLC456' },
+  { label: 'Speed offence (2 images, sample video)', number: '3162457890', rego: 'CEV123' },
+  { label: 'Red-light offence (1 withdrawn image, sample video)', number: '3162457891', rego: 'RLC456' },
   { label: 'Source system unavailable', number: '3162457892', rego: 'ERR999' },
 ];

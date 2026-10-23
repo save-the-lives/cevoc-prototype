@@ -11,7 +11,7 @@ import Certificate from './pages/Certificate.jsx';
 import { OfficerSignIn, OfficerSearch } from './pages/Officer.jsx';
 import About from './pages/About.jsx';
 
-const DEMO_DEFAULT = { outage: false, media: false };
+const DEMO_DEFAULT = { outage: false, media: true };
 
 function route(path) {
   const [a, b] = segments(path);

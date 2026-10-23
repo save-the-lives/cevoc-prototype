@@ -13,7 +13,7 @@ const TRACE = [
   ['Restricted fields and records for officers only', 'CAP-03, CAP-05', '/officer/search'],
   ['Officer withdraw / restore from public view', 'CAP-06, CAP-09 Administration', '/certificates/CEV-PAR001-2026'],
   ['Session audit log', 'CAP-07 Audit and traceability', '/officer/search'],
-  ['Video placeholder behind a toggle', 'CAP-08 Media enablement (future, not approved)', '/notice'],
+  ['Sample offence video with play and download (hide via Prototype controls)', 'CAP-08 Media enablement (future, not approved)', '/notice'],
   ['Source-system outage and retry states', 'NFR-07 Resilience', '/notice'],
   ['Revenue NSW hand-off (simulated)', 'Integration point', '/notice'],
 ];
@@ -24,7 +24,7 @@ export default function About() {
       <Breadcrumbs items={[['Home', '/'], ['About this prototype', '/about']]} />
       <h1>About this prototype</h1>
       <Alert type="warning" title="Demonstration only">
-        <p>All notices, cameras, certificates, people and images are fictitious. Nothing connects to Transport, Revenue NSW or identity systems. Sign-in, audit and withdrawal are simulated in your browser and reset on reload.</p>
+        <p>All notices, cameras, certificates, people, images and videos are fictitious. Nothing connects to Transport, Revenue NSW or identity systems. Sign-in, audit and withdrawal are simulated in your browser and reset on reload.</p>
       </Alert>
       <p>The prototype demonstrates the user journeys and behaviours in the CEVOC Solution Architecture Document. It doesn't show approved scope: video and wider media access are shown as future capabilities pending Legal, Prosecutions, privacy and security decisions.</p>
 
