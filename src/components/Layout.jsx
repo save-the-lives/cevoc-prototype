@@ -46,7 +46,7 @@ export function Header() {
             <Link to="/cameras">Cameras and certificates</Link>
             {officer ? (
               <span className="cevoc-officer-chip">
-                <Link to="/officer/search">{officer.org} officer</Link>
+                <Link to="/officer/home">{officer.org} officer</Link>
                 <button type="button" className="cevoc-linkbutton" onClick={signOut}>Sign out</button>
               </span>
             ) : (
@@ -78,6 +78,17 @@ export function Footer() {
   );
 }
 
+// Switch between the prototype (what users see) and the design studio (how and why).
+export function ModeBar({ studio }) {
+  return (
+    <div className="cevoc-modebar" role="navigation" aria-label="Prototype or design studio">
+      <span className="cevoc-modebar__label">Viewing:</span>
+      <Link to="/" className={!studio ? 'is-on' : ''} aria-current={!studio ? 'page' : undefined}>Prototype <small>what people see</small></Link>
+      <Link to="/studio/overview" className={studio ? 'is-on' : ''} aria-current={studio ? 'page' : undefined}>Design studio <small>who, why and how</small></Link>
+    </div>
+  );
+}
+
 export function DemoControls() {
   const { demo, setDemo, resetDemo } = useApp();
   return (
@@ -85,8 +96,25 @@ export function DemoControls() {
       <summary>Prototype controls</summary>
       <div className="cevoc-demo__body">
         <label>
+          Response speed{' '}
+          <select value={demo.latency} onChange={(e) => setDemo({ ...demo, latency: e.target.value })}>
+            <option value="fast">Fast</option>
+            <option value="normal">Normal</option>
+            <option value="slow">Slow (2–3 s)</option>
+            <option value="timeout">Timeout</option>
+          </select>
+        </label>
+        <label>
           <input type="checkbox" checked={demo.outage} onChange={(e) => setDemo({ ...demo, outage: e.target.checked })} />
           Simulate source-system outage
+        </label>
+        <label>
+          <input type="checkbox" checked={demo.certOutage} onChange={(e) => setDemo({ ...demo, certOutage: e.target.checked })} />
+          Certificate service down
+        </label>
+        <label>
+          <input type="checkbox" checked={demo.imageOutage} onChange={(e) => setDemo({ ...demo, imageOutage: e.target.checked })} />
+          Image service down
         </label>
         <label>
           <input type="checkbox" checked={demo.media} onChange={(e) => setDemo({ ...demo, media: e.target.checked })} />
@@ -96,13 +124,16 @@ export function DemoControls() {
         <ul>
           {SAMPLES.map((s) => (
             <li key={s.number}>
-              <code>{s.number}</code> / <code>{s.rego}</code>
+              <Link to={`/notice?n=${s.number}&r=${s.rego}`}>{s.number} / {s.rego}</Link>
               <br />
               <small>{s.label}</small>
             </li>
           ))}
         </ul>
-        <Button variant="dark-outline" onClick={resetDemo}>Reset demo</Button>
+        <div className="cevoc-actions">
+          <Link className="nsw-button nsw-button--dark" to="/studio/resilience">Design studio</Link>
+          <Button variant="dark-outline" onClick={resetDemo}>Reset demo</Button>
+        </div>
       </div>
     </details>
   );
