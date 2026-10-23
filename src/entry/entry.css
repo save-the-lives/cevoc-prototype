@@ -1,0 +1,74 @@
+/* v0.7 entry points. Existing services = grey dashed frame. CEVOC plug-in points = orange solid frame. */
+.entry-page { padding: 1rem 1.5rem 4rem; background: #eceff1; min-height: 80vh; }
+.entry-back { max-width: 75rem; margin: 0 auto 0.75rem; font-family: system-ui, sans-serif; }
+.entry-strip { background: #fff7ed; border-bottom: 2px solid #f97316; padding: 0.5rem 0; font-size: 0.9rem; }
+.entry-legend { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; font-size: 0.9rem; }
+.entry-legend span { padding: 0.4rem 0.8rem; border-radius: 6px; }
+.entry-legend__ext { border: 2px dashed #6b7280; background: repeating-linear-gradient(135deg, #f3f4f6, #f3f4f6 8px, #e5e7eb 8px, #e5e7eb 16px); }
+.entry-legend__plug { border: 3px solid #f97316; background: #fff7ed; font-weight: 700; color: #9a3412; }
+.entry-ways { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; }
+.entry-way { display: flex; flex-direction: column; gap: 0.5rem; height: 100%; padding: 1.25rem; border: 2px dashed #6b7280; border-radius: 8px; background: #fff; text-decoration: none; color: var(--nsw-text-dark); }
+.entry-way strong { color: var(--nsw-brand-dark); font-size: 1.15rem; text-decoration: underline; }
+.entry-way small { color: #6b7280; margin-top: auto; }
+.entry-way.is-cevoc { border: 3px solid #f97316; }
+.entry-way:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); }
+
+/* Existing service frame */
+.ext-frame { max-width: 75rem; margin: 0 auto; border: 3px dashed #6b7280; border-radius: 10px; background: #fff; overflow: hidden; }
+.ext-frame__tag { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; padding: 0.5rem 1rem; font: 0.82rem/1.4 system-ui, -apple-system, sans-serif; color: #111827; background: repeating-linear-gradient(135deg, #e5e7eb, #e5e7eb 10px, #d1d5db 10px, #d1d5db 20px); border-bottom: 2px dashed #6b7280; }
+.ext-frame__tag strong { text-transform: uppercase; letter-spacing: 0.08em; background: #374151; color: #fff; padding: 0.1rem 0.5rem; border-radius: 3px; }
+.ext-hint, .ext-notbuilt { font-size: 0.85rem; color: #6b7280; }
+.ext-notbuilt { background: #f3f4f6; border-left: 4px solid #9ca3af; padding: 0.5rem 0.75rem; }
+.ext-samples { margin-top: 1.5rem; font-size: 0.9rem; }
+
+/* CEVOC plug-in point */
+.plug { border: 3px solid #f97316; border-radius: 10px; margin: 1.5rem 0; background: #fff; box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.15); }
+.plug__tag { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; background: #f97316; color: #fff; padding: 0.4rem 0.9rem; font: 0.82rem/1.4 system-ui, -apple-system, sans-serif; }
+.plug__tag strong { text-transform: uppercase; letter-spacing: 0.08em; }
+.plug__body { padding: 0.9rem 1.1rem; font-family: 'Public Sans', Arial, sans-serif; color: #22272b; }
+.plug__lead { font-weight: 700; font-size: 1.1rem; margin: 0 0 0.25rem; color: #002664; }
+.plug__btn { display: inline-block; background: #002664; color: #fff !important; text-decoration: none; font-weight: 700; padding: 0.7rem 1.2rem; border-radius: 4px; margin-top: 0.4rem; }
+.plug__btn:hover { background: #001a45; }
+.plug__row { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.plug__row-actions { display: flex; gap: 1rem; align-items: center; }
+
+/* MyServiceNSW look-alike (approximate) */
+.msnsw { font-family: 'Public Sans', Arial, sans-serif; color: #22272b; }
+.msnsw__top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.9rem 1.5rem; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
+.msnsw__brand { font-weight: 800; color: #d7153a; font-size: 1.3rem; }
+.msnsw__brand small { color: #22272b; font-weight: 400; font-size: 0.85rem; margin-left: 0.4rem; }
+.msnsw__who { font-size: 0.85rem; }
+.msnsw__tabs { display: flex; gap: 2rem; padding: 0 1.5rem; border-bottom: 1px solid #ddd; overflow-x: auto; }
+.msnsw__tabs span { padding: 0.9rem 0; color: #22272b; white-space: nowrap; }
+.msnsw__tabs .is-on { font-weight: 700; border-bottom: 4px solid #d7153a; }
+.msnsw__main { padding: 1.5rem; max-width: 60rem; }
+.msnsw__h { font-size: 1.8rem; margin: 0.5rem 0 1rem; color: #22272b; }
+.msnsw__card { display: flex; flex-direction: column; gap: 0.6rem; max-width: 27rem; min-height: 11rem; padding: 1.25rem; border: 1px solid #c4cbd1; border-top: 4px solid #2e5299; text-decoration: none; color: #22272b; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.msnsw__card strong { font-size: 1.2rem; }
+.msnsw__arrow { margin-top: auto; color: #2e5299; font-size: 1.4rem; }
+.msnsw__btn { display: inline-block; margin: 1.5rem 0.5rem 0 0; background: #d7153a; color: #fff; border: 2px solid #d7153a; font: 700 1rem 'Public Sans', Arial, sans-serif; padding: 0.7rem 1.6rem; border-radius: 4px; cursor: pointer; }
+.msnsw__btn.is-outline { background: #fff; color: #d7153a; margin-top: 0.5rem; }
+.msnsw__btn.is-disabled { opacity: 0.6; cursor: default; }
+.msnsw__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.msnsw__actions .msnsw__btn { margin: 0; }
+.msnsw__table { width: 100%; border-collapse: collapse; }
+.msnsw__table th, .msnsw__table td { text-align: left; padding: 0.6rem; border-bottom: 1px solid #ddd; }
+.msnsw__dl div { display: grid; grid-template-columns: 10rem 1fr; padding: 0.4rem 0; border-bottom: 1px solid #eee; }
+.msnsw__dl dt { font-weight: 700; }
+.msnsw__dl dd { margin: 0; }
+
+/* myPenalty look-alike (approximate) */
+.mypen { font-family: Arial, Helvetica, sans-serif; color: #1f2a37; }
+.mypen__top { background: #00405e; color: #fff; padding: 0.9rem 1.5rem; }
+.mypen__brand { font-weight: 700; font-size: 1.2rem; }
+.mypen__brand small { font-weight: 400; opacity: 0.85; margin-left: 0.5rem; }
+.mypen__main { padding: 1.5rem; max-width: 60rem; }
+.mypen__h { color: #00405e; margin-top: 0; }
+.mypen__h3 { color: #00405e; }
+.mypen__form { display: grid; gap: 1rem; max-width: 22rem; }
+.mypen__form label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 700; }
+.mypen__form input { font: inherit; padding: 0.6rem; border: 1px solid #6b7280; border-radius: 3px; font-weight: 400; }
+.mypen__btn { background: #00405e; color: #fff; border: 2px solid #00405e; padding: 0.6rem 1.4rem; font: 700 1rem Arial, sans-serif; border-radius: 3px; cursor: pointer; justify-self: start; }
+.mypen__btn.is-outline { background: #fff; color: #00405e; }
+.mypen__err { color: #b81237; font-weight: 700; }
+@media (max-width: 48rem) { .msnsw__dl div { grid-template-columns: 1fr; } .entry-page { padding: 0.75rem; } }

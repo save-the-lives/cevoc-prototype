@@ -18,14 +18,17 @@ import './v4.css';
 import './v5.css';
 import ExplainLayer from './explain/ExplainLayer.jsx';
 import './explain/explain.css';
+import EntryRoutes, { Handoff, ReturnBanner, EntryStrip } from './entry/Entry.jsx';
+import './entry/entry.css';
 
 const DEMO_DEFAULT = { outage: false, media: true, latency: 'normal', certOutage: false, imageOutage: false };
 
 function route(path) {
   const [a, b, c] = segments(path);
-  if (!a) return <Home />;
+  if (!a) return <><EntryStrip /><Home /></>;
+  if (a === 'handoff') return <Handoff key={path} path={path} />;
   if (a === 'notice' && !b) return <NoticeAuto key={path} path={path} />;
-  if (a === 'notice' && b === 'result') return <NoticeResultV5 />;
+  if (a === 'notice' && b === 'result') return <><ReturnBanner /><NoticeResultV5 /></>;
   if (a === 'cameras' && !b) return <CameraSearch />;
   if (a === 'cameras') return <CameraDetail code={decodeURIComponent(b)} />;
   if (a === 'certificates' && b) return <Certificate id={decodeURIComponent(b)} />;
@@ -59,6 +62,7 @@ export default function App() {
   const [demo, setDemo] = useState(DEMO_DEFAULT);
   const [first, second] = segments(path);
   const studio = first === 'studio';
+  const entry = first === 'entry';
 
   const audit = useCallback(
     (what, who) =>
@@ -122,6 +126,14 @@ export default function App() {
         <ModeBar studio={studio} />
         {studio ? (
           <Studio section={second} />
+        ) : entry ? (
+          <>
+            <main id="main-content" tabIndex={-1}>
+              <ErrorBoundary key={path}><EntryRoutes path={path} /></ErrorBoundary>
+            </main>
+            <DemoControls />
+            <ExplainLayer path={path} />
+          </>
         ) : (
           <>
             <Header />
