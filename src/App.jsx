@@ -5,23 +5,25 @@ import { AssetContext, useManifestLoader } from './services/assets.js';
 import { useHashRoute, segments } from './router.js';
 import { Link } from './components/ui.jsx';
 import Home from './pages/Home.jsx';
-import { NoticeLookup, NoticeResult } from './pages/Notice.jsx';
 import { CameraSearch, CameraDetail } from './pages/Cameras.jsx';
 import Certificate from './pages/Certificate.jsx';
 import { OfficerSignIn, OfficerSearch, OfficerShell, OfficerHome } from './pages/Officer.jsx';
-import { ReviewQueue, ReviewCase } from './pages/OfficerReview.jsx';
+import { ReviewQueue } from './pages/OfficerReview.jsx';
 import AdjudicationQueue from './pages/OfficerAdjudication.jsx';
 import About from './pages/About.jsx';
 import Studio from './studio/Studio.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { NoticeAuto, NoticeResultV5, ReviewCaseV5, EvidenceRules } from './pages/EvidencePack.jsx';
 import './v4.css';
+import './v5.css';
 
 const DEMO_DEFAULT = { outage: false, media: true, latency: 'normal', certOutage: false, imageOutage: false };
 
 function route(path) {
   const [a, b, c] = segments(path);
   if (!a) return <Home />;
-  if (a === 'notice' && !b) return <NoticeLookup key={path} path={path} />;
-  if (a === 'notice' && b === 'result') return <NoticeResult />;
+  if (a === 'notice' && !b) return <NoticeAuto key={path} path={path} />;
+  if (a === 'notice' && b === 'result') return <NoticeResultV5 />;
   if (a === 'cameras' && !b) return <CameraSearch />;
   if (a === 'cameras') return <CameraDetail code={decodeURIComponent(b)} />;
   if (a === 'certificates' && b) return <Certificate id={decodeURIComponent(b)} />;
@@ -29,9 +31,10 @@ function route(path) {
   if (a === 'officer' && b === 'home') return <OfficerShell active="home"><OfficerHome /></OfficerShell>;
   if (a === 'officer' && b === 'search') return <OfficerShell active="search"><OfficerSearch /></OfficerShell>;
   if (a === 'officer' && b === 'review' && !c) return <OfficerShell active="review"><ReviewQueue /></OfficerShell>;
-  if (a === 'officer' && b === 'review') return <OfficerShell active="review"><ReviewCase key={c} id={decodeURIComponent(c)} /></OfficerShell>;
+  if (a === 'officer' && b === 'review') return <OfficerShell active="review"><ReviewCaseV5 key={c} id={decodeURIComponent(c)} /></OfficerShell>;
   if (a === 'officer' && b === 'adjudication') return <OfficerShell active="adjudication"><AdjudicationQueue /></OfficerShell>;
   if (a === 'about') return <About />;
+  if (a === 'evidence-rules') return <EvidenceRules />;
   return (
     <div className="nsw-container cevoc-page">
       <h1>Page not found</h1>
@@ -121,7 +124,7 @@ export default function App() {
           <>
             <Header />
             <main id="main-content" tabIndex={-1}>
-              {route(path)}
+              <ErrorBoundary key={path}>{route(path)}</ErrorBoundary>
             </main>
             <Footer />
             <DemoControls />

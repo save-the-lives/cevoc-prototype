@@ -1,0 +1,36 @@
+/* v0.5: penalty notice letter, statutory evidence pack, error boundary. */
+.cevoc-page--tight { padding-top: 0; }
+.cevoc-pack { margin: 2rem 0; }
+.cevoc-packlist { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: 0.75rem; }
+.cevoc-packitem { border: 1px solid var(--nsw-grey-03); border-left: 6px solid var(--nsw-success); border-radius: var(--radius); padding: 0.9rem 1.1rem; background: #fff; }
+.cevoc-packitem.is-lapsed, .cevoc-packitem.is-missing { border-left-color: var(--nsw-error); background: var(--nsw-error-bg); }
+.cevoc-packitem.is-on-request { border-left-color: var(--nsw-info); }
+.cevoc-packitem__head { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.cevoc-packitem__sec { font-family: monospace; font-weight: 700; background: var(--nsw-brand-dark); color: #fff; padding: 0.1rem 0.5rem; border-radius: 3px; font-size: 0.85rem; }
+.cevoc-packitem p { margin: 0.5rem 0; }
+.cevoc-hash { font-size: 0.75rem; word-break: break-all; }
+.cevoc-legalcert { border: 1px solid #999; padding: 1.5rem 1.75rem; font-family: Georgia, 'Times New Roman', serif; background: #fffef8; }
+.cevoc-legalcert h3 { font-family: inherit; margin: 0.5rem 0 1rem; }
+.cevoc-legalcert__law { font-family: 'Public Sans', Arial, sans-serif; font-size: 0.8rem; color: var(--nsw-grey-02); margin: 0.25rem 0; }
+.cevoc-checks { list-style: none; padding: 0; columns: 2; font-size: 0.9rem; }
+.cevoc-checks li { margin-bottom: 0.3rem; break-inside: avoid; }
+
+/* Penalty notice letter (mock) */
+.cevoc-pn { position: relative; overflow: hidden; background: #fff; border: 1px solid #bbb; padding: 1.75rem 2rem; font-size: 0.95rem; }
+.cevoc-pn__watermark { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); font-size: 7rem; font-weight: 800; color: rgba(215, 21, 58, 0.08); pointer-events: none; letter-spacing: 0.2em; }
+.cevoc-pn__head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid var(--nsw-brand-dark); padding-bottom: 0.75rem; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap; }
+.cevoc-pn__head div:first-child { display: flex; flex-direction: column; }
+.cevoc-pn__head strong { font-size: 1.3rem; color: var(--nsw-brand-dark); }
+.cevoc-pn__ref { text-align: right; display: flex; flex-direction: column; }
+.cevoc-pn__ref strong { font-family: monospace; font-size: 1.4rem; }
+.cevoc-pn__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1rem; }
+.cevoc-pn__to { font-style: normal; display: flex; flex-direction: column; text-transform: uppercase; font-size: 0.9rem; }
+.cevoc-pn__dates { margin: 0; border: 2px solid var(--nsw-brand-dark); padding: 0.5rem 0.9rem; }
+.cevoc-pn__dates div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.2rem 0; }
+.cevoc-pn__dates dt { font-weight: 700; }
+.cevoc-pn__dates dd { margin: 0; }
+.cevoc-pn h3 { font-size: 1.05rem; margin: 1.25rem 0 0.25rem; }
+.cevoc-pn__view { background: var(--nsw-brand-light); padding: 0.6rem 0.9rem; }
+.cevoc-pn__foot { border-top: 1px solid #ccc; margin-top: 1rem; padding-top: 0.5rem; font-size: 0.75rem; color: var(--nsw-error); font-weight: 700; }
+.cevoc-errortext { white-space: pre-wrap; font-size: 0.8rem; background: #fff; border: 1px solid var(--nsw-grey-03); padding: 0.75rem; max-height: 18rem; overflow: auto; }
+@media (max-width: 48rem) { .cevoc-pn__grid { grid-template-columns: 1fr; } .cevoc-checks { columns: 1; } }
