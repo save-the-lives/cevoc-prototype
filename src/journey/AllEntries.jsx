@@ -22,10 +22,9 @@ export const ENTRY_POINTS = [
   { id: 'notice', group: 'From the notice itself', name: 'Link or QR code on the paper notice', who: 'Everyone who gets a letter', owner: 'Revenue NSW (notice) → Transport', verified: 'proposed', note: 'Not on notices today as far as we know', to: '/entry/qr', lands: 'Straight to “Your fine, explained”' },
   { id: 'search', group: 'Searching', name: 'Web search → nsw.gov.au', who: 'People who google it', owner: 'NSW Government (nsw.gov.au)', verified: 'documented', note: '“View a camera image of your offence” page', to: '/entry/search', lands: 'nsw.gov.au → myPenalty or CEVOC' },
   { id: 'company', group: 'Businesses', name: 'Company and fleet fines', who: 'Fleet managers, registered operators', owner: 'Revenue NSW (eNominations)', verified: 'documented', note: 'Separate company image page and eNominations', to: '/entry/company', lands: 'Fine → CEVOC link, then nominate' },
-  { id: 'phone', group: 'Assisted', name: 'Phone 1300 138 118', who: 'People who can’t or won’t go online', owner: 'Revenue NSW contact centre', verified: 'documented', note: 'Copies of images sent after ID check', to: '/entry/phone', lands: 'Agent uses the officer view' },
+  { id: 'phone', group: 'Assisted', name: 'Phone 1300 138 118', who: 'People who can’t or won’t go online', owner: 'Revenue NSW contact centre', verified: 'documented', note: 'Copies of images sent after ID check', to: '/entry/phone', lands: 'Agent uses the staff portal' },
   { id: 'cevoc', group: 'Direct', name: 'Straight to this site', who: 'People who already know it', owner: 'Transport (CEVOC)', verified: 'confirmed', note: 'Current CEVOC certificate site', to: '/notice', lands: 'Lookup → “Your fine, explained”' },
   { id: 'camera', group: 'No fine', name: 'Checking a camera without a fine', who: 'Lawyers, media, the curious', owner: 'Transport (CEVOC)', verified: 'confirmed', note: 'What the current CEVOC site does today', to: '/cameras', lands: 'Camera search' },
-  { id: 'officer', group: 'Staff', name: 'Revenue NSW and Transport officers', who: 'Review and adjudication staff', owner: 'Transport (CEVOC)', verified: 'proposed', note: 'Organisation sign-in', to: '/officer', lands: 'Officer console' },
 ];
 
 const VERIFIED = {
@@ -65,6 +64,10 @@ export function AllEntryChooser() {
           </ul>
         </section>
       ))}
+      <aside className="cevoc-proto-note" role="note">
+        <strong>Staff aren’t on this list on purpose.</strong> Revenue NSW and Transport officers have a different job (working cases, not understanding one fine), so they use a{' '}
+        <Link to="/officer">separate staff portal</Link> with organisation sign-in. The public site has no officer sign-in.
+      </aside>
     </div>
   );
 }
@@ -207,8 +210,8 @@ function PhoneMock() {
           <li>Agent opens the fine.</li>
           <li>Today: images are posted out.</li>
         </ol>
-        <PlugIn what="Proposed: the agent sees the same story as the customer, plus restricted detail, so they can explain it on the call.">
-          <Link to="/officer?email=alex.chen@revenue.nsw.gov.au" className="plug__btn">Open as a Revenue NSW officer →</Link>
+        <PlugIn what="Proposed: the agent uses the separate staff portal, which shows the same evidence plus restricted detail, so they can explain it on the call. The caller never sees the staff portal.">
+          <Link to="/officer?email=alex.chen@revenue.nsw.gov.au" className="plug__btn">Agent: open the staff portal →</Link>
         </PlugIn>
       </div>
     </ExternalFrame>

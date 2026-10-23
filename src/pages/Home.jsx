@@ -24,15 +24,12 @@ export default function Home() {
       </section>
 
       <div className="nsw-container cevoc-page">
-        <div className="nsw-grid nsw-grid--3">
+        <div className="nsw-grid nsw-grid--2">
           <Card to="/notice" title="View your offence">
             Use the details on your penalty notice to see the offence images, camera location and certification.
           </Card>
           <Card to="/cameras" title="Check a camera and its certification">
             Search for a camera location and see whether it was certified on a particular date.
-          </Card>
-          <Card to="/officer" title="Authorised officer access" tone="light">
-            For Revenue NSW and Transport officers. Sign in with your organisation account.
           </Card>
         </div>
 

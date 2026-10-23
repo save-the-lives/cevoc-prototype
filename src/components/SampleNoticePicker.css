@@ -1,0 +1,33 @@
+.snp { position: relative; display: inline-block; margin: 8px 0 16px; }
+
+.snp-trigger {
+  font: 600 14px/1.2 ui-monospace, Menlo, monospace;
+  background: #fff8e1; color: #6b4e00;
+  border: 2px dashed #e0a800; border-radius: 4px;
+  padding: 8px 12px; cursor: pointer;
+}
+.snp-trigger:hover, .snp-trigger:focus-visible { background: #ffecb3; outline: 3px solid #e0a800; outline-offset: 2px; }
+
+.snp-tag { background: #e0a800; color: #000; padding: 1px 6px; border-radius: 2px; margin-right: 6px; font-size: 11px; }
+
+.snp-pop {
+  position: absolute; z-index: 1000; top: calc(100% + 6px); left: 0;
+  width: min(560px, 92vw); max-height: 380px; overflow: auto;
+  background: #fffdf5; border: 2px dashed #e0a800; border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.snp-strip {
+  position: sticky; top: 0;
+  font: 700 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .08em; color: #000;
+  padding: 8px 12px;
+  background: repeating-linear-gradient(45deg, #ffd54f 0 10px, #ffe082 10px 20px);
+}
+.snp-pop ul { list-style: none; margin: 0; padding: 4px; }
+.snp-item {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+  width: 100%; text-align: left; background: none; border: 0; border-radius: 4px;
+  padding: 10px; cursor: pointer; font: 14px/1.35 system-ui, sans-serif; color: #333;
+}
+.snp-item:hover, .snp-item:focus-visible { background: #fff3cd; outline: 2px solid #e0a800; }
+.snp-num { font: 700 16px ui-monospace, Menlo, monospace; color: #6b4e00; letter-spacing: .05em; }
+.snp-media { font-size: 12px; color: #6b4e00; white-space: nowrap; }

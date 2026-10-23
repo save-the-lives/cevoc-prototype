@@ -1,0 +1,14 @@
+/* v0.9: public site and staff portal kept apart. */
+.staff { background: #eef1f5; min-height: 100vh; }
+.staff-bar { background: #1f2937; color: #fff; border-bottom: 4px solid #f59e0b; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.staff-bar__inner { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; padding: 0.6rem 1.25rem; }
+.staff-bar__brand { font-weight: 800; letter-spacing: 0.04em; font-size: 1.05rem; }
+.staff-bar__brand strong { color: #f59e0b; }
+.staff-bar__tag { font-size: 0.8rem; color: #cbd5e1; }
+.staff-bar__who { margin-left: auto; font-size: 0.85rem; background: #374151; padding: 0.2rem 0.7rem; border-radius: 999px; }
+.staff-main:focus { outline: none; }
+.staff-main > .nsw-container { background: #fff; margin-top: 1.5rem; border-radius: 8px; }
+.staff-foot { padding: 0.75rem 1.25rem; font: 0.8rem system-ui, sans-serif; color: #6b7280; border-top: 1px solid #d1d5db; }
+.pub-staffnote { margin-left: 1rem; padding-left: 1rem; border-left: 1px solid #f0d27a; }
+.nsw-grid--2 { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 48rem) { .nsw-grid--2 { grid-template-columns: 1fr; } .pub-staffnote { display: block; margin: 0.25rem 0 0; padding: 0; border: 0; } .staff-bar__who { margin-left: 0; } }
