@@ -20,6 +20,10 @@ import ExplainLayer from './explain/ExplainLayer.jsx';
 import './explain/explain.css';
 import EntryRoutes, { Handoff, ReturnBanner, EntryStrip } from './entry/Entry.jsx';
 import './entry/entry.css';
+import FineStory from './journey/FineStory.jsx';
+import AllEntries, { isNewEntry } from './journey/AllEntries.jsx';
+import IA from './journey/IA.jsx';
+import './journey/journey.css';
 
 const DEMO_DEFAULT = { outage: false, media: true, latency: 'normal', certOutage: false, imageOutage: false };
 
@@ -28,7 +32,9 @@ function route(path) {
   if (!a) return <><EntryStrip /><Home /></>;
   if (a === 'handoff') return <Handoff key={path} path={path} />;
   if (a === 'notice' && !b) return <NoticeAuto key={path} path={path} />;
-  if (a === 'notice' && b === 'result') return <><ReturnBanner /><NoticeResultV5 /></>;
+  if (a === 'notice' && b === 'result') return <><ReturnBanner /><FineStory /></>;
+  if (a === 'notice' && b === 'detail') return <><ReturnBanner /><NoticeResultV5 /></>;
+  if (a === 'ia') return <IA />;
   if (a === 'cameras' && !b) return <CameraSearch />;
   if (a === 'cameras') return <CameraDetail code={decodeURIComponent(b)} />;
   if (a === 'certificates' && b) return <Certificate id={decodeURIComponent(b)} />;
@@ -129,7 +135,7 @@ export default function App() {
         ) : entry ? (
           <>
             <main id="main-content" tabIndex={-1}>
-              <ErrorBoundary key={path}><EntryRoutes path={path} /></ErrorBoundary>
+              <ErrorBoundary key={path}>{isNewEntry(path) ? <AllEntries path={path} /> : <EntryRoutes path={path} />}</ErrorBoundary>
             </main>
             <DemoControls />
             <ExplainLayer path={path} />
