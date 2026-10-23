@@ -16,6 +16,8 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { NoticeAuto, NoticeResultV5, ReviewCaseV5, EvidenceRules } from './pages/EvidencePack.jsx';
 import './v4.css';
 import './v5.css';
+import ExplainLayer from './explain/ExplainLayer.jsx';
+import './explain/explain.css';
 
 const DEMO_DEFAULT = { outage: false, media: true, latency: 'normal', certOutage: false, imageOutage: false };
 
@@ -128,6 +130,7 @@ export default function App() {
             </main>
             <Footer />
             <DemoControls />
+            <ExplainLayer path={path} />
           </>
         )}
       </AssetContext.Provider>
