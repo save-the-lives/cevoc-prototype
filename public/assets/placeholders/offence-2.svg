@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Sample number plate detail">
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b4652"/><stop offset="1" stop-color="#1b2128"/></linearGradient></defs>
+<rect width="1200" height="800" fill="url(#sky)"/>
+<rect x="0" y="0" width="1200" height="800" fill="#4b5560"/><rect x="300" y="250" width="600" height="230" rx="16" fill="#ffd200" stroke="#111" stroke-width="10"/><text x="600" y="420" text-anchor="middle" font-family="Arial" font-weight="700" font-size="150" fill="#111">CEV·123</text><text x="600" y="300" text-anchor="middle" font-family="Arial" font-size="30" fill="#111">NSW</text><rect x="280" y="230" width="640" height="270" fill="none" stroke="#00e0ff" stroke-width="4" stroke-dasharray="14 8"/>
+<rect y="0" width="1200" height="46" fill="#000" opacity=".72"/>
+<text x="20" y="31" font-family="monospace" font-size="22" fill="#f4f4f4">PAR-001  PLATE CROP  OCR: CEV123  CONF 0.98</text>
+<rect y="744" width="1200" height="56" fill="#d7153a" opacity=".92"/>
+<text x="600" y="781" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="26" fill="#fff" letter-spacing="3">SAMPLE IMAGE · MOCK DATA · NOT EVIDENCE</text>
+</svg>
