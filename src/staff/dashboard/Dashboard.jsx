@@ -197,10 +197,6 @@ export default function Dashboard({ user, canApprove }) {
         <Card title="Who has it" span="4"><Pie items={people} onPick={(k) => drill({ assignee: k })} /></Card>
         <Card title="By camera type" span="4"><Pie items={programs} onPick={(k) => drill({ program: k })} /></Card>
         <Card title="Waiting" span="4" hint="days"><Columns items={hist} unit="days" onPick={(k) => drill({ bucket: k })} height={150} /></Card>
-        <Card title="Camera certification" span="12" hint="age against the limit">
-          <Heat rows={cameraRows} cols={['Test & seal', 'Inspection', 'Survey']} cells={cells} onPick={(k) => drill({ camera: k })} />
-          <ul className="vz-key" aria-hidden="true"><li><i className="is-ok" />in date</li><li><i className="is-warn" />nearing limit</li><li><i className="is-bad" />past limit</li></ul>
-        </Card>
       </div>
     </div>
   );
