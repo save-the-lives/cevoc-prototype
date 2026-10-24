@@ -17,7 +17,7 @@ function triggerDownload(item, name) {
   a.remove();
 }
 
-function Stage({ item, status, onRetry, big }) {
+function Stage({ item, status, onRetry, big, onZoom }) {
   if (!item) return null;
   if (status === 'missing')
     return (
@@ -45,8 +45,13 @@ function Stage({ item, status, onRetry, big }) {
     <video key={item.id} className="mg-media" controls playsInline preload="metadata" poster={url(item.poster)} src={url(item.src)}>
       Your browser can’t play this video.
     </video>
-  ) : (
+  ) : big || !onZoom ? (
     <img key={item.id} className={`mg-media ${big ? 'is-big' : ''}`} src={url(item.src)} alt={item.caption} />
+  ) : (
+    <button key={item.id} type="button" className="mg-zoom" onClick={onZoom} aria-label={`View larger: ${item.caption}`}>
+      <img className="mg-media" src={url(item.src)} alt="" />
+      <span className="mg-zoom__hint" aria-hidden="true">⤢ Click to enlarge</span>
+    </button>
   );
 }
 
@@ -105,13 +110,13 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       const t = e.target;
       if (t && (/^(input|textarea|select|video)$/i.test(t.tagName) || t.isContentEditable || t.closest?.('[role="menu"],[role="tablist"],[role="tab"],[role="listbox"],[role="radio"],[role="slider"],[role="separator"],[data-keys="own"]'))) return;
-      if (document.querySelector('[role="dialog"]')) return;
+      if (!full && document.querySelector('[role="dialog"]')) return;
       e.preventDefault();
       go(e.key === 'ArrowRight' ? 1 : -1);
     };
     document.addEventListener('keydown', on);
     return () => document.removeEventListener('keydown', on);
-  }, [n, go]);
+  }, [n, go, full]);
 
   const onKey = (e) => {
     if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
@@ -150,7 +155,7 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
   const stage = (big) => (
     <div className="mg-stage" style={!big && fit ? { height: fit, aspectRatio: 'auto' } : undefined} onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
       onTouchEnd={(e) => { const dx = e.changedTouches[0].clientX - (touch.current ?? 0); if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); }}>
-      <Stage item={item} status={status[item.id] || 'loading'} onRetry={retry} big={big} />
+      <Stage item={item} status={status[item.id] || 'loading'} onRetry={retry} big={big} onZoom={() => setFull(true)} />
       {n > 1 && (
         <>
           <button type="button" className="mg-nav is-prev" onClick={() => go(-1)} aria-label="Previous">‹</button>

@@ -40,3 +40,10 @@
 .mg--staff .mg-thumb { width: 84px; height: 56px; }
 .mg--staff .mg-thumb.is-on { border-color: #146cfd; box-shadow: 0 0 0 2px #146cfd; }
 @media (max-width: 640px) { .mg-nav { width: 36px; height: 52px; font-size: 26px; } .mg-thumb { width: 72px; height: 48px; } .mg-all { margin-left: 0; width: 100%; } }
+
+/* Click the picture to enlarge it */
+.mg-zoom { position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.mg-zoom:focus-visible { outline: 3px solid #0086b3; outline-offset: -3px; }
+.mg-zoom__hint { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.65); color: #fff; font-size: 12px; padding: 3px 9px; border-radius: 12px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.mg-zoom:hover .mg-zoom__hint, .mg-zoom:focus-visible .mg-zoom__hint { opacity: 1; }
+@media (hover: none) { .mg-zoom__hint { opacity: .85; } }
