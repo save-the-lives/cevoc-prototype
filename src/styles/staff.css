@@ -110,3 +110,33 @@ kbd { border: 1px solid #b6c0cc; border-bottom-width: 2px; border-radius: 3px; p
 .st-persona small { display: block; color: #616e7c; }
 @media (max-width: 1100px) { .ev-body, .st-split { grid-template-columns: 1fr; } .ev-side { position: static; } }
 @media (max-width: 800px) { .st-body, .st-grid, .sc { grid-template-columns: 1fr; } .st-side { display: none; } .st-me { display: none; } }
+/* Phones and small tablets: keep every queue reachable, wrap the top bar, no sideways scroll */
+@media (max-width: 800px) {
+  .st-top { flex-wrap: wrap; gap: 8px 10px; padding: 8px 12px; }
+  .st-app { order: 1; }
+  .st-top .org { order: 2; margin-left: auto; }
+  .st-out { order: 3; min-height: 36px; }
+  .st-search { order: 4; flex: 1 0 100%; max-width: none; }
+  .st-search input { font-size: 16px; min-height: 44px; }
+  .st-results button { grid-template-columns: 1fr; gap: 2px; min-height: 44px; }
+  .st-body { min-height: 0; }
+  .st-side { display: flex; align-items: center; gap: 6px; overflow-x: auto; border-right: 0; border-bottom: 1px solid #dde2e8; padding: 8px 12px; -webkit-overflow-scrolling: touch; }
+  .st-side__h { margin: 0 2px 0 6px; white-space: nowrap; }
+  .st-side__h:first-child { margin-left: 0; }
+  .st-side a { flex: none; gap: 8px; white-space: nowrap; min-height: 40px; align-items: center; background: #eef1f5; }
+  .st-side a.on { background: #e1ebff; }
+  .st-main { padding: 12px 12px 48px; }
+  .st-main h1 { font-size: 18px; }
+  .st-split, .ev-body { gap: 12px; }
+  .sc-list { grid-template-columns: 1fr; }
+  .st-kv div { grid-template-columns: 1fr; gap: 0; }
+  .st-table { display: block; overflow-x: auto; }
+  .st-btn, .st-label select, .st-label textarea { min-height: 44px; font-size: 16px; }
+  .st-row { flex-wrap: wrap; justify-content: stretch; }
+  .st-row .st-btn { flex: 1 1 140px; }
+  .st-steps { flex-wrap: wrap; }
+  .st-signin__card { padding: 24px 18px; }
+  .st-orgs { flex-wrap: wrap; }
+  .st-persona { min-height: 56px; }
+}
+@media (max-width: 800px) { .st-table td:first-child { white-space: nowrap; } .st-card .st-btn:only-child { width: 100%; } }
