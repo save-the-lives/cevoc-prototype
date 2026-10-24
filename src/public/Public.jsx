@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Dialog, NswLockup, Spinner } from '../shared/ui.jsx';
+import { Alert, Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Button, Field, FieldDescription, FieldError, FieldLabel, Header, HeaderActions, HeaderBrand, Hero, HeroContent, HeroDescription, HeroTitle, Input, Masthead, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@nswds/ui';
+import { Link, Dialog, Spinner } from '../shared/ui.jsx';
 import MediaGallery from '../shared/MediaGallery.jsx';
 import Measure from './Measure.jsx';
 import { useStore } from '../lib/store.jsx';
@@ -12,28 +13,19 @@ import { TODAY, fmtDate, fmtTime, weekday, partOfDay, ago } from '../lib/format.
 
 // PUBLIC SITE: for the person who received the notice. No login, no staff entry, calm and plain.
 
-function Header() {
+function SiteHeader() {
   return (
     <>
-      <div className="pub-masthead"><div className="nsw-container">A NSW Government website</div></div>
-      <header className="nsw-header">
-        <div className="nsw-header__container">
-          <div className="nsw-header__inner">
-            <div className="nsw-header__main">
-              <div className="nsw-header__title">
-                <Link to="/" className="pub-brand">
-                  <NswLockup />
-                  <span className="pub-brand__name"><span className="nsw-header__name">Camera-detected offences</span><span className="nsw-header__description">Transport for NSW</span></span>
-                </Link>
-              </div>
-              <nav className="pub-nav" aria-label="Main">
-                <Link to="/">View a notice</Link>
-                <Link to="/cameras">Check a camera</Link>
-              </nav>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Masthead container="contained" />
+      <Header color="white" border container="contained">
+        <HeaderBrand href="#/" sitename="Camera-detected offences" />
+        <HeaderActions>
+          <nav className="pub-nav" aria-label="Main">
+            <Link to="/">View a notice</Link>
+            <Link to="/cameras">Check a camera</Link>
+          </nav>
+        </HeaderActions>
+      </Header>
     </>
   );
 }
@@ -41,7 +33,7 @@ function Header() {
 function Footer() {
   return (
     <footer className="pub-footer">
-      <div className="nsw-container pub-footer__in">
+      <div className="pub-wrap pub-footer__in">
         <span>Need help? Revenue NSW 1300 138 118</span>
         <span>Prototype · all notices, people and images are fictitious</span>
       </div>
@@ -63,12 +55,12 @@ function NoticeField({ value, onChange, onPick, error }) {
   }, [open]);
 
   return (
-    <div className="nsw-form__group pub-field" ref={ref}>
-      <label className="nsw-form__label" htmlFor="pn">Penalty notice number</label>
-      <span className="nsw-form__helper" id="pn-hint">10 digits, at the top right of your notice</span>
-      {error && <span className="nsw-form__helper nsw-form__helper--error" role="alert">{error}</span>}
+    <Field className="pub-field" invalid={!!error} ref={ref}>
+      <FieldLabel htmlFor="pn">Penalty notice number</FieldLabel>
+      <FieldDescription id="pn-hint">10 digits, at the top right of your notice</FieldDescription>
+      {error && <FieldError match role="alert">{error}</FieldError>}
       <div className="pn-wrap">
-        <input id="pn" className="nsw-form__input" inputMode="numeric" autoComplete="off" aria-describedby="pn-hint" value={value}
+        <Input id="pn" inputMode="numeric" autoComplete="off" aria-describedby="pn-hint" value={value}
           onFocus={() => !value && setOpen(true)} onClick={() => !value && setOpen(true)}
           onChange={(e) => { onChange(e.target.value); setOpen(false); }} />
         <button type="button" className="pn-samples" onClick={() => setOpen(!open)} aria-expanded={open}>Samples ▾</button>
@@ -88,7 +80,7 @@ function NoticeField({ value, onChange, onPick, error }) {
           })}
         </div>
       )}
-    </div>
+    </Field>
   );
 }
 
@@ -116,26 +108,26 @@ function Lookup() {
 
   return (
     <>
-      <section className="pub-hero">
-        <div className="nsw-container">
-          <h1>Understand a camera-detected offence</h1>
-          <p>Getting a fine is stressful. Here you can see what the camera recorded, check it was working properly, and find your options. It takes a few minutes.</p>
-        </div>
-      </section>
-      <div className="nsw-container pub-page">
+      <Hero color="dark" layout="stack" container="contained">
+        <HeroContent>
+          <HeroTitle>Understand a camera-detected offence</HeroTitle>
+          <HeroDescription>Getting a fine is stressful. Here you can see what the camera recorded, check it was working properly, and find your options. It takes a few minutes.</HeroDescription>
+        </HeroContent>
+      </Hero>
+      <div className="pub-wrap pub-page">
         <div className="pub-two">
           <form className="pub-form" onSubmit={submit} noValidate>
             <h2>Find your notice</h2>
-            {err === 'nomatch' && <div className="nsw-in-page-alert nsw-in-page-alert--warning" role="alert"><div className="nsw-in-page-alert__content"><strong>We couldn’t find that notice.</strong> Please check both details match the letter. For your privacy we don’t say which one didn’t match.</div></div>}
+            {err === 'nomatch' && <Alert status="warning" title="We couldn’t find that notice." role="alert">Please check both details match the letter. For your privacy we don’t say which one didn’t match.</Alert>}
             <NoticeField value={num} onChange={setNum} error={fe.num}
               onPick={(n) => { setNum(n.number); setDate(n.dateTime.slice(0, 10)); setFe({}); setErr(null); }} />
-            <div className="nsw-form__group">
-              <label className="nsw-form__label" htmlFor="od">Date of the offence</label>
-              <span className="nsw-form__helper">Shown on the notice</span>
-              {fe.date && <span className="nsw-form__helper nsw-form__helper--error" role="alert">{fe.date}</span>}
-              <input id="od" className="nsw-form__input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <button type="submit" className="nsw-button nsw-button--dark" disabled={busy}>{busy ? <><Spinner /> Finding it…</> : 'Show me what happened'}</button>
+            <Field invalid={!!fe.date}>
+              <FieldLabel htmlFor="od">Date of the offence</FieldLabel>
+              <FieldDescription>Shown on the notice</FieldDescription>
+              {fe.date && <FieldError match role="alert">{fe.date}</FieldError>}
+              <Input id="od" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+            <Button type="submit" disabled={busy}>{busy ? <><Spinner /> Finding it…</> : 'Show me what happened'}</Button>
           </form>
           <aside className="pub-aside">
             <h2>Before you start</h2>
@@ -170,8 +162,9 @@ function CertList({ n, fault }) {
   const ev = evaluate(n, statusOf);
   if (status === 'error')
     return (
-      <div className="nsw-in-page-alert nsw-in-page-alert--error" role="alert"><div className="nsw-in-page-alert__content">
-        <strong>We can’t check the certificates right now.</strong> Everything else on this page is correct. <button type="button" className="pub-link" onClick={retry}>Try again</button></div></div>
+      <Alert status="danger" title="We can’t check the certificates right now." role="alert">
+        Everything else on this page is correct. <button type="button" className="pub-link" onClick={retry}>Try again</button>
+      </Alert>
     );
   if (status !== 'ready')
     return <p className="pub-loading"><Spinner /> {status === 'slow' ? 'Still checking certificates, taking longer than usual…' : 'Checking the camera’s certificates…'}</p>;
@@ -185,7 +178,7 @@ function CertList({ n, fault }) {
             <p>{it.cert ? `${fmtDate(it.cert.date)}${it.age ? `, ${it.age} days before the offence` : ', on the day'}. The law requires this ${it.req.window}.` : it.why}</p>
             {it.withdrawn && <p className="muted">A later certificate was withdrawn by Transport and doesn’t count.</p>}
           </div>
-          <span className={`nsw-status-label nsw-status-label--${it.current ? 'success' : 'warning'}`}>{it.current ? 'Current' : 'Not current'}</span>
+          <Tag color={it.current ? 'success' : 'warning'}>{it.current ? 'Current' : 'Not current'}</Tag>
         </li>
       ))}
     </ul>
@@ -197,7 +190,7 @@ function NoticePage({ number }) {
   const [leaving, setLeaving] = useState(false);
   const n = findNotice(number);
   const plan = useMemo(() => (n ? planFaults(n, faultSettings) : {}), [n, JSON.stringify(faultSettings)]); // eslint-disable-line
-  if (!n) return <div className="nsw-container pub-page"><h1>Notice not found</h1><Link to="/">Start again</Link></div>;
+  if (!n) return <div className="pub-wrap pub-page"><h1>Notice not found</h1><Link to="/">Start again</Link></div>;
 
   const s = findSite(n.site);
   const prog = PROGRAMS[s.program];
@@ -212,17 +205,17 @@ function NoticePage({ number }) {
     : `Not completely. ${ev.notCurrent} of the camera’s certificates ${ev.notCurrent > 1 ? 'were' : 'was'} not current on the day. You may want to mention this if you ask for a review.`;
 
   return (
-    <div className="nsw-container pub-page">
-      <p className="pub-crumb"><Link to="/">View a notice</Link> <span aria-hidden="true">›</span> {n.number}</p>
+    <div className="pub-wrap pub-page">
+      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/">View a notice</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{n.number}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
       <h1>What happened</h1>
       <p className="pub-lede">{prog.label} · Penalty notice {n.number}</p>
 
       {openCase ? (
-        <div className="nsw-in-page-alert nsw-in-page-alert--info"><div className="nsw-in-page-alert__content"><strong>Your {openCase.type === 'court' ? 'court election' : 'review request'} is with Revenue NSW.</strong> You don’t need to do anything else for now. This page shows the same evidence they’re looking at.</div></div>
+        <Alert status="info" title={`Your ${openCase.type === 'court' ? 'court election' : 'review request'} is with Revenue NSW.`}>You don’t need to do anything else for now. This page shows the same evidence they’re looking at.</Alert>
       ) : (
-        <div className={`nsw-in-page-alert nsw-in-page-alert--${left <= 7 ? 'warning' : 'info'}`}><div className="nsw-in-page-alert__content">
-          <strong>{left < 0 ? `The due date (${fmtDate(n.due)}) has passed.` : `You have until ${fmtDate(n.due)} (${left} days) to decide what to do.`}</strong> Take your time to read through. Help with paying is available if you need it.
-        </div></div>
+        <Alert status={left <= 7 ? 'warning' : 'info'} title={left < 0 ? `The due date (${fmtDate(n.due)}) has passed.` : `You have until ${fmtDate(n.due)} (${left} days) to decide what to do.`}>
+          Take your time to read through. Help with paying is available if you need it.
+        </Alert>
       )}
 
       <div className="pub-story">
@@ -269,7 +262,7 @@ function NoticePage({ number }) {
             </ul>
             <div className="handoff">
               <div><span className="owner-tag">Revenue NSW</span><p>Opens in a new tab. You can come back here any time.</p></div>
-              <button type="button" className="nsw-button nsw-button--dark" onClick={() => setLeaving(true)}>Continue with Revenue NSW ↗</button>
+              <Button type="button" onClick={() => setLeaving(true)}>Continue with Revenue NSW ↗</Button>
             </div>
           </Section>
         </div>
@@ -279,7 +272,7 @@ function NoticePage({ number }) {
         <Dialog title="You’re going to Revenue NSW" onClose={() => setLeaving(false)}>
           <p>Revenue NSW handles payments, payment plans, reviews, nominations and court elections. Notice {n.number} will be ready for you there.</p>
           <p className="proto-line">Prototype: Revenue NSW isn’t connected, so nothing will open.</p>
-          <div className="dlg-actions"><button type="button" className="nsw-button nsw-button--dark-outline" onClick={() => setLeaving(false)}>Stay on this page</button></div>
+          <div className="dlg-actions"><Button type="button" variant="outline" onClick={() => setLeaving(false)}>Stay on this page</Button></div>
         </Dialog>
       )}
     </div>
@@ -290,11 +283,11 @@ function Cameras() {
   const [q, setQ] = useState('');
   const list = SITES.filter((s) => (s.code + s.name + s.suburb).toLowerCase().includes(q.toLowerCase()));
   return (
-    <div className="nsw-container pub-page">
+    <div className="pub-wrap pub-page">
       <h1>Check a camera</h1>
       <p className="pub-lede">See any camera’s certificates, with or without a notice.</p>
       <label className="sr-only" htmlFor="camq">Search cameras</label>
-      <input id="camq" className="nsw-form__input pub-search" placeholder="Search by road, suburb or camera code" value={q} onChange={(e) => setQ(e.target.value)} />
+      <Input id="camq" className="pub-search" placeholder="Search by road, suburb or camera code" value={q} onChange={(e) => setQ(e.target.value)} />
       <ul className="cam-list">
         {list.map((s) => (
           <li key={s.code}><Link to={`/camera/${s.code}`}><strong>{s.name}</strong><span>{PROGRAMS[s.program].label} · {s.code}</span></Link></li>
@@ -308,29 +301,29 @@ function Cameras() {
 function Camera({ code }) {
   const { statusOf } = useStore();
   const s = findSite(code);
-  if (!s) return <div className="nsw-container pub-page"><h1>Camera not found</h1><Link to="/cameras">Search cameras</Link></div>;
+  if (!s) return <div className="pub-wrap pub-page"><h1>Camera not found</h1><Link to="/cameras">Search cameras</Link></div>;
   const list = CERTS.filter((c) => c.site === code).sort((a, b) => b.date.localeCompare(a.date));
   const type = (c) => (c.section === 's137' ? 'Device tested and sealed' : c.section === 's132' ? 'Distance surveyed' : c.session ? 'Checked before session' : `Camera inspected${c.point ? ` (point ${c.point})` : ''}`);
   return (
-    <div className="nsw-container pub-page">
-      <p className="pub-crumb"><Link to="/cameras">Check a camera</Link> <span aria-hidden="true">›</span> {s.code}</p>
+    <div className="pub-wrap pub-page">
+      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/cameras">Check a camera</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{s.code}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
       <h1>{s.name}</h1>
       <p className="pub-lede">{PROGRAMS[s.program].label} · {s.direction} · {s.limit} km/h</p>
-      <table className="nsw-table">
-        <thead><tr><th>Check</th><th>Date</th><th>Status</th></tr></thead>
-        <tbody>
+      <Table>
+        <TableHeader><TableRow><TableHead>Check</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+        <TableBody>
           {list.map((c) => {
             const w = statusOf(c) === 'withdrawn';
             return (
-              <tr key={c.id} className={w ? 'is-withdrawn' : ''}>
-                <td>{type(c)}<small>{c.id}</small></td>
-                <td>{fmtDate(c.date)}</td>
-                <td><span className={`nsw-status-label nsw-status-label--${w ? 'warning' : 'success'}`}>{w ? 'Withdrawn' : 'On record'}</span></td>
-              </tr>
+              <TableRow key={c.id} className={w ? 'is-withdrawn' : ''}>
+                <TableCell>{type(c)}<small>{c.id}</small></TableCell>
+                <TableCell>{fmtDate(c.date)}</TableCell>
+                <TableCell><Tag color={w ? 'warning' : 'success'}>{w ? 'Withdrawn' : 'On record'}</Tag></TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -342,11 +335,11 @@ export default function PublicSite({ parts }) {
   else if (a === 'notice') body = <NoticePage key={b} number={b} />;
   else if (a === 'cameras') body = <Cameras />;
   else if (a === 'camera') body = <Camera code={b} />;
-  else body = <div className="nsw-container pub-page"><h1>Page not found</h1><Link to="/">Go to the start</Link></div>;
+  else body = <div className="pub-wrap pub-page"><h1>Page not found</h1><Link to="/">Go to the start</Link></div>;
   return (
     <div className="pub">
       <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Skip to content</a>
-      <Header />
+      <SiteHeader />
       <main id="main" tabIndex={-1}>{body}</main>
       <Footer />
     </div>

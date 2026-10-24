@@ -9,9 +9,9 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "nsw-design-system": "^3.28.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@nswds/ui": "^9.3.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

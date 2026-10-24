@@ -1,3 +1,6 @@
+.pub-wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 640px) { .pub-wrap { padding: 0 24px; } }
+@media (min-width: 1024px) { .pub-wrap { padding: 0 48px; } }
 /* PUBLIC: NSW Government look. Calm, spacious, plain, mobile first. */
 .pub { background: #fff; font-size: 17px; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
 .pub main { flex: 1; outline: none; }
@@ -22,7 +25,7 @@
 .pub-form h2 { margin: 0 0 16px; color: #002664; font-size: 22px; }
 .pub-field { position: relative; display: flex; flex-direction: column; margin-bottom: 20px; }
 .pn-wrap { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.pn-wrap .nsw-form__input { flex: 1 1 220px; margin-top: 0; }
+.pn-wrap input { flex: 1 1 220px; width: auto; min-width: 0; margin-top: 0; }
 .pn-samples { font: 600 12px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border: 1px dashed #e0a800; border-radius: 4px; padding: 8px 10px; cursor: pointer; min-height: 48px; }
 .pub-link { background: none; border: 0; padding: 0; color: #002664; text-decoration: underline; cursor: pointer; font-weight: 600; }
 .pub-aside { border-left: 4px solid #008a07; padding: 4px 20px; }
@@ -100,3 +103,9 @@
 }
 .pub-brand__name .nsw-header__name, .pub-brand__name .nsw-header__description { margin: 0; padding: 0; text-align: left; }
 .pub-form .nsw-form__group { margin-bottom: 20px; }
+
+/* The component library resets headings and lists; restore the page's own rhythm */
+.pub h1, .pub h2, .pub h3 { font-weight: 700; }
+.pub-aside ul, .opts, .ms-steps { list-style: disc; }
+.pub-aside li { display: list-item; }
+.pub-form button[type="submit"] { margin-top: 16px; }

@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
-import 'nsw-design-system/dist/css/main.css';
+import '@nswds/ui/styles.css';
 import './styles/base.css';
 import './styles/gallery.css';
 import './styles/public.css';
