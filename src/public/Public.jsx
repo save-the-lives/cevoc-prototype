@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Button, Field, FieldDescription, FieldError, FieldLabel, Header, HeaderActions, HeaderBrand, Hero, HeroContent, HeroDescription, HeroTitle, Input, Masthead, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@nswds/ui';
 import { Link, Dialog, Spinner } from '../shared/ui.jsx';
 import Handoff from './Handoff.jsx';
+import DateField from './DateField.jsx';
+import { checkDate, checkNotice, cleanNotice, isoToParts, partsToIso } from './lookupValidation.js';
 import StatusBar from './StatusBar.jsx';
 import { matterStatus } from './status.js';
 import CertificateView from './CertificateView.jsx';
@@ -49,7 +51,7 @@ function Footer() {
 }
 
 // Sample notices open as a dropdown from the notice number field. Demo-only styling (amber).
-function NoticeField({ value, onChange, onPick, error }) {
+function NoticeField({ value, onChange, onPick, error, onBlur }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => {
@@ -67,7 +69,7 @@ function NoticeField({ value, onChange, onPick, error }) {
       <FieldDescription id="pn-hint">10 digits, at the top right of your notice</FieldDescription>
       {error && <FieldError match role="alert">{error}</FieldError>}
       <div className="pn-wrap">
-        <Input id="pn" inputMode="numeric" autoComplete="off" aria-describedby="pn-hint" value={value}
+        <Input id="pn" inputMode="numeric" autoComplete="off" aria-describedby="pn-hint" aria-invalid={!!error || undefined} onBlur={onBlur} value={value}
           onFocus={() => !value && setOpen(true)} onClick={() => !value && setOpen(true)}
           onChange={(e) => { onChange(e.target.value); setOpen(false); }} />
         <button type="button" className="pn-samples" onClick={() => setOpen(!open)} aria-expanded={open}>Samples ▾</button>
@@ -93,25 +95,44 @@ function NoticeField({ value, onChange, onPick, error }) {
 
 function Lookup() {
   const [num, setNum] = useState('');
-  const [date, setDate] = useState('');
+  const [parts, setParts] = useState({ d: '', m: '', y: '' });
   const [err, setErr] = useState(null);
   const [fe, setFe] = useState({});
+  const [bad, setBad] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [misses, setMisses] = useState(0);
+  const [touched, setTouched] = useState({});
+  const sumRef = useRef(null);
+
+  // Check one or both fields. Shown as you leave a field (after you've typed in it) and again on submit.
+  const validate = (which = ['num', 'date']) => {
+    const x = {}; let b = [];
+    if (which.includes('num')) { const m = checkNotice(num); if (m) x.num = m; }
+    if (which.includes('date')) { const r = checkDate(parts); if (r) { x.date = r.msg; b = r.bad; } }
+    return { x, b };
+  };
+  const leave = (field) => {
+    setTouched((t) => ({ ...t, [field]: true }));
+    const { x, b } = validate([field]);
+    setFe((f) => { const { [field]: _o, ...rest } = f; return { ...rest, ...x }; });
+    if (field === 'date') setBad(b);
+  };
 
   const submit = (e) => {
     e.preventDefault();
-    const x = {};
-    if (!/^\d{10}$/.test(num.replace(/\s/g, ''))) x.num = 'Enter the 10-digit number from your notice';
-    if (!date) x.date = 'Enter the date of the offence';
-    setFe(x); setErr(null);
-    if (Object.keys(x).length) return;
+    const { x, b } = validate();
+    setFe(x); setBad(b); setErr(null); setTouched({ num: true, date: true });
+    if (Object.keys(x).length) { setTimeout(() => sumRef.current?.focus(), 0); return; }
     setBusy(true);
     setTimeout(() => {
       setBusy(false);
-      const n = NOTICES.find((y) => y.number === num.replace(/\s/g, '') && y.dateTime.slice(0, 10) === date);
-      if (!n) setErr('nomatch'); else go(`/notice/${n.number}`);
+      const iso = partsToIso(parts);
+      const n = NOTICES.find((y) => y.number === cleanNotice(num) && y.dateTime.slice(0, 10) === iso);
+      if (!n) { setErr('nomatch'); setMisses((m) => m + 1); setTimeout(() => sumRef.current?.focus(), 0); } else go(`/notice/${n.number}`);
     }, 600);
   };
+  const problems = [fe.num && { id: 'pn', msg: fe.num }, fe.date && { id: 'od-d', msg: fe.date }].filter(Boolean);
+  const focusField = (id) => (e) => { e.preventDefault(); document.getElementById(id)?.focus(); };
 
   return (
     <>
@@ -125,15 +146,24 @@ function Lookup() {
         <div className="pub-two">
           <form className="pub-form" onSubmit={submit} noValidate>
             <h2>Find your notice</h2>
-            {err === 'nomatch' && <Alert status="warning" title="We couldn’t find that notice." role="alert">Please check both details match the letter. For your privacy we don’t say which one didn’t match.</Alert>}
-            <NoticeField value={num} onChange={setNum} error={fe.num}
-              onPick={(n) => { setNum(n.number); setDate(n.dateTime.slice(0, 10)); setFe({}); setErr(null); }} />
-            <Field invalid={!!fe.date}>
-              <FieldLabel htmlFor="od">Date of the offence</FieldLabel>
-              <FieldDescription>Shown on the notice</FieldDescription>
-              {fe.date && <FieldError match role="alert">{fe.date}</FieldError>}
-              <Input id="od" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </Field>
+            {problems.length > 0 && (
+              <div className="pub-errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="errsum-h">
+                <h3 id="errsum-h">There {problems.length === 1 ? 'is a problem' : 'are problems'} with your details</h3>
+                <ul>{problems.map((p) => <li key={p.id}><a href={`#${p.id}`} onClick={focusField(p.id)}>{p.msg}</a></li>)}</ul>
+              </div>
+            )}
+            {err === 'nomatch' && !problems.length && (
+              <div className="pub-errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="nm-h">
+                <h3 id="nm-h">We couldn’t find that notice</h3>
+                <p>Check both details match your letter. For your privacy we don’t say which one didn’t match.</p>
+                {misses >= 2 && <p>Still stuck? The notice number is at the top right of the letter, and the offence date is in the “What happened” section. Revenue NSW can help on 1300 138 118.</p>}
+              </div>
+            )}
+            <NoticeField value={num} onChange={(v) => { setNum(v); setErr(null); if (fe.num) setFe((f) => { const { num: _n, ...r } = f; return r; }); }} error={fe.num} onBlur={() => touched.num !== false && num && leave('num')}
+              onPick={(n) => { setNum(n.number); setParts(isoToParts(n.dateTime.slice(0, 10))); setFe({}); setBad([]); setErr(null); }} />
+            <DateField id="od" legend="Date of the offence" hint="Shown on the notice. For example, 24 10 2026" parts={parts} error={fe.date} bad={bad}
+              onChange={(p) => { setParts(p); setErr(null); if (fe.date) { setFe((f) => { const { date: _d, ...r } = f; return r; }); setBad([]); } }}
+              onBlurField={() => setTimeout(() => { if (!document.getElementById('od')?.contains(document.activeElement) && (parts.d || parts.m || parts.y)) leave('date'); }, 0)} />
             <Button type="submit" disabled={busy}>{busy ? <><Spinner /> Finding it…</> : 'Show me what happened'}</Button>
           </form>
           <aside className="pub-aside">

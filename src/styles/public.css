@@ -326,3 +326,39 @@ html { scroll-padding-top: var(--pub-stack, 0px); }
 .learn li small { display: block; color: #495054; margin-top: 2px; }
 .learn li p { margin: 6px 0 0; font-size: 15px; }
 .learn .proto-line { margin-top: 14px; }
+
+/* Date field and form errors (NSW Design System look: navy, clear focus, errors in words and an icon) */
+.df { border: 0; padding: 0; margin: 0 0 20px; min-width: 0; position: relative; }
+.df legend { padding: 0; font: 600 16px/1.4 'Public Sans', sans-serif; color: #22272b; }
+.df-hint { margin: 2px 0 8px; color: #495054; font-size: 14px; }
+.df-err { margin: 0 0 8px; color: #b81237; font-weight: 600; font-size: 15px; border-left: 4px solid #b81237; padding-left: 10px; }
+.df-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.df-part label { display: block; font-size: 14px; margin-bottom: 4px; color: #22272b; }
+.df-in { box-sizing: border-box; height: 48px; padding: 0 10px; border: 1px solid #5d6b73; border-radius: 4px; background: #fff; font: 18px 'Public Sans', sans-serif; color: #22272b; text-align: left; }
+.df-sm { width: 64px; } .df-lg { width: 88px; }
+.df-in:focus { outline: 3px solid #002664; outline-offset: 2px; }
+.df-in.is-bad { border: 2px solid #b81237; background: #fff7f8; }
+.df-cal { position: relative; }
+.df-btn { height: 48px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border: 1px solid #002664; border-radius: 4px; background: #fff; color: #002664; font: 600 15px 'Public Sans', sans-serif; cursor: pointer; }
+.df-btn:hover { background: #e8edf6; } .df-btn:focus-visible { outline: 3px solid #002664; outline-offset: 2px; }
+.dcal { position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; width: 300px; background: #fff; border: 1px solid #5d6b73; border-radius: 6px; box-shadow: 0 10px 28px rgba(0,38,100,.22); padding: 10px; }
+@media (max-width: 480px) { .dcal { left: auto; right: 0; } }
+.dcal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.dcal-nav { width: 40px; height: 40px; border: 1px solid #cdd3d6; border-radius: 4px; background: #fff; font-size: 22px; line-height: 1; cursor: pointer; color: #002664; }
+.dcal-nav:disabled { opacity: .35; cursor: not-allowed; }
+.dcal-dow, .dcal-row { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dcal-dow span { text-align: center; font: 700 12px 'Public Sans', sans-serif; color: #495054; padding: 4px 0; }
+.dcal-row > span { display: grid; place-items: center; }
+.dcal-row button { width: 38px; height: 38px; border: 0; border-radius: 50%; background: none; font: 15px 'Public Sans', sans-serif; color: #22272b; cursor: pointer; }
+.dcal-row button:hover:not(:disabled) { background: #e8edf6; }
+.dcal-row button:focus-visible { outline: 3px solid #002664; outline-offset: 1px; }
+.dcal-row button:disabled { color: #8a949a; cursor: not-allowed; text-decoration: line-through; }
+.dcal-row button.is-today { box-shadow: inset 0 0 0 2px #002664; }
+.dcal-row button.is-sel { background: #002664; color: #fff; font-weight: 700; }
+.dcal-foot { display: flex; justify-content: space-between; border-top: 1px solid #e3e6e8; margin-top: 6px; padding-top: 6px; }
+.dcal-link { border: 0; background: none; color: #002664; text-decoration: underline; font: 600 14px 'Public Sans', sans-serif; cursor: pointer; padding: 8px; }
+.pub-errsum { border: 3px solid #b81237; border-radius: 4px; background: #fff; padding: 14px 16px; margin: 0 0 20px; }
+.pub-errsum:focus { outline: 3px solid #002664; outline-offset: 2px; }
+.pub-errsum h3 { margin: 0 0 6px; color: #b81237; font-size: 18px; }
+.pub-errsum ul { margin: 0; padding-left: 20px; } .pub-errsum a { color: #b81237; font-weight: 600; text-decoration: underline; }
+.pub-field .pn-in.is-bad, #pn[aria-invalid="true"] { border: 2px solid #b81237 !important; background: #fff7f8; }
