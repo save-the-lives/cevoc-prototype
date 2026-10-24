@@ -528,3 +528,6 @@ button:hover > .tip, button:focus-visible > .tip { display: block; }
 .kstrip .kpi-v { font-size: 30px; }
 .vz-hint { margin: -6px 0 10px; font-size: 13px; color: #616e7c; }
 .vz-primary > header { margin-top: 4px; }
+
+/* Agency logos are dark on light, so they sit on a white plate in the coloured staff header */
+.st-brand .brand-logo { background: #fff; border-radius: 4px; padding: 4px 8px; height: 40px; width: auto; box-sizing: border-box; }

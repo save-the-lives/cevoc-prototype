@@ -32,7 +32,7 @@ export function Dialog({ title, onClose, children, wide }) {
   );
 }
 
-// Brand assets live in public/brand/. Text lockups show until the files are added.
+// Brand assets live in public/brand/. Text lockups show if a file is missing.
 const BASE = (import.meta.env && import.meta.env.BASE_URL) || './';
 export function Brand({ file, alt, fallback, className = 'brand-logo' }) {
   const [ok, setOk] = useState(true);
@@ -47,8 +47,8 @@ export const NswLockup = () => (
 );
 
 export const AgencyLockup = ({ agency }) => agency === 'rnsw'
-  ? <Brand file="revenue-nsw.svg" alt="Revenue NSW" fallback={<span className="lockup-agency is-rnsw">Revenue NSW</span>} />
-  : <Brand file="transport.svg" alt="Transport for NSW" fallback={<span className="lockup-agency is-tfnsw">Transport for NSW</span>} />;
+  ? <Brand file="revenue-nsw.png" alt="Revenue NSW" fallback={<span className="lockup-agency is-rnsw">Revenue NSW</span>} />
+  : <Brand file="transport.png" alt="Transport for NSW" fallback={<span className="lockup-agency is-tfnsw">Transport for NSW</span>} />;
 
 // The only demo affordance on the public and staff sites.
 export function DemoDock() {
