@@ -51,9 +51,6 @@ export default function SpeedScale({ speed, limit, vehicle, dateTime, readingLab
         </div>
         <div className="ss-axis" aria-hidden="true">{ticks.map((v) => <span key={v} style={{ left: pct(v) }}>{v}</span>)}</div>
       </div>
-      <figcaption className="ss-cap">
-        <strong className={over > 0 ? 'is-over' : ''}>{speed} {unit}</strong> in a {limit} {unit} zone{over > 0 ? `, ${over} over` : ''}.
-      </figcaption>
       <RoadSafety speed={speed} limit={limit} vehicle={vehicle} dateTime={dateTime} />
     </figure>
   );
