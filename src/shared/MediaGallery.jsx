@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Dialog, Spinner } from './ui.jsx';
 import { useSimMany } from '../lib/useSim.js';
 
@@ -58,11 +58,60 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
   const [all, setAll] = useState(null); // null | {n,total} | 'done' | 'error'
   const failedOnce = useRef(false);
   const touch = useRef(null);
+  const rootRef = useRef(null);
+  const barRef = useRef(null);
+  const thumbRef = useRef(null);
+  const moved = useRef(false);
+  const [fit, setFit] = useState(null);
   const item = items[i];
   const n = items.length;
-  const go = useCallback((d) => setI((x) => (x + d + n) % n), [n]);
+  const go = useCallback((d) => { moved.current = true; setI((x) => (x + d + n) % n); }, [n]);
 
   useEffect(() => { if (i >= n) setI(0); }, [n, i]);
+
+  // Size the stage so the whole image (or video) plus its caption and thumbnails fits in the window
+  // without scrolling, wherever the gallery sits on the page.
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const chrome = (barRef.current?.offsetHeight || 56) + (thumbRef.current?.offsetHeight || 64) + 28;
+      const vh = window.innerHeight;
+      const avail = top < vh - 340 ? vh - top - chrome : vh - chrome - 110;
+      const natural = (el.clientWidth * 2) / 3;
+      setFit(Math.round(Math.max(220, Math.min(avail, natural))));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    return () => { window.removeEventListener('resize', measure); ro.disconnect(); };
+  }, [n]);
+
+  // After moving with the arrows, make sure the item is on screen.
+  useEffect(() => {
+    if (!moved.current) return;
+    moved.current = false;
+    rootRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [i]);
+
+  // Arrow keys move through the evidence from anywhere on the page, unless you are typing,
+  // using a video's own controls, or a dialog is open.
+  useEffect(() => {
+    if (n < 2) return undefined;
+    const on = (e) => {
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const t = e.target;
+      if (t && (/^(input|textarea|select|video)$/i.test(t.tagName) || t.isContentEditable)) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      e.preventDefault();
+      go(e.key === 'ArrowRight' ? 1 : -1);
+    };
+    document.addEventListener('keydown', on);
+    return () => document.removeEventListener('keydown', on);
+  }, [n, go]);
 
   const onKey = (e) => {
     if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
@@ -99,7 +148,7 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
   const unavailable = items.filter((it) => status[it.id] === 'missing').length;
 
   const stage = (big) => (
-    <div className="mg-stage" onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
+    <div className="mg-stage" style={!big && fit ? { height: fit, aspectRatio: 'auto' } : undefined} onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
       onTouchEnd={(e) => { const dx = e.changedTouches[0].clientX - (touch.current ?? 0); if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); }}>
       <Stage item={item} status={status[item.id] || 'loading'} onRetry={retry} big={big} />
       {n > 1 && (
@@ -112,9 +161,9 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
   );
 
   return (
-    <div className={`mg mg--${variant}`} tabIndex={0} onKeyDown={onKey} aria-label="Evidence gallery. Use left and right arrow keys to move between items.">
+    <div ref={rootRef} className={`mg mg--${variant}`} tabIndex={0} onKeyDown={onKey} aria-label="Evidence gallery. Use left and right arrow keys to move between items.">
       {stage(false)}
-      <div className="mg-bar">
+      <div className="mg-bar" ref={barRef}>
         <div className="mg-caption">
           <strong>{item.caption}</strong>
           <span>{i + 1} of {n} · {item.type === 'video' ? 'Video' : 'Image'} · {item.ext}, {item.size}</span>
@@ -135,7 +184,7 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
         </div>
       </div>
 
-      <div className="mg-thumbs" role="tablist">
+      <div className="mg-thumbs" role="tablist" ref={thumbRef}>
         {items.map((it, k) => {
           const st = status[it.id] || 'loading';
           return (

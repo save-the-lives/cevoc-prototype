@@ -1,5 +1,5 @@
 /* Evidence gallery: large stage, thumbnails, independent loading per item */
-.mg { outline: none; }
+.mg { outline: none; scroll-margin-top: 72px; }
 .mg-stage { position: relative; background: #11161c; border-radius: 6px; overflow: hidden; aspect-ratio: 3 / 2; display: flex; align-items: center; justify-content: center; }
 .mg-media { width: 100%; height: 100%; object-fit: contain; background: #11161c; }
 .mg-state { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #dfe5ea; text-align: center; padding: 24px; font-size: 15px; }

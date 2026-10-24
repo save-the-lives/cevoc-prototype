@@ -52,37 +52,70 @@ function useVisit(label, to) {
   useEffect(() => { dispatch({ type: 'visit', ref: { label, to } }); }, [to]); // eslint-disable-line
 }
 
-// Scorecard: X of Y checks valid, colour-coded, at the top of every evidence screen.
+// Scorecard: risks first and in full, everything that passed folded into one quiet line.
+const CONSEQUENCE = {
+  Certification: 'Not current on the day, so upholding may not survive a challenge.',
+  Evidence: 'The evidence may not be enough to uphold this fine.',
+};
+
 function Scorecard({ n, certFault }) {
   const { statusOf } = useStore();
   const sc = scorecard(n, statusOf);
   const { status, retry } = useSim(certFault, 600, [n.number]);
   const certReady = status === 'ready';
   const shown = sc.checks.map((c) => (c.group === 'Certification' && !certReady ? { ...c, pending: true } : c));
-  const valid = shown.filter((c) => c.ok && !c.pending).length;
-  const problems = shown.filter((c) => !c.ok && !c.pending).length;
-  const tone = !certReady ? 'pending' : problems ? 'warn' : 'ok';
+  const risks = shown.filter((c) => !c.ok && !c.pending).sort((a, b) => (a.group === 'Certification' ? -1 : 0) - (b.group === 'Certification' ? -1 : 0));
+  const pending = shown.filter((c) => c.pending);
+  const passed = shown.filter((c) => c.ok && !c.pending);
+  const tone = pending.length ? 'pending' : risks.length ? 'risk' : 'ok';
+  const headline = pending.length ? (status === 'error' ? 'Certificate check failed' : 'Checking certificates…') : risks.length ? `${risks.length} ${risks.length === 1 ? 'risk' : 'risks'} to resolve` : 'All checks passed';
+  const sub = pending.length ? `${passed.length} of ${sc.total} checked so far` : risks.length ? `${passed.length} of ${sc.total} checks passed` : `${sc.total} of ${sc.total} checks valid`;
+  const segs = [...risks.map(() => 'risk'), ...pending.map(() => 'pending'), ...passed.map(() => 'ok')];
+
   return (
-    <div className={`sc sc--${tone}`}>
-      <div className="sc-score">
-        <strong>{certReady ? `${valid} of ${sc.total}` : `${valid} of ${sc.total}…`}</strong>
-        <span>{!certReady ? (status === 'error' ? 'Certificate check failed' : 'Checking certificates') : problems ? `${problems} need${problems === 1 ? 's' : ''} attention` : 'All checks valid'}</span>
-        {status === 'error' && <button type="button" className="st-link" onClick={retry}>Retry</button>}
-      </div>
-      <ul className="sc-list">
-        {shown.map((c, i) => (
-          <li key={i} className={c.pending ? 'is-pending' : c.ok ? 'is-ok' : 'is-bad'} title={c.detail}>
-            <span className="sc-dot" aria-hidden="true">{c.pending ? '' : c.ok ? '✓' : '!'}</span>
-            <span className="sc-label">{c.label}</span>
-            <small>{c.pending ? (status === 'error' ? 'Unavailable' : 'Loading…') : c.cert ? <Link to={`/staff/cert/${c.cert.id}`}>{c.detail}</Link> : c.detail}</small>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <section className={`sc2 sc2--${tone}`} aria-label="Evidence validation">
+      <header className="sc2-head">
+        <span className="sc2-icon" aria-hidden="true">{tone === 'ok' ? '✓' : tone === 'risk' ? '!' : '…'}</span>
+        <div className="sc2-title"><strong>{headline}</strong><span>{sub}</span></div>
+        <div className="sc2-bar" role="img" aria-label={sub}>{segs.map((k, i) => <i key={i} className={`is-${k}`} />)}</div>
+        {status === 'error' && <button type="button" className="st-btn ghost" onClick={retry}>Retry</button>}
+      </header>
+
+      {risks.length > 0 && (
+        <ul className="sc2-risks">
+          {risks.map((c) => (
+            <li key={c.label}>
+              <span className="sc2-risk__icon" aria-hidden="true">!</span>
+              <div>
+                <strong>{c.label}</strong>
+                <p>{c.cert ? <Link to={`/staff/cert/${c.cert.id}`}>{c.detail}</Link> : c.detail}</p>
+                <p className="sc2-risk__why">{CONSEQUENCE[c.group]}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {pending.length > 0 && status !== 'error' && <div className="skel sc2-skel"><i /><i /></div>}
+
+      {passed.length > 0 && (
+        <details className="sc2-pass">
+          <summary>
+            <span className="sc2-pass__tick" aria-hidden="true">✓</span>
+            <span className="sc2-pass__txt">{passed.length} {passed.length === 1 ? 'check' : 'checks'} passed</span>
+            <span className="sc2-pass__chips" aria-hidden="true">{passed.map((c) => <em key={c.label}>{c.label}</em>)}</span>
+            <span className="sc2-pass__more">Details</span>
+          </summary>
+          <ul>
+            {passed.map((c) => (
+              <li key={c.label}><span aria-hidden="true">✓</span><strong>{c.label}</strong><small>{c.cert ? <Link to={`/staff/cert/${c.cert.id}`}>{c.detail}</Link> : c.detail}</small></li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
   );
 }
 
-// Metadata loads after the evidence. Non-blocking: the evidence is usable while this fills in.
 function Metadata({ n, fault }) {
   const s = findSite(n.site);
   const { status, retry } = useSim(fault, 1100, [n.number]);
@@ -135,13 +168,13 @@ function EvidenceView({ n, aside, header }) {
           <span>{n.rego} · {n.vehicle}</span>
           <span>{n.segment ? `${n.speed} km/h avg over ${n.segment.distanceKm} km` : n.redFor ? `Red ${n.redFor}s · ${n.speed} km/h` : n.speed ? `${n.speed} km/h in ${s.limit}` : 'Person-checked'}</span>
         </div>
-        <Scorecard n={n} certFault={plan.certs} />
       </div>
       <div className="ev-body">
         <div className="ev-media">
           <MediaGallery items={n.media} plan={plan} prefix={n.number} variant="staff" />
         </div>
         <aside className="ev-side">
+          <Scorecard n={n} certFault={plan.certs} />
           {aside}
           <Metadata n={n} fault={plan.meta} />
         </aside>

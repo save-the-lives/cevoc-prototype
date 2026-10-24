@@ -34,21 +34,8 @@
 .ev-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: #3e4c59; margin-bottom: 10px; }
 .ev-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
 .ev-media { background: #fff; border: 1px solid #dde2e8; border-radius: 6px; padding: 10px; }
-.ev-side { display: grid; gap: 14px; position: sticky; top: 64px; }
+.ev-side { display: grid; gap: 14px; }
 /* Scorecard */
-.sc { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px; background: #fff; border: 1px solid #dde2e8; border-left: 6px solid #0b6b14; border-radius: 6px; padding: 10px 14px; }
-.sc--warn { border-left-color: #c95000; }
-.sc--pending { border-left-color: #9aa5b1; }
-.sc-score { display: flex; flex-direction: column; justify-content: center; }
-.sc-score strong { font-size: 28px; line-height: 1; color: #0b1a33; }
-.sc-score span { font-size: 13px; color: #3e4c59; }
-.sc-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 12px; }
-.sc-list li { display: grid; grid-template-columns: 20px 1fr; gap: 0 6px; align-items: center; padding: 3px 0; }
-.sc-list small { grid-column: 2; color: #616e7c; font-size: 12px; }
-.sc-dot { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; background: #0b6b14; }
-.is-bad .sc-dot { background: #c95000; }
-.is-pending .sc-dot { background: #cbd2d9; }
-.is-bad .sc-label { color: #a33f00; font-weight: 700; }
 .st-kv { margin: 0; display: grid; gap: 1px; }
 .st-kv div { display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f0f2f5; }
 .st-kv dt { color: #616e7c; font-size: 12px; }
@@ -100,7 +87,7 @@ kbd { border: 1px solid #b6c0cc; border-bottom-width: 2px; border-radius: 3px; p
 .st-persona:hover { background: #fff3cd; }
 .st-persona small { display: block; color: #616e7c; }
 @media (max-width: 1100px) { .ev-body, .st-split { grid-template-columns: 1fr; } .ev-side { position: static; } }
-@media (max-width: 800px) { .st-body, .st-grid, .sc { grid-template-columns: 1fr; } .st-side { display: none; } .st-me { display: none; } }
+@media (max-width: 800px) { .st-body, .st-grid { grid-template-columns: 1fr; } .st-side { display: none; } .st-me { display: none; } }
 /* Phones and small tablets: keep every queue reachable, wrap the top bar, no sideways scroll */
 @media (max-width: 800px) {
   .st-top { flex-wrap: wrap; gap: 8px 10px; padding: 8px 12px; }
