@@ -28,12 +28,3 @@ export const CARDS = {
     { icon: 'camera', title: 'You can see the same image', text: 'The image the person checked is the one shown to you.', link: 'q2', linkText: 'See the image' },
   ],
 };
-
-// Speeding bands, as the notice describes them (how far over the limit).
-export const BANDS = [
-  { id: 0, label: 'Within the limit', short: 'Within', tone: '#cfe0f2' },
-  { id: 1, label: 'Up to 10 km/h over', short: '≤ 10 over', tone: '#f3cf8e' },
-  { id: 2, label: '10 to 20 km/h over', short: '10–20 over', tone: '#e8923f' },
-  { id: 3, label: '20 to 30 km/h over', short: '20–30 over', tone: '#c95000' },
-  { id: 4, label: 'More than 30 km/h over', short: '30+ over', tone: '#8a2a08' },
-];

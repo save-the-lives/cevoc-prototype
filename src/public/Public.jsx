@@ -279,7 +279,6 @@ function NoticePage({ number }) {
 
           <Section n={3} state={st(3)} title="How it was measured" answer={prog.measureLabel}>
             <Measure n={n} program={s.program} />
-            <details className="pub-more"><summary>How a {prog.label.toLowerCase()} works</summary><p>{prog.how}</p></details>
           </Section>
 
           <Section n={4} state={st(4)} title="Was the camera working properly?" tone={ev.current ? '' : 'warn'} answer={evidenceAnswer}>

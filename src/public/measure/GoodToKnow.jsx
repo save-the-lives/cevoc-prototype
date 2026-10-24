@@ -8,8 +8,8 @@ export default function GoodToKnow({ program }) {
   const cards = CARDS[program] || [];
   if (!cards.length) return null;
   return (
-    <div className="ms-know">
-      <p className="ms-know__h">Good to know about this kind of camera</p>
+    <details className="ms-know" open>
+      <summary><span className="ms-know__chev" aria-hidden="true" /><span>Good to know about this kind of camera</span><small>{cards.length} things</small></summary>
       <ul>
         {cards.map((c) => (
           <li key={c.title}>
@@ -22,6 +22,6 @@ export default function GoodToKnow({ program }) {
           </li>
         ))}
       </ul>
-    </div>
+    </details>
   );
 }
