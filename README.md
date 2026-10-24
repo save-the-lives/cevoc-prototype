@@ -33,3 +33,7 @@ Put official files in `public/brand/` (see README there): `nsw-government.svg`, 
 - Staff search: press `/` or Cmd/Ctrl+K
 
 All data, images and videos are generated and fictitious. Certificate checks summarise Road Transport Act 2013 ss132/137/138 for prototyping, not legal advice.
+
+## Images and video
+
+The evidence images and the two sample videos are built from a small set of photos in `assets-src/real` by `scripts/make-media.py` (needs Pillow and ffmpeg). Each frame gets a camera data strip and a SAMPLE band, and the number plates are re-lettered to match the fictitious notices, so nothing reads as real evidence. Run `python3 scripts/make-media.py` after changing the photos or the notice details; output goes to `public/assets/media`.

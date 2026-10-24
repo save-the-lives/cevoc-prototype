@@ -1,6 +1,9 @@
 // ALL PEOPLE, VEHICLES, SERIALS AND AMOUNTS ARE FICTITIOUS. Demonstration data only.
 
+import SIZES from './media-sizes.json';
+
 const M = (file) => `assets/media/${file}`;
+const kb = (file) => `${SIZES[file] || 50} KB`;
 
 export const PROGRAMS = {
   FIXED_SPEED: {
@@ -52,28 +55,28 @@ export const CERTS = [
   { id: 'S138-PHNM4-0812', site: 'PHN-M4', section: 's138', date: '2026-08-12', officer: 'Daniel Okafor (AIO-31876)', status: 'published' },
 ];
 
-const img = (id, file, caption) => ({ id, type: 'image', src: M(file), caption, size: '50 KB', ext: 'JPG' });
-const vid = (id, file, caption) => ({ id, type: 'video', src: M(`${file}.mp4`), poster: M(`${file}-poster.jpg`), caption, size: '40 KB', ext: 'MP4' });
+const img = (id, file, caption) => ({ id, type: 'image', src: M(file), caption, size: kb(file), ext: 'JPG' });
+const vid = (id, file, caption) => ({ id, type: 'video', src: M(`${file}.mp4`), poster: M(`${file}-poster.jpg`), caption, size: kb(`${file}.mp4`), ext: 'MP4' });
 
 export const NOTICES = [
   {
     number: '3162457890', rego: 'CEV123', site: 'PAR-001', dateTime: '2026-09-18T07:42:13', issued: '2026-10-02', due: '2026-11-13',
     offence: 'Exceed speed limit by 10 km/h or less', speed: 68, vehicle: 'Passenger vehicle', holder: 'Mia Rossi', plateConfidence: 0.98,
-    media: [img('IMG-0901', 'cev123-scene.jpg', 'Vehicle in the detection zone'), img('IMG-0902', 'cev123-plate.jpg', 'Number plate close-up')],
+    media: [img('IMG-0901', 'cev123-scene.jpg', 'Vehicle in the detection zone'), img('IMG-0902', 'cev123-plate.jpg', 'Number plate close-up'), img('IMG-0903', 'cev123-wide.jpg', 'Wider view of the road')],
   },
   {
     number: '3162457893', rego: 'MOB789', site: 'MOB-312', dateTime: '2026-09-04T22:16:40', issued: '2026-09-28', due: '2026-11-06',
     offence: 'Exceed speed limit by more than 10 km/h', speed: 81, vehicle: 'Passenger vehicle', holder: 'Liam Walsh', plateConfidence: 0.97,
-    media: [img('IMG-3101', 'mob789-scene.jpg', 'Vehicle passing the mobile camera'), img('IMG-3102', 'mob789-plate.jpg', 'Number plate close-up'), vid('VID-3101', 'mob789-video', 'Approach video, 8 seconds')],
+    media: [img('IMG-3101', 'mob789-scene.jpg', 'Vehicle passing the mobile camera'), img('IMG-3102', 'mob789-plate.jpg', 'Number plate close-up'), img('IMG-3103', 'mob789-site.jpg', 'Camera set up at the site'), vid('VID-3101', 'mob789-video', 'Approach video, 8 seconds')],
   },
   {
     number: '3162457891', rego: 'RLC456', site: 'RYD-014', dateTime: '2026-08-02T18:05:47', issued: '2026-08-21', due: '2026-10-30',
     offence: 'Proceed through red traffic light', speed: 54, redFor: 3.2, vehicle: 'Passenger vehicle', holder: 'Thomas Kelly', plateConfidence: 0.95,
-    media: [img('IMG-0811', 'rlc456-red1.jpg', 'Before the stop line, signal red'), img('IMG-0812', 'rlc456-red2.jpg', 'In the intersection'), img('IMG-0813', 'rlc456-plate.jpg', 'Number plate close-up'), vid('VID-0811', 'rlc456-video', 'Signal sequence video, 8 seconds')],
+    media: [img('IMG-0811', 'rlc456-red1.jpg', 'Approaching the stop line, red for 2.1 seconds'), img('IMG-0812', 'rlc456-red2.jpg', 'Crossing the stop line, red for 3.2 seconds'), img('IMG-0813', 'rlc456-plate.jpg', 'Number plate close-up'), img('IMG-0814', 'rlc456-wide.jpg', 'Wider view of the intersection'), vid('VID-0811', 'rlc456-video', 'Signal sequence video, 8 seconds')],
   },
   {
     number: '3162457894', rego: 'HVY321', site: 'AVG-HUM', dateTime: '2026-09-11T03:48:00', issued: '2026-10-01', due: '2026-11-12',
-    offence: 'Heavy vehicle exceed average speed limit', speed: 108, vehicle: 'Heavy vehicle (prime mover)', holder: 'Southern Ridge Haulage Pty Ltd', plateConfidence: 0.96,
+    offence: 'Commercial vehicle exceed average speed limit', speed: 108, vehicle: 'Light commercial vehicle (ute)', holder: 'Southern Ridge Contracting Pty Ltd', plateConfidence: 0.96,
     segment: { distanceKm: 18, timeA: '03:38:00', timeB: '03:48:00' },
     media: [img('IMG-HV01', 'hvy321-pointa.jpg', 'Point A, 3:38:00 am'), img('IMG-HV02', 'hvy321-pointb.jpg', 'Point B, 3:48:00 am'), img('IMG-HV03', 'hvy321-plate.jpg', 'Number plate close-up')],
   },
@@ -85,12 +88,17 @@ export const NOTICES = [
 ];
 
 const NOTICE_BY = (n) => NOTICES.find((x) => x.number === n);
-const clone = (from, over) => { const b = NOTICE_BY(from); NOTICES.push({ ...b, ...over, media: b.media.map((m) => ({ ...m, id: `${m.id}-${over.number.slice(-3)}` })) }); };
-clone('3162457891', { number: '3162457898', rego: 'RED777', dateTime: '2026-09-02T17:20:11', issued: '2026-09-25', due: '2026-11-03', holder: 'Priya Nair', speed: 49, redFor: 1.4 });
-clone('3162457890', { number: '3162457899', rego: 'SPD404', dateTime: '2026-08-14T06:55:30', issued: '2026-09-02', due: '2026-10-28', holder: 'Ben Carter', speed: 71, offence: 'Exceed speed limit by more than 10 km/h' });
-clone('3162457893', { number: '3162457900', rego: 'MOB205', dateTime: '2026-09-12T20:41:02', issued: '2026-10-05', due: '2026-11-16', holder: 'Sofia Marino', speed: 79 });
-clone('3162457897', { number: '3162457901', rego: 'PHN808', dateTime: '2026-10-01T07:35:44', issued: '2026-10-15', due: '2026-11-26', holder: 'Daniel Park' });
-clone('3162457894', { number: '3162457902', rego: 'HVY654', dateTime: '2026-09-25T02:12:00', issued: '2026-10-12', due: '2026-11-23', holder: 'Outback Freight Pty Ltd', speed: 104, segment: { distanceKm: 18, timeA: '02:02:00', timeB: '02:12:00' } });
+const clone = (from, over) => { const b = NOTICE_BY(from); NOTICES.push({ ...b, ...over, media: over.media || b.media.map((m) => ({ ...m, id: `${m.id}-${over.number.slice(-3)}` })) }); };
+clone('3162457891', { number: '3162457898', rego: 'RED777', dateTime: '2026-09-02T17:20:11', issued: '2026-09-25', due: '2026-11-03', holder: 'Priya Nair', speed: 49, redFor: 1.4,
+  media: [img('IMG-0821', 'red777-red1.jpg', 'Approaching the stop line, red for 0.6 seconds'), img('IMG-0822', 'red777-red2.jpg', 'Crossing the stop line, red for 1.4 seconds'), img('IMG-0823', 'red777-plate.jpg', 'Number plate close-up')] });
+clone('3162457890', { number: '3162457899', rego: 'SPD404', dateTime: '2026-08-14T06:55:30', issued: '2026-09-02', due: '2026-10-28', holder: 'Ben Carter', speed: 71, offence: 'Exceed speed limit by more than 10 km/h',
+  media: [img('IMG-0911', 'spd404-scene.jpg', 'Vehicle in the detection zone'), img('IMG-0912', 'spd404-plate.jpg', 'Number plate close-up'), img('IMG-0913', 'spd404-wide.jpg', 'Wider view of the road')] });
+clone('3162457893', { number: '3162457900', rego: 'MOB205', dateTime: '2026-09-12T20:41:02', issued: '2026-10-05', due: '2026-11-16', holder: 'Sofia Marino', speed: 79,
+  media: [img('IMG-3201', 'mob205-scene.jpg', 'Vehicle passing the mobile camera'), img('IMG-3202', 'mob205-plate.jpg', 'Number plate close-up'), img('IMG-3203', 'mob205-site.jpg', 'Camera set up at the site')] });
+clone('3162457897', { number: '3162457901', rego: 'PHN808', dateTime: '2026-10-01T07:35:44', issued: '2026-10-15', due: '2026-11-26', holder: 'Daniel Park',
+  media: [img('IMG-PH11', 'phn808-driver.jpg', 'Driver area (passenger blurred)'), img('IMG-PH12', 'phn808-plate.jpg', 'Number plate close-up')] });
+clone('3162457894', { number: '3162457902', rego: 'HVY654', dateTime: '2026-09-25T02:12:00', issued: '2026-10-12', due: '2026-11-23', holder: 'Outback Freight Pty Ltd', speed: 104, vehicle: 'Light commercial vehicle (van)', segment: { distanceKm: 18, timeA: '02:02:00', timeB: '02:12:00' },
+  media: [img('IMG-HV11', 'hvy654-pointa.jpg', 'Point A, 2:02:00 am'), img('IMG-HV12', 'hvy654-pointb.jpg', 'Point B, 2:12:00 am'), img('IMG-HV13', 'hvy654-plate.jpg', 'Number plate close-up')] });
 
 // Scenarios: one per camera program, framed for design conversations.
 export const SCENARIOS = [
@@ -115,10 +123,10 @@ export const SCENARIOS = [
     hasVideo: true, issue: 'Camera inspection was 123 days old (limit 90).',
   },
   {
-    notice: '3162457894', title: 'Average speed, heavy vehicle', persona: 'Southern Ridge Haulage, fleet manager',
-    context: 'Prime mover on the Hume Highway at 3:48 am. Driver says logbook shows otherwise.',
+    notice: '3162457894', title: 'Average speed, work vehicle', persona: 'Southern Ridge Contracting, fleet manager',
+    context: 'Work ute on the Hume Highway at 3:48 am. The driver says the logbook shows otherwise.',
     pain: 'Livelihood at risk. Needs to know how the average was worked out before nominating or going to court.',
-    job: 'When a truck in my fleet is fined, I want the timing and distance between the cameras, so I can decide whether to contest.',
+    job: 'When a vehicle in my fleet is fined, I want the timing and distance between the cameras, so I can decide whether to contest.',
   },
   {
     notice: '3162457897', title: 'Mobile phone detection', persona: 'Hannah, says she was holding a drink bottle',
@@ -145,7 +153,7 @@ export const CASES = [
   { id: 'RV-24026', type: 'review', notice: '3162457890', lodged: '2026-10-21', channel: 'Online form', priority: 'low', assignee: null,
     grounds: 'I was not driving. I have asked my brother to nominate himself.' },
   { id: 'CE-24019', type: 'court', notice: '3162457894', lodged: '2026-10-18', channel: 'Online form', priority: 'high', assignee: 'jordan',
-    grounds: 'I drive trucks for a living. My logbook shows I was within limits. The timing between the cameras must be wrong.' },
+    grounds: 'We run work vehicles on the highway. Our driver’s logbook shows they were within limits. The timing between the cameras must be wrong.' },
   { id: 'CE-24020', type: 'court', notice: '3162457902', lodged: '2026-10-05', channel: 'Letter', priority: 'normal', assignee: null,
     grounds: 'The company disputes the surveyed distance between the two cameras.' },
   { id: 'CE-24023', type: 'court', notice: '3162457899', lodged: '2026-10-16', channel: 'Online form', priority: 'low', assignee: 'alex',

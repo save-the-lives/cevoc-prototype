@@ -41,7 +41,7 @@ export const ARCHETYPES = [
     job: 'When a vehicle in my fleet is fined, I want the evidence and how the average was worked out, so I can decide whether to contest.',
     steps: [['Company notice arrives', 'person'], ['Company image page or eNominations', 'ext'], ['CEVOC: your fine, explained', 'ours'], ['Nominate the driver or elect court', 'out']],
     doors: [{ name: 'Company and fleet fines', owner: 'Revenue NSW (eNominations)', verified: 'documented', note: 'Separate company image page and eNominations', lands: 'Fine → CEVOC link, then nominate' }],
-    notices: ['3162457894'], try: [['Open a heavy vehicle fine', '/notice/3162457894']],
+    notices: ['3162457894'], try: [['Open a fleet vehicle fine', '/notice/3162457894']],
   },
   {
     id: 'assisted', name: 'Needs help', who: 'People who can’t or won’t go online and ring Revenue NSW',

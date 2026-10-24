@@ -10,7 +10,7 @@ export default function Measure({ n, program }) {
 
   if (program === 'AVERAGE_SPEED') {
     const mins = Math.round((n.segment.distanceKm / n.speed) * 60);
-    const limit = s.heavyLimit || s.limit;
+    const limit = /heavy/i.test(n.vehicle) ? s.heavyLimit || s.limit : s.limit;
     visual = (
       <>
         <div className="ms-seg">
@@ -21,7 +21,7 @@ export default function Measure({ n, program }) {
         <p className="ms-formula" aria-label={`${n.segment.distanceKm} kilometres divided by ${mins} minutes is ${n.speed} kilometres an hour`}>
           <span>{n.segment.distanceKm} km</span><i>÷</i><span>{mins} min</span><i>=</i><strong>{n.speed} km/h</strong>
         </p>
-        <p className="ms-calc">That is the average over the whole length. The limit for heavy vehicles on this length is {limit} km/h.</p>
+        <p className="ms-calc">That is the average over the whole length. The limit on this length is {limit} km/h.</p>
         <SpeedScale speed={n.speed} limit={limit} readingLabel="Your average" />
       </>
     );
