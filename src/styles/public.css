@@ -168,10 +168,6 @@
 .ss-axis span::before { content: ''; position: absolute; left: 50%; top: -8px; width: 1px; height: 6px; background: #8a9399; }
 .ss-cap { margin: 14px 0 0; font-size: 17px; }
 .ss-cap .is-over { color: #b81237; }
-.ss-try { margin-top: 12px; padding: 12px 14px; background: #fff; border: 1px dashed #8a9399; border-radius: 6px; display: grid; gap: 6px; }
-.ss-try label { font-weight: 700; }
-.ss-try input[type="range"] { width: 100%; accent-color: #5b3c9e; min-height: 28px; }
-.ss-try output { font-size: 15px; color: #22272b; }
 .ms-formula { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 22px; margin: 16px 0 4px; }
 .ms-formula i { font-style: normal; color: #495054; }
 .ms-formula strong { color: #7a2e00; }
@@ -227,13 +223,6 @@
 @media (hover: none) { .ho:hover .ho__note { display: none; } .ho:focus-within .ho__note { display: flex; } }
 @media (max-width: 640px) { .opts2 li { align-items: stretch; } .ho { width: 100%; } .ho__ctl, .ho__ctl button { width: 100%; } .ho__note { right: auto; left: 0; } .ho__note::after { right: auto; left: 24px; } }
 
-/* Road-safety reminder */
-.sn { display: flex; gap: 14px; align-items: flex-start; margin-top: 16px; padding: 14px 16px; background: #eef5f9; border: 1px solid #cfe0ea; border-radius: 8px; }
-.sn-ico { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #fff; color: #00587c; display: grid; place-items: center; border: 1px solid #cfe0ea; }
-.sn-h { margin: 0 0 2px; font: 700 12px 'Public Sans', sans-serif; text-transform: uppercase; letter-spacing: .06em; color: #00587c; }
-.sn-t { margin: 0; font-size: 16px; color: #22272b; }
-.sn-f { margin: 4px 0 0; font-size: 13px; color: #495054; }
-.sn .pub-link { margin-top: 6px; font-size: 14px; }
 
 /* Certificate cards: status beside the title, actions side by side */
 .certs-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; }
@@ -313,3 +302,24 @@ html { scroll-padding-top: var(--pub-stack, 0px); }
   .pub header a svg { height: 52px; width: auto; }
   .pub-nav { padding-bottom: 0; }
 }
+
+/* Road-safety note under the speed scale */
+.rs { margin-top: 18px; padding: 16px 18px; background: #eef5f9; border: 1px solid #cfe0ea; border-radius: 8px; }
+.rs-h { margin: 0 0 10px; font-size: 17px; color: #00425f; }
+.rs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.rs li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start; }
+.rs-ico { width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 1px solid #cfe0ea; color: #00587c; display: grid; place-items: center; }
+.rs li p { margin: 0; font-size: 16px; color: #22272b; }
+.rs-goal { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #cfe0ea; font-size: 15px; color: #22272b; }
+.rs-foot { margin: 6px 0 0; font-size: 13px; color: #495054; }
+
+/* Education links at the end of the notice page */
+.learn { margin: 32px 0 8px; padding: 20px 22px; background: #f5f6f8; border-radius: 8px; border: 1px solid #dcdfe4; }
+.learn h2 { margin: 0 0 6px; font-size: 20px; }
+.learn > p { margin: 0 0 12px; color: #22272b; }
+.learn ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.learn li { background: #fff; border: 1px solid #dcdfe4; border-radius: 6px; padding: 12px 14px; }
+.learn li a { color: #002664; text-decoration: underline; }
+.learn li small { display: block; color: #495054; margin-top: 2px; }
+.learn li p { margin: 6px 0 0; font-size: 15px; }
+.learn .proto-line { margin-top: 14px; }

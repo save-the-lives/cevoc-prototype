@@ -208,6 +208,12 @@ function CertList({ n, fault }) {
   );
 }
 
+const LEARN = [
+  { title: 'Speeding and how it affects you', org: 'Transport for NSW, Centre for Road Safety', text: 'Plain-language facts on speed limits, stopping distances and why limits are set where they are.', href: 'https://roadsafety.transport.nsw.gov.au/speeding/' },
+  { title: 'Safe speeds and Towards Zero', org: 'Transport for NSW', text: 'How NSW is working towards no deaths or serious injuries on its roads, and where cameras fit in.', href: 'https://www.towardszero.nsw.gov.au/' },
+  { title: 'How Victoria approaches road safety', org: 'Transport Accident Commission and Towards Zero Victoria', text: 'Another Australian state that pairs cameras with education, and explains its reasoning.', href: 'https://www.towardszero.vic.gov.au/' },
+];
+
 const OPTIONS = [
   { id: 'pay', title: 'Pay', text: 'In full, or ask for a payment plan or more time if money is tight.', cta: 'Pay or set up a plan', what: 'Paying and payment plans' },
   { id: 'review', title: 'Ask for a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Ask for a review', what: 'Asking for a review' },
@@ -296,6 +302,17 @@ function NoticePage({ number }) {
           </Section>
         </div>
       </div>
+
+      <aside className="learn" aria-labelledby="learn-h">
+        <h2 id="learn-h">If you’d like to know more</h2>
+        <p>Nobody enjoys getting a notice. If it’s useful, these explain why cameras and limits are where they are. You don’t need to read any of this to deal with your notice.</p>
+        <ul>
+          {LEARN.map((l) => (
+            <li key={l.href}><a href={l.href} target="_blank" rel="noreferrer noopener"><strong>{l.title}</strong><span className="sr-only"> (opens in a new tab)</span></a><small>{l.org}</small><p>{l.text}</p></li>
+          ))}
+        </ul>
+        <p className="proto-line">Prototype: link addresses are to be confirmed with Transport for NSW before release.</p>
+      </aside>
 
       {leaving && (
         <Dialog title="You’re going to Revenue NSW" onClose={() => setLeaving(null)}>

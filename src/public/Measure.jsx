@@ -22,7 +22,7 @@ export default function Measure({ n, program }) {
           <span>{n.segment.distanceKm} km</span><i>÷</i><span>{mins} min</span><i>=</i><strong>{n.speed} km/h</strong>
         </p>
         <p className="ms-calc">That is the average over the whole length. The limit on this length is {limit} km/h.</p>
-        <SpeedScale speed={n.speed} limit={limit} readingLabel="Your average" />
+        <SpeedScale speed={n.speed} limit={limit} vehicle={n.vehicle} dateTime={n.dateTime} readingLabel="Your average" />
       </>
     );
   } else if (program === 'RED_LIGHT_SPEED') {
@@ -38,7 +38,7 @@ export default function Measure({ n, program }) {
           <i style={{ left: pct(3 + amber + n.redFor) }}><b>Vehicle crossed</b></i>
         </div>
         <p className="ms-calc">The light had been red for <strong>{n.redFor} seconds</strong> when the vehicle crossed the stop line, travelling at {n.speed} km/h.</p>
-        <SpeedScale speed={n.speed} limit={s.limit} readingLabel="Through the intersection" />
+        <SpeedScale speed={n.speed} limit={s.limit} vehicle={n.vehicle} dateTime={n.dateTime} readingLabel="Through the intersection" />
       </>
     );
   } else if (program === 'MOBILE_PHONE') {
@@ -51,7 +51,7 @@ export default function Measure({ n, program }) {
       </ol>
     );
   } else {
-    visual = <SpeedScale speed={n.speed} limit={s.limit} />;
+    visual = <SpeedScale speed={n.speed} limit={s.limit} vehicle={n.vehicle} dateTime={n.dateTime} />;
   }
 
   return (
