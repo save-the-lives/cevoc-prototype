@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, AgencyLockup, Spinner } from '../shared/ui.jsx';
 import MediaGallery from '../shared/MediaGallery.jsx';
+import StaffShell from './shell/StaffShell.jsx';
+import WorkQueue from './queue/WorkQueue.jsx';
+import ApprovalsQueue from './queue/ApprovalsQueue.jsx';
 import { useStore } from '../lib/store.jsx';
 import { go } from '../lib/router.js';
 import { evaluate, scorecard, impactOf, daysBetween } from '../lib/rules.js';
@@ -41,58 +44,6 @@ function SignIn({ onPick }) {
 }
 
 /* ---------- Search ---------- */
-
-const INDEX = [
-  ...NOTICES.map((n) => ({ type: 'Notice', id: n.number, label: `${n.number} · ${n.rego}`, sub: n.offence, to: `/staff/notice/${n.number}`, text: `${n.number} ${n.rego} ${n.holder}` })),
-  ...CASES.map((c) => ({ type: 'Case', id: c.id, label: c.id, sub: `${c.type === 'court' ? 'Court election' : 'Review'} · ${c.notice}`, to: `/staff/case/${c.id}`, text: `${c.id} ${c.notice}` })),
-  ...SITES.map((s) => ({ type: 'Camera', id: s.code, label: `${s.code} · ${s.name}`, sub: PROGRAMS[s.program].label, to: `/staff/camera/${s.code}`, text: `${s.code} ${s.name} ${s.serial}` })),
-  ...CERTS.map((c) => ({ type: 'Certificate', id: c.id, label: c.id, sub: `${c.section} · ${fmtDate(c.date)}`, to: `/staff/cert/${c.id}`, text: c.id })),
-];
-
-function Search() {
-  const [q, setQ] = useState('');
-  const [open, setOpen] = useState(false);
-  const [sel, setSel] = useState(0);
-  const ref = useRef(null);
-  const results = useMemo(() => {
-    const t = q.trim().toLowerCase().replace(/\s/g, '');
-    return t ? INDEX.filter((r) => r.text.toLowerCase().replace(/\s/g, '').includes(t)).slice(0, 8) : [];
-  }, [q]);
-
-  useEffect(() => {
-    const k = (e) => {
-      if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !/input|textarea|select/i.test(e.target.tagName))) { e.preventDefault(); ref.current?.focus(); }
-    };
-    document.addEventListener('keydown', k);
-    return () => document.removeEventListener('keydown', k);
-  }, []);
-
-  const pick = (r) => { go(r.to); setQ(''); setOpen(false); ref.current?.blur(); };
-
-  return (
-    <div className="st-search">
-      <input ref={ref} value={q} aria-label="Search records" placeholder="Search notice, plate, camera, certificate or case  ( / )"
-        onChange={(e) => { setQ(e.target.value); setSel(0); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') { e.preventDefault(); setSel((x) => Math.min(x + 1, results.length - 1)); }
-          if (e.key === 'ArrowUp') { e.preventDefault(); setSel((x) => Math.max(x - 1, 0)); }
-          if (e.key === 'Enter' && results[sel]) pick(results[sel]);
-          if (e.key === 'Escape') { setQ(''); e.currentTarget.blur(); }
-        }} />
-      {open && q && (
-        <ul className="st-results" role="listbox">
-          {results.length ? results.map((r, k) => (
-            <li key={r.type + r.id}>
-              <button type="button" className={k === sel ? 'on' : ''} onMouseDown={() => pick(r)}>
-                <span className="st-type">{r.type}</span><strong>{r.label}</strong><small>{r.sub}</small>
-              </button>
-            </li>
-          )) : <li className="st-none">No match for “{q}”. Try a 10-digit notice number, plate or camera code.</li>}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 /* ---------- Shared pieces ---------- */
 
@@ -411,44 +362,6 @@ function CertRecord({ id, user }) {
   );
 }
 
-function Queue({ name, user }) {
-  const { state, statusOf } = useStore();
-  if (name === 'approvals') {
-    return (
-      <>
-        <h1>Approvals</h1>
-        <table className="st-table">
-          <thead><tr><th>Certificate</th><th>Change</th><th>Requested by</th><th>Notices affected</th><th /></tr></thead>
-          <tbody>
-            {state.pending.map((p) => <tr key={p.id} className="st-click" onClick={() => go(`/staff/cert/${p.cert}`)}><td>{p.cert}</td><td>{p.kind}</td><td>{findStaff(p.by)?.name}</td><td>{p.affected}</td><td><Link to={`/staff/cert/${p.cert}`}>Open</Link></td></tr>)}
-            {!state.pending.length && <tr><td colSpan={5} className="st-muted">Nothing waiting.</td></tr>}
-          </tbody>
-        </table>
-      </>
-    );
-  }
-  const type = name === 'court' ? 'court' : 'review';
-  const list = CASES.filter((c) => c.type === type);
-  return (
-    <>
-      <h1>{type === 'court' ? 'Court elections' : 'Reviews'}</h1>
-      <table className="st-table">
-        <thead><tr><th>Case</th><th>Notice</th><th>Program</th><th>Lodged</th><th>Certification</th><th>Status</th></tr></thead>
-        <tbody>{list.map((c) => {
-          const n = findNotice(c.notice); const ev = evaluate(n, statusOf);
-          return (
-            <tr key={c.id} className="st-click" onClick={() => go(`/staff/case/${c.id}`)}>
-              <td><Link to={`/staff/case/${c.id}`}>{c.id}</Link></td><td>{c.notice}</td><td>{PROGRAMS[findSite(n.site).program].label}</td><td>{fmtDate(c.lodged)}</td>
-              <td><span className={`tag ${ev.current ? 'tag-ok' : 'tag-warn'}`}>{ev.current ? 'Current' : `${ev.notCurrent} not current`}</span></td>
-              <td>{state.decisions[c.id] ? state.decisions[c.id].label : 'Open'}</td>
-            </tr>
-          );
-        })}</tbody>
-      </table>
-    </>
-  );
-}
-
 function Home({ user }) {
   const { state } = useStore();
   return (
@@ -492,29 +405,13 @@ export default function StaffSite({ parts, query }) {
   else if (a === 'case') body = <CaseRecord key={b} id={b} user={user} />;
   else if (a === 'camera') body = <CameraRecord code={b} />;
   else if (a === 'cert') body = <CertRecord key={b} id={b} user={user} />;
-  else if (a === 'queue') body = <Queue name={b} user={user} />;
+  else if (a === 'queue') body = b === 'approvals' ? <ApprovalsQueue /> : <WorkQueue key={b} name={b} user={user} />;
   else body = <Home user={user} />;
 
   return (
-    <div className={`st st--${user.agency}`}>
-      <header className="st-top">
-        <Link to="/staff" className="st-app">CEVOC <small>Staff</small></Link>
-        <Search />
-        <span className={`org ${user.agency}`}>{user.org}</span>
-        <span className="st-me">{user.name} · {user.role}</span>
-        <button type="button" className="st-out" onClick={() => { dispatch({ type: 'signOut' }); go('/staff'); }}>Sign out</button>
-      </header>
-      <div className="st-body">
-        <nav className="st-side" aria-label="Queues">
-          <p className="st-side__h">Queues</p>
-          <Link to="/staff/queue/reviews" className={b === 'reviews' ? 'on' : ''}>Reviews <span>{open('review')}</span></Link>
-          <Link to="/staff/queue/court" className={b === 'court' ? 'on' : ''}>Court elections <span>{open('court')}</span></Link>
-          <Link to="/staff/queue/approvals" className={b === 'approvals' ? 'on' : ''}>Approvals <span className={approvals && can(user, 'withdraw:approve') ? 'hot' : ''}>{approvals}</span></Link>
-          <p className="st-side__h">Cameras</p>
-          {SITES.map((s) => <Link key={s.code} to={`/staff/camera/${s.code}`} className={b === s.code ? 'on' : ''}>{s.code}</Link>)}
-        </nav>
-        <main className="st-main">{body}</main>
-      </div>
-    </div>
+    <StaffShell user={user} parts={parts} cameras={SITES} counts={{ review: open('review'), court: open('court'), approvals }} hotApprovals={approvals > 0 && can(user, 'withdraw:approve')}
+      onSwitch={(id) => dispatch({ type: 'signIn', id })} onSignOut={() => { dispatch({ type: 'signOut' }); go('/staff'); }}>
+      {body}
+    </StaffShell>
   );
 }

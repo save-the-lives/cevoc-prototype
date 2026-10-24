@@ -4,7 +4,7 @@ import { CERTS } from '../data.js';
 // Shared demo state for the browser tab, so the public site reflects staff actions.
 const KEY = 'cevoc-v11-state';
 const INITIAL = {
-  certStatus: {}, pending: [], audit: [], decisions: {}, recent: [], user: null,
+  certStatus: {}, pending: [], audit: [], decisions: {}, recent: [], user: null, assign: {},
   mode: 'clean', seed: 'cevoc', nonce: 0, force: {},
 };
 
@@ -32,6 +32,7 @@ function reducer(s, a) {
     }
     case 'decide': return { ...s, decisions: { ...s.decisions, [a.id]: a.d }, audit: log(s, a.d.by, `Decision on ${a.id}: ${a.d.label}`, a.id) };
     case 'note': return { ...s, audit: log(s, a.who, a.what, a.ref) };
+    case 'assign': return { ...s, assign: { ...s.assign, ...a.map }, audit: log(s, a.by, a.what, a.ref) };
     case 'mode': return { ...s, mode: a.mode };
     case 'seed': return { ...s, seed: a.seed };
     case 'reshuffle': return { ...s, nonce: s.nonce + 1 };

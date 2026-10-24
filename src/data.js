@@ -84,6 +84,14 @@ export const NOTICES = [
   },
 ];
 
+const NOTICE_BY = (n) => NOTICES.find((x) => x.number === n);
+const clone = (from, over) => { const b = NOTICE_BY(from); NOTICES.push({ ...b, ...over, media: b.media.map((m) => ({ ...m, id: `${m.id}-${over.number.slice(-3)}` })) }); };
+clone('3162457891', { number: '3162457898', rego: 'RED777', dateTime: '2026-09-02T17:20:11', issued: '2026-09-25', due: '2026-11-03', holder: 'Priya Nair', speed: 49, redFor: 1.4 });
+clone('3162457890', { number: '3162457899', rego: 'SPD404', dateTime: '2026-08-14T06:55:30', issued: '2026-09-02', due: '2026-10-28', holder: 'Ben Carter', speed: 71, offence: 'Exceed speed limit by more than 10 km/h' });
+clone('3162457893', { number: '3162457900', rego: 'MOB205', dateTime: '2026-09-12T20:41:02', issued: '2026-10-05', due: '2026-11-16', holder: 'Sofia Marino', speed: 79 });
+clone('3162457897', { number: '3162457901', rego: 'PHN808', dateTime: '2026-10-01T07:35:44', issued: '2026-10-15', due: '2026-11-26', holder: 'Daniel Park' });
+clone('3162457894', { number: '3162457902', rego: 'HVY654', dateTime: '2026-09-25T02:12:00', issued: '2026-10-12', due: '2026-11-23', holder: 'Outback Freight Pty Ltd', speed: 104, segment: { distanceKm: 18, timeA: '02:02:00', timeB: '02:12:00' } });
+
 // Scenarios: one per camera program, framed for design conversations.
 export const SCENARIOS = [
   {
@@ -120,13 +128,28 @@ export const SCENARIOS = [
   },
 ];
 
+// priority: high | normal | low. assignee is a STAFF id or null. SLA is worked out from lodged date and type.
 export const CASES = [
-  { id: 'RV-24017', type: 'review', notice: '3162457891', lodged: '2026-09-10', channel: 'Online form',
+  { id: 'RV-24017', type: 'review', notice: '3162457891', lodged: '2026-09-10', channel: 'Online form', priority: 'high', assignee: 'alex',
     grounds: 'The light turned amber as I got there and I couldn’t stop safely.' },
-  { id: 'RV-24021', type: 'review', notice: '3162457897', lodged: '2026-10-14', channel: 'Phone (contact centre note)',
+  { id: 'RV-24021', type: 'review', notice: '3162457897', lodged: '2026-10-14', channel: 'Phone (contact centre note)', priority: 'normal', assignee: null,
     grounds: 'I was holding a drink bottle, not a phone. I want to see the photo a person checked.' },
-  { id: 'CE-24019', type: 'court', notice: '3162457894', lodged: '2026-10-18', channel: 'Online form',
+  { id: 'RV-24022', type: 'review', notice: '3162457898', lodged: '2026-10-02', channel: 'Online form', priority: 'high', assignee: null,
+    grounds: 'The signal was amber for barely a second. I think the timing is wrong.' },
+  { id: 'RV-24023', type: 'review', notice: '3162457899', lodged: '2026-09-29', channel: 'Letter', priority: 'normal', assignee: 'sam',
+    grounds: 'I was overtaking a truck and had to speed up briefly to get back in lane.' },
+  { id: 'RV-24024', type: 'review', notice: '3162457900', lodged: '2026-10-09', channel: 'Online form', priority: 'normal', assignee: 'jordan',
+    grounds: 'I did not see a warning sign for a mobile camera on Windsor Road.' },
+  { id: 'RV-24025', type: 'review', notice: '3162457901', lodged: '2026-10-19', channel: 'Online form', priority: 'low', assignee: null,
+    grounds: 'My phone was mounted in a cradle and I was using it for navigation.' },
+  { id: 'RV-24026', type: 'review', notice: '3162457890', lodged: '2026-10-21', channel: 'Online form', priority: 'low', assignee: null,
+    grounds: 'I was not driving. I have asked my brother to nominate himself.' },
+  { id: 'CE-24019', type: 'court', notice: '3162457894', lodged: '2026-10-18', channel: 'Online form', priority: 'high', assignee: 'jordan',
     grounds: 'I drive trucks for a living. My logbook shows I was within limits. The timing between the cameras must be wrong.' },
+  { id: 'CE-24020', type: 'court', notice: '3162457902', lodged: '2026-10-05', channel: 'Letter', priority: 'normal', assignee: null,
+    grounds: 'The company disputes the surveyed distance between the two cameras.' },
+  { id: 'CE-24023', type: 'court', notice: '3162457899', lodged: '2026-10-16', channel: 'Online form', priority: 'low', assignee: 'alex',
+    grounds: 'I want a magistrate to hear this. The camera was not certified on the day.' },
 ];
 
 // Staff personas. No passwords. Permissions drive what each can do; everything else is a hand-off.
@@ -135,6 +158,7 @@ export const STAFF = [
   { id: 'morgan', name: 'Morgan Smith', org: 'Transport for NSW', agency: 'tfnsw', role: 'Camera program manager', perms: ['withdraw:request', 'withdraw:approve', 'inspect:request'] },
   { id: 'alex', name: 'Alex Chen', org: 'Revenue NSW', agency: 'rnsw', role: 'Review officer', perms: ['case:decide'] },
   { id: 'jordan', name: 'Jordan Lee', org: 'Revenue NSW', agency: 'rnsw', role: 'Prosecutions officer', perms: ['case:decide'] },
+  { id: 'sam', name: 'Sam Patel', org: 'Revenue NSW', agency: 'rnsw', role: 'Review officer', perms: ['case:decide'] },
 ];
 
 export const WITHDRAW_REASONS = ['Calibration fault found after inspection', 'Certificate issued in error', 'Superseded by a reissued certificate', 'Legal direction', 'Other'];
