@@ -329,7 +329,7 @@ function NoticePage({ number }) {
 
           <Section n={4} state={st(4)} title="Was the camera working properly?" tone={ev.current ? '' : 'warn'} answer={evidenceAnswer}>
             <CertList n={n} fault={plan.certs} />
-            <p className="muted">This is a plain-English summary, not legal advice. <Link to={`/camera/${s.code}`}>See all certificates for this camera</Link></p>
+            <p className="muted"><Link to={`/camera/${s.code}`}>See all certificates for this camera</Link></p>
           </Section>
 
           <Section n={5} state={st(5)} title="Your options" answer="Whatever you decide, Revenue NSW handles it. Your notice details will be filled in for you.">
