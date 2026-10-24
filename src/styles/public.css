@@ -373,7 +373,6 @@ html { scroll-padding-top: var(--pub-stack, 0px); }
 .rs > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; margin: 0; } .rs > summary::-webkit-details-marker { display: none; }
 .rs > summary::before { content: ''; width: 8px; height: 8px; border-right: 3px solid #00425f; border-bottom: 3px solid #00425f; transform: rotate(-45deg); transition: transform .15s; flex: none; margin: 0 4px 0 2px; }
 .rs[open] > summary::before { transform: rotate(45deg); } .rs[open] > summary { margin-bottom: 10px; }
-.certs li.is-ok { grid-template-columns: minmax(0, 1fr) !important; } /* the Current tag already says it, so no tick */
 
 /* Hand-off cues stay light: no outline around the control, and arrows are never underlined */
 .pub-out > span[aria-hidden="true"], .stat-opt > span[aria-hidden="true"], .pub-link > span[aria-hidden="true"], .pub-act > span[aria-hidden="true"] { display: inline-block; text-decoration: none; margin-left: 4px; }

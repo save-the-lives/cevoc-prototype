@@ -214,9 +214,9 @@ function CertList({ n, fault }) {
       <ul className="certs">
         {ev.items.map((it, i) => (
           <li key={i} className={it.current ? 'is-ok' : 'is-warn'}>
-            {!it.current && <span className="certs-ic" aria-hidden="true">!</span>}
+            <span className="certs-ic" aria-hidden="true">{it.current ? '✓' : '!'}</span>
             <div>
-              <div className="certs-head"><strong>{it.req.label}</strong><Tag color={it.current ? 'success' : 'warning'} className={it.current ? '' : 'pub-tag-warn'}>{it.current ? 'Current' : 'Not current'}</Tag></div>
+              <div className="certs-head"><strong>{it.req.label}</strong>{it.current ? <span className="sr-only">Current</span> : <Tag color="warning" className="pub-tag-warn">Not current</Tag>}</div>
               <p>
                 {it.cert
                   ? (it.current ? `${when(it)}. It needs to be done ${it.req.window}.` : `${when(it)}. That’s longer than the usual ${window(it)}, so you may want to mention it if you ask for a review.`)
