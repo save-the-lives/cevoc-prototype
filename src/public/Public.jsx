@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Button, Field, FieldDescription, FieldError, FieldLabel, Header, HeaderActions, HeaderBrand, Hero, HeroContent, HeroDescription, HeroTitle, Input, Masthead, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@nswds/ui';
+import { Alert, Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Button, Field, FieldDescription, FieldError, FieldLabel, Header, HeaderActions, HeaderBrand, Input, Masthead, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@nswds/ui';
 import { Link, Dialog, Spinner } from '../shared/ui.jsx';
 import Handoff from './Handoff.jsx';
 import DateField from './DateField.jsx';
@@ -27,7 +27,7 @@ function SiteHeader() {
     <>
       <div role="region" aria-label="NSW Government"><Masthead container="contained" /></div>
       <Header color="white" border container="contained">
-        <HeaderBrand href="#/" sitename="Camera-detected offences" />
+        <HeaderBrand href="#/" sitename="Road safety enforcement" />
         <HeaderActions>
           <nav className="pub-nav" aria-label="Main">
             <Link to="/">Evidence</Link>
@@ -66,7 +66,7 @@ function NoticeField({ value, onChange, onPick, error, onBlur }) {
   return (
     <Field className="pub-field" invalid={!!error} ref={ref}>
       <FieldLabel htmlFor="pn">Penalty notice number</FieldLabel>
-      <FieldDescription id="pn-hint">10 digits, at the top right of your notice</FieldDescription>
+      <FieldDescription id="pn-hint">10 digits, at the top right of your penalty notice</FieldDescription>
       {error && <FieldError match role="alert">{error}</FieldError>}
       <div className="pn-wrap">
         <Input id="pn" inputMode="numeric" autoComplete="off" aria-describedby="pn-hint" aria-invalid={!!error || undefined} onBlur={onBlur} value={value}
@@ -136,16 +136,16 @@ function Lookup() {
 
   return (
     <>
-      <Hero color="dark" layout="stack" container="contained">
-        <HeroContent>
-          <HeroTitle>Understand a camera-detected offence</HeroTitle>
-          <HeroDescription>Getting a fine is stressful. Here you can see what the camera recorded, check it was working properly, and find your options. It takes a few minutes.</HeroDescription>
-        </HeroContent>
-      </Hero>
+      <section className="pub-hero" aria-labelledby="hero-h">
+        <div className="pub-wrap">
+          <h1 id="hero-h">Understand a camera-detected road safety offence</h1>
+          <p>Getting a fine is stressful. Here you can see what the camera recorded, check it was working properly, and find your options. It takes a few minutes.</p>
+        </div>
+      </section>
       <div className="pub-wrap pub-page">
         <div className="pub-two">
           <form className="pub-form" onSubmit={submit} noValidate>
-            <h2>Find your notice</h2>
+            <h2>Find your penalty notice</h2>
             {problems.length > 0 && (
               <div className="pub-errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="errsum-h">
                 <h3 id="errsum-h">There {problems.length === 1 ? 'is a problem' : 'are problems'} with your details</h3>
@@ -156,12 +156,12 @@ function Lookup() {
               <div className="pub-errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="nm-h">
                 <h3 id="nm-h">We couldn’t find that notice</h3>
                 <p>Check both details match your letter. For your privacy we don’t say which one didn’t match.</p>
-                {misses >= 2 && <p>Still stuck? The notice number is at the top right of the letter, and the offence date is in the “What happened” section. Revenue NSW can help on 1300 138 118.</p>}
+                {misses >= 2 && <p>Still stuck? The penalty notice number is at the top right of the letter, and the offence date is in the “What happened” section. Revenue NSW can help on 1300 138 118.</p>}
               </div>
             )}
             <NoticeField value={num} onChange={(v) => { setNum(v); setErr(null); if (fe.num) setFe((f) => { const { num: _n, ...r } = f; return r; }); }} error={fe.num} onBlur={() => touched.num !== false && num && leave('num')}
               onPick={(n) => { setNum(n.number); setParts(isoToParts(n.dateTime.slice(0, 10))); setFe({}); setBad([]); setErr(null); }} />
-            <DateField id="od" legend="Date of the offence" hint="Shown on the notice. For example, 24 10 2026" parts={parts} error={fe.date} bad={bad}
+            <DateField id="od" legend="Date of the offence" hint="Shown on the penalty notice. For example, 24 10 2026" parts={parts} error={fe.date} bad={bad}
               onChange={(p) => { setParts(p); setErr(null); if (fe.date) { setFe((f) => { const { date: _d, ...r } = f; return r; }); setBad([]); } }}
               onBlurField={() => setTimeout(() => { if (!document.getElementById('od')?.contains(document.activeElement) && (parts.d || parts.m || parts.y)) leave('date'); }, 0)} />
             <Button type="submit" disabled={busy}>{busy ? <><Spinner /> Finding it…</> : 'Show me what happened'}</Button>
@@ -169,7 +169,7 @@ function Lookup() {
           <aside className="pub-aside">
             <h2>Before you start</h2>
             <ul>
-              <li>We only ask for two details from your notice.</li>
+              <li>We only ask for two details from your penalty notice.</li>
               <li>We never ask for card or bank details on this page.</li>
               <li>Paying, reviews and nominations stay with Revenue NSW. We’ll take you there.</li>
             </ul>
@@ -257,7 +257,7 @@ function NoticePage({ number }) {
   const n = findNotice(number);
   const plan = useMemo(() => (n ? planFaults(n, faultSettings) : {}), [n, JSON.stringify(faultSettings)]); // eslint-disable-line
   const story = useStickyStory(5, number);
-  if (!n) return <div className="pub-wrap pub-page"><h1>Notice not found</h1><Link to="/">Start again</Link></div>;
+  if (!n) return <div className="pub-wrap pub-page"><h1>Penalty notice not found</h1><Link to="/">Start again</Link></div>;
 
   const s = findSite(n.site);
   const prog = PROGRAMS[s.program];
@@ -278,7 +278,7 @@ function NoticePage({ number }) {
     <div className="pub-wrap pub-page" ref={story.pageRef}>
       <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/">Evidence</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{n.number}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
       <h1>What happened</h1>
-      <p className="pub-lede">{prog.label} · Penalty notice {n.number}</p>
+      <p className="pub-lede">{prog.label} · Penalty notice ({n.number})</p>
 
       <div ref={story.sentinelRef} className="pub-sentinel" aria-hidden="true" />
       <StatusBar status={status} notice={n.number} stuck={story.stuck} barRef={story.barRef} miniRef={story.miniRef} onPay={() => setLeaving(OPTIONS[0])} />
@@ -346,7 +346,7 @@ function NoticePage({ number }) {
 
       {leaving && (
         <Dialog title="You’re going to Revenue NSW" onClose={() => setLeaving(null)}>
-          <p>{leaving.what} is handled by Revenue NSW. Notice {n.number} will be ready for you there.</p>
+          <p>{leaving.what} is handled by Revenue NSW. Penalty notice ({n.number}) will be ready for you there.</p>
           <p className="proto-line">Prototype: Revenue NSW isn’t connected, so nothing will open.</p>
           <div className="dlg-actions"><Button type="button" variant="outline" onClick={() => setLeaving(null)}>Stay on this page</Button></div>
         </Dialog>
@@ -410,8 +410,8 @@ export default function PublicSite({ parts }) {
   const first = useRef(true);
   useEffect(() => {
     const [a, b] = parts;
-    const page = a === 'notice' && b ? `Notice ${b}` : a === 'cameras' ? 'Enforcement Certificate' : a === 'camera' && b ? `Camera ${b}` : 'Find your notice';
-    document.title = `${page} | Camera-detected offences | NSW Government (prototype)`;
+    const page = a === 'notice' && b ? `Penalty notice (${b})` : a === 'cameras' ? 'Enforcement Certificate' : a === 'camera' && b ? `Camera ${b}` : 'Find your notice';
+    document.title = `${page} | Road safety enforcement | NSW Government (prototype)`;
     // after a page change, move focus to the new page heading so screen reader and keyboard users start in the right place
     if (first.current) { first.current = false; return; }
     const h = document.querySelector('#main h1');

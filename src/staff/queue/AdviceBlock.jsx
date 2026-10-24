@@ -67,7 +67,7 @@ function RequestForm({ k, n, ev, user, onClose }) {
         <div className="adv-ctx">
           <strong>Sent with the request</strong>
           <ul>
-            <li>Notice {n.number} · {s.code} {s.name}</li>
+            <li>Penalty notice ({n.number}) · {s.code} {s.name}</li>
             <li>Customer says: “{k.grounds}”</li>
             <li>{n.media.length} evidence item{n.media.length === 1 ? '' : 's'}</li>
             <li>{ev.current ? 'Certification checks clear' : `${ev.notCurrent} certification risk${ev.notCurrent > 1 ? 's' : ''}${risks.length ? `: ${risks.join('; ')}` : ''}`}</li>

@@ -17,7 +17,7 @@ export function Assignee({ id }) {
 // `sort` returns the value to sort by; `cell` renders the table cell content for one row.
 export const COLUMNS = [
   { id: 'ref', w: 92, label: 'Review ID', locked: true, sort: (r) => r.c.id, cell: (r) => <Link to={`/staff/case/${r.c.id}`} onClick={(e) => e.stopPropagation()}><strong>{r.c.id}</strong></Link> },
-  { id: 'noticeNo', w: 110, label: 'Notice number', sort: (r) => r.c.notice, cell: (r) => r.c.notice },
+  { id: 'noticeNo', w: 110, label: 'Penalty notice', sort: (r) => r.c.notice, cell: (r) => r.c.notice },
   { id: 'category', w: 140, label: 'Reason', sort: (r) => r.c.category, cell: (r) => <>{r.c.category}{r.c.type === 'court' && <small className="st-sub">Court election</small>}</> },
   { id: 'validation', w: 120, label: 'Validation', sort: (r) => r.validation.label, cell: (r) => <Tag size="sm" color={r.validation.tone}>{r.validation.label}</Tag> },
   { id: 'state', w: 175, label: 'Status', sort: (r) => r.state, cell: (r) => <Tag size="sm" color={CASE_STATE[r.state].tone}>{CASE_STATE[r.state].label}</Tag> },

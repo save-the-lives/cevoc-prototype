@@ -11,7 +11,7 @@ export default function Handoff({ to = 'Revenue NSW', what, notice, children }) 
       <span className="ho__tag" aria-hidden="true">↗ {to}</span>
       <span className="ho__note" role="tooltip" id={id}>
         <b>Outside this prototype</b>
-        <span>{what} happens on <strong>{to}’s</strong> system. In the real service this opens {to}{notice ? ` with notice ${notice} already filled in` : ''}.</span>
+        <span>{what} happens on <strong>{to}’s</strong> system. In the real service this opens {to}{notice ? ` with penalty notice (${notice}) already filled in` : ''}.</span>
       </span>
     </span>
   );

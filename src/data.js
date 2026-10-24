@@ -7,7 +7,7 @@ const kb = (file) => `${SIZES[file] || 50} KB`;
 
 export const PROGRAMS = {
   FIXED_SPEED: {
-    label: 'Fixed speed camera',
+    label: 'Fixed digital speed camera',
     how: 'A fixed camera measured the vehicle’s speed as it passed one point on the road.',
     measureLabel: 'Speed at one point',
   },
@@ -17,7 +17,7 @@ export const PROGRAMS = {
     measureLabel: 'Speed at one point',
   },
   RED_LIGHT_SPEED: {
-    label: 'Red-light speed camera',
+    label: 'Red light speed camera',
     how: 'This camera checks red lights and speed at an intersection. The photos show the signal and where the vehicle was at each moment.',
     measureLabel: 'Time the light had been red',
   },
@@ -117,7 +117,7 @@ export const SCENARIOS = [
   },
   {
     notice: '3162457891', title: 'Was the camera even certified?', persona: 'Thomas, says the light turned amber as he arrived',
-    context: 'Red-light speed camera at Ryde. Review already lodged.',
+    context: 'Red light speed camera at Ryde. Review already lodged.',
     pain: 'Believes he couldn’t stop safely. Wants the full sequence.',
     job: 'When I dispute a red-light fine, I want to watch what happened and check the camera, so my review is based on facts.',
     hasVideo: true, issue: 'Camera inspection was 123 days old (limit 90).',

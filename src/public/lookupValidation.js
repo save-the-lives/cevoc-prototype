@@ -13,8 +13,8 @@ export const cleanNotice = (s) => s.replace(/[\s-]/g, '');
 export function checkNotice(raw) {
   const n = cleanNotice(raw);
   if (!n) return 'Enter the penalty notice number';
-  if (/\D/.test(n)) return 'The notice number can only contain numbers';
-  if (n.length !== 10) return `The notice number must be 10 digits. You entered ${n.length}`;
+  if (/\D/.test(n)) return 'The penalty notice number can only contain numbers';
+  if (n.length !== 10) return `The penalty notice number must be 10 digits. You entered ${n.length}`;
   return null;
 }
 

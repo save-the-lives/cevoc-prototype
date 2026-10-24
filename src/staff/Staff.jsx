@@ -183,12 +183,12 @@ function EvidenceView({ n, aside, header }) {
 
 function NoticeRecord({ number, user }) {
   const n = findNotice(number);
-  useVisit(`Notice ${number}`, `/staff/notice/${number}`);
-  if (!n) return <p>Notice {number} not found.</p>;
+  useVisit(`Penalty notice (${number})`, `/staff/notice/${number}`);
+  if (!n) return <p>Penalty notice ({number}) not found.</p>;
   const cases = CASES.filter((c) => c.notice === n.number);
   return (
     <EvidenceView n={n}
-      header={<div className="st-rec-head"><span className="st-type">Notice</span><h1>{n.number}</h1><span className="st-muted">{n.offence} · {n.holder}</span></div>}
+      header={<div className="st-rec-head"><span className="st-type">Penalty notice</span><h1>{n.number}</h1><span className="st-muted">{n.offence} · {n.holder}</span></div>}
       aside={
         <>
           <div className="st-card">
@@ -243,7 +243,7 @@ function CaseRecord({ id, user, query }) {
           {opts.map(([v, l]) => <label key={v} className="st-radio"><input type="radio" name="o" checked={out === v} onChange={() => setOut(v)} /> {l}</label>)}
           <label className="st-label">Reason (in the customer letter)<textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
           {out && reason.trim().length > 9 && (
-            <pre className="st-letter">{`Dear ${n.holder},\n\nThank you for your ${k.type === 'court' ? 'court election' : 'review request'} for penalty notice ${n.number}. We looked carefully at what you told us and at the camera evidence.\n\nOutcome: ${label}.\n${reason.trim()}\n\nRevenue NSW (MOCK, NOT SENT)`}</pre>
+            <pre className="st-letter">{`Dear ${n.holder},\n\nThank you for your ${k.type === 'court' ? 'court election' : 'review request'} for penalty notice (${n.number}). We looked carefully at what you told us and at the camera evidence.\n\nOutcome: ${label}.\n${reason.trim()}\n\nRevenue NSW (MOCK, NOT SENT)`}</pre>
           )}
           <button type="button" className="st-btn" disabled={!out || reason.trim().length < 10} onClick={() => dispatch({ type: 'decide', id, d: { label, reason: reason.trim(), by: user.id } })}>Record decision</button>
           </>}
@@ -264,7 +264,7 @@ function CaseRecord({ id, user, query }) {
           <ExternalBanner query={query} id={k.id} />
           {query?.from === 'external' && <p className={`st-validation is-${validation.tone}`} role="status"><strong>CEVOC validation: {validation.label}.</strong> {validation.short}.</p>}
           <div className="st-rec-head"><span className="st-type">{k.type === 'court' ? 'Court election' : 'Review'}</span><h1>{k.id}</h1>
-            <span className="st-muted">Notice <Link to={`/staff/notice/${n.number}`}>{n.number}</Link> · lodged {fmtDate(k.lodged)} ({daysBetween(k.lodged, TODAY)} days ago)</span></div>
+            <span className="st-muted">Penalty notice (<Link to={`/staff/notice/${n.number}`}>{n.number}</Link>) · lodged {fmtDate(k.lodged)} ({daysBetween(k.lodged, TODAY)} days ago)</span></div>
           <blockquote className="st-quote">“{k.grounds}”<cite>{n.holder} · {k.channel}</cite></blockquote>
         </>
       }
@@ -293,7 +293,7 @@ function CameraRecord({ code }) {
         <div className="st-card st-wide">
           <h3>Notices from this camera</h3>
           <table className="st-table">
-            <thead><tr><th>Notice</th><th>Date</th><th>Certification</th></tr></thead>
+            <thead><tr><th>Penalty notice</th><th>Date</th><th>Certification</th></tr></thead>
             <tbody>{fines.map((n) => { const ev = evaluate(n, statusOf); return <tr key={n.number} className="st-click" onClick={() => go(`/staff/notice/${n.number}`)}><td><Link to={`/staff/notice/${n.number}`}>{n.number}</Link></td><td>{fmtDate(n.dateTime)}</td><td><span className={`tag ${ev.current ? 'tag-ok' : 'tag-warn'}`}>{ev.current ? 'Current' : `${ev.notCurrent} not current`}</span></td></tr>; })}</tbody>
           </table>
         </div>

@@ -14,8 +14,8 @@
 .pub-nav a { text-decoration: none; padding: 6px 0; }
 .pub-nav a:hover { text-decoration: underline; }
 .pub-hero { background: #002664; color: #fff; padding: 48px 0 52px; border-bottom: 6px solid #d7153a; }
-.pub-hero h1 { margin: 0 0 10px; font-size: 40px; line-height: 1.15; }
-.pub-hero p { margin: 0; font-size: 19px; color: #dbe6f5; max-width: 660px; }
+.pub-hero h1 { margin: 0 0 12px; font-size: 40px; line-height: 1.15; max-width: none; text-wrap: balance; }
+.pub-hero p { margin: 0; font-size: 19px; line-height: 1.6; color: #dbe6f5; max-width: 62em; }
 .pub-page { padding-top: 28px; padding-bottom: 72px; }
 .pub-page h1 { color: #002664; font-size: 36px; margin: 4px 0; line-height: 1.2; }
 .pub-lede { color: #495054; margin: 0 0 20px; }

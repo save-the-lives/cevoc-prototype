@@ -314,7 +314,7 @@ export const EXAMPLES = [
   { title: 'Unassigned, newest requests first', q: 'asked >= -14d AND assignee IS EMPTY ORDER BY waiting DESC' },
   { title: 'High or normal priority with a certificate problem', q: 'priority IN (high, normal) AND certification = "not current"' },
   { title: 'Find a person or a plate', q: 'customer ~ "kelly" OR plate = RED777' },
-  { title: 'Red-light cases still open', q: 'program ~ "red-light" AND NOT status = decided' },
+  { title: 'Red light cases still open', q: 'program ~ "red light" AND NOT status = decided' },
 ];
 
 // Sort rows by an ORDER BY list, e.g. [{ key: 'waiting', dir: 'desc' }].

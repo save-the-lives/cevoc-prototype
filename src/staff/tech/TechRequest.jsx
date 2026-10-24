@@ -60,7 +60,7 @@ export default function TechRequest({ id, user, slots }) {
           {r.thread.map((t, i) => <p key={i} className="tr-thread"><strong>{findStaff(t.by)?.name}</strong> {t.internal ? '(internal note)' : ''}: {t.text}</p>)}
           <h3>Infringement evidence</h3>
           <EvidenceViewer items={n.media} program={s.program} />
-          <dl className="st-facts"><div><dt>Notice</dt><dd><Link to={`/staff/notice/${n.number}`}>{n.number}</Link></dd></div><div><dt>Camera</dt><dd>{PROGRAMS[s.program].label}, {s.name}</dd></div></dl>
+          <dl className="st-facts"><div><dt>Penalty notice</dt><dd><Link to={`/staff/notice/${n.number}`}>{n.number}</Link></dd></div><div><dt>Camera</dt><dd>{PROGRAMS[s.program].label}, {s.name}</dd></div></dl>
         </section>
         <section className="tr-pane" aria-label="Technical records">
           <h2>Camera records</h2>

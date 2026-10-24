@@ -63,7 +63,7 @@ export default function RevenueOps({ user }) {
         <Panel title="Action required now" count={action.length} tone="bad" action={<Link to="/staff/queue/reviews?view=action">View all</Link>} wide>
           {action.length ? (
             <table className="otable">
-              <thead><tr><th>Review ID</th><th>Notice</th><th>Reason</th><th>Why now</th><th>Due</th><th><span className="sr-only">Action</span></th></tr></thead>
+              <thead><tr><th>Review ID</th><th>Penalty notice</th><th>Reason</th><th>Why now</th><th>Due</th><th><span className="sr-only">Action</span></th></tr></thead>
               <tbody>{action.map(({ r, why, go, score }) => (
                 <tr key={r.c.id}>
                   <td><Link to={open(r.c.id)}><strong>{r.c.id}</strong></Link></td><td>{r.c.notice}</td><td>{r.c.category}</td>

@@ -34,7 +34,7 @@ export default function CaseWorkbench({ row, agency, index, total, user, onPrev,
       <header className="st-bench__head">
         <div className="st-bench__title">
           <h2>{c.id} <small>{c.type === 'court' ? 'Court election' : 'Review'}</small></h2>
-          <p>{n.holder} · notice {n.number} · {assignee ? `with ${findStaff(assignee)?.name}` : 'unassigned'}</p>
+          <p>{n.holder} · penalty notice ({n.number}) · {assignee ? `with ${findStaff(assignee)?.name}` : 'unassigned'}</p>
         </div>
         <Tag size="sm" color={sla.tone}>Waiting {sla.label}</Tag>
         <div className="st-bench__nav">

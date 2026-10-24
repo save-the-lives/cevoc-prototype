@@ -49,7 +49,7 @@ export default function CommandPalette({ open, onOpenChange, commands }) {
               </button>
             </li>
           ))}
-          {!items.length && <li className="st-none">No match for “{q}”. Try a 10-digit notice number, plate or camera code.</li>}
+          {!items.length && <li className="st-none">No match for “{q}”. Try a 10-digit penalty notice number, plate or camera code.</li>}
         </ul>
         <p className="st-pal__foot"><Kbd>↑</Kbd> <Kbd>↓</Kbd> to move · <Kbd>Enter</Kbd> to open · <Kbd>Esc</Kbd> to close</p>
       </DialogContent>
