@@ -463,7 +463,7 @@ export default function StaffSite({ parts, query }) {
   else if (a === 'cameras') body = <CameraList user={user} />;
   else if (a === 'request') body = <TechRequestPage key={b} id={b} user={user} />;
   else if (a === 'requests') body = rnsw ? <NotForYou what="queue" /> : <TechInbox key={query.view || 'open'} user={user} view={query.view || 'open'} />;
-  else if (a === 'queue' && b === 'approvals') body = canApprove ? <ApprovalsQueue /> : <NotForYou />;
+  else if (a === 'queue' && b === 'approvals') body = <ApprovalsQueue canApprove={canApprove} user={user} />;
   else if (a === 'queue') body = rnsw ? <><CertAlerts /><WorkQueue key={`${b}|${query.q || ''}|${query.view || ''}`} name={b} user={user} initialQuery={query.q || ''} view={query.view || ''} /></> : <NotForYou what="queue" />;
   else if (a === 'insights') body = <Dashboard user={user} canApprove={canApprove} />;
   else body = rnsw ? <><CertAlerts /><WorkSummary user={user} /><WorkQueue key="home" name="reviews" user={user} /></> : <><WorkSummary user={user} /><TechInbox key="home" user={user} view="open" /></>;

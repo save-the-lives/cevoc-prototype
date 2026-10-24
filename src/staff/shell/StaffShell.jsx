@@ -45,7 +45,7 @@ function SideNav({ agency, active, counts, hot, canApprove, onSearch }) {
           {item('/staff', 'home', 'Technical requests', counts.techOpen)}
           {item('/staff/certificates', 'certificates', 'Certificate register', counts.certs)}
           {item('/staff/cameras', 'cameras', 'Camera assets')}
-          {item('/staff/queue/approvals', 'approvals', 'Certificate approvals', counts.approvals, hot)}
+          {item('/staff/queue/approvals', 'approvals', canApprove ? 'Certificate approvals' : 'Certificate requests', counts.approvals, hot)}
           {item('/staff/requests?view=history', 'history', 'Technical history')}
         </>
       )}
