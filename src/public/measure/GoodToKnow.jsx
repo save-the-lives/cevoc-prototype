@@ -12,7 +12,7 @@ export default function GoodToKnow({ program }) {
   if (!cards.length) return null;
   return (
     <details className="ms-know" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary><span className="ms-know__chev" aria-hidden="true" /><span>Good to know about this kind of camera</span><small>{cards.length} things</small></summary>
+      <summary><span className="ms-know__chev" aria-hidden="true" /><span>How does this road safety camera work?</span></summary>
       <ul>
         {cards.map((c) => (
           <li key={c.title}>
