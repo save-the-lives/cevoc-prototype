@@ -74,7 +74,6 @@ export default function WorkQueue({ name, user }) {
     Escape: () => (dock ? setDock(false) : setPicked(new Set())),
   });
 
-  const open = all.filter((r) => !r.decision).length;
   const mine = all.filter((r) => r.assignee === user.id).length;
   const title = type === 'court' ? 'Court elections' : 'Reviews';
   const docked = dock && cursorRow;
@@ -83,7 +82,7 @@ export default function WorkQueue({ name, user }) {
     <>
       <div className="st-qhead">
         <h1>{title}</h1>
-        <p className="st-muted">{open} open · {mine} assigned to you · aim to reply within {type === 'court' ? '42' : '28'} days of the request</p>
+        <p className="st-muted">{mine} assigned to you · aim to reply within {type === 'court' ? '42' : '28'} days of the request</p>
       </div>
 
       <div className="st-toolbar" role="search">

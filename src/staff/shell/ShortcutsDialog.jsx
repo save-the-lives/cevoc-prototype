@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Kbd } from '@nswds/ui';
 
 export const SHORTCUTS = [
-  { group: 'Anywhere', rows: [[['Ctrl', 'K'], 'Search and commands'], [['/'], 'Search and commands'], [['g', 'h'], 'Go to workspace home'], [['g', 'r'], 'Go to reviews'], [['g', 'c'], 'Go to court elections'], [['g', 'a'], 'Go to approvals'], [['?'], 'Show this list']] },
+  { group: 'Anywhere', rows: [[['Ctrl', 'K'], 'Search and commands'], [['/'], 'Search and commands'], [['g', 'h'], 'Go to home'], [['g', 'r'], 'Go to reviews'], [['g', 'c'], 'Go to court elections'], [['g', 'a'], 'Go to approvals'], [['?'], 'Show this list']] },
   { group: 'In a queue', rows: [[['j'], 'Next row'], [['k'], 'Previous row'], [['Enter'], 'Open the case'], [['p'], 'Quick view in a flyout'], [['x'], 'Select or clear the row'], [['a'], 'Assign selected rows to me'], [['Esc'], 'Clear selection']] },
 ];
 

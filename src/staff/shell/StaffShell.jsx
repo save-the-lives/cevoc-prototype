@@ -10,16 +10,12 @@ import UserMenu from './UserMenu.jsx';
 
 const QUEUE_LABEL = { reviews: 'Reviews', court: 'Court elections', approvals: 'Approvals' };
 
-// Where am I? Built from the route so every record page gets a trail back to its queue.
+// A trail only where it helps: a case sits under its queue. Queue and record pages already name themselves
+// in the side menu and the page heading, so a "Workspace" crumb there would only repeat them.
 function trail(parts) {
   const [, a, b] = parts;
-  const home = { label: 'Workspace', to: '/staff' };
-  if (a === 'queue') return [home, { label: QUEUE_LABEL[b] || 'Queue' }];
-  if (a === 'case') { const k = kase(b); const q = k?.type === 'court' ? 'court' : 'reviews'; return [home, { label: QUEUE_LABEL[q], to: `/staff/queue/${q}` }, { label: b }]; }
-  if (a === 'notice') return [home, { label: `Notice ${b}` }];
-  if (a === 'camera') return [home, { label: `Camera ${b}` }];
-  if (a === 'cert') return [home, { label: `Certificate ${b}` }];
-  return [{ label: 'Workspace' }];
+  if (a === 'case') { const k = kase(b); const q = k?.type === 'court' ? 'court' : 'reviews'; return [{ label: QUEUE_LABEL[q], to: `/staff/queue/${q}` }, { label: b }]; }
+  return [];
 }
 
 function SideNav({ active, counts, hot, cameras }) {
@@ -46,7 +42,7 @@ export default function StaffShell({ user, parts, counts, hotApprovals, cameras,
   const crumbs = trail(parts);
 
   const commands = useMemo(() => [
-    { id: 'c-home', label: 'Go to workspace home', keys: ['g', 'h'], run: () => go('/staff') },
+    { id: 'c-home', label: 'Go to home', keys: ['g', 'h'], run: () => go('/staff') },
     { id: 'c-rev', label: 'Go to reviews', keys: ['g', 'r'], run: () => go('/staff/queue/reviews') },
     { id: 'c-court', label: 'Go to court elections', keys: ['g', 'c'], run: () => go('/staff/queue/court') },
     { id: 'c-appr', label: 'Go to approvals', keys: ['g', 'a'], run: () => go('/staff/queue/approvals') },
@@ -77,7 +73,7 @@ export default function StaffShell({ user, parts, counts, hotApprovals, cameras,
         <div className="st-body">
           <SideNav active={active} counts={counts} hot={hotApprovals} cameras={cameras} />
           <main className="st-main">
-            <Breadcrumb className="st-crumbs">
+            {crumbs.length > 1 && <Breadcrumb className="st-crumbs">
               <BreadcrumbList>
                 {crumbs.map((c, i) => (
                   <Fragment key={c.label}>
@@ -88,7 +84,7 @@ export default function StaffShell({ user, parts, counts, hotApprovals, cameras,
                   </Fragment>
                 ))}
               </BreadcrumbList>
-            </Breadcrumb>
+            </Breadcrumb>}
             {children}
           </main>
         </div>

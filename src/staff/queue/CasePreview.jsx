@@ -23,14 +23,13 @@ export default function CasePreview({ row, index, total, onPrev, onNext, onClose
       <div className="st-dock__body">
         <div className="st-dock__tags">
           <Tag size="sm" color={sla.tone}>Waiting {sla.label}</Tag>
-          <Tag size="sm" color={ev.current ? 'success' : 'warning'}>{ev.current ? 'Certification current' : `${ev.notCurrent} not current`}</Tag>
         </div>
-        <blockquote className="st-quote">“{c.grounds}”<cite>{n.holder} · {c.channel}</cite></blockquote>
+        <blockquote className="st-quote">“{c.grounds}”<cite>Lodged via {c.channel}</cite></blockquote>
         {n.media[0]?.type === 'image' && <img className="st-dock__img" src={n.media[0].src} alt={n.media[0].caption} />}
         <dl className="st-kv">
           <div><dt>Program</dt><dd>{program}</dd></div>
           <div><dt>Offence</dt><dd>{n.offence}</dd></div>
-          <div><dt>Asked on</dt><dd>{fmtDate(c.lodged)} ({sla.waited === 0 ? 'today' : `${sla.label} ago`})</dd></div>
+          <div><dt>Asked on</dt><dd>{fmtDate(c.lodged)}</dd></div>
           <div><dt>Target reply</dt><dd>{fmtDate(sla.due)}<small className="st-sub">{sla.hint}</small></dd></div>
           <div><dt>Assigned to</dt><dd>{assignee ? findStaff(assignee)?.name : 'Unassigned'}</dd></div>
         </dl>

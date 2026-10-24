@@ -10,7 +10,7 @@ export default function UserMenu({ user, onSwitch, onShortcuts, onSignOut }) {
     <DropdownMenu>
       <DropdownMenuTrigger className="st-user" aria-label={`Account menu for ${user.name}`}>
         <Avatar><AvatarFallback>{initials(user.name)}</AvatarFallback></Avatar>
-        <span className="st-user__who"><strong>{user.name}</strong><small>{user.role} · {user.org}</small></span>
+        <span className="st-user__who"><strong>{user.name}</strong><small>{user.role}</small></span>
         <span aria-hidden="true">▾</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
