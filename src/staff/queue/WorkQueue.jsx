@@ -101,6 +101,7 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
     Enter: () => cursorRow && setDock(true),
     o: () => cursorRow && go(`/staff/case/${cursorRow.c.id}`),
     p: () => setDock((d) => !d),
+    d: () => { if (dock) document.getElementById('qd-outcome')?.focus(); },
     f: () => queryRef.current?.focus(),
     x: () => cursorRow && toggle(cursorRow.c.id),
     ' ': () => cursorRow && toggle(cursorRow.c.id),
@@ -125,7 +126,7 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
 
       <div className="st-toolbar" role="search">
         <QueryBar value={query} onChange={(v) => { setQuery(v); setCursor(0); }} inputRef={queryRef} error={compiled.ok ? null : compiled.error} shown={rows.length} total={all.length} />
-        <div className="st-toolbar__chips">
+        {!docked && <div className="st-toolbar__chips">
           <div className="st-seg" role="group" aria-label="Saved filters">
             {PRESETS.map((p) => <Button key={p.label} size="sm" variant={query.trim() === p.q ? 'solid' : 'outline'} aria-pressed={query.trim() === p.q} onClick={() => { setQuery(p.q); setCursor(0); }}>{p.label}</Button>)}
           </div>
@@ -133,7 +134,7 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
             <Button size="sm" variant={cols.density === 'compact' ? 'solid' : 'outline'} aria-pressed={cols.density === 'compact'} onClick={() => cols.setDensity(cols.density === 'compact' ? 'comfortable' : 'compact')}>Compact rows</Button>
             <ColumnChooser cols={cols} />
           </span>
-        </div>
+        </div>}
       </div>
 
       {picked.size > 0 && (
@@ -161,7 +162,8 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
         <div className="st-pane has-dock">
           <CaseRail rows={rows} cursor={cursor} onSelect={(i) => setCursor(i)} />
           <CaseWorkbench row={cursorRow} index={cursor} total={rows.length} user={user}
-            onPrev={() => setCursor((c) => Math.max(c - 1, 0))} onNext={() => setCursor((c) => Math.min(c + 1, rows.length - 1))} onClose={() => setDock(false)} />
+            onPrev={() => setCursor((c) => Math.max(c - 1, 0))} onNext={() => setCursor((c) => Math.min(c + 1, rows.length - 1))} onClose={() => setDock(false)}
+            onDecided={(id) => { const from = rows.findIndex((r) => r.c.id === id); const next = rows.findIndex((r, i) => i > from && !r.decision); const first = rows.findIndex((r) => r.c.id !== id && !r.decision); const to = next >= 0 ? next : first; if (to >= 0) setCursor(to); else toast.success('That was the last open case in this view'); }} />
         </div>
       ) : (
         <div className="st-pane">

@@ -31,6 +31,7 @@ function reducer(s, a) {
       return { ...s, pending: s.pending.filter((x) => x.id !== a.id), audit: log(s, a.by, `Rejected ${p.kind} of ${p.cert}`, p.cert) };
     }
     case 'decide': return { ...s, decisions: { ...s.decisions, [a.id]: a.d }, audit: log(s, a.d.by, `Decision on ${a.id}: ${a.d.label}`, a.id) };
+    case 'undecide': { const { [a.id]: _gone, ...rest } = s.decisions; return { ...s, decisions: rest, audit: log(s, a.by, `Undid decision on ${a.id}`, a.id) }; }
     case 'note': return { ...s, audit: log(s, a.who, a.what, a.ref) };
     case 'assign': return { ...s, assign: { ...s.assign, ...a.map }, audit: log(s, a.by, a.what, a.ref) };
     case 'mode': return { ...s, mode: a.mode };

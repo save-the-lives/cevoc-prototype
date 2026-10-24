@@ -11,7 +11,7 @@ import QuickDecision from './QuickDecision.jsx';
 
 // The double flyout: evidence on the left, certification on the right, decision underneath.
 // Most cases can be decided from here. Opening the full case is optional.
-export default function CaseWorkbench({ row, index, total, user, onPrev, onNext, onClose }) {
+export default function CaseWorkbench({ row, index, total, user, onPrev, onNext, onClose, onDecided }) {
   const { dispatch } = useStore();
   const { c, n, ev, program, sla, assignee } = row;
   const s = findSite(n.site);
@@ -21,6 +21,7 @@ export default function CaseWorkbench({ row, index, total, user, onPrev, onNext,
 
   return (
     <section className="st-bench" aria-label={`Review of case ${c.id}`}>
+      <p className="sr-only" aria-live="polite">Reviewing {c.id}, case {index + 1} of {total}{risks ? `, ${risks} certification risk` : ''}</p>
       <header className="st-bench__head">
         <div className="st-bench__title">
           <h2>{c.id} <small>{c.type === 'court' ? 'Court election' : 'Review'}</small></h2>
@@ -65,7 +66,7 @@ export default function CaseWorkbench({ row, index, total, user, onPrev, onNext,
         </section>
       </div>
 
-      <QuickDecision k={c} user={user} riskCount={risks}
+      <QuickDecision k={c} user={user} riskCount={risks} onDecided={onDecided}
         onAdvice={() => { dispatch({ type: 'note', who: user.id, what: `Technical advice added to ${c.id}`, ref: c.id }); toast.success('Technical advice added'); }} />
       <p className="st-bench__foot">Need the audit trail or full camera metadata? <Link to={`/staff/case/${c.id}`}>Open the full case ↗</Link> <span className="st-muted">(optional)</span></p>
     </section>

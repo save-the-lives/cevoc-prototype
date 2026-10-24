@@ -4,7 +4,7 @@ import { setSingleKeys, useSingleKeys } from '../hooks/useHotkeys.js';
 export const SHORTCUTS = [
   { group: 'Anywhere', rows: [[['Ctrl', 'K'], 'Search and commands'], [['/'], 'Search and commands'], [['Ctrl', '/'], 'Show this list'], [['?'], 'Show this list'], [['g', 'h'], 'Go to the dashboard'], [['g', 'r'], 'Go to reviews'], [['g', 'c'], 'Go to court elections'], [['g', 'e'], 'Go to the certificate register'], [['g', 'a'], 'Go to approvals (program managers)']] },
   { group: 'In a queue', rows: [[['↑'], 'Previous row (or k)'], [['↓'], 'Next row (or j)'], [['Home'], 'First row'], [['End'], 'Last row'], [['PgUp'], 'Up eight rows'], [['PgDn'], 'Down eight rows'], [['Enter'], 'Review evidence and certification'], [['o'], 'Open the full case (optional)'], [['Space'], 'Select or clear the row (or x)'], [['Ctrl', 'A'], 'Select every row'], [['a'], 'Assign selected rows to me'], [['Ctrl', 'Z'], 'Undo the last assignment'] , [['f'], 'Filter with a query'], [['Esc'], 'Close the review, then clear selection']] },
-  { group: 'Reviewing a case', rows: [[['←'], 'Previous image or video'], [['→'], 'Next image or video'], [['Ctrl', 'Enter'], 'Record the decision'], [['↑', '↓'], 'Move to the previous or next case']] },
+  { group: 'Reviewing a case', rows: [[['←'], 'Previous image or video'], [['→'], 'Next image or video'], [['d'], 'Jump to the decision'], [['Ctrl', 'Enter'], 'Record it and move to the next case'], [['↑', '↓'], 'Move to the previous or next case']] },
 ];
 
 export default function ShortcutsDialog({ open, onOpenChange }) {

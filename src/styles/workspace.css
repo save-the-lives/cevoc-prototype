@@ -227,7 +227,7 @@
 .st-rail__side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
 .st-rail__risk { font-style: normal; font-weight: 800; font-size: 12px; color: #c95000; }
 
-.st-bench { display: flex; flex-direction: column; min-width: 0; background: #fff; border: 1px solid #dde2e8; border-top: 3px solid var(--ac); border-radius: 6px; height: calc(100dvh - 280px); min-height: 520px; }
+.st-bench { display: flex; flex-direction: column; min-width: 0; background: #fff; border: 1px solid #dde2e8; border-top: 3px solid var(--ac); border-radius: 6px; height: calc(100dvh - 225px); min-height: 520px; }
 .st-bench__head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #eef1f5; flex-wrap: wrap; }
 .st-bench__title { flex: 1; min-width: 200px; }
 .st-bench__title h2 { margin: 0; font-size: 18px; }
@@ -390,3 +390,14 @@
 .st-keys__switch input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
 .st-keys__note { font-size: 12px; color: #616e7c; margin: 12px 0 0; }
 .st-bench__pane:focus-visible { outline: 3px solid var(--ac); outline-offset: -3px; }
+
+.st-rail__item.is-done { opacity: .6; }
+.st-rail__item.is-done strong { color: #0b6b14; }
+.st-decide__aid { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 12px; }
+.st-decide__hint { margin: 0; padding: 3px 9px; border-radius: 4px; background: #fff4ee; color: #7a2e00; font-weight: 600; }
+.st-decide__hint.is-strong { background: #c95000; color: #fff; }
+.st-decide__chip { border: 1px solid var(--ac-line); background: #fff; border-radius: 14px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; text-align: left; }
+.st-decide__chip:hover { background: var(--ac-soft); }
+.st-decide__keys { margin-left: auto; color: #616e7c; }
+.st-decide kbd, .st-decide__f kbd { border: 1px solid #b6c0cc; border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; font-size: 11px; background: #fff; font-weight: 400; }
+.st-pane.has-dock .evv-stage { height: clamp(180px, 30vh, 400px); }

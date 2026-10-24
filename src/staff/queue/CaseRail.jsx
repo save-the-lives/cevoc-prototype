@@ -11,10 +11,10 @@ export default function CaseRail({ rows, cursor, onSelect }) {
       <ul>
         {rows.map((r, i) => (
           <li key={r.c.id}>
-            <button type="button" className={`st-rail__item ${i === cursor ? 'is-on' : ''}`} aria-current={i === cursor ? 'true' : undefined} onClick={() => onSelect(i)}>
+            <button type="button" className={`st-rail__item ${i === cursor ? 'is-on' : ''} ${r.decision ? 'is-done' : ''}`} aria-current={i === cursor ? 'true' : undefined} onClick={() => onSelect(i)}>
               <span className={`st-rail__pri is-${r.c.priority}`} title={`${PRIORITY[r.c.priority].label} priority`} aria-label={`${PRIORITY[r.c.priority].label} priority`} />
               <span className="st-rail__main">
-                <strong>{r.c.id}</strong>
+                <strong>{r.decision ? '✓ ' : ''}{r.c.id}</strong>
                 <span>{r.n.holder}</span>
                 <small>{r.program}</small>
               </span>
