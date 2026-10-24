@@ -26,6 +26,7 @@ export default function TechRequest({ id, user, slots }) {
   const [busy, setBusy] = useState(false);
   if (!r) return <p>Technical request {id} not found. <Link to="/staff/requests">Back to technical requests</Link></p>;
   const n = findNotice(r.notice);
+  if (!n) return <p>The notice for {id} is not on record. <Link to="/staff/requests">Back to technical requests</Link></p>;
   const s = findSite(r.site);
   const k = findCase(r.caseId);
   const impact = impactLevel(r, state.tech);
