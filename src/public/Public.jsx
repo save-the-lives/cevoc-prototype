@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Button, Field, FieldDescription, FieldError, FieldLabel, Header, HeaderActions, HeaderBrand, Hero, HeroContent, HeroDescription, HeroTitle, Input, Masthead, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@nswds/ui';
 import { Link, Dialog, Spinner } from '../shared/ui.jsx';
+import Handoff from './Handoff.jsx';
+import CertificateView from './CertificateView.jsx';
+import { downloadCert } from '../lib/certDoc.js';
 import MediaGallery from '../shared/MediaGallery.jsx';
 import Measure from './Measure.jsx';
 import { useStore } from '../lib/store.jsx';
@@ -161,6 +164,7 @@ function CertList({ n, fault }) {
   const { statusOf } = useStore();
   const { status, retry } = useSim(fault, 700, [n.number]);
   const ev = evaluate(n, statusOf);
+  const [viewing, setViewing] = useState(null);
   if (status === 'error')
     return (
       <Alert status="danger" title="We can’t check the certificates right now." role="alert">
@@ -169,26 +173,49 @@ function CertList({ n, fault }) {
     );
   if (status !== 'ready')
     return <p className="pub-loading"><Spinner /> {status === 'slow' ? 'Still checking certificates, taking longer than usual…' : 'Checking the camera’s certificates…'}</p>;
+  const site = findSite(n.site);
+  const when = (it) => `${fmtDate(it.cert.date)}${it.age ? `, ${it.age} days before the offence` : ', on the day'}`;
+  const window = (it) => it.req.window.replace(/^within /, '');
   return (
-    <ul className="certs">
-      {ev.items.map((it, i) => (
-        <li key={i} className={it.current ? 'is-ok' : 'is-warn'}>
-          <span className="certs-ic" aria-hidden="true">{it.current ? '✓' : '!'}</span>
-          <div>
-            <strong>{it.req.label}</strong>
-            <p>{it.cert ? `${fmtDate(it.cert.date)}${it.age ? `, ${it.age} days before the offence` : ', on the day'}. The law requires this ${it.req.window}.` : it.why}</p>
-            {it.withdrawn && <p className="muted">A later certificate was withdrawn by Transport and doesn’t count.</p>}
-          </div>
-          <Tag color={it.current ? 'success' : 'warning'}>{it.current ? 'Current' : 'Not current'}</Tag>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="certs">
+        {ev.items.map((it, i) => (
+          <li key={i} className={it.current ? 'is-ok' : 'is-warn'}>
+            <span className="certs-ic" aria-hidden="true">{it.current ? '✓' : '!'}</span>
+            <div>
+              <strong>{it.req.label}</strong>
+              <p>
+                {it.cert
+                  ? (it.current ? `${when(it)}. It needs to be done ${it.req.window}.` : `${when(it)}. That’s longer than the usual ${window(it)}, so you may want to mention it if you ask for a review.`)
+                  : 'We couldn’t find a certificate on record for this check before the offence. You may want to mention this if you ask for a review.'}
+              </p>
+              {it.withdrawn && <p className="muted">A later certificate was withdrawn by Transport and doesn’t count.</p>}
+              {it.cert && (
+                <div className="certs-act">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setViewing(it.cert)}>View certificate</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => downloadCert(it.cert, site)}>Download PDF ↓</Button>
+                </div>
+              )}
+            </div>
+            <Tag color={it.current ? 'success' : 'warning'}>{it.current ? 'Current' : 'Not current'}</Tag>
+          </li>
+        ))}
+      </ul>
+      {viewing && <CertificateView cert={viewing} onClose={() => setViewing(null)} />}
+    </>
   );
 }
 
+const OPTIONS = [
+  { id: 'pay', title: 'Pay', text: 'In full, or ask for a payment plan or more time if money is tight.', cta: 'Pay or set up a plan', what: 'Paying and payment plans' },
+  { id: 'review', title: 'Ask for a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Ask for a review', what: 'Asking for a review' },
+  { id: 'nominate', title: 'Nominate the driver', text: 'If it wasn’t you.', cta: 'Nominate the driver', what: 'Nominating the driver' },
+  { id: 'court', title: 'Have a court decide', text: 'You can choose to have the matter heard in court.', cta: 'Choose court', what: 'Choosing a court hearing' },
+];
+
 function NoticePage({ number }) {
   const { statusOf, faultSettings } = useStore();
-  const [leaving, setLeaving] = useState(false);
+  const [leaving, setLeaving] = useState(null);
   const n = findNotice(number);
   const plan = useMemo(() => (n ? planFaults(n, faultSettings) : {}), [n, JSON.stringify(faultSettings)]); // eslint-disable-line
   const story = useStickyStory(5, number);
@@ -261,25 +288,24 @@ function NoticePage({ number }) {
           </Section>
 
           <Section n={5} state={st(5)} title="Your options" answer="Whatever you decide, Revenue NSW handles it. Your notice details will be filled in for you.">
-            <ul className="opts">
-              <li><strong>Pay</strong> in full, or ask for a payment plan or more time if money is tight</li>
-              <li><strong>Ask for a review</strong> if you think the fine is wrong or there were special circumstances</li>
-              <li><strong>Nominate the driver</strong> if it wasn’t you</li>
-              <li><strong>Have a court decide</strong></li>
+            <ul className="opts2">
+              {OPTIONS.map((o) => (
+                <li key={o.id}>
+                  <div><strong>{o.title}</strong><p>{o.text}</p></div>
+                  <Handoff what={o.what} notice={n.number}><Button type="button" variant="outline" onClick={() => setLeaving(o)}>{o.cta} ↗</Button></Handoff>
+                </li>
+              ))}
             </ul>
-            <div className="handoff">
-              <div><span className="owner-tag">Revenue NSW</span><p>Opens in a new tab. You can come back here any time.</p></div>
-              <Button type="button" onClick={() => setLeaving(true)}>Continue with Revenue NSW ↗</Button>
-            </div>
+            <p className="muted">These steps happen on Revenue NSW’s system. Your notice details are filled in for you, and you can come back here any time.</p>
           </Section>
         </div>
       </div>
 
       {leaving && (
-        <Dialog title="You’re going to Revenue NSW" onClose={() => setLeaving(false)}>
-          <p>Revenue NSW handles payments, payment plans, reviews, nominations and court elections. Notice {n.number} will be ready for you there.</p>
+        <Dialog title="You’re going to Revenue NSW" onClose={() => setLeaving(null)}>
+          <p>{leaving.what} is handled by Revenue NSW. Notice {n.number} will be ready for you there.</p>
           <p className="proto-line">Prototype: Revenue NSW isn’t connected, so nothing will open.</p>
-          <div className="dlg-actions"><Button type="button" variant="outline" onClick={() => setLeaving(false)}>Stay on this page</Button></div>
+          <div className="dlg-actions"><Button type="button" variant="outline" onClick={() => setLeaving(null)}>Stay on this page</Button></div>
         </Dialog>
       )}
     </div>
@@ -336,6 +362,7 @@ function Camera({ code }) {
 }
 
 export default function PublicSite({ parts }) {
+  const { state } = useStore();
   const [a, b] = parts;
   let body;
   if (!a) body = <Lookup />;
@@ -344,7 +371,7 @@ export default function PublicSite({ parts }) {
   else if (a === 'camera') body = <Camera code={b} />;
   else body = <div className="pub-wrap pub-page"><h1>Page not found</h1><Link to="/">Go to the start</Link></div>;
   return (
-    <div className="pub">
+    <div className={`pub ${state.handoffs ? 'show-handoffs' : ''}`}>
       <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Skip to content</a>
       <SiteHeader />
       <main id="main" tabIndex={-1}>{body}</main>

@@ -35,6 +35,13 @@ export default function Controls() {
           </div>
         </details>
       </section>
+      <section className="demo-run">
+        <div>
+          <h2>Hand-offs to other systems</h2>
+          <p className="demo-muted">Buttons that would open Revenue NSW or Service NSW look like any other button, with a note on hover. Switch this on to mark every one at once, for walkthroughs.</p>
+        </div>
+        <label className="demo-switch"><input type="checkbox" checked={!!state.handoffs} onChange={(e) => dispatch({ type: 'handoffs', on: e.target.checked })} /> Highlight hand-offs</label>
+      </section>
       <div className="demo-foot">
         <button type="button" onClick={() => dispatch({ type: 'reset' })}>Reset all demo data</button>
         <span className="demo-muted">{state.pending.length} pending · {Object.keys(state.certStatus).length} certificate changes · {Object.keys(state.decisions).length} decisions · {Object.keys(state.assign).length} assignments</span>

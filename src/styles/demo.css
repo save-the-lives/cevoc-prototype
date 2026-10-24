@@ -128,3 +128,6 @@ a.demo-door:hover { border-color: #a78bfa; }
   .demo-path { gap: 10px; }
 }
 .demo h1, .demo h2, .demo h3 { font-weight: 700; }
+
+.demo-switch { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }
+.demo-switch input { width: 18px; height: 18px; }

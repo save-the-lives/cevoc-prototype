@@ -5,7 +5,7 @@ import { CERTS } from '../data.js';
 const KEY = 'cevoc-v11-state';
 const INITIAL = {
   certStatus: {}, pending: [], audit: [], decisions: {}, recent: [], user: null, assign: {},
-  mode: 'clean', seed: 'cevoc', nonce: 0, force: {},
+  mode: 'clean', seed: 'cevoc', nonce: 0, force: {}, handoffs: false,
 };
 
 const now = () => new Date().toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -34,6 +34,7 @@ function reducer(s, a) {
     case 'undecide': { const { [a.id]: _gone, ...rest } = s.decisions; return { ...s, decisions: rest, audit: log(s, a.by, `Undid decision on ${a.id}`, a.id) }; }
     case 'note': return { ...s, audit: log(s, a.who, a.what, a.ref) };
     case 'assign': return { ...s, assign: { ...s.assign, ...a.map }, audit: log(s, a.by, a.what, a.ref) };
+    case 'handoffs': return { ...s, handoffs: a.on };
     case 'mode': return { ...s, mode: a.mode };
     case 'seed': return { ...s, seed: a.seed };
     case 'reshuffle': return { ...s, nonce: s.nonce + 1 };

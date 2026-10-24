@@ -202,3 +202,30 @@
 .q.is-done .q-n { background: #e3e8f1; color: #6b7a99; }
 .q.is-done h2 { color: #4a5a7a; }
 .q.is-now .q-n { box-shadow: 0 0 0 5px #cbdaf3; }
+
+/* Certificate actions */
+.certs-act { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.certview { background: #fffef8; border: 1px solid #c9c5b3; padding: 18px 20px; border-radius: 4px; }
+.certview h3 { margin: 6px 0 12px; }
+.certview dl { margin: 0 0 10px; display: grid; gap: 8px; }
+.certview dl > div { display: grid; grid-template-columns: 150px 1fr; gap: 10px; }
+.certview dt { color: #495054; font-size: 14px; }
+.certview dd { margin: 0; font-weight: 600; }
+
+/* Options: each one is a hand-off to Revenue NSW */
+.opts2 { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 10px; }
+.opts2 li { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 16px; border: 1px solid #dee3e5; border-radius: 8px; background: #fff; }
+.opts2 p { margin: 2px 0 0; font-size: 15px; color: #495054; }
+
+/* Hand-offs to other systems: invisible until hovered or focused, unless presenter highlight is on */
+.ho { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+.ho__ctl { display: inline-flex; border-radius: 6px; transition: box-shadow .15s; }
+.ho:hover .ho__ctl, .ho:focus-within .ho__ctl, .show-handoffs .ho__ctl { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #e0a800; }
+.ho__tag { display: none; font: 700 11px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border: 1px dashed #e0a800; border-radius: 10px; padding: 2px 8px; white-space: nowrap; }
+.show-handoffs .ho__tag { display: inline-block; }
+.ho__note { position: absolute; z-index: 40; right: 0; bottom: calc(100% + 12px); width: min(320px, 80vw); display: none; flex-direction: column; gap: 4px; padding: 10px 12px; background: #fffdf5; border: 2px dashed #e0a800; border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.2); font-size: 13px; line-height: 1.4; color: #3d3000; }
+.ho__note::after { content: ''; position: absolute; right: 24px; top: 100%; border: 8px solid transparent; border-top-color: #e0a800; }
+.ho__note b { font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; color: #6b4e00; }
+.ho:hover .ho__note, .ho:focus-within .ho__note { display: flex; }
+@media (hover: none) { .ho:hover .ho__note { display: none; } .ho:focus-within .ho__note { display: flex; } }
+@media (max-width: 640px) { .opts2 li { align-items: stretch; } .ho { width: 100%; } .ho__ctl, .ho__ctl button { width: 100%; } .ho__note { right: auto; left: 0; } .ho__note::after { right: auto; left: 24px; } }
