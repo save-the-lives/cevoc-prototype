@@ -20,12 +20,13 @@ import ColumnResizer from './ColumnResizer.jsx';
 
 // A work queue: search, filters, sortable and rearrangeable columns, selection with bulk actions,
 // a docked quick view and keyboard shortcuts (j/k, Enter, p, x, a).
-export default function WorkQueue({ name, user, initialQuery = '', view = '' }) {
+export default function WorkQueue({ name, user, initialQuery = '', view = '', autoOpen = false }) {
   const { state, dispatch, statusOf, faultSettings } = useStore();
   const type = name === 'court' ? 'court' : 'review';
   const revenue = user.agency === 'rnsw';
   const startQuery = initialQuery || REVENUE_VIEWS.find((v) => v.id === view)?.q || (revenue && name !== 'court' ? REVENUE_VIEWS[0].q : '');
-  const canAssign = user.perms.includes('case:decide');
+  const canAssign = user.perms.includes('case:decide') || user.perms.includes('team:manage');
+  const canManage = user.perms.includes('team:manage'); // managers assign work to others; officers manage their own
   const cols = useColumns(user.agency);
   const [query, setQuery] = useState(startQuery);
   const queryRef = useRef(null);
@@ -33,7 +34,7 @@ export default function WorkQueue({ name, user, initialQuery = '', view = '' }) 
   const [sort, setSort] = useState({ key: revenue ? 'due' : 'waiting', dir: 'desc' });
   const [picked, setPicked] = useState(() => new Set());
   const [cursor, setCursor] = useState(0);
-  const [dock, setDock] = useState(false);
+  const [dock, setDock] = useState(autoOpen);
   const [drag, setDrag] = useState(null);
   const [over, setOver] = useState(null);
   const [live, setLive] = useState(null);
@@ -87,8 +88,8 @@ export default function WorkQueue({ name, user, initialQuery = '', view = '' }) 
   const move = (to) => setCursor(Math.max(0, Math.min(to, rows.length - 1)));
   const assignMine = () => {
     if (!canAssign) return;
-    const ids = targets().filter((id) => assigneeOf(CASES.find((c) => c.id === id)) !== user.id);
-    if (ids.length) assign(ids, user.id); else toast.info('Already assigned to you');
+    const ids = targets().filter((id) => { const a = assigneeOf(CASES.find((c) => c.id === id)); return a !== user.id && (!a || canManage); });
+    if (ids.length && user.perms.includes('case:decide')) assign(ids, user.id); else toast.info('Already assigned to you');
   };
   const undoAssign = () => {
     if (typing()) return false;
@@ -154,14 +155,14 @@ export default function WorkQueue({ name, user, initialQuery = '', view = '' }) 
           {canAssign ? (
             <>
               {[...picked].some((id) => assigneeOf(CASES.find((c) => c.id === id)) !== user.id) && <Button size="sm" onClick={() => assign([...picked].filter((id) => assigneeOf(CASES.find((c) => c.id === id)) !== user.id), user.id)}>Assign to me</Button>}
-              <DropdownMenu>
+              {canManage && <DropdownMenu>
                 <DropdownMenuTrigger render={<Button size="sm" variant="outline">Assign to…</Button>} />
                 <DropdownMenuContent align="start">
                   {STAFF.filter((p) => p.perms.includes('case:decide')).map((p) => <DropdownMenuItem key={p.id} onClick={() => assign([...picked], p.id)}>{p.name}</DropdownMenuItem>)}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => assign([...picked], null)}>Unassign</DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu>}
             </>
           ) : <span className="st-muted">Revenue NSW assigns and decides these cases.</span>}
           <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())}>Clear <Kbd>Esc</Kbd></Button>
@@ -217,8 +218,8 @@ export default function WorkQueue({ name, user, initialQuery = '', view = '' }) 
                         <DropdownMenuItem onClick={() => go(`/staff/case/${r.c.id}`)}>Open case</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setCursor(i); setDock(true); }}>Review here</DropdownMenuItem>
                         {canAssign && <DropdownMenuSeparator />}
-                        {canAssign && r.assignee !== user.id && <DropdownMenuItem onClick={() => assign([r.c.id], user.id)}>{r.assignee ? `Take over from ${findStaff(r.assignee)?.name}` : 'Assign to me'}</DropdownMenuItem>}
-                        {canAssign && r.assignee && <DropdownMenuItem onClick={() => assign([r.c.id], null)}>{r.assignee === user.id ? 'Release (unassign)' : 'Unassign'}</DropdownMenuItem>}
+                        {canAssign && r.assignee !== user.id && (!r.assignee || canManage) && user.perms.includes('case:decide') && <DropdownMenuItem onClick={() => assign([r.c.id], user.id)}>{r.assignee ? `Take over from ${findStaff(r.assignee)?.name}` : 'Assign to me'}</DropdownMenuItem>}
+                        {canAssign && r.assignee && (r.assignee === user.id || canManage) && <DropdownMenuItem onClick={() => assign([r.c.id], null)}>{r.assignee === user.id ? 'Release (unassign)' : 'Unassign'}</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

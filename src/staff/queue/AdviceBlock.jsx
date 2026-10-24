@@ -4,7 +4,8 @@ import { Button, Tag } from '@nswds/ui';
 import { Dialog, Link } from '../../shared/ui.jsx';
 import { useStore } from '../../lib/store.jsx';
 import { TECH_CATEGORIES, staff as findStaff, site as findSite } from '../../data.js';
-import { REQUEST_STATUS, RECOMMENDATION, activeRequest, categoryLabel, relatedAdvice, requestsFor } from '../../lib/workflow.js';
+import { REQUEST_STATUS, RECOMMENDATION, activeRequest, categoryLabel, isLive, relatedAdvice, requestsFor } from '../../lib/workflow.js';
+import { Lifecycle, RequestMeta } from '../tech/Lifecycle.jsx';
 import { fmtDate } from '../../lib/format.js';
 
 const nextId = (tech) => `TR-${Math.max(3000, ...tech.map((r) => Number(r.id.slice(3)) || 0)) + 1}`;
@@ -44,7 +45,7 @@ function RequestForm({ k, n, ev, user, onClose }) {
     if (!ok || busy) return;
     setBusy(true);
     const id = nextId(state.tech);
-    dispatch({ type: 'techRequest', req: { id, caseId: k.id, notice: n.number, site: n.site, category: cat, by: user.id, assignee: null, at: new Date().toISOString().slice(0, 10), summary: text.trim().split(/[.?!]\s/)[0].slice(0, 110), question: text.trim(), status: 'AWAITING_TRANSPORT', thread: [] } });
+    dispatch({ type: 'techRequest', req: { id, caseId: k.id, notice: n.number, site: n.site, category: cat, by: user.id, assignee: null, at: new Date().toISOString().slice(0, 10), summary: text.trim().split(/[.?!]\s/)[0].slice(0, 110), question: text.trim(), status: 'AWAITING_TRANSPORT', thread: [], log: [{ at: Date.now(), type: 'requested', by: user.id }] } });
     toast.success(`Technical request ${id} sent to Transport. You still own ${k.id}.`);
     onClose();
   };
@@ -102,8 +103,10 @@ export default function AdviceBlock({ k, n, ev, user, onUse }) {
   const st = REQUEST_STATUS[req.status];
   return (
     <div className={`adv adv--${req.status.toLowerCase()}`} role="region" aria-label="Technical advice">
-      <p className="adv-head"><strong>{req.status === 'ADVICE_RECEIVED' ? 'Transport has advised' : req.status === 'MORE_INFORMATION_REQUIRED' ? 'Transport needs more information' : 'Awaiting Transport advice'}</strong> <Tag size="sm" color={st.tone}>{st.label}</Tag> <Link to={`/staff/request/${req.id}`}>{req.id}</Link></p>
-      <p className="st-muted">{categoryLabel(req.category)} · asked {fmtDate(req.at)} by {who(req.by)} · Transport: {who(req.assignee)} · {k.id} stays with Revenue NSW</p>
+      <p className="adv-head"><strong>{req.status === 'ADVICE_RECEIVED' ? 'Transport has advised. Your decision is needed' : req.status === 'MORE_INFORMATION_REQUIRED' ? 'Transport needs more information' : req.status === 'AWAITING_TRANSPORT' ? 'Requested: Transport has not acknowledged yet' : req.status === 'ACKNOWLEDGED' ? 'Acknowledged by Transport: not yet answered' : 'Transport is investigating: not yet answered'}</strong> <Tag size="sm" color={st.tone}>{st.label}</Tag> <Link to={`/staff/request/${req.id}`}>{req.id}</Link></p>
+      <p className="st-muted">{categoryLabel(req.category)} · asked by {who(req.by)} · {k.id} stays with Revenue NSW</p>
+      <Lifecycle req={req} decided={decided} compact />
+      <RequestMeta req={req} decided={decided} />
       <p className="adv-q">“{req.question}”</p>
       {req.status === 'ADVICE_RECEIVED' && (
         <div className="adv-ans">
@@ -119,7 +122,7 @@ export default function AdviceBlock({ k, n, ev, user, onUse }) {
           {mayAsk ? <><label className="adv-f"><span>Your reply</span><input value={reply} onChange={(e) => setReply(e.target.value)} /></label><Button size="sm" type="submit" disabled={reply.trim().length < 5}>Send reply</Button></> : <p className="st-muted">Revenue NSW replies.</p>}
         </form>
       )}
-      {mayAsk && req.status !== 'ADVICE_RECEIVED' && <Button size="sm" variant="ghost" onClick={() => { dispatch({ type: 'techCancel', id: req.id, by: user.id }); toast.info(`${req.id} cancelled`); }}>Cancel request</Button>}
+      {mayAsk && isLive(req.status) && <Button size="sm" variant="ghost" onClick={() => { dispatch({ type: 'techCancel', id: req.id, by: user.id }); toast.info(`${req.id} cancelled`); }}>Cancel request</Button>}
       {all.length > 1 && <p className="st-muted">{all.length} requests on this case.</p>}
     </div>
   );

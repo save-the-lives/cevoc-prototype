@@ -14,12 +14,55 @@ export const CASE_STATE = {
   REOPENED: { label: 'Reopened', token: 'reopened', tone: 'danger' },
   DECIDED: { label: 'Decided', token: 'decided', tone: 'primary' },
 };
+// A request moves Requested -> Acknowledged -> Investigating -> Advice returned. Being acknowledged is not being answered.
 export const REQUEST_STATUS = {
-  AWAITING_TRANSPORT: { label: 'Open', tone: 'warning' },
-  MORE_INFORMATION_REQUIRED: { label: 'Awaiting Revenue NSW', tone: 'grey' },
-  ADVICE_RECEIVED: { label: 'Answered', tone: 'success' },
-  CANCELLED: { label: 'Cancelled', tone: 'grey' },
+  AWAITING_TRANSPORT: { label: 'Requested', tone: 'warning', stage: 0 },
+  ACKNOWLEDGED: { label: 'Acknowledged', tone: 'primary', stage: 1 },
+  INVESTIGATING: { label: 'Investigating', tone: 'primary', stage: 2 },
+  MORE_INFORMATION_REQUIRED: { label: 'Awaiting Revenue NSW', tone: 'grey', stage: 2 },
+  ADVICE_RECEIVED: { label: 'Advice returned', tone: 'success', stage: 3 },
+  CANCELLED: { label: 'Cancelled', tone: 'grey', stage: -1 },
 };
+export const LIFECYCLE = ['Revenue request', 'Transport acknowledgement', 'Technical investigation', 'Advice returned', 'Revenue resolution'];
+export const WITH_TRANSPORT = ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING'];
+export const isWithTransport = (s) => WITH_TRANSPORT.includes(s);
+export const isLive = (s) => s !== 'ADVICE_RECEIVED' && s !== 'CANCELLED';
+
+const DAY = 864e5;
+// The prototype's clock: real time plus whatever the presenter has skipped forward (demo hub > Controls).
+export const nowMs = (skew = 0) => Date.now() + skew * DAY;
+export const requestedAt = (r) => r.log?.[0]?.at || new Date(`${r.at}T09:00:00`).getTime();
+export const lastActivityAt = (r) => r.log?.[r.log.length - 1]?.at || requestedAt(r);
+const STATE_TYPES = ['requested', 'acknowledged', 'investigating', 'clarify', 'reply', 'advice', 'cancelled'];
+export const inStateSince = (r) => [...(r.log || [])].reverse().find((l) => STATE_TYPES.includes(l.type))?.at || requestedAt(r);
+export const dueMs = (r, days) => requestedAt(r) + days * DAY;
+export function human(ms) {
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h} h`;
+  return `${Math.round(h / 24)} days`;
+}
+// None | Due soon (within a day of the target) | Overdue | Escalated (manually, or overdue and still unanswered).
+export function escalation(r, now, days) {
+  if (!isLive(r.status)) return { level: 'none', label: 'None', tone: 'grey' };
+  if (r.escalated) return { level: 'escalated', label: 'Escalated', tone: 'danger' };
+  const left = dueMs(r, days) - now;
+  if (left < 0) return { level: 'overdue', label: 'Overdue', tone: 'danger' };
+  if (left < DAY) return { level: 'soon', label: 'Due soon', tone: 'warning' };
+  return { level: 'none', label: 'On track', tone: 'grey' };
+}
+export function nextRequired(r, decided) {
+  switch (r.status) {
+    case 'AWAITING_TRANSPORT': return { who: 'Transport', text: 'Acknowledge the request' };
+    case 'ACKNOWLEDGED': return { who: 'Transport', text: 'Start the technical investigation' };
+    case 'INVESTIGATING': return { who: 'Transport', text: 'Provide technical advice' };
+    case 'MORE_INFORMATION_REQUIRED': return { who: 'Revenue NSW', text: 'Reply to Transport’s question' };
+    case 'ADVICE_RECEIVED': return decided ? { who: 'Nobody', text: 'Complete. Revenue NSW has decided' } : { who: 'Revenue NSW', text: 'Make the final decision' };
+    default: return { who: 'Nobody', text: 'Nothing' };
+  }
+}
 export const RECOMMENDATION = {
   valid: 'The certification or evidence is valid for this notice',
   invalid: 'Do not rely on the certification or evidence for this notice',
@@ -33,7 +76,7 @@ export const activeRequest = (tech, caseId) => requestsFor(tech, caseId).find((r
 export function caseState(id, state, assignee) {
   if (state.decisions[id]) return 'DECIDED';
   const r = requestsFor(state.tech, id)[0];
-  if (r?.status === 'AWAITING_TRANSPORT') return 'AWAITING_TRANSPORT';
+  if (r && isWithTransport(r.status)) return 'AWAITING_TRANSPORT';
   if (r?.status === 'MORE_INFORMATION_REQUIRED') return 'MORE_INFORMATION_REQUIRED';
   if (r?.status === 'ADVICE_RECEIVED') return 'ADVICE_RECEIVED';
   if (state.reopened.includes(id)) return 'REOPENED';

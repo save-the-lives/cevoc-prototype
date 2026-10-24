@@ -10,7 +10,8 @@ import CertificateRegister from './certs/CertificateRegister.jsx';
 import CameraList from './certs/CameraList.jsx';
 import TechInbox from './tech/TechInbox.jsx';
 import TechRequest from './tech/TechRequest.jsx';
-import WorkSummary, { CertAlerts } from './shell/WorkSummary.jsx';
+import RevenueOps from './ops/RevenueOps.jsx';
+import TransportOps from './ops/TransportOps.jsx';
 import AdviceBlock from './queue/AdviceBlock.jsx';
 import { activeRequest, affectedCases, validationOf } from '../lib/workflow.js';
 import { useStore } from '../lib/store.jsx';
@@ -29,7 +30,32 @@ const isT = (u) => u?.agency === 'tfnsw';
 
 /* ---------- Sign-in (mock SSO, no passwords) ---------- */
 
+const SSO_STEPS = ['Redirecting to your agency sign-in', 'Checking your identity (multi-factor)', 'Loading your role and permissions', 'Signed in'];
+
+// Simulated single sign-on. In real use the agency's identity provider does this; here it is paced so the handshake is visible.
+function SsoHandshake({ person, onDone }) {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setStep((x) => x + 1), 650);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => { if (step >= SSO_STEPS.length) onDone(); }, [step]); // eslint-disable-line
+  const agency = person.agency === 'rnsw' ? 'Revenue NSW' : 'Transport for NSW';
+  return (
+    <div className="st-signin">
+      <div className="st-signin__card" role="status" aria-live="polite">
+        <h1>Signing in with {agency}</h1>
+        <p className="st-muted">Single sign-on, simulated for this prototype. No password is asked for.</p>
+        <ol className="sso">{SSO_STEPS.map((t, i) => <li key={t} className={i < step ? 'is-done' : i === step ? 'is-now' : ''}><span aria-hidden="true">{i < step ? '✓' : i === step ? '…' : ''}</span>{t}</li>)}</ol>
+        <p className="st-muted">{person.name}, {person.role}</p>
+      </div>
+    </div>
+  );
+}
+
 function SignIn({ onPick }) {
+  const [picked, setPicked] = useState(null);
+  if (picked) return <SsoHandshake person={picked} onDone={() => onPick(picked.id)} />;
   return (
     <div className="st-signin">
       <div className="st-signin__card">
@@ -39,7 +65,7 @@ function SignIn({ onPick }) {
         <div className="st-signin__mock">
           <div className="snp-strip">PROTOTYPE · CHOOSE A SAMPLE USER · NO PASSWORDS</div>
           {STAFF.map((p) => (
-            <button key={p.id} type="button" className="st-persona" onClick={() => onPick(p.id)}>
+            <button key={p.id} type="button" className="st-persona" onClick={() => setPicked(p)}>
               <span className={`org ${p.agency}`}>{p.agency === 'rnsw' ? 'RNSW' : 'TfNSW'}</span>
               <span><strong>{p.name}</strong><small>{p.role}</small></span>
               <span aria-hidden="true">›</span>
@@ -421,7 +447,7 @@ function CertRecord({ id, user }) {
           <WithdrawFlow c={c} user={user} kind={status === 'withdrawn' ? 'restoration' : 'withdrawal'} onDone={() => setFlow(false)} />
         ) : can(user, 'withdraw:request') ? (
           <button type="button" className={`st-btn ${status === 'withdrawn' ? '' : 'danger'}`} onClick={() => setFlow(true)}>{status === 'withdrawn' ? 'Restore certificate…' : 'Withdraw certificate…'}</button>
-        ) : <Handoff to="Transport for NSW" what="Certificates are withdrawn by Transport camera operations." />}
+        ) : <Handoff to="Transport for NSW" what="Certificates are withdrawn by Transport technical systems advisors." />}
       </aside>
     </div>
   );
@@ -451,7 +477,7 @@ export default function StaffSite({ parts, query }) {
   const rnsw = user.agency === 'rnsw';
   const unresolved = CASES.filter((c) => !state.decisions[c.id]);
   const mineOpen = unresolved.filter((c) => (c.id in state.assign ? state.assign[c.id] : c.assignee) === user.id).length;
-  const awaiting = new Set(state.tech.filter((t) => t.status === 'AWAITING_TRANSPORT' || t.status === 'MORE_INFORMATION_REQUIRED').map((t) => t.caseId)).size;
+  const awaiting = new Set(state.tech.filter((t) => ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'MORE_INFORMATION_REQUIRED'].includes(t.status)).map((t) => t.caseId)).size;
   const approvals = state.pending.length;
   const canApprove = can(user, 'withdraw:approve');
   let body;
@@ -464,12 +490,12 @@ export default function StaffSite({ parts, query }) {
   else if (a === 'request') body = <TechRequestPage key={b} id={b} user={user} />;
   else if (a === 'requests') body = rnsw ? <NotForYou what="queue" /> : <TechInbox key={query.view || 'open'} user={user} view={query.view || 'open'} />;
   else if (a === 'queue' && b === 'approvals') body = <ApprovalsQueue canApprove={canApprove} user={user} />;
-  else if (a === 'queue') body = rnsw ? <><CertAlerts /><WorkQueue key={`${b}|${query.q || ''}|${query.view || ''}`} name={b} user={user} initialQuery={query.q || ''} view={query.view || ''} /></> : <NotForYou what="queue" />;
+  else if (a === 'queue') body = rnsw ? <WorkQueue key={`${b}|${query.q || ''}|${query.view || ''}|${query.open || ''}`} name={b} user={user} initialQuery={query.q || ''} view={query.view || ''} autoOpen={query.open === '1'} /> : <NotForYou what="queue" />;
   else if (a === 'insights') body = <Dashboard user={user} canApprove={canApprove} />;
-  else body = rnsw ? <><CertAlerts /><WorkSummary user={user} /><WorkQueue key="home" name="reviews" user={user} /></> : <><WorkSummary user={user} /><TechInbox key="home" user={user} view="open" /></>;
+  else body = rnsw ? <RevenueOps user={user} /> : <TransportOps user={user} canApprove={canApprove} />;
 
   return (
-    <StaffShell user={user} parts={parts} query={query} counts={{ mine: mineOpen, awaiting, completed: CASES.length - unresolved.length, techOpen: state.tech.filter((t) => t.status === 'AWAITING_TRANSPORT').length, approvals, certs: CERTS.length }} canApprove={canApprove} hotApprovals={approvals > 0 && canApprove}
+    <StaffShell user={user} parts={parts} query={query} counts={{ mine: mineOpen, awaiting, completed: CASES.length - unresolved.length, techOpen: state.tech.filter((t) => ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(t.status)).length, approvals, certs: CERTS.length }} canApprove={canApprove} hotApprovals={approvals > 0 && canApprove}
       onSwitch={(id) => { dispatch({ type: 'signIn', id }); go('/staff'); }} onSignOut={() => { dispatch({ type: 'signOut' }); go('/staff'); }}>
       {body}
     </StaffShell>

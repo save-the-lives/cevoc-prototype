@@ -5,11 +5,12 @@ import { Dialog, Link } from '../../shared/ui.jsx';
 import { go } from '../../lib/router.js';
 import { fmtDate } from '../../lib/format.js';
 import { useStore } from '../../lib/store.jsx';
-import { CERTS, kase as findCase, notice as findNotice, site as findSite, staff as findStaff, PROGRAMS } from '../../data.js';
-import { REQUEST_STATUS, RECOMMENDATION, categoryLabel, impactLevel } from '../../lib/workflow.js';
+import { CERTS, STAFF, kase as findCase, notice as findNotice, site as findSite, staff as findStaff, PROGRAMS } from '../../data.js';
+import { REQUEST_STATUS, RECOMMENDATION, categoryLabel, impactLevel, isWithTransport } from '../../lib/workflow.js';
+import { Lifecycle, RequestMeta } from './Lifecycle.jsx';
+import { CASES } from '../../data.js';
 import EvidenceViewer from '../queue/EvidenceViewer.jsx';
 import CertPanel from '../queue/CertPanel.jsx';
-import { dueOf } from './TechInbox.jsx';
 
 // Technical workbench. Left: the question and the evidence. Centre: this camera's technical records.
 // Right: findings and the response that goes back to Revenue NSW. Transport advises; it cannot decide the customer's case.
@@ -31,7 +32,6 @@ export default function TechRequest({ id, user, slots }) {
   const k = findCase(r.caseId);
   const impact = impactLevel(r, state.tech);
   const mayAnswer = user.perms.includes('inspect:request');
-  const open = r.status === 'AWAITING_TRANSPORT';
   const siblings = state.tech.filter((x) => x.site === r.site && x.id !== r.id);
   const certs = CERTS.filter((c) => c.site === r.site);
   const ready = rec && advice.trim().length >= 20 && scope.trim().length >= 10;
@@ -40,7 +40,7 @@ export default function TechRequest({ id, user, slots }) {
   const send = () => {
     if (busy) return;
     setBusy(true);
-    dispatch({ type: 'techRespond', id: r.id, response: { by: user.id, at: new Date().toISOString().slice(0, 10), recommendation: rec, advice: advice.trim(), scope: scope.trim(), attachments: attach } });
+    dispatch({ type: 'techRespond', id: r.id, related: CASES.filter((c) => c.id !== r.caseId && !state.decisions[c.id] && findNotice(c.notice)?.site === r.site).map((c) => c.id), response: { by: user.id, at: new Date().toISOString().slice(0, 10), recommendation: rec, advice: advice.trim(), scope: scope.trim(), attachments: attach } });
     toast.success(`Advice returned to Revenue NSW for ${r.caseId}`);
     setConfirm(false); setBusy(false);
   };
@@ -48,9 +48,9 @@ export default function TechRequest({ id, user, slots }) {
   return (
     <div className="tr">
       <div className="st-rec-head"><span className="st-type">Technical request</span><h1>{r.id}</h1>
-        <Tag size="sm" color={REQUEST_STATUS[r.status].tone}>{REQUEST_STATUS[r.status].label}</Tag>
         <Tag size="sm" color={impact === 'Systemic' ? 'danger' : impact === 'Multiple' ? 'warning' : 'grey'}>{impact}</Tag>
-        <span className="st-muted">{categoryLabel(r.category)} · {s.code} · due {fmtDate(dueOf(r))}</span></div>
+        <span className="st-muted">{categoryLabel(r.category)} · {s.code}</span></div>
+      <div className="tr-flow"><Lifecycle req={r} decided={!!state.decisions[r.caseId]} /><RequestMeta req={r} decided={!!state.decisions[r.caseId]} /></div>
       <p className="st-muted tr-owner"><span className="owner-tag">Revenue NSW</span> decides the customer’s case {r.caseId}. Your advice goes back to them; you cannot uphold or withdraw the fine here.</p>
       <div className="tr-panes">
         <section className="tr-pane" aria-label="Problem and evidence">
@@ -73,6 +73,14 @@ export default function TechRequest({ id, user, slots }) {
         </section>
         <section className="tr-pane" aria-label="Findings and response">
           <h2>Response to Revenue NSW</h2>
+          {user.perms.includes('team:manage') && ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(r.status) && (
+            <label className="adv-f"><span>Assign to (manager)</span>
+              <select value={r.assignee || ''} onChange={(e) => e.target.value && dispatch({ type: 'techAssign', id: r.id, to: e.target.value, by: user.id })}>
+                <option value="">{r.assignee ? findStaff(r.assignee).name : 'Choose…'}</option>
+                {STAFF.filter((p) => p.agency === 'tfnsw' && p.perms.includes('inspect:request') && p.id !== r.assignee).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </label>
+          )}
           {r.response ? (
             <div className="adv adv--advice_received">
               <p><strong>{RECOMMENDATION[r.response.recommendation]}</strong></p>
@@ -83,10 +91,14 @@ export default function TechRequest({ id, user, slots }) {
             </div>
           ) : r.status === 'CANCELLED' ? <p className="st-muted">Revenue NSW cancelled this request.</p>
           : r.status === 'MORE_INFORMATION_REQUIRED' ? <p className="st-muted">Waiting for Revenue NSW to reply to your question.</p>
-          : !mayAnswer ? <p className="st-muted">Transport camera operations answers technical requests.</p>
-          : (
+          : !mayAnswer ? <p className="st-muted">Transport technical staff answer technical requests. Revenue NSW sees the same status.</p>
+          : r.status === 'AWAITING_TRANSPORT' ? (
+            <div className="adv-form"><p>Acknowledging tells Revenue NSW you have the request. It is <strong>not</strong> an answer.</p><Button type="button" onClick={() => { dispatch({ type: 'techAck', id: r.id, by: user.id }); toast.success(`${r.id} acknowledged`); }}>Acknowledge this request</Button></div>
+          ) : r.status === 'ACKNOWLEDGED' ? (
+            <div className="adv-form"><p>Acknowledged by {findStaff(r.assignee)?.name}. Start the investigation when you begin the technical work.</p><Button type="button" onClick={() => { dispatch({ type: 'techStart', id: r.id, by: user.id }); toast.success('Investigation started'); }}>Start investigation</Button></div>
+          ) : (
             <form className="adv-form" onSubmit={(e) => { e.preventDefault(); if (ready) setConfirm(true); }}>
-              {!r.assignee && <Button type="button" size="sm" variant="outline" onClick={() => dispatch({ type: 'techAssign', id: r.id, to: user.id, by: user.id })}>Pick up this request</Button>}
+              
               <fieldset className="adv-f"><legend>Recommendation</legend>
                 {Object.entries(RECOMMENDATION).map(([v, l]) => <label key={v} className="st-radio"><input type="radio" name="rec" checked={rec === v} onChange={() => setRec(v)} /> {l}</label>)}
               </fieldset>
@@ -99,7 +111,7 @@ export default function TechRequest({ id, user, slots }) {
               <label className="adv-f"><span>Or ask Revenue NSW for more information</span><input value={clar} onChange={(e) => setClar(e.target.value)} /></label>
               <div className="st-row">
                 <Button type="button" variant="outline" size="sm" disabled={clar.trim().length < 5} onClick={() => { dispatch({ type: 'techClarify', id: r.id, by: user.id, text: clar.trim() }); setClar(''); toast.success('Question sent to Revenue NSW'); }}>Request clarification</Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => { dispatch({ type: 'techNote', id: r.id, by: user.id, text: 'Escalated internally to the camera program manager (simulated)' }); toast.info('Escalated internally (simulated)'); }}>Escalate internally</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => { dispatch({ type: 'techEscalate', id: r.id, by: user.id }); toast.info('Escalated internally (simulated)'); }}>Escalate internally</Button>
               </div>
               {siblings.length > 0 && <div className="st-row"><select aria-label="Related request" value={link} onChange={(e) => setLink(e.target.value)}><option value="">Link related issue…</option>{siblings.map((x) => <option key={x.id} value={x.id}>{x.id} · {categoryLabel(x.category)}</option>)}</select>
                 <Button type="button" variant="outline" size="sm" disabled={!link} onClick={() => { dispatch({ type: 'techNote', id: r.id, by: user.id, text: `Linked related issue ${link}` }); setLink(''); toast.success('Linked'); }}>Link</Button></div>}

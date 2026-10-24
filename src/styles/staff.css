@@ -119,3 +119,4 @@ kbd { border: 1px solid #b6c0cc; border-bottom-width: 2px; border-radius: 3px; p
 }
 @media (max-width: 800px) { .st-table td:first-child { white-space: nowrap; } .st-card .st-btn:only-child { width: 100%; } }
 .st-orgs .brand-logo { height: 48px; }
+.sso { list-style: none; margin: 16px 0; padding: 0; display: grid; gap: 10px; } .sso li { display: flex; gap: 10px; align-items: center; color: #616e7c; } .sso li span { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #cbd2d9; display: grid; place-items: center; font-weight: 700; font-size: 12px; } .sso .is-now { color: #0b1a33; font-weight: 700; } .sso .is-now span { border-color: #002664; } .sso .is-done { color: #1b7a43; } .sso .is-done span { background: #1b7a43; border-color: #1b7a43; color: #fff; }

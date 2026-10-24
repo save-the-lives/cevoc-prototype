@@ -50,3 +50,14 @@ Revenue NSW and Transport for NSW get different staff experiences from one share
 - **Targets** (28 and 42 days for Revenue, 5 for Transport) are internal service goals editable in the demo hub, not statutory deadlines.
 
 Known gaps: the demo data set is small (no pagination or virtualised rendering), scatter-plot dots on Insights can overlap and miss the 24px target-size guideline (every case is also reachable from the queue), and screen-reader testing is still manual.
+
+## Operational dashboards (prototype)
+
+Each agency lands on its own live **Operational dashboard** (`#/staff`); trends and analytics sit behind "Trends".
+
+- **Revenue NSW:** tiles (new cases, awaiting decision, awaiting Transport, advice back, at risk, certificate changes) link to filtered queues. *Action required now* lists urgent actionable cases and opens the review workbench directly; *Waiting on Transport* shows request age, assigned team, target response and escalation. Managers also see *Team workload*.
+- **Transport for NSW:** tiles (new, unassigned, urgent, near or past target, approvals, possible systemic issues, Revenue cases reached), *Incoming technical requests* (acknowledge in one click) and *Operational exceptions* with their downstream reach.
+- **Lifecycle:** Revenue request → Transport acknowledgement → Technical investigation → Advice returned → Revenue resolution, shown on both sides with owner, status, time in state, last activity, next required action, target and escalation. Acknowledged is never shown as answered.
+- **Roles:** Revenue (Review officer, Prosecutions officer, Review manager, Operations manager) and Transport (Customer inquiry officer, Adjudication officer, Technical systems advisor, Camera program manager, Technical assurance manager). Managers (`team:manage`) can assign work to others.
+- **Events and timeliness (simulated):** state is shared between browser tabs, so a Revenue window and a Transport window update live. Notifications (bell) and "What changed" list events; "Last updated" goes amber when the feed is paused or quiet. Demo hub > Controls can skip the clock forward (to trigger overdue events) and pause the feed.
+- **Single sign-on** is a paced, simulated handshake. No agency system is connected anywhere.

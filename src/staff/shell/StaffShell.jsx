@@ -7,6 +7,7 @@ import { useHotkeys } from '../hooks/useHotkeys.js';
 import CommandPalette from './CommandPalette.jsx';
 import ShortcutsDialog from './ShortcutsDialog.jsx';
 import UserMenu from './UserMenu.jsx';
+import Notifications from '../ops/Notifications.jsx';
 
 const QUEUE_LABEL = { reviews: 'Review queue', court: 'Court elections', approvals: 'Approvals' };
 
@@ -35,14 +36,16 @@ function SideNav({ agency, active, counts, hot, canApprove, onSearch }) {
     <nav className="st-side" aria-label="Workspace">
       {agency === 'rnsw' ? (
         <>
-          {item('/staff', 'home', 'Review queue', counts.mine)}
+          {item('/staff', 'home', 'Dashboard')}
+          {item('/staff/queue/reviews', 'queue', 'Review queue', counts.mine)}
           {item('/staff/queue/reviews?view=awaiting', 'awaiting', 'Escalations awaiting advice', counts.awaiting)}
           {item('/staff/queue/reviews?view=completed', 'completed', 'Completed', counts.completed)}
           <button type="button" className="st-side__btn" onClick={onSearch}>Search</button>
         </>
       ) : (
         <>
-          {item('/staff', 'home', 'Technical requests', counts.techOpen)}
+          {item('/staff', 'home', 'Dashboard')}
+          {item('/staff/requests', 'requests', 'Technical requests', counts.techOpen)}
           {item('/staff/certificates', 'certificates', 'Certificate register', counts.certs)}
           {item('/staff/cameras', 'cameras', 'Camera assets')}
           {item('/staff/queue/approvals', 'approvals', canApprove ? 'Certificate approvals' : 'Certificate requests', counts.approvals, hot)}
@@ -50,7 +53,7 @@ function SideNav({ agency, active, counts, hot, canApprove, onSearch }) {
         </>
       )}
       <p className="st-side__h">More</p>
-      {item('/staff/insights', 'insights', 'Insights')}
+      {item('/staff/insights', 'insights', 'Trends')}
     </nav>
   );
 }
@@ -64,8 +67,9 @@ export default function StaffShell({ user, parts, query = {}, counts, canApprove
   useEffect(() => { document.title = `${AGENCY[user.agency].title} · CEVOC`; }, [user.agency]);
 
   const commands = useMemo(() => [
-    { id: 'c-home', label: user.agency === 'rnsw' ? 'Go to review queue' : 'Go to technical requests', keys: ['g', 'h'], run: () => go('/staff') },
-    { id: 'c-ins', label: 'Go to insights', keys: ['g', 'i'], run: () => go('/staff/insights') },
+    { id: 'c-home', label: 'Go to the dashboard', keys: ['g', 'h'], run: () => go('/staff') },
+    { id: 'c-main', label: user.agency === 'rnsw' ? 'Go to the review queue' : 'Go to technical requests', keys: ['g', user.agency === 'rnsw' ? 'r' : 't'], run: () => go(user.agency === 'rnsw' ? '/staff/queue/reviews' : '/staff/requests') },
+    { id: 'c-ins', label: 'Go to trends', keys: ['g', 'i'], run: () => go('/staff/insights') },
     ...(user.agency === 'rnsw' ? [
       { id: 'c-await', label: 'Go to escalations awaiting advice', keys: ['g', 'w'], run: () => go('/staff/queue/reviews?view=awaiting') },
       { id: 'c-court', label: 'Go to court elections', keys: ['g', 'c'], run: () => go('/staff/queue/court') },
@@ -81,13 +85,13 @@ export default function StaffShell({ user, parts, query = {}, counts, canApprove
   useHotkeys({
     'mod+k': () => setPalette(true), '/': () => setPalette(true), '?': () => setHelp(true), 'mod+/': () => setHelp(true),
     'g h': () => go('/staff'), 'g i': () => go('/staff/insights'),
-    ...(user.agency === 'rnsw' ? { 'g r': () => go('/staff'), 'g w': () => go('/staff/queue/reviews?view=awaiting'), 'g c': () => go('/staff/queue/court') } : { 'g e': () => go('/staff/certificates'), 'g t': () => go('/staff') }),
+    ...(user.agency === 'rnsw' ? { 'g r': () => go('/staff/queue/reviews'), 'g w': () => go('/staff/queue/reviews?view=awaiting'), 'g c': () => go('/staff/queue/court') } : { 'g e': () => go('/staff/certificates'), 'g t': () => go('/staff/requests') }),
     ...(canApprove ? { 'g a': () => go('/staff/queue/approvals') } : {}),
   });
 
-  const active = a === 'queue' && b === 'approvals' ? 'approvals' : a === 'queue' ? (query.view === 'awaiting' ? 'awaiting' : query.view === 'completed' ? 'completed' : 'home')
-    : a === 'case' ? 'home' : a === 'camera' || a === 'cameras' ? 'cameras' : a === 'cert' || a === 'certificates' ? 'certificates' : a === 'insights' ? 'insights'
-    : a === 'requests' && query.view === 'history' ? 'history' : 'home';
+  const active = a === 'queue' && b === 'approvals' ? 'approvals' : a === 'queue' ? (query.view === 'awaiting' ? 'awaiting' : query.view === 'completed' ? 'completed' : 'queue')
+    : a === 'case' ? 'queue' : a === 'camera' || a === 'cameras' ? 'cameras' : a === 'cert' || a === 'certificates' ? 'certificates' : a === 'insights' ? 'insights'
+    : a === 'requests' ? (query.view === 'history' ? 'history' : 'requests') : a === 'request' ? 'requests' : 'home';
 
   return (
     <TooltipProvider>
@@ -100,6 +104,7 @@ export default function StaffShell({ user, parts, query = {}, counts, canApprove
           <button type="button" className="st-searchbtn" onClick={() => setPalette(true)}>
             <span>Search notices, cases, cameras…</span><span className="st-searchbtn__keys"><Kbd>Ctrl</Kbd><Kbd>K</Kbd></span>
           </button>
+          <Notifications agency={user.agency} />
           <UserMenu user={user} onSwitch={onSwitch} onShortcuts={() => setHelp(true)} onSignOut={onSignOut} />
         </header>
         <div className="st-body">

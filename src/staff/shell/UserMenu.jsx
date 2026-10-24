@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@nswds/ui';
-import { STAFF } from '../../data.js';
+import { STAFF, agencyShort } from '../../data.js';
 
-const CAN = { 'case:decide': 'Decide reviews and court elections', 'withdraw:request': 'Request certificate withdrawals', 'withdraw:approve': 'Approve certificate withdrawals', 'inspect:request': 'Add technical advice to cases' };
+const CAN = { 'team:manage': 'Assign work to colleagues and see team workload', 'case:decide': 'Decide reviews and court elections', 'withdraw:request': 'Request certificate withdrawals', 'withdraw:approve': 'Approve certificate withdrawals', 'inspect:request': 'Add technical advice to cases' };
 
 const initials = (name) => name.split(' ').map((p) => p[0]).join('').slice(0, 2);
 
@@ -35,7 +35,7 @@ export default function UserMenu({ user, onSwitch, onShortcuts, onSignOut }) {
           <DropdownMenuSubContent>
             {STAFF.map((p) => (
               <DropdownMenuItem key={p.id} disabled={p.id === user.id} onClick={() => onSwitch(p.id)}>
-                {p.name} · {p.role}
+                {p.name} · {p.role} ({agencyShort(p)})
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>

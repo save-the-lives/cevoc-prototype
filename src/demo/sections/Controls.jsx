@@ -44,6 +44,16 @@ export default function Controls() {
       </section>
       <section className="demo-run">
         <div>
+          <h2>Live feed and time</h2>
+          <p className="demo-muted">Skip the clock forward to show a request passing its target (an “overdue” event reaches both dashboards). Pause the feed to show how stale information is flagged. Simulated: no agency system is connected. Clock is {state.skew ? `${state.skew} day${state.skew === 1 ? '' : 's'} ahead` : 'real time'}.</p>
+        </div>
+        <div className="demo-targets">
+          <button type="button" onClick={() => dispatch({ type: 'advanceDays', days: 1 })}>Skip forward 1 day</button>
+          <label className="demo-switch"><input type="checkbox" checked={state.feedPaused} onChange={(e) => dispatch({ type: 'feed', paused: e.target.checked })} /> Pause the live feed (shows “out of date”)</label>
+        </div>
+      </section>
+      <section className="demo-run">
+        <div>
           <h2>Service targets</h2>
           <p className="demo-muted">Internal reply targets, in days, used for “waiting”, “due” and “at risk”. They are demo settings, not statutory deadlines.</p>
         </div>

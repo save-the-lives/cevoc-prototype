@@ -162,12 +162,20 @@ export const CASES = [
 
 // Staff personas. No passwords. Permissions drive what each can do; everything else is a hand-off.
 export const STAFF = [
-  { id: 'jo', name: 'Jo Nguyen', org: 'Transport for NSW', agency: 'tfnsw', role: 'Camera operations officer', perms: ['withdraw:request', 'inspect:request'] },
-  { id: 'morgan', name: 'Morgan Smith', org: 'Transport for NSW', agency: 'tfnsw', role: 'Camera program manager', perms: ['withdraw:request', 'withdraw:approve', 'inspect:request'] },
+  // Transport for NSW
+  { id: 'jo', name: 'Jo Nguyen', org: 'Transport for NSW', agency: 'tfnsw', role: 'Customer inquiry officer', perms: ['inspect:request'] },
+  { id: 'kai', name: 'Kai Okoro', org: 'Transport for NSW', agency: 'tfnsw', role: 'Technical systems advisor', perms: ['withdraw:request', 'inspect:request'] },
+  { id: 'dana', name: 'Dana Whitfield', org: 'Transport for NSW', agency: 'tfnsw', role: 'Adjudication officer', perms: ['inspect:request'] },
+  { id: 'morgan', name: 'Morgan Smith', org: 'Transport for NSW', agency: 'tfnsw', role: 'Camera program manager', perms: ['withdraw:request', 'withdraw:approve', 'inspect:request', 'team:manage'] },
+  { id: 'sasha', name: 'Sasha Ivanov', org: 'Transport for NSW', agency: 'tfnsw', role: 'Technical assurance manager', perms: ['withdraw:request', 'withdraw:approve', 'inspect:request', 'team:manage'] },
+  // Revenue NSW. Managers (team:manage) can assign work to others and see team workload.
   { id: 'alex', name: 'Alex Chen', org: 'Revenue NSW', agency: 'rnsw', role: 'Review officer', perms: ['case:decide'] },
-  { id: 'jordan', name: 'Jordan Lee', org: 'Revenue NSW', agency: 'rnsw', role: 'Prosecutions officer', perms: ['case:decide'] },
   { id: 'sam', name: 'Sam Patel', org: 'Revenue NSW', agency: 'rnsw', role: 'Review officer', perms: ['case:decide'] },
+  { id: 'jordan', name: 'Jordan Lee', org: 'Revenue NSW', agency: 'rnsw', role: 'Prosecutions officer', perms: ['case:decide'] },
+  { id: 'priya', name: 'Priya Raman', org: 'Revenue NSW', agency: 'rnsw', role: 'Review manager', perms: ['case:decide', 'team:manage'] },
+  { id: 'chris', name: 'Chris Walker', org: 'Revenue NSW', agency: 'rnsw', role: 'Operations manager', perms: ['team:manage'] },
 ];
+export const agencyShort = (u) => (u.agency === 'rnsw' ? 'Revenue' : 'Transport');
 
 export const WITHDRAW_REASONS = ['Calibration fault found after inspection', 'Certificate issued in error', 'Superseded by a reissued certificate', 'Legal direction', 'Other'];
 
@@ -184,15 +192,23 @@ export const TECH_CATEGORIES = [
   ['certification', 'Certification'], ['evidence', 'Image or evidence'], ['operation', 'Camera operation'],
   ['site', 'Site configuration'], ['timing', 'Timing or calculation'], ['other', 'Other'],
 ];
+const HOUR = 3600e3;
+const ago = (h) => Date.now() - h * HOUR;
+const dateOf = (ms) => new Date(ms).toISOString().slice(0, 10);
 export const TECH_SEED = [
-  { id: 'TR-3002', caseId: 'CE-24020', notice: '3162457902', site: 'AVG-HUM', category: 'timing', by: 'jordan', assignee: 'morgan', at: '2026-10-20',
+  { id: 'TR-3002', caseId: 'CE-24020', notice: '3162457902', site: 'AVG-HUM', category: 'timing', by: 'jordan', assignee: null, at: dateOf(ago(72)),
     summary: 'Is the 18 km surveyed distance the one in force for this notice?',
     question: 'The company disputes the surveyed distance between the two cameras. Please confirm the surveyed distance in force on 25 September 2026 and how the average speed was calculated.',
-    status: 'AWAITING_TRANSPORT', thread: [] },
+    status: 'AWAITING_TRANSPORT', thread: [], log: [{ at: ago(72), type: 'requested', by: 'jordan' }] },
+  { id: 'TR-3001', caseId: 'CE-24023', notice: '3162457899', site: 'PAR-001', category: 'certification', by: 'alex', assignee: 'jo', at: dateOf(ago(50)),
+    summary: 'Was the inspection certificate in force on 14 August?',
+    question: 'The customer says the camera was not certified on the day. Please confirm which inspection certificate applied at 06:55 on 14 August 2026.',
+    status: 'INVESTIGATING', thread: [], log: [{ at: ago(50), type: 'requested', by: 'alex' }, { at: ago(47), type: 'acknowledged', by: 'jo' }, { at: ago(20), type: 'investigating', by: 'jo' }] },
   { id: 'TR-2991', caseId: 'RV-23988', notice: '3162457897', site: 'PHN-M4', category: 'evidence', by: 'alex', assignee: 'jo', at: '2026-09-18',
     summary: 'Was a person involved in checking the phone-detection image?',
     question: 'The customer asks whether a person ever looked at the image. Is the person-check recorded, and can it be shown to the customer?',
     status: 'ADVICE_RECEIVED', thread: [],
+    log: [{ at: ago(24 * 36), type: 'requested', by: 'alex' }, { at: ago(24 * 36 - 2), type: 'acknowledged', by: 'jo' }, { at: ago(24 * 35), type: 'investigating', by: 'jo' }, { at: ago(24 * 32), type: 'advice', by: 'jo' }],
     response: { by: 'jo', at: '2026-09-22', recommendation: 'valid',
       advice: 'Every phone-detection image is checked by an authorised adjudicator before a notice is issued. The adjudicator ID and check time are recorded in the evidence metadata (“Person check”), and that record can be quoted to the customer.',
       scope: 'Applies to any notice from camera PHN-M4 where the metadata shows a person check. It does not apply if the person-check record is missing.' } },

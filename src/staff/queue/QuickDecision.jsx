@@ -46,7 +46,7 @@ export default function QuickDecision({ k, n, ev, user, riskCount, onDecided }) 
   if (!canDecide) {
     return (
       <div className="st-decide">
-        <span><span className="owner-tag">Revenue NSW</span> decides this case. Transport advises through <Link to="/staff/requests">Technical requests</Link>.</span>
+        {user.agency === 'rnsw' ? <span>Review officers decide this case. As a manager you can reassign it from the queue.</span> : <span><span className="owner-tag">Revenue NSW</span> decides this case. Transport advises through <Link to="/staff/requests">Technical requests</Link>.</span>}
         <Link to={`/staff/case/${k.id}`}>Open full case ↗</Link>
       </div>
     );

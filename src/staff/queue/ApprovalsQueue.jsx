@@ -22,7 +22,7 @@ export default function ApprovalsQueue({ canApprove = true, user }) {
                 <TableCell><Link to={`/staff/cert/${p.cert}`}>{canApprove && p.by !== user?.id ? 'Review' : 'View'}</Link></TableCell>
               </TableRow>
             ))}
-            {!state.pending.length && <TableRow><TableCell colSpan={5} className="st-muted">Nothing waiting. Withdrawal requests from camera operations show up here.</TableCell></TableRow>}
+            {!state.pending.length && <TableRow><TableCell colSpan={5} className="st-muted">Nothing waiting. Withdrawal requests from technical systems advisors show up here.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </div>
