@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Kbd, Toaster, TooltipProvider } from '@nswds/ui';
-import { Link } from '../../shared/ui.jsx';
+import { AgencyLockup, Link } from '../../shared/ui.jsx';
 import { go } from '../../lib/router.js';
 import { kase } from '../../data.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
@@ -65,11 +65,13 @@ export default function StaffShell({ user, parts, counts, hotApprovals, cameras,
     <TooltipProvider>
       <div className={`st st--${user.agency}`}>
         <header className="st-top">
-          <Link to="/staff" className="st-app">CEVOC <small>Staff</small></Link>
+          <Link to="/staff" className="st-brand" aria-label={`${user.org}, CEVOC staff home`}>
+            <AgencyLockup agency={user.agency} />
+            <span className="st-app">CEVOC <small>Staff</small></span>
+          </Link>
           <button type="button" className="st-searchbtn" onClick={() => setPalette(true)} aria-label="Search records and commands">
             <span>Search notices, cases, cameras…</span><span className="st-searchbtn__keys"><Kbd>Ctrl</Kbd><Kbd>K</Kbd></span>
           </button>
-          <span className={`org ${user.agency}`}>{user.org}</span>
           <UserMenu user={user} onSwitch={onSwitch} onShortcuts={() => setHelp(true)} onSignOut={onSignOut} />
         </header>
         <div className="st-body">
