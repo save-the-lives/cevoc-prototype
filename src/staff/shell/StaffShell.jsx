@@ -15,47 +15,53 @@ const QUEUE_LABEL = { reviews: 'Reviews', court: 'Court elections', approvals: '
 function trail(parts) {
   const [, a, b] = parts;
   if (a === 'case') { const k = kase(b); const q = k?.type === 'court' ? 'court' : 'reviews'; return [{ label: QUEUE_LABEL[q], to: `/staff/queue/${q}` }, { label: b }]; }
+  if (a === 'cert') return [{ label: 'Certificate register', to: '/staff/certificates' }, { label: b }];
+  if (a === 'camera') return [{ label: 'Cameras', to: '/staff/cameras' }, { label: b }];
   return [];
 }
 
-function SideNav({ active, counts, hot, cameras }) {
+function SideNav({ active, counts, hot, canApprove }) {
   const item = (to, key, label, n, isHot) => (
-    <Link to={to} className={active === key ? 'on' : ''} aria-current={active === key ? 'page' : undefined}>{label} <span className={isHot ? 'hot' : ''}>{n}</span></Link>
+    <Link to={to} className={active === key ? 'on' : ''} aria-current={active === key ? 'page' : undefined}>{label} {n !== undefined && <span className={isHot ? 'hot' : ''}>{n}</span>}</Link>
   );
   return (
-    <nav className="st-side" aria-label="Queues">
-      <p className="st-side__h">Queues</p>
+    <nav className="st-side" aria-label="Workspace">
+      {item('/staff', 'home', 'Dashboard')}
+      <p className="st-side__h">Infringement review</p>
       {item('/staff/queue/reviews', 'reviews', 'Reviews', counts.review)}
       {item('/staff/queue/court', 'court', 'Court elections', counts.court)}
-      {item('/staff/queue/approvals', 'approvals', 'Approvals', counts.approvals, hot)}
-      <p className="st-side__h">Cameras</p>
-      {cameras.map((s) => <Link key={s.code} to={`/staff/camera/${s.code}`} className={active === s.code ? 'on' : ''}>{s.code}</Link>)}
+      <p className="st-side__h">Camera certificates</p>
+      {item('/staff/certificates', 'certificates', 'Certificate register', counts.certs)}
+      {item('/staff/cameras', 'cameras', 'Cameras')}
+      {canApprove && item('/staff/queue/approvals', 'approvals', 'Approvals', counts.approvals, hot)}
     </nav>
   );
 }
 
 // The frame around every staff page: top bar, search and commands, queues, breadcrumbs, toasts.
-export default function StaffShell({ user, parts, counts, hotApprovals, cameras, onSwitch, onSignOut, children }) {
+export default function StaffShell({ user, parts, counts, canApprove, hotApprovals, onSwitch, onSignOut, children }) {
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const [, a, b] = parts;
   const crumbs = trail(parts);
 
   const commands = useMemo(() => [
-    { id: 'c-home', label: 'Go to home', keys: ['g', 'h'], run: () => go('/staff') },
+    { id: 'c-home', label: 'Go to dashboard', keys: ['g', 'h'], run: () => go('/staff') },
     { id: 'c-rev', label: 'Go to reviews', keys: ['g', 'r'], run: () => go('/staff/queue/reviews') },
     { id: 'c-court', label: 'Go to court elections', keys: ['g', 'c'], run: () => go('/staff/queue/court') },
-    { id: 'c-appr', label: 'Go to approvals', keys: ['g', 'a'], run: () => go('/staff/queue/approvals') },
+    { id: 'c-cert', label: 'Go to certificate register', keys: ['g', 'e'], run: () => go('/staff/certificates') },
+    { id: 'c-cams', label: 'Go to cameras', run: () => go('/staff/cameras') },
+    ...(canApprove ? [{ id: 'c-appr', label: 'Go to approvals', keys: ['g', 'a'], run: () => go('/staff/queue/approvals') }] : []),
     { id: 'c-keys', label: 'Show keyboard shortcuts', keys: ['?'], run: () => setHelp(true) },
     { id: 'c-out', label: 'Sign out', run: onSignOut },
-  ], [onSignOut]);
+  ], [onSignOut, canApprove]);
 
   useHotkeys({
-    'mod+k': () => setPalette(true), '/': () => setPalette(true), '?': () => setHelp(true),
-    'g h': () => go('/staff'), 'g r': () => go('/staff/queue/reviews'), 'g c': () => go('/staff/queue/court'), 'g a': () => go('/staff/queue/approvals'),
+    'mod+k': () => setPalette(true), '/': () => setPalette(true), '?': () => setHelp(true), 'mod+/': () => setHelp(true),
+    'g h': () => go('/staff'), 'g r': () => go('/staff/queue/reviews'), 'g c': () => go('/staff/queue/court'), 'g e': () => go('/staff/certificates'), ...(canApprove ? { 'g a': () => go('/staff/queue/approvals') } : {}),
   });
 
-  const active = a === 'queue' ? b : a === 'case' ? (kase(b)?.type === 'court' ? 'court' : 'reviews') : a === 'camera' ? b : '';
+  const active = a === 'queue' ? b : a === 'case' ? (kase(b)?.type === 'court' ? 'court' : 'reviews') : a === 'camera' || a === 'cameras' ? 'cameras' : a === 'cert' || a === 'certificates' ? 'certificates' : 'home';
 
   return (
     <TooltipProvider>
@@ -71,7 +77,7 @@ export default function StaffShell({ user, parts, counts, hotApprovals, cameras,
           <UserMenu user={user} onSwitch={onSwitch} onShortcuts={() => setHelp(true)} onSignOut={onSignOut} />
         </header>
         <div className="st-body">
-          <SideNav active={active} counts={counts} hot={hotApprovals} cameras={cameras} />
+          <SideNav active={active} counts={counts} hot={hotApprovals} canApprove={canApprove} />
           <main className="st-main">
             {crumbs.length > 1 && <Breadcrumb className="st-crumbs">
               <BreadcrumbList>

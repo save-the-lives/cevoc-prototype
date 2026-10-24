@@ -1,13 +1,14 @@
 /* STAFF: dense, fast, evidence-first workspace. Shared by Transport and Revenue NSW. */
+.st { --ac: #146cfd; --ac-soft: #e1ebff; --ac-softer: #f3f7ff; --ac-line: #b5ccf5; --ac-ring: rgba(20,108,253,.18); --top: #0b1a33; }
+.st--rnsw { --ac: #c4163a; --ac-soft: #fde6eb; --ac-softer: #fff5f7; --ac-line: #f4b9c5; --ac-ring: rgba(196,22,58,.18); --top: #2b0d15; }
 .st { min-height: 100vh; background: #eef1f5; font-size: 14px; line-height: 1.45; color: #1f2933; }
-.st-top { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 14px; background: #0b1a33; color: #fff; padding: 8px 16px; border-bottom: 3px solid #146cfd; }
-.st--rnsw .st-top { border-bottom-color: #8a63d2; }
+.st-top { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 14px; background: var(--top); color: #fff; padding: 8px 16px; border-bottom: 3px solid var(--ac); }
 .st-app { color: #fff; text-decoration: none; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
 .st-app small { font-weight: 400; opacity: .7; margin-left: 4px; }
-.st-type { font: 700 10px ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; color: #146cfd; }
+.st-type { font: 700 10px ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ac); }
 .org { font: 700 11px ui-monospace, Menlo, monospace; padding: 3px 7px; border-radius: 2px; color: #fff; white-space: nowrap; }
 .org.tfnsw { background: #146cfd; }
-.org.rnsw { background: #6b3fa0; }
+.org.rnsw { background: #c4163a; }
 .st-me { white-space: nowrap; font-size: 13px; opacity: .9; }
 .st-out { background: none; color: #fff; border: 1px solid rgba(255,255,255,.4); border-radius: 3px; padding: 4px 10px; cursor: pointer; }
 .st-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: calc(100vh - 50px); }
@@ -15,7 +16,7 @@
 .st-side__h { font: 700 11px 'Public Sans', sans-serif; text-transform: uppercase; letter-spacing: .06em; color: #616e7c; margin: 12px 8px 4px; }
 .st-side a { display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 4px; text-decoration: none; color: #1f2933; }
 .st-side a:hover { background: #eef1f5; }
-.st-side a.on { background: #e1ebff; color: #0b1a33; font-weight: 700; }
+.st-side a.on { background: var(--ac-soft); color: #0b1a33; font-weight: 700; }
 .st-side a span { background: #dde2e8; border-radius: 10px; padding: 0 8px; font-size: 12px; }
 .st-side a span.hot { background: #c95000; color: #fff; }
 .st-main { padding: 16px 20px 60px; min-width: 0; }
@@ -26,8 +27,8 @@
 .st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .st-wide { grid-column: 1 / -1; }
 .st-muted { color: #616e7c; }
-.st-link { background: none; border: 0; padding: 0; color: #146cfd; text-decoration: underline; cursor: pointer; }
-.st-quote { margin: 0 0 10px; background: #fff; border-left: 4px solid #6b3fa0; padding: 10px 14px; font-size: 15px; border-radius: 4px; }
+.st-link { background: none; border: 0; padding: 0; color: var(--ac); text-decoration: underline; cursor: pointer; }
+.st-quote { margin: 0 0 10px; background: #fff; border-left: 4px solid var(--ac); padding: 10px 14px; font-size: 15px; border-radius: 4px; }
 .st-quote cite { display: block; font-size: 12px; color: #616e7c; font-style: normal; margin-top: 4px; }
 /* Evidence workspace */
 .ev-head { margin-bottom: 12px; }
@@ -54,11 +55,10 @@
 .st-audit time { color: #616e7c; font-family: ui-monospace, Menlo, monospace; font-size: 12px; margin-right: 4px; }
 .st-split { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
 .st-split > div { display: grid; gap: 14px; align-content: start; }
-.st-actions { border-top: 3px solid #146cfd; }
-.st--rnsw .st-actions { border-top-color: #6b3fa0; }
-.st-btn { background: #146cfd; color: #fff; border: 0; border-radius: 4px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+.st-actions { border-top: 3px solid var(--ac); }
+.st-btn { background: var(--ac); color: #fff; border: 0; border-radius: 4px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
 .st-btn:disabled { opacity: .45; cursor: not-allowed; }
-.st-btn.ghost { background: #fff; color: #146cfd; border: 1px solid #146cfd; }
+.st-btn.ghost { background: #fff; color: var(--ac); border: 1px solid var(--ac); }
 .st-btn.danger { background: #b42318; }
 .st-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 .st-label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; margin: 10px 0; }
@@ -66,7 +66,7 @@
 .st-radio { display: flex; gap: 8px; padding: 4px 0; }
 .st-steps { list-style: none; display: flex; gap: 4px; padding: 0; margin: 0 0 8px; font-size: 12px; }
 .st-steps li { flex: 1; padding: 4px 6px; background: #eef1f5; border-radius: 3px; color: #616e7c; }
-.st-steps li.on { background: #146cfd; color: #fff; font-weight: 700; }
+.st-steps li.on { background: var(--ac); color: #fff; font-weight: 700; }
 .st-steps li.done { background: #e3f6e5; color: #0b6b14; }
 .st-impact { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 4px; }
 .st-impact li { display: flex; gap: 6px; align-items: center; }
@@ -102,7 +102,7 @@ kbd { border: 1px solid #b6c0cc; border-bottom-width: 2px; border-radius: 3px; p
   .st-side__h { margin: 0 2px 0 6px; white-space: nowrap; }
   .st-side__h:first-child { margin-left: 0; }
   .st-side a { flex: none; gap: 8px; white-space: nowrap; min-height: 40px; align-items: center; background: #eef1f5; }
-  .st-side a.on { background: #e1ebff; }
+  .st-side a.on { background: var(--ac-soft); }
   .st-main { padding: 12px 12px 48px; }
   .st-main h1 { font-size: 18px; }
   .st-split, .ev-body { gap: 12px; }

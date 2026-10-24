@@ -287,6 +287,7 @@ export const PRESETS = [
   { label: 'All', q: '' },
   { label: 'Mine', q: 'assignee = me' },
   { label: 'Unassigned', q: 'assignee = unassigned' },
+  { label: 'With others', q: 'assignee IS NOT EMPTY AND assignee != me' },
   { label: 'Past target', q: 'left < 0 ORDER BY waiting DESC' },
   { label: 'Certificate not current', q: 'certification = "not current"' },
   { label: 'High priority', q: 'priority = high AND status = open' },

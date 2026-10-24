@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, AgencyLockup, Spinner } from '../shared/ui.jsx';
 import MediaGallery from '../shared/MediaGallery.jsx';
 import StaffShell from './shell/StaffShell.jsx';
+import { OUTCOMES } from './case/outcomes.js';
 import WorkQueue from './queue/WorkQueue.jsx';
 import ApprovalsQueue from './queue/ApprovalsQueue.jsx';
+import Dashboard from './dashboard/Dashboard.jsx';
+import CertificateRegister from './certs/CertificateRegister.jsx';
+import CameraList from './certs/CameraList.jsx';
 import { useStore } from '../lib/store.jsx';
 import { go } from '../lib/router.js';
 import { evaluate, scorecard, impactOf, daysBetween } from '../lib/rules.js';
@@ -147,6 +151,16 @@ function Audit({ refs }) {
   );
 }
 
+function NotForYou() {
+  return (
+    <div className="st-card">
+      <h1>Approvals aren’t part of your role</h1>
+      <p className="st-muted">Certificate withdrawals are approved by a camera program manager. You can still request a withdrawal from a certificate page, and it will wait here for them.</p>
+      <Link to="/staff">Back to the dashboard</Link>
+    </div>
+  );
+}
+
 function Handoff({ to, what }) {
   return <p className="st-handoff"><span className="owner-tag">{to}</span> {what}</p>;
 }
@@ -204,10 +218,6 @@ function NoticeRecord({ number, user }) {
   );
 }
 
-const OUTCOMES = {
-  review: [['uphold', 'Uphold the fine'], ['withdraw', 'Withdraw the fine'], ['caution', 'Withdraw and give a caution'], ['refer', 'Refer to Transport for technical advice']],
-  court: [['brief', 'Prepare brief of evidence'], ['withdraw', 'Withdraw the fine'], ['refer', 'Refer to Transport for technical advice']],
-};
 
 function CaseRecord({ id, user }) {
   const { state, dispatch, statusOf } = useStore();
@@ -395,29 +405,6 @@ function CertRecord({ id, user }) {
   );
 }
 
-function Home({ user }) {
-  const { state } = useStore();
-  return (
-    <div>
-      <h1>Find a record</h1>
-      <p className="st-muted">Type a notice number, plate, camera code, certificate or case ID in the search bar, or press <kbd>/</kbd>.</p>
-      <div className="st-grid">
-        <div className="st-card"><h3>Recently viewed</h3>{state.recent.length ? <ul className="st-list">{state.recent.map((r) => <li key={r.to}><Link to={r.to}>{r.label}</Link></li>)}</ul> : <p className="st-muted">Nothing yet.</p>}</div>
-        <div className="st-card">
-          <h3>You can</h3>
-          <ul className="st-list">
-            {can(user, 'case:decide') && <li>Decide reviews and court elections</li>}
-            {can(user, 'withdraw:request') && <li>Request certificate withdrawals</li>}
-            {can(user, 'withdraw:approve') && <li>Approve withdrawals</li>}
-            {can(user, 'inspect:request') && <li>Add technical advice to cases</li>}
-            <li>View all evidence and certificates</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function StaffSite({ parts, query }) {
   const { state, dispatch } = useStore();
   const user = findStaff(state.user);
@@ -433,16 +420,20 @@ export default function StaffSite({ parts, query }) {
   const [, a, b] = parts;
   const open = (t) => CASES.filter((c) => c.type === t && !state.decisions[c.id]).length;
   const approvals = state.pending.length;
+  const canApprove = can(user, 'withdraw:approve');
   let body;
   if (a === 'notice') body = <NoticeRecord key={b} number={b} user={user} />;
   else if (a === 'case') body = <CaseRecord key={b} id={b} user={user} />;
   else if (a === 'camera') body = <CameraRecord code={b} />;
   else if (a === 'cert') body = <CertRecord key={b} id={b} user={user} />;
-  else if (a === 'queue') body = b === 'approvals' ? <ApprovalsQueue /> : <WorkQueue key={b} name={b} user={user} />;
-  else body = <Home user={user} />;
+  else if (a === 'certificates') body = <CertificateRegister />;
+  else if (a === 'cameras') body = <CameraList user={user} />;
+  else if (a === 'queue' && b === 'approvals') body = canApprove ? <ApprovalsQueue /> : <NotForYou />;
+  else if (a === 'queue') body = <WorkQueue key={`${b}|${query.q || ''}`} name={b} user={user} initialQuery={query.q || ''} />;
+  else body = <Dashboard user={user} canApprove={canApprove} />;
 
   return (
-    <StaffShell user={user} parts={parts} cameras={SITES} counts={{ review: open('review'), court: open('court'), approvals }} hotApprovals={approvals > 0 && can(user, 'withdraw:approve')}
+    <StaffShell user={user} parts={parts} counts={{ review: open('review'), court: open('court'), approvals, certs: CERTS.length }} canApprove={canApprove} hotApprovals={approvals > 0 && canApprove}
       onSwitch={(id) => dispatch({ type: 'signIn', id })} onSignOut={() => { dispatch({ type: 'signOut' }); go('/staff'); }}>
       {body}
     </StaffShell>

@@ -104,7 +104,7 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       const t = e.target;
-      if (t && (/^(input|textarea|select|video)$/i.test(t.tagName) || t.isContentEditable)) return;
+      if (t && (/^(input|textarea|select|video)$/i.test(t.tagName) || t.isContentEditable || t.closest?.('[role="menu"],[role="tablist"],[role="tab"],[role="listbox"],[role="radio"],[role="slider"],[role="separator"],[data-keys="own"]'))) return;
       if (document.querySelector('[role="dialog"]')) return;
       e.preventDefault();
       go(e.key === 'ArrowRight' ? 1 : -1);

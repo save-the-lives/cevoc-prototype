@@ -34,7 +34,7 @@ button { font: inherit; }
 .lockup-nsw small { display: block; font-size: 9px; letter-spacing: .18em; font-weight: 700; }
 .lockup-agency { display: inline-block; font-weight: 800; font-size: 14px; padding: 7px 10px; color: #fff; letter-spacing: .02em; }
 .lockup-agency.is-tfnsw { background: #002664; border-left: 5px solid #d7153a; }
-.lockup-agency.is-rnsw { background: #3b2a6b; border-left: 5px solid #d7153a; }
+.lockup-agency.is-rnsw { background: #a3122f; border-left: 5px solid #d7153a; }
 
 /* Demo-only affordances: amber + hatched so they never read as part of the service */
 .demo-dock { position: fixed; left: 12px; bottom: 12px; z-index: 800; font: 600 12px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border: 1px dashed #e0a800; border-radius: 14px; padding: 5px 10px; text-decoration: none; opacity: .7; }

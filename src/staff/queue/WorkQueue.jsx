@@ -11,18 +11,19 @@ import { slaOf } from './sla.js';
 import { COLUMN_BY_ID } from './columns.jsx';
 import { PRESETS, compile, orderRows } from './query.js';
 import QueryBar from './QueryBar.jsx';
-import CasePreview from './CasePreview.jsx';
+import CaseWorkbench from './CaseWorkbench.jsx';
+import CaseRail from './CaseRail.jsx';
 import ColumnChooser from './ColumnChooser.jsx';
 import ColumnResizer from './ColumnResizer.jsx';
 
 // A work queue: search, filters, sortable and rearrangeable columns, selection with bulk actions,
 // a docked quick view and keyboard shortcuts (j/k, Enter, p, x, a).
-export default function WorkQueue({ name, user }) {
+export default function WorkQueue({ name, user, initialQuery = '' }) {
   const { state, dispatch, statusOf } = useStore();
   const type = name === 'court' ? 'court' : 'review';
   const canAssign = user.perms.includes('case:decide');
   const cols = useColumns();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const queryRef = useRef(null);
   const lastGood = useRef(null);
   const [sort, setSort] = useState({ key: 'waiting', dir: 'desc' });
@@ -33,6 +34,7 @@ export default function WorkQueue({ name, user }) {
   const [over, setOver] = useState(null);
   const [live, setLive] = useState(null);
   const bodyRef = useRef(null);
+  const lastAssign = useRef(null);
 
   const assigneeOf = (c) => (c.id in state.assign ? state.assign[c.id] : c.assignee);
   const all = useMemo(() => CASES.filter((c) => c.type === type).map((c) => {
@@ -63,6 +65,7 @@ export default function WorkQueue({ name, user }) {
     const who = to ? findStaff(to).name : 'nobody';
     dispatch({ type: 'assign', map: Object.fromEntries(ids.map((id) => [id, to])), by: user.id, what: `Assigned ${ids.join(', ')} to ${who}`, ref: ids[0] });
     setPicked(new Set());
+    lastAssign.current = { before, ids };
     toast.success(to ? `${ids.length === 1 ? ids[0] : `${ids.length} cases`} assigned to ${to === user.id ? 'you' : who}` : `${ids.length === 1 ? ids[0] : `${ids.length} cases`} unassigned`, {
       action: { label: 'Undo', onClick: () => dispatch({ type: 'assign', map: before, by: user.id, what: `Undid assignment of ${ids.join(', ')}`, ref: ids[0] }) },
     });
@@ -70,14 +73,40 @@ export default function WorkQueue({ name, user }) {
   const cursorRow = rows[cursor];
   const targets = () => (picked.size ? [...picked] : cursorRow ? [cursorRow.c.id] : []);
 
+  const typing = () => /^(input|textarea|select)$/i.test(document.activeElement?.tagName || '');
+  const move = (to) => setCursor(Math.max(0, Math.min(to, rows.length - 1)));
+  const assignMine = () => {
+    if (!canAssign) return;
+    const ids = targets().filter((id) => assigneeOf(CASES.find((c) => c.id === id)) !== user.id);
+    if (ids.length) assign(ids, user.id); else toast.info('Already assigned to you');
+  };
+  const undoAssign = () => {
+    if (typing()) return false;
+    const last = lastAssign.current;
+    if (!last) { toast.info('Nothing to undo'); return undefined; }
+    dispatch({ type: 'assign', map: last.before, by: user.id, what: `Undid assignment of ${last.ids.join(', ')}`, ref: last.ids[0] });
+    lastAssign.current = null;
+    toast.success('Assignment undone');
+    return undefined;
+  };
+
+  // Familiar list keys (arrows, Home/End, Page Up/Down, Space, Ctrl+A, Ctrl+Z) alongside the quick ones (j/k, x, a, f).
+  // Ctrl+A only when no text is selected; Home, End and Page keys step aside while a case is open.
   useHotkeys({
-    j: () => setCursor((c) => Math.min(c + 1, rows.length - 1)),
-    k: () => setCursor((c) => Math.max(c - 1, 0)),
-    Enter: () => cursorRow && go(`/staff/case/${cursorRow.c.id}`),
+    j: () => move(cursor + 1), k: () => move(cursor - 1),
+    ArrowDown: () => move(cursor + 1), ArrowUp: () => move(cursor - 1),
+    // Home, End and Page keys only drive the list when no case is open, so they can scroll the review panes
+    Home: () => (dock ? undefined : move(0)), End: () => (dock ? undefined : move(rows.length - 1)),
+    PageDown: () => (dock ? undefined : move(cursor + 8)), PageUp: () => (dock ? undefined : move(cursor - 8)),
+    Enter: () => cursorRow && setDock(true),
+    o: () => cursorRow && go(`/staff/case/${cursorRow.c.id}`),
     p: () => setDock((d) => !d),
     f: () => queryRef.current?.focus(),
     x: () => cursorRow && toggle(cursorRow.c.id),
-    a: () => canAssign && assign(targets(), user.id),
+    ' ': () => cursorRow && toggle(cursorRow.c.id),
+    'mod+a': () => { if (typing() || !window.getSelection()?.isCollapsed) return false; setPicked(new Set(rows.map((r) => r.c.id))); return undefined; },
+    'mod+z': undoAssign,
+    a: assignMine,
     Escape: () => (dock ? setDock(false) : setPicked(new Set())),
   });
 
@@ -112,7 +141,7 @@ export default function WorkQueue({ name, user }) {
           <strong>{picked.size} selected</strong>
           {canAssign ? (
             <>
-              <Button size="sm" onClick={() => assign([...picked], user.id)}>Assign to me</Button>
+              {[...picked].some((id) => assigneeOf(CASES.find((c) => c.id === id)) !== user.id) && <Button size="sm" onClick={() => assign([...picked].filter((id) => assigneeOf(CASES.find((c) => c.id === id)) !== user.id), user.id)}>Assign to me</Button>}
               <DropdownMenu>
                 <DropdownMenuTrigger render={<Button size="sm" variant="outline">Assign to…</Button>} />
                 <DropdownMenuContent align="start">
@@ -128,8 +157,15 @@ export default function WorkQueue({ name, user }) {
       )}
 
       <p className="sr-only" aria-live="polite">{rows.length} cases shown{cursorRow ? `. Row ${cursor + 1}: ${cursorRow.c.id}` : ''}</p>
-      <div className={`st-pane ${docked ? 'has-dock' : ''}`}>
-        <div className={`st-grid-wrap ${cols.density === 'compact' || docked ? 'is-compact' : ''}`}>
+      {docked ? (
+        <div className="st-pane has-dock">
+          <CaseRail rows={rows} cursor={cursor} onSelect={(i) => setCursor(i)} />
+          <CaseWorkbench row={cursorRow} index={cursor} total={rows.length} user={user}
+            onPrev={() => setCursor((c) => Math.max(c - 1, 0))} onNext={() => setCursor((c) => Math.min(c + 1, rows.length - 1))} onClose={() => setDock(false)} />
+        </div>
+      ) : (
+        <div className="st-pane">
+        <div className={`st-grid-wrap ${cols.density === 'compact' ? 'is-compact' : ''}`}>
           <Table aria-label={title} className="st-queue" style={{ tableLayout: 'fixed', width: `max(100%, ${tableW}px)` }}>
             <colgroup>
               <col style={{ width: 44 }} />
@@ -166,10 +202,10 @@ export default function WorkQueue({ name, user }) {
                       <DropdownMenuTrigger className="st-rowmenu" aria-label={`Actions for ${r.c.id}`}>⋯</DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => go(`/staff/case/${r.c.id}`)}>Open case</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setCursor(i); setDock(true); }}>Quick view</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setCursor(i); setDock(true); }}>Review here</DropdownMenuItem>
                         {canAssign && <DropdownMenuSeparator />}
-                        {canAssign && <DropdownMenuItem onClick={() => assign([r.c.id], user.id)}>Assign to me</DropdownMenuItem>}
-                        {canAssign && r.assignee && <DropdownMenuItem onClick={() => assign([r.c.id], null)}>Unassign</DropdownMenuItem>}
+                        {canAssign && r.assignee !== user.id && <DropdownMenuItem onClick={() => assign([r.c.id], user.id)}>{r.assignee ? `Take over from ${findStaff(r.assignee)?.name}` : 'Assign to me'}</DropdownMenuItem>}
+                        {canAssign && r.assignee && <DropdownMenuItem onClick={() => assign([r.c.id], null)}>{r.assignee === user.id ? 'Release (unassign)' : 'Unassign'}</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -179,13 +215,9 @@ export default function WorkQueue({ name, user }) {
             </TableBody>
           </Table>
         </div>
-        {docked && (
-          <CasePreview row={cursorRow} index={cursor} total={rows.length} canAssign={canAssign}
-            onPrev={() => setCursor((c) => Math.max(c - 1, 0))} onNext={() => setCursor((c) => Math.min(c + 1, rows.length - 1))}
-            onClose={() => setDock(false)} onAssignMe={(r) => assign([r.c.id], user.id)} />
-        )}
-      </div>
-      <p className="st-hint">Keyboard: <Kbd>j</Kbd> <Kbd>k</Kbd> move · <Kbd>Enter</Kbd> open · <Kbd>p</Kbd> quick view · <Kbd>x</Kbd> select{canAssign && <> · <Kbd>a</Kbd> assign to me</>} · <Kbd>?</Kbd> all shortcuts · drag a column header to move it, its edge to resize · <Kbd>f</Kbd> filter</p>
+        </div>
+      )}
+      <p className="st-hint">Keyboard: <Kbd>↑</Kbd> <Kbd>↓</Kbd> move · <Kbd>Enter</Kbd> review · <Kbd>o</Kbd> full case · <Kbd>Space</Kbd> select · <Kbd>Ctrl</Kbd>+<Kbd>A</Kbd> all{canAssign && <> · <Kbd>a</Kbd> assign to me · <Kbd>Ctrl</Kbd>+<Kbd>Z</Kbd> undo</>} · <Kbd>?</Kbd> all shortcuts · drag a column header to move it, its edge to resize · <Kbd>f</Kbd> filter</p>
     </>
   );
 }
