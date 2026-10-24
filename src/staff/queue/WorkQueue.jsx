@@ -22,7 +22,7 @@ export default function WorkQueue({ name, user }) {
   const [q, setQ] = useState('');
   const [scope, setScope] = useState('all');
   const [certOnly, setCertOnly] = useState(false);
-  const [sort, setSort] = useState({ key: 'sla', dir: 'asc' });
+  const [sort, setSort] = useState({ key: 'waiting', dir: 'desc' });
   const [picked, setPicked] = useState(() => new Set());
   const [cursor, setCursor] = useState(0);
   const [dock, setDock] = useState(false);
@@ -40,7 +40,7 @@ export default function WorkQueue({ name, user }) {
     const t = q.trim().toLowerCase();
     const list = all.filter((r) => (!t || `${r.c.id} ${r.c.notice} ${r.n.holder} ${r.n.rego} ${r.program}`.toLowerCase().includes(t))
       && (scope === 'all' || (scope === 'mine' ? r.assignee === user.id : !r.assignee)) && (!certOnly || !r.ev.current));
-    const f = COLUMN_BY_ID[sort.key]?.sort || COLUMN_BY_ID.sla.sort;
+    const f = COLUMN_BY_ID[sort.key]?.sort || COLUMN_BY_ID.waiting.sort;
     return [...list].sort((a, b) => (f(a) < f(b) ? -1 : f(a) > f(b) ? 1 : 0) * (sort.dir === 'asc' ? 1 : -1));
   }, [all, q, scope, certOnly, sort, user.id]);
 
@@ -83,7 +83,7 @@ export default function WorkQueue({ name, user }) {
     <>
       <div className="st-qhead">
         <h1>{title}</h1>
-        <p className="st-muted">{open} open · {mine} assigned to you · response due {type === 'court' ? '42' : '28'} days after lodging</p>
+        <p className="st-muted">{open} open · {mine} assigned to you · aim to reply within {type === 'court' ? '42' : '28'} days of the request</p>
       </div>
 
       <div className="st-toolbar" role="search">

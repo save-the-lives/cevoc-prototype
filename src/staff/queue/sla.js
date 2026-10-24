@@ -3,14 +3,18 @@ import { daysBetween } from '../../lib/rules.js';
 
 const addDays = (iso, n) => { const d = new Date(`${iso}T00:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
-// Service level: reviews are due 28 days after lodging, court elections 42 days.
+// How long the customer has been waiting since they asked for the review, against the target reply time
+// (28 days for reviews, 42 for court elections). The tone shows how close the wait is to the target.
 export function slaOf(c) {
-  const due = addDays(c.lodged, c.type === 'court' ? 42 : 28);
-  const days = daysBetween(TODAY, due);
+  const target = c.type === 'court' ? 42 : 28;
+  const waited = Math.max(daysBetween(c.lodged, TODAY), 0);
+  const due = addDays(c.lodged, target);
+  const left = target - waited;
   return {
-    due, days,
-    label: days < 0 ? `Overdue ${-days}d` : days === 0 ? 'Due today' : `${days}d left`,
-    tone: days < 0 ? 'danger' : days <= 7 ? 'warning' : 'grey',
+    waited, target, due, left,
+    label: waited === 0 ? 'Today' : `${waited} day${waited === 1 ? '' : 's'}`,
+    tone: left < 0 ? 'danger' : waited >= target * 0.75 ? 'warning' : 'grey',
+    hint: left < 0 ? `${-left} days past the ${target}-day target` : left === 0 ? 'Target reply is due today' : `${left} days until the ${target}-day target`,
   };
 }
 

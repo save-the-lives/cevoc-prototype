@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { COLUMNS, COLUMN_BY_ID } from '../queue/columns.jsx';
 
 // Which queue columns are shown, in what order, and how dense the rows are. Remembered in this browser.
-const KEY = 'cevoc-queue-prefs-v1';
+const KEY = 'cevoc-queue-prefs-v2';
 const ALL = COLUMNS.map((c) => c.id);
 const DEFAULT = { order: ALL, hidden: COLUMNS.filter((c) => !c.def).map((c) => c.id), density: 'comfortable' };
 

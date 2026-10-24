@@ -22,7 +22,7 @@ export default function CasePreview({ row, index, total, onPrev, onNext, onClose
       <div className="st-dock__pos">Case {index + 1} of {total} · <Kbd>j</Kbd> next · <Kbd>k</Kbd> previous · <Kbd>Esc</Kbd> close</div>
       <div className="st-dock__body">
         <div className="st-dock__tags">
-          <Tag size="sm" color={sla.tone}>{sla.label}</Tag>
+          <Tag size="sm" color={sla.tone}>Waiting {sla.label}</Tag>
           <Tag size="sm" color={ev.current ? 'success' : 'warning'}>{ev.current ? 'Certification current' : `${ev.notCurrent} not current`}</Tag>
         </div>
         <blockquote className="st-quote">“{c.grounds}”<cite>{n.holder} · {c.channel}</cite></blockquote>
@@ -30,8 +30,8 @@ export default function CasePreview({ row, index, total, onPrev, onNext, onClose
         <dl className="st-kv">
           <div><dt>Program</dt><dd>{program}</dd></div>
           <div><dt>Offence</dt><dd>{n.offence}</dd></div>
-          <div><dt>Lodged</dt><dd>{fmtDate(c.lodged)}</dd></div>
-          <div><dt>Response due</dt><dd>{fmtDate(sla.due)}</dd></div>
+          <div><dt>Asked on</dt><dd>{fmtDate(c.lodged)} ({sla.waited === 0 ? 'today' : `${sla.label} ago`})</dd></div>
+          <div><dt>Target reply</dt><dd>{fmtDate(sla.due)}<small className="st-sub">{sla.hint}</small></dd></div>
           <div><dt>Assigned to</dt><dd>{assignee ? findStaff(assignee)?.name : 'Unassigned'}</dd></div>
         </dl>
         <h3 className="st-dock__h">Certificates on the day</h3>
