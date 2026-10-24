@@ -27,7 +27,7 @@ button { font: inherit; }
 .proto-line { font: 12px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border-left: 3px solid #e0a800; padding: 6px 10px; }
 
 /* Brand lockups (text fallbacks until official files are in public/brand/) */
-.brand-logo { height: 44px; width: auto; }
+.brand-logo { height: 64px; width: auto; }
 .lockup-nsw { display: inline-flex; align-items: center; gap: 8px; color: #002664; }
 .lockup-waratah { color: #d7153a; font-size: 34px; line-height: 1; }
 .lockup-nsw b { display: block; font-size: 18px; letter-spacing: .04em; line-height: 1; }
