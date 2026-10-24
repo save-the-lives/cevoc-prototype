@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Button, Field, FieldDescription, FieldError, FieldLabel, Header, HeaderActions, HeaderBrand, Hero, HeroContent, HeroDescription, HeroTitle, Input, Masthead, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@nswds/ui';
 import { Link, Dialog, Spinner } from '../shared/ui.jsx';
 import Handoff from './Handoff.jsx';
+import StatusBar from './StatusBar.jsx';
+import { matterStatus } from './status.js';
 import CertificateView from './CertificateView.jsx';
 import { downloadCert } from '../lib/certDoc.js';
+import Icon from './measure/Icon.jsx';
 import MediaGallery from '../shared/MediaGallery.jsx';
 import Measure from './Measure.jsx';
 import { useStore } from '../lib/store.jsx';
@@ -20,7 +23,7 @@ import { TODAY, fmtDate, fmtTime, weekday, partOfDay, ago } from '../lib/format.
 function SiteHeader() {
   return (
     <>
-      <Masthead container="contained" />
+      <div role="region" aria-label="NSW Government"><Masthead container="contained" /></div>
       <Header color="white" border container="contained">
         <HeaderBrand href="#/" sitename="Camera-detected offences" />
         <HeaderActions>
@@ -183,7 +186,7 @@ function CertList({ n, fault }) {
           <li key={i} className={it.current ? 'is-ok' : 'is-warn'}>
             <span className="certs-ic" aria-hidden="true">{it.current ? '✓' : '!'}</span>
             <div>
-              <div className="certs-head"><strong>{it.req.label}</strong><Tag color={it.current ? 'success' : 'warning'}>{it.current ? 'Current' : 'Not current'}</Tag></div>
+              <div className="certs-head"><strong>{it.req.label}</strong><Tag color={it.current ? 'success' : 'warning'} className={it.current ? '' : 'pub-tag-warn'}>{it.current ? 'Current' : 'Not current'}</Tag></div>
               <p>
                 {it.cert
                   ? (it.current ? `${when(it)}. It needs to be done ${it.req.window}.` : `${when(it)}. That’s longer than the usual ${window(it)}, so you may want to mention it if you ask for a review.`)
@@ -192,8 +195,8 @@ function CertList({ n, fault }) {
               {it.withdrawn && <p className="muted">A later certificate was withdrawn by Transport and doesn’t count.</p>}
               {it.cert && (
                 <div className="certs-act">
-                  <Button type="button" size="sm" variant="outline" onClick={() => setViewing(it.cert)}>View certificate</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => downloadCert(it.cert, site)}>Download PDF ↓</Button>
+                  <button type="button" className="pub-act" onClick={() => setViewing(it.cert)} aria-label={`View certificate ${it.cert.id}, ${it.req.label}`}><Icon name="view" />View</button>
+                  <button type="button" className="pub-act" onClick={() => downloadCert(it.cert, site)} aria-label={`Download PDF of certificate ${it.cert.id}, ${it.req.label}`}><Icon name="download" />Download PDF</button>
                 </div>
               )}
             </div>
@@ -233,9 +236,7 @@ function NoticePage({ number }) {
     : `Not completely. ${ev.notCurrent} of the camera’s certificates ${ev.notCurrent > 1 ? 'were' : 'was'} not current on the day. You may want to mention this if you ask for a review.`;
 
   const st = (i) => (i - 1 < story.active ? 'done' : i - 1 === story.active ? 'now' : '');
-  const deadline = openCase
-    ? { tone: 'info', title: `Your ${openCase.type === 'court' ? 'court election' : 'review request'} is with Revenue NSW.`, more: 'You don’t need to do anything else for now. This page shows the same evidence they’re looking at.' }
-    : { tone: left <= 7 ? 'warn' : 'info', title: left < 0 ? `The due date (${fmtDate(n.due)}) has passed.` : `You have until ${fmtDate(n.due)} (${left} days) to decide what to do.`, more: 'Take your time to read through. Help with paying is available if you need it.' };
+  const status = matterStatus({ n, left, openCase, ev });
 
   return (
     <div className="pub-wrap pub-page" ref={story.pageRef}>
@@ -244,10 +245,7 @@ function NoticePage({ number }) {
       <p className="pub-lede">{prog.label} · Penalty notice {n.number}</p>
 
       <div ref={story.sentinelRef} className="pub-sentinel" aria-hidden="true" />
-      <div ref={story.barRef} className={`pub-deadline is-${deadline.tone} ${story.stuck ? 'is-stuck' : ''}`} role="status">
-        <span className="pub-deadline__ico" aria-hidden="true">{deadline.tone === 'warn' ? '!' : 'i'}</span>
-        <div><strong>{deadline.title}</strong><span className="pub-deadline__more"> {deadline.more}</span></div>
-      </div>
+      <StatusBar status={status} notice={n.number} stuck={story.stuck} barRef={story.barRef} onPay={() => setLeaving(OPTIONS[0])} />
 
       <div className="pub-story">
         <nav className="pub-toc" aria-label="On this page" ref={story.tocRef} style={{ '--prog': story.active / 4 }}>
@@ -290,7 +288,7 @@ function NoticePage({ number }) {
               {OPTIONS.map((o) => (
                 <li key={o.id}>
                   <div><strong>{o.title}</strong><p>{o.text}</p></div>
-                  <Handoff what={o.what} notice={n.number}><Button type="button" variant="outline" onClick={() => setLeaving(o)}>{o.cta} ↗</Button></Handoff>
+                  <Handoff what={o.what} notice={n.number}><button type="button" className="pub-out" onClick={() => setLeaving(o)}>{o.cta}<span aria-hidden="true"> ↗</span><span className="sr-only"> (opens Revenue NSW)</span></button></Handoff>
                 </li>
               ))}
             </ul>
@@ -349,7 +347,7 @@ function Camera({ code }) {
               <TableRow key={c.id} className={w ? 'is-withdrawn' : ''}>
                 <TableCell>{type(c)}<small>{c.id}</small></TableCell>
                 <TableCell>{fmtDate(c.date)}</TableCell>
-                <TableCell><Tag color={w ? 'warning' : 'success'}>{w ? 'Withdrawn' : 'On record'}</Tag></TableCell>
+                <TableCell><Tag color={w ? 'warning' : 'success'} className={w ? 'pub-tag-warn' : ''}>{w ? 'Withdrawn' : 'On record'}</Tag></TableCell>
               </TableRow>
             );
           })}
@@ -361,6 +359,17 @@ function Camera({ code }) {
 
 export default function PublicSite({ parts }) {
   const { state } = useStore();
+  const path = parts.join('/');
+  const first = useRef(true);
+  useEffect(() => {
+    const [a, b] = parts;
+    const page = a === 'notice' && b ? `Notice ${b}` : a === 'cameras' ? 'Check a camera' : a === 'camera' && b ? `Camera ${b}` : 'Find your notice';
+    document.title = `${page} | Camera-detected offences | NSW Government (prototype)`;
+    // after a page change, move focus to the new page heading so screen reader and keyboard users start in the right place
+    if (first.current) { first.current = false; return; }
+    const h = document.querySelector('#main h1');
+    if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+  }, [path]); // eslint-disable-line
   const [a, b] = parts;
   let body;
   if (!a) body = <Lookup />;

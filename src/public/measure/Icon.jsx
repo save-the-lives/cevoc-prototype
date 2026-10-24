@@ -11,6 +11,8 @@ const P = {
   route: <><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8 7c8 0 2 10 8 10" /></>,
   ruler: <><rect x="2.5" y="8" width="19" height="8" rx="1.5" /><path d="M6.5 8v3M10.5 8v4M14.5 8v3M18.5 8v4" /></>,
   slow: <><path d="M4 16a8 8 0 0 1 16 0" /><path d="m12 16 4-5" /><circle cx="12" cy="16" r="1" /></>,
+  view: <><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+  download: <><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5" /><path d="M4 19h16" /></>,
   blur: <><circle cx="12" cy="8" r="3.5" strokeDasharray="2 2" /><path d="M5 20c0-3.9 3.1-6 7-6s7 2.1 7 6" strokeDasharray="2 2" /></>,
 };
 export default function Icon({ name }) {

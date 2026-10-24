@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CARDS } from './content.js';
 import Icon from './Icon.jsx';
 
@@ -6,9 +7,11 @@ const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'sm
 // Teaching cards, specific to the camera program that recorded the offence.
 export default function GoodToKnow({ program }) {
   const cards = CARDS[program] || [];
+  // open on larger screens, folded on a phone to save space
+  const [open, setOpen] = useState(() => window.matchMedia('(min-width: 641px)').matches);
   if (!cards.length) return null;
   return (
-    <details className="ms-know" open>
+    <details className="ms-know" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary><span className="ms-know__chev" aria-hidden="true" /><span>Good to know about this kind of camera</span><small>{cards.length} things</small></summary>
       <ul>
         {cards.map((c) => (

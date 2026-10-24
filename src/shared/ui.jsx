@@ -7,9 +7,17 @@ export function Dialog({ title, onClose, children, wide }) {
   useEffect(() => {
     const prev = document.activeElement;
     ref.current?.focus();
-    const esc = (e) => e.key === 'Escape' && onClose();
-    document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('keydown', esc); prev?.focus?.(); };
+    const keys = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab' || !ref.current) return;
+      const f = [...ref.current.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+      if (!f.length) { e.preventDefault(); return; }
+      const first = f[0]; const last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', keys);
+    return () => { document.removeEventListener('keydown', keys); prev?.focus?.(); };
   }, [onClose]);
   return (
     <div className="dlg-scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -46,7 +54,7 @@ export const AgencyLockup = ({ agency }) => agency === 'rnsw'
 export function DemoDock() {
   const { hash } = window.location;
   if (hash.includes('clean=1')) return null;
-  return <a className="demo-dock" href="#/demo" title="Back to the demo hub">◂ Demo hub</a>;
+  return <aside aria-label="Prototype controls"><a className="demo-dock" href="#/demo">◂ Demo hub</a></aside>;
 }
 
 export const Spinner = () => <span className="spin" aria-hidden="true" />;

@@ -56,7 +56,7 @@ export const CERTS = [
 ];
 
 const img = (id, file, caption) => ({ id, type: 'image', src: M(file), caption, size: kb(file), ext: 'JPG' });
-const vid = (id, file, caption) => ({ id, type: 'video', src: M(`${file}.mp4`), poster: M(`${file}-poster.jpg`), caption, size: kb(`${file}.mp4`), ext: 'MP4' });
+const vid = (id, file, caption, description) => ({ id, type: 'video', description, src: M(`${file}.mp4`), poster: M(`${file}-poster.jpg`), caption, size: kb(`${file}.mp4`), ext: 'MP4' });
 
 export const NOTICES = [
   {
@@ -67,12 +67,12 @@ export const NOTICES = [
   {
     number: '3162457893', rego: 'MOB789', site: 'MOB-312', dateTime: '2026-09-04T22:16:40', issued: '2026-09-28', due: '2026-11-06',
     offence: 'Exceed speed limit by more than 10 km/h', speed: 81, vehicle: 'Passenger vehicle', holder: 'Liam Walsh', plateConfidence: 0.97,
-    media: [img('IMG-3101', 'mob789-scene.jpg', 'Vehicle passing the mobile camera'), img('IMG-3102', 'mob789-plate.jpg', 'Number plate close-up'), img('IMG-3103', 'mob789-site.jpg', 'Camera set up at the site'), vid('VID-3101', 'mob789-video', 'Approach video, 8 seconds')],
+    media: [img('IMG-3101', 'mob789-scene.jpg', 'Vehicle passing the mobile camera'), img('IMG-3102', 'mob789-plate.jpg', 'Number plate close-up'), img('IMG-3103', 'mob789-site.jpg', 'Camera set up at the site'), vid('VID-3101', 'mob789-video', 'Approach video, 8 seconds', 'No sound. The camera view slowly moves in on a dark station wagon driving towards the camera on a wet road at night, headlights on, with the number plate MOB789 visible.')],
   },
   {
     number: '3162457891', rego: 'RLC456', site: 'RYD-014', dateTime: '2026-08-02T18:05:47', issued: '2026-08-21', due: '2026-10-30',
     offence: 'Proceed through red traffic light', speed: 54, redFor: 3.2, vehicle: 'Passenger vehicle', holder: 'Thomas Kelly', plateConfidence: 0.95,
-    media: [img('IMG-0811', 'rlc456-red1.jpg', 'Approaching the stop line, red for 2.1 seconds'), img('IMG-0812', 'rlc456-red2.jpg', 'Crossing the stop line, red for 3.2 seconds'), img('IMG-0813', 'rlc456-plate.jpg', 'Number plate close-up'), img('IMG-0814', 'rlc456-wide.jpg', 'Wider view of the intersection'), vid('VID-0811', 'rlc456-video', 'Signal sequence video, 8 seconds')],
+    media: [img('IMG-0811', 'rlc456-red1.jpg', 'Approaching the stop line, red for 2.1 seconds'), img('IMG-0812', 'rlc456-red2.jpg', 'Crossing the stop line, red for 3.2 seconds'), img('IMG-0813', 'rlc456-plate.jpg', 'Number plate close-up'), img('IMG-0814', 'rlc456-wide.jpg', 'Wider view of the intersection'), vid('VID-0811', 'rlc456-video', 'Signal sequence video, 8 seconds', 'No sound. Three camera frames, each shown for about three seconds with a slow zoom: two vehicles approaching the stop line, then mid-way, then past it. The time since the light turned red is shown at the top of each frame.')],
   },
   {
     number: '3162457894', rego: 'HVY321', site: 'AVG-HUM', dateTime: '2026-09-11T03:48:00', issued: '2026-10-01', due: '2026-11-12',

@@ -172,6 +172,7 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
         <div className="mg-caption">
           <strong>{item.caption}</strong>
           <span>{i + 1} of {n} · {item.type === 'video' ? 'Video' : 'Image'} · {item.ext}, {item.size}</span>
+          {item.type === 'video' && item.description && <span className="mg-desc"><b>Text description:</b> {item.description}</span>}
         </div>
         <div className="mg-actions">
           {status[item.id] === 'ready' && item.type === 'image' && (
@@ -189,11 +190,11 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
         </div>
       </div>
 
-      <div className="mg-thumbs" role="tablist" ref={thumbRef}>
+      <div className="mg-thumbs" role="group" aria-label="Choose an image or video" ref={thumbRef}>
         {items.map((it, k) => {
           const st = status[it.id] || 'loading';
           return (
-            <button key={it.id} type="button" role="tab" aria-selected={k === i} className={`mg-thumb ${k === i ? 'is-on' : ''} is-${st}`} onClick={() => setI(k)} aria-label={`${it.caption} (${st})`}>
+            <button key={it.id} type="button" aria-pressed={k === i} className={`mg-thumb ${k === i ? 'is-on' : ''} is-${st}`} onClick={() => setI(k)} aria-label={`${it.caption} (${st})`}>
               {st === 'ready' ? <img src={url(it.type === 'video' ? it.poster : it.src)} alt="" /> : <span className="mg-thumb__st">{st === 'missing' ? '—' : st === 'error' ? '!' : <Spinner />}</span>}
               {it.type === 'video' && <span className="mg-play" aria-hidden="true">▶</span>}
             </button>

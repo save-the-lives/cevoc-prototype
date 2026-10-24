@@ -26,6 +26,7 @@ export function useStickyStory(count, resetKey) {
       page.style.setProperty('--pub-bar', `${bar}px`);
       page.style.setProperty('--pub-toc', `${toc}px`);
       offset = hdrH + bar + toc;
+      document.documentElement.style.setProperty('--pub-stack', `${offset + 16}px`);
     };
     const spy = () => {
       const line = offset + window.innerHeight * 0.3;
@@ -46,7 +47,7 @@ export function useStickyStory(count, resetKey) {
     window.addEventListener('resize', onResize);
     const ro = new ResizeObserver(onResize);
     [barRef.current, tocRef.current, hdr].filter(Boolean).forEach((el) => ro.observe(el));
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); ro.disconnect(); };
+    return () => { document.documentElement.style.removeProperty('--pub-stack'); cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); ro.disconnect(); };
   }, [count, resetKey]);
 
   // On a phone the step list scrolls sideways; keep the current step in sight.

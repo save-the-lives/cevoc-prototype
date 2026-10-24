@@ -46,6 +46,7 @@ export default function EvidenceViewer({ items, program }) {
         )}
       </div>
       <p className="evv-cap"><strong>{item.caption}</strong><span>{i + 1} of {n} · {KIND[item.kind].note} · <kbd>←</kbd> <kbd>→</kbd></span></p>
+      {item.type === 'video' && item.description && <p className="evv-desc"><b>Text description:</b> {item.description}</p>}
       <div className="evv-groups">
         {groups.map((g) => (
           <div key={g.k} className={`evv-grp is-${g.k}`}>
