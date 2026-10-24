@@ -294,11 +294,11 @@ export const PRESETS = [
 ];
 
 export const EXAMPLES = [
-  'assignee = me AND waiting > 14',
-  'priority IN (high, normal) AND certification = "not current"',
-  'customer ~ "kelly" OR plate = RED777',
-  'asked >= -14d AND assignee IS EMPTY ORDER BY waiting DESC',
-  'program ~ "red-light" AND NOT status = decided',
+  { title: 'My cases that have waited more than two weeks', q: 'assignee = me AND waiting > 14' },
+  { title: 'Unassigned, newest requests first', q: 'asked >= -14d AND assignee IS EMPTY ORDER BY waiting DESC' },
+  { title: 'High or normal priority with a certificate problem', q: 'priority IN (high, normal) AND certification = "not current"' },
+  { title: 'Find a person or a plate', q: 'customer ~ "kelly" OR plate = RED777' },
+  { title: 'Red-light cases still open', q: 'program ~ "red-light" AND NOT status = decided' },
 ];
 
 // Sort rows by an ORDER BY list, e.g. [{ key: 'waiting', dir: 'desc' }].

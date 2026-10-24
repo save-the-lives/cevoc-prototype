@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Button, Kbd, Popover, PopoverContent, PopoverTrigger } from '@nswds/ui';
-import { EXAMPLES, FIELDS, FIELD_NAMES, OPERATORS, suggest } from './query.js';
+import { EXAMPLES, FIELDS, suggest } from './query.js';
+
+const OPERATOR_HELP = [['=  !=', 'is, is not'], ['~  !~', 'contains, does not contain'], ['>  >=  <  <=', 'more or less than (numbers and dates)'], ['IN  NOT IN', 'any of a list, e.g. IN (high, normal)'], ['IS EMPTY  IS NOT EMPTY', 'has no value, has a value']];
+const FIELD_GROUPS = [
+  ['People and cases', ['case', 'customer', 'assignee', 'priority', 'status', 'decision']],
+  ['Notice and camera', ['notice', 'plate', 'program', 'camera', 'offence', 'certification', 'notcurrent']],
+  ['Their request and timing', ['channel', 'type', 'waiting', 'left', 'asked', 'target']],
+];
 
 // The queue filter: a Jira-style query box with suggestions as you type, an inline error with the
 // offending part marked, and a syntax guide. Plain words still work as a text search.
@@ -8,6 +15,8 @@ export default function QueryBar({ value, onChange, inputRef, error, shown, tota
   const [focus, setFocus] = useState(false);
   const [sel, setSel] = useState(-1);
   const [closed, setClosed] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [tab, setTab] = useState('try');
   const sug = useMemo(() => suggest(value), [value]);
   const open = focus && !closed && sug.items.length > 0;
 
@@ -47,17 +56,38 @@ export default function QueryBar({ value, onChange, inputRef, error, shown, tota
             </ul>
           )}
         </div>
-        <Popover>
+        <Popover open={helpOpen} onOpenChange={setHelpOpen}>
           <PopoverTrigger render={<Button size="sm" variant="outline">Syntax</Button>} />
           <PopoverContent align="end" className="st-qb__help">
-            <p className="st-cols__h">Query syntax</p>
-            <p>Join conditions with <code>AND</code>, <code>OR</code>, <code>NOT</code> and brackets. Add <code>ORDER BY</code> to sort. Plain words search every column.</p>
-            <p className="st-qb__sub">Operators</p>
-            <p><code>{OPERATORS.join('  ')}</code></p>
-            <p className="st-qb__sub">Fields</p>
-            <dl className="st-qb__fields">{FIELD_NAMES.map((n) => <div key={n}><dt><code>{n}</code></dt><dd>{FIELDS[n].help}</dd></div>)}</dl>
-            <p className="st-qb__sub">Try</p>
-            <ul className="st-qb__examples">{EXAMPLES.map((x) => <li key={x}><button type="button" onClick={() => { onChange(x); inputRef.current?.focus(); }}><code>{x}</code></button></li>)}</ul>
+            <div className="st-qb__tabs" role="tablist" aria-label="Query help">
+              {[['try', 'Try'], ['ref', 'Reference']].map(([id, label]) => (
+                <button key={id} type="button" role="tab" id={`st-qh-t-${id}`} aria-selected={tab === id} aria-controls={`st-qh-${id}`} tabIndex={tab === id ? 0 : -1}
+                  onClick={() => setTab(id)}
+                  onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); setTab(tab === 'try' ? 'ref' : 'try'); } }}>{label}</button>
+              ))}
+            </div>
+            {tab === 'try' ? (
+              <div role="tabpanel" id="st-qh-try" aria-labelledby="st-qh-t-try">
+                <p className="st-qb__lede">Pick one to run it. You can edit it afterwards.</p>
+                <ul className="st-qb__examples">
+                  {EXAMPLES.map((x) => (
+                    <li key={x.q}><button type="button" onClick={() => { onChange(x.q); setHelpOpen(false); inputRef.current?.focus(); }}><span>{x.title}</span><code>{x.q}</code></button></li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div role="tabpanel" id="st-qh-ref" aria-labelledby="st-qh-t-ref">
+                <p className="st-qb__lede">Join conditions with <code>AND</code>, <code>OR</code>, <code>NOT</code> and brackets. Add <code>ORDER BY</code> to sort. Plain words search every column.</p>
+                <p className="st-qb__sub">Operators</p>
+                <dl className="st-qb__fields">{OPERATOR_HELP.map(([op, t]) => <div key={op}><dt><code>{op}</code></dt><dd>{t}</dd></div>)}</dl>
+                {FIELD_GROUPS.map(([g, names]) => (
+                  <div key={g}>
+                    <p className="st-qb__sub">{g}</p>
+                    <dl className="st-qb__fields">{names.filter((n) => FIELDS[n]).map((n) => <div key={n}><dt><code>{n}</code></dt><dd>{FIELDS[n].help}</dd></div>)}</dl>
+                  </div>
+                ))}
+              </div>
+            )}
           </PopoverContent>
         </Popover>
       </div>

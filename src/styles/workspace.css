@@ -498,3 +498,33 @@ button:hover > .tip, button:focus-visible > .tip { display: block; }
 .scat-x { right: 0; top: calc(100% + 4px); }
 .scat-y { left: 8px; top: 4px; }
 @media (max-width: 640px) { .hbar { grid-template-columns: minmax(104px, 40%) 1fr 22px; } .kpi-v { font-size: 30px; } }
+
+.st-qb__tabs { display: flex; gap: 4px; border-bottom: 1px solid #dde2e8; margin: 0 0 10px; }
+.st-qb__tabs button { border: 0; background: none; padding: 8px 12px; font: 600 14px inherit; color: #3e4c59; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.st-qb__tabs button[aria-selected="true"] { color: var(--ac); border-bottom-color: var(--ac); }
+.st-qb__lede { font-size: 14px !important; color: #3e4c59; }
+.st-qb__examples button { display: grid; gap: 2px; }
+.st-qb__examples button span { font-weight: 600; font-size: 14px; color: #1f2933; }
+.st-qb__examples code { font-size: 12.5px; overflow-wrap: anywhere; background: none; padding: 0; }
+.st-qb__fields > div { grid-template-columns: minmax(96px, 150px) 1fr; }
+.st-qb__fields code { overflow-wrap: anywhere; }
+
+/* Pie charts */
+.pie { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 16px; align-items: center; }
+.pie-svg { width: 132px; height: 132px; }
+.pie-s { cursor: pointer; transition: opacity .15s, transform .15s; transform-origin: 60px 60px; }
+.pie-s.is-dim { opacity: .35; } .pie-s.is-sel { transform: scale(1.04); }
+.pie-key { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pie-b { width: 100%; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto 38px; gap: 8px; align-items: center; border: 0; background: none; padding: 6px 6px; border-radius: 6px; cursor: pointer; font: inherit; text-align: left; }
+.pie-b:hover { background: var(--ac-softer); } .pie-b.is-sel { background: var(--ac-soft); box-shadow: inset 3px 0 0 var(--ac); } .pie-b.is-dim { opacity: .5; }
+.pie-b i { width: 14px; height: 14px; border-radius: 3px; }
+.pie-b small { color: #616e7c; text-align: right; }
+@media (max-width: 560px) { .pie { grid-template-columns: 1fr; justify-items: center; } .pie-key { width: 100%; } }
+
+/* One primary gadget: counts strip over the attention plot */
+.kstrip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0; margin: 0 0 12px; border: 1px solid #dde2e8; border-radius: 8px; overflow: hidden; }
+.kstrip .kpi { border: 0; border-radius: 0; border-right: 1px solid #dde2e8; padding: 10px 12px 8px 16px; }
+.kstrip .kpi:last-child { border-right: 0; }
+.kstrip .kpi-v { font-size: 30px; }
+.vz-hint { margin: -6px 0 10px; font-size: 13px; color: #616e7c; }
+.vz-primary > header { margin-top: 4px; }

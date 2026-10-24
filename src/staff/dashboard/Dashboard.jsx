@@ -7,7 +7,7 @@ import { daysBetween } from '../../lib/rules.js';
 import { REQUIRED } from '../../lib/rules.js';
 import { useStore } from '../../lib/store.jsx';
 import { CERTS, SITES, STAFF, staff as findStaff } from '../../data.js';
-import { Columns, HBars, Heat, Scatter, Spark } from './charts.jsx';
+import { Columns, Heat, Pie, Scatter } from './charts.jsx';
 import { useWorkload } from './useWorkload.js';
 
 // A visual overview. Every chart is also a filter: click a bar, a cell or a dot and the rest of the dashboard
@@ -42,9 +42,9 @@ function Card({ title, span, children, hint }) {
   );
 }
 
-function Kpi({ label, value, tone, on, onClick, children, sub }) {
+function Kpi({ label, value, tone, onClick, children, sub }) {
   return (
-    <button type="button" className={`kpi is-${tone || 'ac'} ${on ? 'is-sel' : ''}`} aria-pressed={on} onClick={onClick}>
+    <button type="button" className={`kpi is-${tone || 'ac'}`} onClick={onClick}>
       <span className="kpi-l">{label}</span>
       <b className="kpi-v">{value}</b>
       {sub && <small>{sub}</small>}
@@ -138,57 +138,52 @@ export default function Dashboard({ user, canApprove }) {
     cells[s.code] = [cell('s137'), cell('s138'), cell('s132')];
   });
 
-  // drill through to the queue with the same selection
-  const q = [];
-  if (f.kpi === 'late') q.push('left < 0'); if (f.kpi === 'risk') q.push('certification = "not current"'); if (f.kpi === 'none') q.push('assignee IS EMPTY');
-  if (f.assignee) q.push(f.assignee === 'none' ? 'assignee IS EMPTY' : `assignee = "${findStaff(f.assignee).name}"`);
-  if (f.program) q.push(`program = "${f.program}"`);
-  if (f.camera) q.push(`camera = ${f.camera}`);
-  if (f.bucket != null) { const b = BUCKETS[f.bucket]; q.push(b.hi > 900 ? `waiting >= ${b.lo}` : `waiting >= ${b.lo} AND waiting <= ${b.hi}`); }
+  // Every widget is a doorway: clicking it opens the queue already filtered to what was clicked.
+  const queryOf = (g) => {
+    const q = [];
+    if (g.kpi === 'late') q.push('left < 0');
+    if (g.kpi === 'risk') q.push('certification = "not current"');
+    if (g.kpi === 'none') q.push('assignee IS EMPTY');
+    if (g.assignee) q.push(g.assignee === 'none' ? 'assignee IS EMPTY' : `assignee = "${findStaff(g.assignee).name}"`);
+    if (g.program) q.push(`program = "${g.program}"`);
+    if (g.camera) q.push(`camera = ${g.camera}`);
+    if (g.bucket != null) { const b = BUCKETS[g.bucket]; q.push(b.hi > 900 ? `waiting >= ${b.lo}` : `waiting >= ${b.lo} AND waiting <= ${b.hi}`); }
+    return q.join(' AND ');
+  };
   const type = f.type || (all.filter((r) => r.c.type === 'court').length > all.length / 2 ? 'court' : 'reviews');
-  const chips = [
-    f.kpi && { k: 'kpi', t: { late: 'Late', risk: 'Cert risk', none: 'Unassigned' }[f.kpi] },
-    f.assignee && { k: 'assignee', t: f.assignee === 'none' ? 'Unassigned' : findStaff(f.assignee).name },
-    f.program && { k: 'program', t: f.program.replace(' camera', '') },
-    f.camera && { k: 'camera', t: f.camera },
-    f.bucket != null && { k: 'bucket', t: `${BUCKETS[f.bucket].label} days` },
-  ].filter(Boolean);
+  const drill = (g) => go(`/staff/queue/${type}?q=${encodeURIComponent(queryOf(g))}`);
 
   return (
     <div className="vz">
       <div className="vz-top">
         <h1>Dashboard</h1>
-        <div className="vz-chips" role="group" aria-label="Filters">
-          <div className="seg2" role="group" aria-label="Case type">
-            {[['', 'All'], ['review', 'Reviews'], ['court', 'Court']].map(([v, l]) => <button key={l} type="button" aria-pressed={(f.type || '') === v} onClick={() => set('type', v || null)}>{l}</button>)}
-          </div>
-          {chips.map((c) => <button key={c.k} type="button" className="vz-chip" onClick={() => set(c.k, null)} aria-label={`Remove filter ${c.t}`}>{c.t} <span aria-hidden="true">✕</span></button>)}
-          {filtered && <button type="button" className="vz-clear" onClick={() => setF({})}>Clear</button>}
-          <button type="button" className="vz-go" disabled={!all.length} onClick={() => go(`/staff/queue/${type}?q=${encodeURIComponent(q.join(' AND '))}`)}>{all.length} in queue ↗</button>
+        <div className="seg2" role="group" aria-label="Case type">
+          {[['', 'All'], ['review', 'Reviews'], ['court', 'Court']].map(([v, l]) => <button key={l} type="button" aria-pressed={(f.type || '') === v} onClick={() => set('type', v || null)}>{l}</button>)}
         </div>
       </div>
-
-      <div className="kpis">
-        <Kpi label="Open" value={noKpi.length} on={false} onClick={() => set('kpi', null)} tone="ac">
-          <Spark values={weeks.map((x) => x.backlog)} />
-          <span className="kpi-split" role="img" aria-label={`${mine} yours, ${others} with others, ${none} unassigned`}><i className="is-ac" style={{ flex: mine }} /><i className="is-grey2" style={{ flex: others }} /><i className="is-grey" style={{ flex: none }} /></span>
-        </Kpi>
-        <Kpi label="Late" value={late} tone="bad" on={f.kpi === 'late'} onClick={() => set('kpi', f.kpi === 'late' ? null : 'late')}><small>{noKpi.length ? Math.round((late / noKpi.length) * 100) : 0}% of open</small></Kpi>
-        <Kpi label="Cert risk" value={risk} tone="warn" on={f.kpi === 'risk'} onClick={() => set('kpi', f.kpi === 'risk' ? null : 'risk')}><small>{noKpi.length ? Math.round((risk / noKpi.length) * 100) : 0}% of open</small></Kpi>
-        <Kpi label="Unassigned" value={none} tone="grey" on={f.kpi === 'none'} onClick={() => set('kpi', f.kpi === 'none' ? null : 'none')} />
-        {canApprove
-          ? <Link to="/staff/queue/approvals" className={`kpi is-warn ${state.pending.length ? '' : 'is-quiet'}`}><span className="kpi-l">Approvals</span><b className="kpi-v">{state.pending.length}</b><small>review ↗</small></Link>
-          : user.perms.includes('withdraw:request') && <Link to="/staff/certificates" className="kpi is-grey"><span className="kpi-l">My requests</span><b className="kpi-v">{myRequests}</b><small>certificates ↗</small></Link>}
-      </div>
+      <p className="vz-hint">Select anything to open those cases in the queue.</p>
 
       <div className="vz-grid">
-        <Card title="Waiting" span="5" hint="days"><Columns items={hist} selected={f.bucket ?? null} onPick={(k) => set('bucket', k)} height={170} /></Card>
-        <Card title="Needs attention" span="7" hint="late and at risk, top right"><Scatter points={points} xMax={1.6} yMax={maxRisk} selected={null} onPick={(p) => go(`/staff/queue/${p.c.c.type === 'court' ? 'court' : 'reviews'}?q=${encodeURIComponent(`case = ${p.c.c.id}`)}`)} /></Card>
-        <Card title="Who has it" span="4"><HBars items={people} selected={f.assignee ?? null} onPick={(k) => set('assignee', k)} /></Card>
-        <Card title="By camera type" span="4"><HBars items={programs} selected={f.program ?? null} onPick={(k) => set('program', k)} /></Card>
-        <Card title="New per week" span="4"><Columns items={arrivals} height={150} /></Card>
+        <section className="vz-card span-12 vz-primary" aria-labelledby="vz-pri-h">
+          <div className="kstrip" role="group" aria-label="Open cases">
+            <Kpi label="Open" value={noKpi.length} tone="ac" onClick={() => drill({})}>
+              <span className="kpi-split" role="img" aria-label={`${mine} yours, ${others} with others, ${none} unassigned`}><i className="is-ac" style={{ flex: mine }} /><i className="is-grey2" style={{ flex: others }} /><i className="is-grey" style={{ flex: none }} /></span>
+            </Kpi>
+            <Kpi label="Late" value={late} tone="bad" onClick={() => drill({ kpi: 'late' })} />
+            <Kpi label="Cert risk" value={risk} tone="warn" onClick={() => drill({ kpi: 'risk' })} />
+            <Kpi label="Unassigned" value={none} tone="grey" onClick={() => drill({ kpi: 'none' })} />
+            {canApprove
+              ? <Link to="/staff/queue/approvals" className={`kpi is-warn ${state.pending.length ? '' : 'is-quiet'}`}><span className="kpi-l">Approvals</span><b className="kpi-v">{state.pending.length}</b></Link>
+              : user.perms.includes('withdraw:request') && <Link to="/staff/certificates" className="kpi is-grey"><span className="kpi-l">My requests</span><b className="kpi-v">{myRequests}</b></Link>}
+          </div>
+          <header><h2 id="vz-pri-h">Needs attention</h2><span>late and at risk, top right</span></header>
+          <Scatter points={points} xMax={1.6} yMax={maxRisk} selected={null} onPick={(p) => go(`/staff/queue/${p.c.c.type === 'court' ? 'court' : 'reviews'}?q=${encodeURIComponent(`case = ${p.c.c.id}`)}`)} />
+        </section>
+        <Card title="Who has it" span="4"><Pie items={people} onPick={(k) => drill({ assignee: k })} /></Card>
+        <Card title="By camera type" span="4"><Pie items={programs} onPick={(k) => drill({ program: k })} /></Card>
+        <Card title="Waiting" span="4" hint="days"><Columns items={hist} onPick={(k) => drill({ bucket: k })} height={150} /></Card>
         <Card title="Camera certification" span="12" hint="age against the limit">
-          <Heat rows={cameraRows} cols={['Test & seal', 'Inspection', 'Survey']} cells={cells} selected={f.camera ?? null} onPick={(k) => set('camera', k)} />
+          <Heat rows={cameraRows} cols={['Test & seal', 'Inspection', 'Survey']} cells={cells} onPick={(k) => drill({ camera: k })} />
           <ul className="vz-key" aria-hidden="true"><li><i className="is-ok" />in date</li><li><i className="is-warn" />nearing limit</li><li><i className="is-bad" />past limit</li></ul>
         </Card>
       </div>
