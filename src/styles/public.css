@@ -1,14 +1,12 @@
 /* PUBLIC: NSW Government look. Calm, spacious, plain, mobile first. */
 .pub { background: #fff; font-size: 17px; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
 .pub main { flex: 1; outline: none; }
-.pub-wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
 .pub-masthead { background: #002664; color: #fff; font-size: 13px; padding: 6px 0; }
-.pub-header { border-bottom: 1px solid #dee3e5; background: #fff; }
-.pub-header__in { display: flex; align-items: center; justify-content: space-between; min-height: 80px; gap: 16px; flex-wrap: wrap; }
 .pub-brand { display: flex; align-items: center; gap: 16px; text-decoration: none; color: #002664; }
 .pub-brand__name { border-left: 1px solid #dee3e5; padding-left: 16px; }
-.pub-brand__name strong { display: block; font-size: 19px; }
-.pub-brand__name small { display: block; color: #495054; font-size: 13px; }
+.pub-brand__name span { display: block; }
+.nsw-header__main { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; width: 100%; }
+.pub-brand { text-decoration: none; }
 .pub-nav { display: flex; gap: 24px; font-weight: 600; }
 .pub-nav a { text-decoration: none; padding: 6px 0; }
 .pub-nav a:hover { text-decoration: underline; }
@@ -23,26 +21,14 @@
 .pub-form { background: #f4f4f4; padding: 24px; border-radius: 6px; }
 .pub-form h2 { margin: 0 0 16px; color: #002664; font-size: 22px; }
 .pub-field { position: relative; display: flex; flex-direction: column; margin-bottom: 20px; }
-.pub-field label { font-weight: 700; }
-.pub-field small { color: #495054; font-size: 14px; }
-.pub-field em { color: #b81237; font-style: normal; font-weight: 600; font-size: 15px; }
-.pub-field input { margin-top: 6px; font: inherit; padding: 11px 12px; border: 1px solid #495054; border-radius: 4px; background: #fff; max-width: 300px; min-height: 48px; }
-.pub-field.has-err input { border: 2px solid #b81237; }
 .pn-wrap { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.pn-wrap input { flex: 1 1 220px; }
+.pn-wrap .nsw-form__input { flex: 1 1 220px; margin-top: 0; }
 .pn-samples { font: 600 12px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border: 1px dashed #e0a800; border-radius: 4px; padding: 8px 10px; cursor: pointer; min-height: 48px; }
-.pub-btn { display: inline-flex; gap: 8px; align-items: center; background: #002664; color: #fff; border: 0; border-radius: 4px; padding: 13px 26px; font-weight: 700; cursor: pointer; min-height: 48px; }
-.pub-btn:hover { background: #001a45; }
-.pub-btn:disabled { opacity: .75; }
-.pub-btn.is-ghost { background: #fff; color: #002664; border: 2px solid #002664; }
 .pub-link { background: none; border: 0; padding: 0; color: #002664; text-decoration: underline; cursor: pointer; font-weight: 600; }
 .pub-aside { border-left: 4px solid #008a07; padding: 4px 20px; }
 .pub-aside h2 { font-size: 19px; margin: 0 0 8px; color: #002664; }
 .pub-aside ul { margin: 0; padding-left: 18px; font-size: 16px; }
 .pub-aside li { margin-bottom: 6px; }
-.pub-alert { border-left: 6px solid #2e5299; background: #eaedf4; padding: 14px 18px; border-radius: 4px; margin: 0 0 20px; }
-.pub-alert.is-warn { border-color: #c95000; background: #fbeee5; }
-.pub-alert.is-err { border-color: #b81237; background: #f7e7eb; }
 .pub-loading { color: #495054; }
 .pub-story { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; margin-top: 12px; }
 .pub-toc { position: sticky; top: 16px; display: flex; flex-direction: column; border-left: 3px solid #dee3e5; }
@@ -99,11 +85,6 @@
 .cam-list { list-style: none; padding: 0; display: grid; gap: 10px; margin-top: 16px; }
 .cam-list a { display: flex; flex-direction: column; padding: 14px 16px; border: 1px solid #dee3e5; border-left: 4px solid #002664; border-radius: 4px; text-decoration: none; }
 .cam-list span { color: #495054; font-size: 15px; }
-.pub-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-.pub-table th, .pub-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #dee3e5; vertical-align: top; }
-.pub-table thead th { border-bottom: 2px solid #002664; }
-.pub-table td small { display: block; color: #8a9399; font-size: 12px; }
-.pub-table tr.is-withdrawn td:first-child { color: #8a9399; text-decoration: line-through; }
 .pub-footer { background: #f4f4f4; border-top: 4px solid #002664; padding: 20px 0; font-size: 14px; }
 .pub-footer__in { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 @media (max-width: 820px) {
@@ -117,3 +98,5 @@
   .certs li { grid-template-columns: 28px 1fr; }
   .certs li .tag { grid-column: 2; justify-self: start; }
 }
+.pub-brand__name .nsw-header__name, .pub-brand__name .nsw-header__description { margin: 0; padding: 0; text-align: left; }
+.pub-form .nsw-form__group { margin-bottom: 20px; }
