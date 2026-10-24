@@ -251,9 +251,12 @@ const OPTIONS = [
   { id: 'court', title: 'Have a court decide', text: 'You can choose to have the matter heard in court.', cta: 'Choose court', what: 'Choosing a court hearing' },
 ];
 
+const STEPS = ['What happened', 'Was it my vehicle?', 'How it was measured', 'Was the camera working?', 'Your options'];
+
 function NoticePage({ number }) {
   const { statusOf, faultSettings } = useStore();
   const [leaving, setLeaving] = useState(null);
+  const [tocOpen, setTocOpen] = useState(false);
   const n = findNotice(number);
   const plan = useMemo(() => (n ? planFaults(n, faultSettings) : {}), [n, JSON.stringify(faultSettings)]); // eslint-disable-line
   const story = useStickyStory(5, number);
@@ -284,14 +287,24 @@ function NoticePage({ number }) {
       <StatusBar status={status} notice={n.number} stuck={story.stuck} barRef={story.barRef} miniRef={story.miniRef} onPay={() => setLeaving(OPTIONS[0])} />
 
       <div className="pub-story">
-        <nav className="pub-toc" aria-label="On this page" ref={story.tocRef} style={{ '--prog': story.active / 4 }}>
-          {['What happened', 'Was it my vehicle?', 'How it was measured', 'Was the camera working?', 'Your options'].map((t, i) => (
-            <a key={t} href={`#/notice/${n.number}`} className={i < story.active ? 'is-done' : i === story.active ? 'is-now' : ''} aria-current={i === story.active ? 'step' : undefined}
-              onClick={(e) => { e.preventDefault(); document.getElementById(`q${i + 1}`)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}>
-              <span className={i === 3 && !ev.current ? 'is-warn' : ''} aria-hidden="true">{i < story.active ? '✓' : i + 1}</span>
-              <em>{t}{i < story.active && <i className="sr-only"> (done)</i>}</em>
-            </a>
-          ))}
+        <nav className="pub-toc" aria-label="On this page" ref={story.tocRef} style={{ '--prog': story.active / 4 }} onKeyDown={(e) => { if (e.key === 'Escape') setTocOpen(false); }}>
+          {/* Phone: one steady line, "4/5" and the step you are on, with a list on tap. Nothing slides or scrolls as you read. */}
+          <div className="pub-toc__mini">
+            <button type="button" className="pub-toc__btn" aria-expanded={tocOpen} aria-controls="toc-list" onClick={() => setTocOpen((o) => !o)}>
+              <b>{story.active + 1}/5</b><em>{STEPS[story.active]}</em><i aria-hidden="true">{tocOpen ? '▴' : '▾'}</i>
+              <u className="sr-only">Step {story.active + 1} of 5. {tocOpen ? 'Hide' : 'Show'} all steps</u>
+            </button>
+            <div className="pub-toc__seg" aria-hidden="true">{STEPS.map((t, i) => <i key={t} className={i <= story.active ? 'on' : ''} />)}</div>
+          </div>
+          <div id="toc-list" className={`pub-toc__list ${tocOpen ? 'is-open' : ''}`}>
+            {STEPS.map((t, i) => (
+              <a key={t} href={`#/notice/${n.number}`} className={i < story.active ? 'is-done' : i === story.active ? 'is-now' : ''} aria-current={i === story.active ? 'step' : undefined}
+                onClick={(e) => { e.preventDefault(); setTocOpen(false); document.getElementById(`q${i + 1}`)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}>
+                <span className={i === 3 && !ev.current ? 'is-warn' : ''} aria-hidden="true">{i < story.active ? '✓' : i + 1}</span>
+                <em>{t}{i < story.active && <i className="sr-only"> (done)</i>}</em>
+              </a>
+            ))}
+          </div>
         </nav>
 
         <div>

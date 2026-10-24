@@ -54,12 +54,5 @@ export function useStickyStory(count, resetKey) {
     return () => { document.documentElement.style.removeProperty('--pub-stack'); cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); ro.disconnect(); };
   }, [count, resetKey, stuck]);
 
-  // On a phone the step list scrolls sideways; keep the current step in sight.
-  useEffect(() => {
-    if (!window.matchMedia('(max-width: 820px)').matches) return;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    tocRef.current?.querySelector('[aria-current="step"]')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
-  }, [active]);
-
   return { pageRef, barRef, miniRef, tocRef, sentinelRef, active, stuck };
 }
