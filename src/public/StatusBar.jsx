@@ -38,7 +38,7 @@ export default function StatusBar({ status, notice, stuck, barRef, miniRef, onPa
         <div ref={miniRef} className={`stat-mini is-${status.tone}`}>
           <span className="stat-ico" aria-hidden="true">{status.tone === 'warn' ? '!' : 'i'}</span>
           <p>{status.mini}</p>
-          <button type="button" className="stat-opt" onClick={() => jump('q5')}>Options <span aria-hidden="true">↓</span></button>
+          <button type="button" className="stat-opt" onClick={() => jump('q5')}>My options <span aria-hidden="true">↓</span></button>
         </div>
       )}
     </div>
