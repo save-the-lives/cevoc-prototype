@@ -8,6 +8,7 @@ import { go } from '../lib/router.js';
 import { evaluate, daysBetween } from '../lib/rules.js';
 import { planFaults } from '../lib/faults.js';
 import { useSim } from '../lib/useSim.js';
+import { useStickyStory } from './useStickyStory.js';
 import { NOTICES, SITES, CERTS, PROGRAMS, CASES, SCENARIOS, notice as findNotice, site as findSite } from '../data.js';
 import { TODAY, fmtDate, fmtTime, weekday, partOfDay, ago } from '../lib/format.js';
 
@@ -143,10 +144,10 @@ function Lookup() {
   );
 }
 
-function Section({ n, title, answer, tone, children }) {
+function Section({ n, title, answer, tone, state, children }) {
   return (
-    <section className="q" id={`q${n}`} aria-labelledby={`q${n}-h`}>
-      <div className={`q-n ${tone === 'warn' ? 'is-warn' : ''}`} aria-hidden="true">{n}</div>
+    <section className={`q ${state ? `is-${state}` : ''}`} id={`q${n}`} aria-labelledby={`q${n}-h`}>
+      <div className={`q-n ${tone === 'warn' ? 'is-warn' : ''}`} aria-hidden="true">{state === 'done' ? '✓' : n}</div>
       <div className="q-body">
         <h2 id={`q${n}-h`}>{title}</h2>
         {answer && <p className="q-answer">{answer}</p>}
@@ -190,6 +191,7 @@ function NoticePage({ number }) {
   const [leaving, setLeaving] = useState(false);
   const n = findNotice(number);
   const plan = useMemo(() => (n ? planFaults(n, faultSettings) : {}), [n, JSON.stringify(faultSettings)]); // eslint-disable-line
+  const story = useStickyStory(5, number);
   if (!n) return <div className="pub-wrap pub-page"><h1>Notice not found</h1><Link to="/">Start again</Link></div>;
 
   const s = findSite(n.site);
@@ -204,31 +206,36 @@ function NoticePage({ number }) {
     ? 'Yes. The images, the measurement and the camera’s legal certificates all line up.'
     : `Not completely. ${ev.notCurrent} of the camera’s certificates ${ev.notCurrent > 1 ? 'were' : 'was'} not current on the day. You may want to mention this if you ask for a review.`;
 
+  const st = (i) => (i - 1 < story.active ? 'done' : i - 1 === story.active ? 'now' : '');
+  const deadline = openCase
+    ? { tone: 'info', title: `Your ${openCase.type === 'court' ? 'court election' : 'review request'} is with Revenue NSW.`, more: 'You don’t need to do anything else for now. This page shows the same evidence they’re looking at.' }
+    : { tone: left <= 7 ? 'warn' : 'info', title: left < 0 ? `The due date (${fmtDate(n.due)}) has passed.` : `You have until ${fmtDate(n.due)} (${left} days) to decide what to do.`, more: 'Take your time to read through. Help with paying is available if you need it.' };
+
   return (
-    <div className="pub-wrap pub-page">
+    <div className="pub-wrap pub-page" ref={story.pageRef}>
       <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/">View a notice</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{n.number}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
       <h1>What happened</h1>
       <p className="pub-lede">{prog.label} · Penalty notice {n.number}</p>
 
-      {openCase ? (
-        <Alert status="info" title={`Your ${openCase.type === 'court' ? 'court election' : 'review request'} is with Revenue NSW.`}>You don’t need to do anything else for now. This page shows the same evidence they’re looking at.</Alert>
-      ) : (
-        <Alert status={left <= 7 ? 'warning' : 'info'} title={left < 0 ? `The due date (${fmtDate(n.due)}) has passed.` : `You have until ${fmtDate(n.due)} (${left} days) to decide what to do.`}>
-          Take your time to read through. Help with paying is available if you need it.
-        </Alert>
-      )}
+      <div ref={story.sentinelRef} className="pub-sentinel" aria-hidden="true" />
+      <div ref={story.barRef} className={`pub-deadline is-${deadline.tone} ${story.stuck ? 'is-stuck' : ''}`} role="status">
+        <span className="pub-deadline__ico" aria-hidden="true">{deadline.tone === 'warn' ? '!' : 'i'}</span>
+        <div><strong>{deadline.title}</strong><span className="pub-deadline__more"> {deadline.more}</span></div>
+      </div>
 
       <div className="pub-story">
-        <nav className="pub-toc" aria-label="On this page">
+        <nav className="pub-toc" aria-label="On this page" ref={story.tocRef} style={{ '--prog': story.active / 4 }}>
           {['What happened', 'Was it my vehicle?', 'How it was measured', 'Was the camera working?', 'Your options'].map((t, i) => (
-            <a key={t} href={`#/notice/${n.number}`} onClick={(e) => { e.preventDefault(); document.getElementById(`q${i + 1}`)?.scrollIntoView({ behavior: 'smooth' }); }}>
-              <span className={i === 3 && !ev.current ? 'is-warn' : ''}>{i + 1}</span>{t}
+            <a key={t} href={`#/notice/${n.number}`} className={i < story.active ? 'is-done' : i === story.active ? 'is-now' : ''} aria-current={i === story.active ? 'step' : undefined}
+              onClick={(e) => { e.preventDefault(); document.getElementById(`q${i + 1}`)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}>
+              <span className={i === 3 && !ev.current ? 'is-warn' : ''} aria-hidden="true">{i < story.active ? '✓' : i + 1}</span>
+              <em>{t}{i < story.active && <i className="sr-only"> (done)</i>}</em>
             </a>
           ))}
         </nav>
 
         <div>
-          <Section n={1} title="What happened" answer={`${weekday(n.dateTime)} ${partOfDay(n.dateTime)}, ${ago(daysBetween(n.dateTime, TODAY))}, in ${s.suburb}.`}>
+          <Section n={1} state={st(1)} title="What happened" answer={`${weekday(n.dateTime)} ${partOfDay(n.dateTime)}, ${ago(daysBetween(n.dateTime, TODAY))}, in ${s.suburb}.`}>
             <div className="facts">
               <div><span>When</span><strong>{fmtDate(n.dateTime)}</strong><small>{fmtTime(n.dateTime)}</small></div>
               <div><span>Where</span><strong>{s.name}</strong><small>Heading {s.direction.toLowerCase()}</small></div>
@@ -238,22 +245,22 @@ function NoticePage({ number }) {
             <p className="muted">Don’t remember the trip? That’s common. The notice was posted {lag} days after it happened.</p>
           </Section>
 
-          <Section n={2} title="Was it my vehicle?" answer={`Check the number plate ${n.rego} in the images${hasVideo ? ' and video' : ''}.`}>
+          <Section n={2} state={st(2)} title="Was it my vehicle?" answer={`Check the number plate ${n.rego} in the images${hasVideo ? ' and video' : ''}.`}>
             <MediaGallery items={n.media} plan={plan} prefix={n.number} variant="public" />
             <p className="muted">If someone else was driving, you can nominate them with Revenue NSW (see Your options).</p>
           </Section>
 
-          <Section n={3} title="How it was measured" answer={prog.measureLabel}>
+          <Section n={3} state={st(3)} title="How it was measured" answer={prog.measureLabel}>
             <Measure n={n} program={s.program} />
             <details className="pub-more"><summary>How a {prog.label.toLowerCase()} works</summary><p>{prog.how}</p></details>
           </Section>
 
-          <Section n={4} title="Was the camera working properly?" tone={ev.current ? '' : 'warn'} answer={evidenceAnswer}>
+          <Section n={4} state={st(4)} title="Was the camera working properly?" tone={ev.current ? '' : 'warn'} answer={evidenceAnswer}>
             <CertList n={n} fault={plan.certs} />
             <p className="muted">This is a plain-English summary, not legal advice. <Link to={`/camera/${s.code}`}>See all certificates for this camera</Link></p>
           </Section>
 
-          <Section n={5} title="Your options" answer="Whatever you decide, Revenue NSW handles it. Your notice details will be filled in for you.">
+          <Section n={5} state={st(5)} title="Your options" answer="Whatever you decide, Revenue NSW handles it. Your notice details will be filled in for you.">
             <ul className="opts">
               <li><strong>Pay</strong> in full, or ask for a payment plan or more time if money is tight</li>
               <li><strong>Ask for a review</strong> if you think the fine is wrong or there were special circumstances</li>

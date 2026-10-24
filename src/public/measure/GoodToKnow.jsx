@@ -1,0 +1,27 @@
+import { CARDS } from './content.js';
+import Icon from './Icon.jsx';
+
+const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+// Teaching cards, specific to the camera program that recorded the offence.
+export default function GoodToKnow({ program }) {
+  const cards = CARDS[program] || [];
+  if (!cards.length) return null;
+  return (
+    <div className="ms-know">
+      <p className="ms-know__h">Good to know about this kind of camera</p>
+      <ul>
+        {cards.map((c) => (
+          <li key={c.title}>
+            <span className="ms-know__ico"><Icon name={c.icon} /></span>
+            <div>
+              <strong>{c.title}</strong>
+              <p>{c.text}</p>
+              {c.link && <button type="button" className="pub-link" onClick={() => jump(c.link)}>{c.linkText} ↓</button>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
