@@ -225,8 +225,8 @@ function CertList({ n, fault }) {
               {it.withdrawn && <p className="muted">A later certificate was withdrawn by Transport and doesn’t count.</p>}
               {it.cert && (
                 <div className="certs-act">
-                  <button type="button" className="pub-act" onClick={() => setViewing(it.cert)} aria-label={`View certificate ${it.cert.id}, ${it.req.label}`}><Icon name="view" />View</button>
-                  <button type="button" className="pub-act" onClick={() => downloadCert(it.cert, site)} aria-label={`Download PDF of certificate ${it.cert.id}, ${it.req.label}`}><Icon name="download" />Download PDF</button>
+                  <button type="button" className="pub-act" onClick={() => setViewing(it.cert)} aria-label={`View certificate ${it.cert.id}, ${it.req.label}`}><Icon name="view" /><span className="lbl">View</span></button>
+                  <button type="button" className="pub-act" onClick={() => downloadCert(it.cert, site)} aria-label={`Download PDF of certificate ${it.cert.id}, ${it.req.label}`}><Icon name="download" /><span className="lbl">Download PDF</span></button>
                 </div>
               )}
             </div>

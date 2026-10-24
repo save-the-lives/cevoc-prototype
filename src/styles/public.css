@@ -397,3 +397,10 @@ html { scroll-padding-top: var(--pub-stack, 0px); }
   .pub-toc a.is-now { border-radius: 0; box-shadow: inset 4px 0 0 #002664; margin-left: 0; padding-left: 16px; }
   .pub-toc a.is-now span { transform: none; box-shadow: none; }
 }
+
+/* Phone: certificate and evidence actions become icon buttons. The words stay for screen readers. */
+@media (max-width: 640px) {
+  .pub-act { min-width: 48px; min-height: 48px; justify-content: center; border: 1.5px solid #002664; border-radius: 6px; padding: 0; text-decoration: none; }
+  .pub-act .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pub-act svg { width: 24px; height: 24px; } .certs-act { gap: 10px; }
+}

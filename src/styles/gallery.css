@@ -47,3 +47,10 @@
 .mg-zoom__hint { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.65); color: #fff; font-size: 12px; padding: 3px 9px; border-radius: 12px; opacity: 0; transition: opacity .15s; pointer-events: none; }
 .mg-zoom:hover .mg-zoom__hint, .mg-zoom:focus-visible .mg-zoom__hint { opacity: 1; }
 @media (hover: none) { .mg-zoom__hint { opacity: .85; } }
+
+@media (max-width: 640px) {
+  .mg:not(.mg--staff) .mg-link, .mg:not(.mg--staff) .mg-btn:not(.is-err), .mg:not(.mg--staff) .mg-all { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 10px; border: 2px solid #002664; border-radius: 6px; background: #fff; text-decoration: none; color: #002664; font-weight: 700; }
+  .mg:not(.mg--staff) .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .mg:not(.mg--staff) svg { width: 22px; height: 22px; }
+}
+@media (max-width: 640px) { .mg:not(.mg--staff) .mg-all { width: auto; margin-top: 8px; } }

@@ -1,3 +1,4 @@
+import Icon from '../public/measure/Icon.jsx';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Dialog, Spinner } from './ui.jsx';
 import { useSimMany } from '../lib/useSim.js';
@@ -176,14 +177,14 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
         </div>
         <div className="mg-actions">
           {status[item.id] === 'ready' && item.type === 'image' && (
-            <button type="button" className="mg-link" onClick={() => setFull(true)}>View larger</button>
+            <button type="button" className="mg-link" onClick={() => setFull(true)} title="View larger"><Icon name="view" /><span className="lbl">View larger</span></button>
           )}
           {status[item.id] === 'ready' && (
             dl[item.id] === 'error' ? (
               <button type="button" className="mg-btn is-err" onClick={() => downloadOne(item)}>Download failed · try again</button>
             ) : (
               <button type="button" className="mg-btn" onClick={() => downloadOne(item)} disabled={dl[item.id] === 'preparing'}>
-                {dl[item.id] === 'preparing' ? 'Preparing…' : dl[item.id] === 'done' ? 'Downloaded ✓' : `Download ${item.type}`}
+                {dl[item.id] === 'preparing' ? 'Preparing…' : dl[item.id] === 'done' ? 'Downloaded ✓' : <><Icon name="download" /><span className="lbl">Download {item.type}</span></>}
               </button>
             )
           )}
@@ -205,7 +206,7 @@ export default function MediaGallery({ items, plan = {}, prefix = 'evidence', va
             {all && typeof all === 'object' ? `Downloading ${all.n} of ${all.total}…`
               : all === 'error' ? 'Download all failed · try again'
               : all === 'done' ? 'All downloaded ✓'
-              : `Download all (${readyCount})`}
+              : <><Icon name="download" /><span className="lbl">Download </span>all ({readyCount})</>}
           </button>
         )}
       </div>
