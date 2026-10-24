@@ -28,8 +28,8 @@ function SiteHeader() {
         <HeaderBrand href="#/" sitename="Camera-detected offences" />
         <HeaderActions>
           <nav className="pub-nav" aria-label="Main">
-            <Link to="/">View a notice</Link>
-            <Link to="/cameras">Check a camera</Link>
+            <Link to="/">Evidence</Link>
+            <Link to="/cameras">Enforcement Certificate</Link>
           </nav>
         </HeaderActions>
       </Header>
@@ -246,7 +246,7 @@ function NoticePage({ number }) {
 
   return (
     <div className="pub-wrap pub-page" ref={story.pageRef}>
-      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/">View a notice</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{n.number}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/">Evidence</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{n.number}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
       <h1>What happened</h1>
       <p className="pub-lede">{prog.label} · Penalty notice {n.number}</p>
 
@@ -330,7 +330,7 @@ function Cameras() {
   const list = SITES.filter((s) => (s.code + s.name + s.suburb).toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="pub-wrap pub-page">
-      <h1>Check a camera</h1>
+      <h1>Enforcement Certificate</h1>
       <p className="pub-lede">See any camera’s certificates, with or without a notice.</p>
       <label className="sr-only" htmlFor="camq">Search cameras</label>
       <Input id="camq" className="pub-search" placeholder="Search by road, suburb or camera code" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -352,7 +352,7 @@ function Camera({ code }) {
   const type = (c) => (c.section === 's137' ? 'Device tested and sealed' : c.section === 's132' ? 'Distance surveyed' : c.session ? 'Checked before session' : `Camera inspected${c.point ? ` (point ${c.point})` : ''}`);
   return (
     <div className="pub-wrap pub-page">
-      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/cameras">Check a camera</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{s.code}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="#/cameras">Enforcement Certificate</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{s.code}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
       <h1>{s.name}</h1>
       <p className="pub-lede">{PROGRAMS[s.program].label} · {s.direction} · {s.limit} km/h</p>
       <Table>
@@ -380,7 +380,7 @@ export default function PublicSite({ parts }) {
   const first = useRef(true);
   useEffect(() => {
     const [a, b] = parts;
-    const page = a === 'notice' && b ? `Notice ${b}` : a === 'cameras' ? 'Check a camera' : a === 'camera' && b ? `Camera ${b}` : 'Find your notice';
+    const page = a === 'notice' && b ? `Notice ${b}` : a === 'cameras' ? 'Enforcement Certificate' : a === 'camera' && b ? `Camera ${b}` : 'Find your notice';
     document.title = `${page} | Camera-detected offences | NSW Government (prototype)`;
     // after a page change, move focus to the new page heading so screen reader and keyboard users start in the right place
     if (first.current) { first.current = false; return; }
