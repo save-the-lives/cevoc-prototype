@@ -33,5 +33,5 @@ export function useWorkload(userId) {
     });
     const attention = open.filter((x) => x.sla.left < 0 || !x.ev.current).sort((a, b) => (b.sla.left < 0) - (a.sla.left < 0) || a.sla.left - b.sla.left).slice(0, 5);
     return { rows, open, statusOf, review: queue('review'), court: queue('court'), people, cameras, attention, noticeCount: NOTICES.length };
-  }, [state.assign, state.decisions, state.certStatus, userId, statusOf]);
+  }, [state.assign, state.decisions, state.certStatus, state.targets, userId, statusOf]);
 }

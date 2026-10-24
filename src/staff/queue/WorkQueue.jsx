@@ -7,9 +7,11 @@ import { useStore } from '../../lib/store.jsx';
 import { CASES, PROGRAMS, STAFF, notice as findNotice, site as findSite, staff as findStaff } from '../../data.js';
 import { useHotkeys } from '../hooks/useHotkeys.js';
 import { useColumns } from '../hooks/useColumns.js';
-import { slaOf } from './sla.js';
+import { TARGETS, slaOf } from './sla.js';
+import { planFaults } from '../../lib/faults.js';
+import { caseState, nextAction, validationOf } from '../../lib/workflow.js';
 import { COLUMN_BY_ID } from './columns.jsx';
-import { PRESETS, compile, orderRows } from './query.js';
+import { PRESETS, REVENUE_VIEWS, compile, orderRows } from './query.js';
 import QueryBar from './QueryBar.jsx';
 import CaseWorkbench from './CaseWorkbench.jsx';
 import CaseRail from './CaseRail.jsx';
@@ -18,15 +20,17 @@ import ColumnResizer from './ColumnResizer.jsx';
 
 // A work queue: search, filters, sortable and rearrangeable columns, selection with bulk actions,
 // a docked quick view and keyboard shortcuts (j/k, Enter, p, x, a).
-export default function WorkQueue({ name, user, initialQuery = '' }) {
-  const { state, dispatch, statusOf } = useStore();
+export default function WorkQueue({ name, user, initialQuery = '', view = '' }) {
+  const { state, dispatch, statusOf, faultSettings } = useStore();
   const type = name === 'court' ? 'court' : 'review';
+  const revenue = user.agency === 'rnsw';
+  const startQuery = initialQuery || REVENUE_VIEWS.find((v) => v.id === view)?.q || (revenue && name !== 'court' ? REVENUE_VIEWS[0].q : '');
   const canAssign = user.perms.includes('case:decide');
-  const cols = useColumns();
-  const [query, setQuery] = useState(initialQuery);
+  const cols = useColumns(user.agency);
+  const [query, setQuery] = useState(startQuery);
   const queryRef = useRef(null);
   const lastGood = useRef(null);
-  const [sort, setSort] = useState({ key: 'waiting', dir: 'desc' });
+  const [sort, setSort] = useState({ key: revenue ? 'due' : 'waiting', dir: 'desc' });
   const [picked, setPicked] = useState(() => new Set());
   const [cursor, setCursor] = useState(0);
   const [dock, setDock] = useState(false);
@@ -37,10 +41,16 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
   const lastAssign = useRef(null);
 
   const assigneeOf = (c) => (c.id in state.assign ? state.assign[c.id] : c.assignee);
-  const all = useMemo(() => CASES.filter((c) => c.type === type).map((c) => {
+  // The Revenue review queue holds reviews and court elections together; the Court view narrows it.
+  const all = useMemo(() => CASES.filter((c) => name === 'court' ? c.type === 'court' : true).map((c) => {
     const n = findNotice(c.notice);
-    return { c, n, ev: evaluate(n, statusOf), program: PROGRAMS[findSite(n.site).program].label, sla: slaOf(c), assignee: c.id in state.assign ? state.assign[c.id] : c.assignee, decision: state.decisions[c.id] };
-  }), [type, state.assign, state.decisions, statusOf]);
+    const ev = evaluate(n, statusOf);
+    const assignee = c.id in state.assign ? state.assign[c.id] : c.assignee;
+    const st = caseState(c.id, state, assignee);
+    const fault = planFaults(n, faultSettings).certs;
+    const validation = validationOf(ev, fault === 'error' || fault === 'missing' ? 'error' : 'ready');
+    return { c, n, ev, program: PROGRAMS[findSite(n.site).program].label, sla: slaOf(c), assignee, decision: state.decisions[c.id], state: st, validation, next: nextAction(st, validation) };
+  }), [name, state.assign, state.decisions, state.tech, state.reopened, state.targets, statusOf, JSON.stringify(faultSettings)]); // eslint-disable-line
 
   const compiled = useMemo(() => compile(query, { me: user.id }), [query, user.id]);
   if (compiled.ok) lastGood.current = compiled;
@@ -48,7 +58,7 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
   const rows = useMemo(() => {
     const list = all.filter(active.test);
     if (active.order.length) return orderRows(list, active.order);
-    const f = COLUMN_BY_ID[sort.key]?.sort || COLUMN_BY_ID.waiting.sort;
+    const f = COLUMN_BY_ID[sort.key]?.sort || COLUMN_BY_ID.due.sort;
     return [...list].sort((a, b) => (f(a) < f(b) ? -1 : f(a) > f(b) ? 1 : 0) * (sort.dir === 'asc' ? 1 : -1));
   }, [all, active, sort]);
 
@@ -111,8 +121,9 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
     Escape: () => (dock ? setDock(false) : setPicked(new Set())),
   });
 
-  const mine = all.filter((r) => r.assignee === user.id).length;
-  const title = type === 'court' ? 'Court elections' : 'Reviews';
+  const mine = all.filter((r) => r.assignee === user.id && !r.decision).length;
+  const title = name === 'court' ? 'Court elections' : 'Review queue';
+  const views = revenue ? REVENUE_VIEWS : PRESETS.map((p) => ({ ...p, id: p.label }));
   const widthOf = (id) => (live && live.id === id ? live.w : cols.width(id));
   const tableW = 44 + 52 + cols.visible.reduce((n, c) => n + widthOf(c.id), 0);
   const docked = dock && cursorRow;
@@ -121,14 +132,14 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
     <>
       <div className="st-qhead">
         <h1>{title}</h1>
-        <p className="st-muted">{mine} assigned to you · aim to reply within {type === 'court' ? '42' : '28'} days of the request</p>
+        <p className="st-muted">{mine} unresolved with you · internal reply target {TARGETS.review} days for reviews, {TARGETS.court} for court elections</p>
       </div>
 
       <div className="st-toolbar" role="search">
         <QueryBar value={query} onChange={(v) => { setQuery(v); setCursor(0); }} inputRef={queryRef} error={compiled.ok ? null : compiled.error} shown={rows.length} total={all.length} />
         {!docked && <div className="st-toolbar__chips">
           <div className="st-seg" role="group" aria-label="Saved filters">
-            {PRESETS.map((p) => <Button key={p.label} size="sm" variant={query.trim() === p.q ? 'solid' : 'outline'} aria-pressed={query.trim() === p.q} onClick={() => { setQuery(p.q); setCursor(0); }}>{p.label}</Button>)}
+            {views.map((p) => <Button key={p.id} size="sm" variant={query.trim() === p.q ? 'solid' : 'outline'} aria-pressed={query.trim() === p.q} onClick={() => { setQuery(p.q); setCursor(0); }}>{p.label}</Button>)}
           </div>
           <span className="st-toolbar__end">
             <Button size="sm" variant={cols.density === 'compact' ? 'solid' : 'outline'} aria-pressed={cols.density === 'compact'} onClick={() => cols.setDensity(cols.density === 'compact' ? 'comfortable' : 'compact')}>Compact rows</Button>
@@ -161,7 +172,7 @@ export default function WorkQueue({ name, user, initialQuery = '' }) {
       {docked ? (
         <div className="st-pane has-dock">
           <CaseRail rows={rows} cursor={cursor} onSelect={(i) => setCursor(i)} />
-          <CaseWorkbench row={cursorRow} index={cursor} total={rows.length} user={user}
+          <CaseWorkbench row={cursorRow} agency={user.agency} index={cursor} total={rows.length} user={user}
             onPrev={() => setCursor((c) => Math.max(c - 1, 0))} onNext={() => setCursor((c) => Math.min(c + 1, rows.length - 1))} onClose={() => setDock(false)}
             onDecided={(id) => { const from = rows.findIndex((r) => r.c.id === id); const next = rows.findIndex((r, i) => i > from && !r.decision); const first = rows.findIndex((r) => r.c.id !== id && !r.decision); const to = next >= 0 ? next : first; if (to >= 0) setCursor(to); else toast.success('That was the last open case in this view'); }} />
         </div>

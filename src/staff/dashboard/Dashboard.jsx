@@ -153,10 +153,25 @@ export default function Dashboard({ user, canApprove }) {
   const type = f.type || (all.filter((r) => r.c.type === 'court').length > all.length / 2 ? 'court' : 'reviews');
   const drill = (g) => go(`/staff/queue/${type}?q=${encodeURIComponent(queryOf(g))}`);
 
+  if (user.agency === 'tfnsw') {
+    return (
+      <div className="vz">
+        <div className="vz-top"><h1>Insights</h1></div>
+        <p className="vz-hint">Camera certification at a glance. Select a camera to open its record.</p>
+        <div className="vz-grid">
+          <Card title="Camera certification" span="12" hint="age against the limit">
+            <Heat rows={cameraRows} cols={['Test & seal', 'Inspection', 'Survey']} cells={cells} onPick={(k) => go(`/staff/camera/${k}`)} />
+            <ul className="vz-key" aria-hidden="true"><li><i className="is-ok" />in date</li><li><i className="is-warn" />nearing limit</li><li><i className="is-bad" />past limit</li></ul>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="vz">
       <div className="vz-top">
-        <h1>Dashboard</h1>
+        <h1>Insights</h1>
         <div className="seg2" role="group" aria-label="Case type">
           {[['', 'All'], ['review', 'Reviews'], ['court', 'Court']].map(([v, l]) => <button key={l} type="button" aria-pressed={(f.type || '') === v} onClick={() => set('type', v || null)}>{l}</button>)}
         </div>
@@ -181,7 +196,7 @@ export default function Dashboard({ user, canApprove }) {
         </section>
         <Card title="Who has it" span="4"><Pie items={people} onPick={(k) => drill({ assignee: k })} /></Card>
         <Card title="By camera type" span="4"><Pie items={programs} onPick={(k) => drill({ program: k })} /></Card>
-        <Card title="Waiting" span="4" hint="days"><Columns items={hist} onPick={(k) => drill({ bucket: k })} height={150} /></Card>
+        <Card title="Waiting" span="4" hint="days"><Columns items={hist} unit="days" onPick={(k) => drill({ bucket: k })} height={150} /></Card>
         <Card title="Camera certification" span="12" hint="age against the limit">
           <Heat rows={cameraRows} cols={['Test & seal', 'Inspection', 'Survey']} cells={cells} onPick={(k) => drill({ camera: k })} />
           <ul className="vz-key" aria-hidden="true"><li><i className="is-ok" />in date</li><li><i className="is-warn" />nearing limit</li><li><i className="is-bad" />past limit</li></ul>

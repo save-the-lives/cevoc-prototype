@@ -8,14 +8,14 @@ const initials = (name) => name.split(' ').map((p) => p[0]).join('').slice(0, 2)
 export default function UserMenu({ user, onSwitch, onShortcuts, onSignOut }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="st-user" aria-label={`Account menu for ${user.name}`}>
-        <Avatar><AvatarFallback>{initials(user.name)}</AvatarFallback></Avatar>
+      <DropdownMenuTrigger className="st-user">
+        <span aria-hidden="true"><Avatar><AvatarFallback>{initials(user.name)}</AvatarFallback></Avatar></span>
         <span className="st-user__who"><strong>{user.name}</strong><small>{user.role}</small></span>
-        <span aria-hidden="true">▾</span>
+        <span aria-hidden="true">▾</span><span className="sr-only">account menu</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <div className="st-profile">
-          <Avatar><AvatarFallback>{initials(user.name)}</AvatarFallback></Avatar>
+          <span aria-hidden="true"><Avatar><AvatarFallback>{initials(user.name)}</AvatarFallback></Avatar></span>
           <div>
             <strong>{user.name}</strong>
             <span>{user.role}</span>

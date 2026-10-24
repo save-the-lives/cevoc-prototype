@@ -37,3 +37,16 @@ All data, images and videos are generated and fictitious. Certificate checks sum
 ## Images and video
 
 The evidence images and the two sample videos are built from a small set of photos in `assets-src/real` by `scripts/make-media.py` (needs Pillow and ffmpeg). Each frame gets a camera data strip and a SAMPLE band, and the number plates are re-lettered to match the fictitious notices, so nothing reads as real evidence. Run `python3 scripts/make-media.py` after changing the photos or the notice details; output goes to `public/assets/media`.
+
+## Staff workflows (prototype)
+
+Revenue NSW and Transport for NSW get different staff experiences from one shared codebase (`src/staff/shell/StaffShell.jsx` picks navigation, title and landing by agency).
+
+- **Revenue NSW | Review support.** Lands on the review queue (default view: my unresolved work). Case workflow: `OPEN → TRIAGE → AWAITING_TRANSPORT → ADVICE_RECEIVED → DECIDED`, with `MORE_INFORMATION_REQUIRED`, `REOPENED` and cancelled requests (`src/lib/workflow.js`). CLOSED is deliberately not a separate state in the prototype: a decision ends the case and can be reopened.
+- **Technical requests.** Asking Transport is *not* a decision. Revenue raises a request (category, precise question, evidence summary). The case stays open and owned by Revenue; Transport answers in its technical inbox with advice only; Revenue then makes the final decision. Earlier answered advice for the same camera is shown as "Potentially related technical advice available" so a second similar enquiry may not need another referral. Advice is never applied automatically.
+- **Transport for NSW | Technical assurance.** Lands on the technical inbox, with a three-pane technical workbench (problem, camera records, response). Transport cannot uphold or withdraw a customer's fine.
+- **Source-system deep link.** `#/staff/case/RV-24026?from=external&src=revenue&ref=RCM-558026&as=sam` opens a case with validation shown first and a route back to `#/source/revenue`. The source system is a simulated stand-in, not an integration.
+- **Certificate changes.** Approving a certificate withdrawal notifies Revenue NSW (simulated) of the open cases that rely on it.
+- **Targets** (28 and 42 days for Revenue, 5 for Transport) are internal service goals editable in the demo hub, not statutory deadlines.
+
+Known gaps: the demo data set is small (no pagination or virtualised rendering), scatter-plot dots on Insights can overlap and miss the 24px target-size guideline (every case is also reachable from the queue), and screen-reader testing is still manual.

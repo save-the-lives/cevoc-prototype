@@ -131,3 +131,4 @@ a.demo-door:hover { border-color: #a78bfa; }
 
 .demo-switch { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }
 .demo-switch input { width: 18px; height: 18px; }
+.demo-targets { display: flex; gap: 14px; flex-wrap: wrap; } .demo-targets label { display: grid; gap: 4px; font-weight: 600; } .demo-targets input { width: 90px; padding: 6px 8px; font: inherit; }

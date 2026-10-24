@@ -5,7 +5,7 @@
 .st-top { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 14px; background: var(--top); color: #fff; padding: 8px 16px; border-bottom: 3px solid var(--ac); }
 .st-app { color: #fff; text-decoration: none; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
 .st-app small { font-weight: 400; opacity: .7; margin-left: 4px; }
-.st-type { font: 700 10px ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ac); }
+.st-type { font: 700 11px ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ac-ink, #003a8c); }
 .org { font: 700 11px ui-monospace, Menlo, monospace; padding: 3px 7px; border-radius: 2px; color: #fff; white-space: nowrap; }
 .org.tfnsw { background: #146cfd; }
 .org.rnsw { background: #c4163a; }
@@ -23,7 +23,7 @@
 .st-main h1 { font-size: 20px; margin: 0; color: #0b1a33; }
 .st-rec-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .st-card { background: #fff; border: 1px solid #dde2e8; border-radius: 6px; padding: 12px 14px; min-width: 0; }
-.st-card h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #3e4c59; display: flex; gap: 8px; align-items: center; }
+.st-card h3, .st-card .st-h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #3e4c59; display: flex; gap: 8px; align-items: center; }
 .st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .st-wide { grid-column: 1 / -1; }
 .st-muted { color: #616e7c; }

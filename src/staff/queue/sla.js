@@ -4,9 +4,13 @@ import { daysBetween } from '../../lib/rules.js';
 const addDays = (iso, n) => { const d = new Date(`${iso}T00:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
 // How long the customer has been waiting since they asked for the review, against the target reply time
-// (28 days for reviews, 42 for court elections). The tone shows how close the wait is to the target.
+// (set in the demo controls, 28 and 42 days to start). The tone shows how close the wait is to the target.
+// Targets are an internal service goal that Revenue NSW can change (demo hub > Controls), not a statutory deadline.
+export const TARGETS = { review: 28, court: 42, tech: 5 };
+export const setTargets = (t) => Object.assign(TARGETS, t);
+
 export function slaOf(c) {
-  const target = c.type === 'court' ? 42 : 28;
+  const target = c.type === 'court' ? TARGETS.court : TARGETS.review;
   const waited = Math.max(daysBetween(c.lodged, TODAY), 0);
   const due = addDays(c.lodged, target);
   const left = target - waited;

@@ -5,6 +5,7 @@ import { DemoDock } from './shared/ui.jsx';
 import PublicSite from './public/Public.jsx';
 import StaffSite from './staff/Staff.jsx';
 import Demo from './demo/Demo.jsx';
+import SourceSystem from './staff/SourceSystem.jsx';
 
 // Three areas, never mixed: /demo (presenter), /staff (officers), everything else is public.
 
@@ -27,6 +28,7 @@ function Routes() {
   const { raw, parts, query } = useRoute();
   let body;
   if (parts[0] === 'demo') body = <Demo section={parts[1]} />;
+  else if (parts[0] === 'source') body = <><SourceSystem /><DemoDock /></>;
   else if (parts[0] === 'staff') body = <><StaffSite parts={parts} query={query} /><DemoDock /></>;
   else body = <><PublicSite parts={parts} /><DemoDock /></>;
   return <Boundary key={raw}>{body}</Boundary>;

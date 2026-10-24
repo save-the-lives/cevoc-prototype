@@ -42,9 +42,20 @@ export default function Controls() {
         </div>
         <label className="demo-switch"><input type="checkbox" checked={!!state.handoffs} onChange={(e) => dispatch({ type: 'handoffs', on: e.target.checked })} /> Highlight hand-offs</label>
       </section>
+      <section className="demo-run">
+        <div>
+          <h2>Service targets</h2>
+          <p className="demo-muted">Internal reply targets, in days, used for “waiting”, “due” and “at risk”. They are demo settings, not statutory deadlines.</p>
+        </div>
+        <div className="demo-targets">
+          {[['review', 'Reviews'], ['court', 'Court elections'], ['tech', 'Transport technical advice']].map(([k, l]) => (
+            <label key={k}>{l} <input type="number" min="1" max="120" value={state.targets[k]} onChange={(e) => dispatch({ type: 'targets', targets: { [k]: Math.max(1, Number(e.target.value) || 1) } })} /></label>
+          ))}
+        </div>
+      </section>
       <div className="demo-foot">
         <button type="button" onClick={() => dispatch({ type: 'reset' })}>Reset all demo data</button>
-        <span className="demo-muted">{state.pending.length} pending · {Object.keys(state.certStatus).length} certificate changes · {Object.keys(state.decisions).length} decisions · {Object.keys(state.assign).length} assignments</span>
+        <span className="demo-muted">{state.pending.length} pending · {state.tech.length} technical requests · {Object.keys(state.certStatus).length} certificate changes · {Object.keys(state.decisions).length} decisions · {Object.keys(state.assign).length} assignments</span>
       </div>
       <p className="demo-muted">All people, notices, images, videos and certificates are fictitious. Sign-in, the Revenue NSW hand-off, notifications and letters are simulated. Certificate checks summarise Road Transport Act 2013 ss132, 137 and 138 for prototyping, not legal advice. Add <code>?clean=1</code> to any URL to hide the demo-hub link for screenshots.</p>
     </>

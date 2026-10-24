@@ -22,15 +22,15 @@ export function Spark({ values, tone = 'ac' }) {
 }
 
 // Vertical columns with an optional target line. items: [{ key, label, value, tone, tip }]
-export function Columns({ items, target, selected, onPick, height = 150 }) {
+export function Columns({ items, target, selected, onPick, height = 150, unit = '' }) {
   const max = Math.max(...items.map((i) => i.value), 1);
   return (
     <div className="cols" style={{ height }} role="group">
       {target !== undefined && <i className="cols-target" style={{ bottom: `${(target / max) * 100}%` }} />}
       {items.map((i) => (
         <button key={i.key} type="button" className={`col is-${i.tone || 'ac'} ${selected === i.key ? 'is-sel' : ''} ${selected != null && selected !== i.key ? 'is-dim' : ''}`} aria-pressed={selected === undefined ? undefined : selected === i.key}
-          aria-label={`${i.label}: ${i.value}`} onClick={() => onPick?.(selected === i.key ? null : i.key)}>
-          <b>{i.value || ''}</b>
+          aria-label={`${i.value} ${i.label}${unit ? ` ${unit}` : ''}`} onClick={() => onPick?.(selected === i.key ? null : i.key)}>
+          <b>{i.value || ''}</b>{' '}
           <span className="col-bar" style={{ height: `${(i.value / max) * 100}%` }} />
           <small>{i.label}</small>
           {i.tip && <Tip>{i.tip}</Tip>}
@@ -64,16 +64,18 @@ export function HBars({ items, selected, onPick }) {
 export function Heat({ rows, cols, cells, selected, onPick }) {
   return (
     <div className="heat" role="table" aria-label="Certification by camera" style={{ gridTemplateColumns: `76px repeat(${cols.length}, minmax(72px, 1fr))` }}>
-      <span />
-      {cols.map((c) => <span key={c} className="heat-h" role="columnheader">{c}</span>)}
+      <div className="heat-row" role="row">
+        <span role="columnheader"><span className="sr-only">Camera</span></span>
+        {cols.map((c) => <span key={c} className="heat-h" role="columnheader">{c}</span>)}
+      </div>
       {rows.map((r) => (
         <div key={r.key} className="heat-row" role="row">
-          <button type="button" className={`heat-l ${selected === r.key ? 'is-sel' : ''}`} aria-pressed={selected === undefined ? undefined : selected === r.key} onClick={() => onPick?.(selected === r.key ? null : r.key)}>{r.label}</button>
+          <span className="heat-cell" role="rowheader"><button type="button" className={`heat-l ${selected === r.key ? 'is-sel' : ''}`} aria-pressed={selected === undefined ? undefined : selected === r.key} onClick={() => onPick?.(selected === r.key ? null : r.key)}>{r.label}</button></span>
           {cols.map((c, i) => {
             const cell = cells[r.key]?.[i];
             return cell
-              ? <button key={c} type="button" role="cell" className={`heat-c is-${cell.tone} ${selected != null && selected !== r.key ? 'is-dim' : ''}`} aria-label={`${r.label}, ${c}: ${cell.tip}`} onClick={() => onPick?.(selected === r.key ? null : r.key)}>{cell.text}<Tip>{cell.tip}</Tip></button>
-              : <span key={c} className="heat-c is-none" role="cell">–</span>;
+              ? <span key={c} className="heat-cell" role="cell"><button type="button" className={`heat-c is-${cell.tone} ${selected != null && selected !== r.key ? 'is-dim' : ''}`} aria-label={`${r.label}, ${c}: ${cell.text}. ${cell.tip}`} onClick={() => onPick?.(selected === r.key ? null : r.key)}>{cell.text}<Tip>{cell.tip}</Tip></button></span>
+              : <span key={c} className="heat-cell" role="cell"><span className="heat-c is-none">–<span className="sr-only"> not required</span></span></span>;
           })}
         </div>
       ))}
@@ -125,7 +127,7 @@ export function Pie({ items, selected, onPick }) {
         {rows.map((r) => (
           <li key={r.key}>
             <button type="button" className={`pie-b ${selected === r.key ? 'is-sel' : ''} ${selected != null && selected !== r.key ? 'is-dim' : ''}`} aria-pressed={selected === undefined ? undefined : selected === r.key}
-              aria-label={`${r.label}: ${r.total} of ${sum}`} onClick={() => toggle(r.key)}>
+              onClick={() => toggle(r.key)}>
               <i style={{ background: r.color }} />
               <span className="pie-l">{r.label}</span>
               <b>{r.total}</b>

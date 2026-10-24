@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
-import { COLUMNS, COLUMN_BY_ID, MIN_WIDTH } from '../queue/columns.jsx';
+import { COLUMNS, COLUMN_BY_ID, DEFAULT_COLUMNS, MIN_WIDTH } from '../queue/columns.jsx';
 
 // Which queue columns are shown, in what order, and how dense the rows are. Remembered in this browser.
-const KEY = 'cevoc-queue-prefs-v2';
 const ALL = COLUMNS.map((c) => c.id);
-const DEFAULT = { order: ALL, hidden: COLUMNS.filter((c) => !c.def).map((c) => c.id), density: 'comfortable', widths: {} };
+const defaults = (agency) => {
+  const shown = DEFAULT_COLUMNS[agency] || DEFAULT_COLUMNS.rnsw;
+  return { order: [...shown, ...ALL.filter((id) => !shown.includes(id))], hidden: ALL.filter((id) => !shown.includes(id) && !COLUMN_BY_ID[id].locked), density: 'compact', widths: {} };
+};
 
-function load() {
+function load(KEY, DEFAULT) {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (!s) return DEFAULT;
@@ -15,9 +17,11 @@ function load() {
   } catch (e) { return DEFAULT; }
 }
 
-export function useColumns() {
-  const [prefs, setPrefs] = useState(load);
-  const save = useCallback((next) => { setPrefs(next); try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) { /* ignore */ } }, []);
+export function useColumns(agency = 'rnsw') {
+  const KEY = `cevoc-queue-prefs-v3-${agency}`;
+  const DEFAULT = defaults(agency);
+  const [prefs, setPrefs] = useState(() => load(KEY, DEFAULT));
+  const save = useCallback((next) => { setPrefs(next); try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) { /* ignore */ } }, [KEY]);
 
   const toggle = (id) => { if (COLUMN_BY_ID[id].locked) return; save({ ...prefs, hidden: prefs.hidden.includes(id) ? prefs.hidden.filter((x) => x !== id) : [...prefs.hidden, id] }); };
   const moveTo = (id, target) => {

@@ -138,25 +138,25 @@ export const SCENARIOS = [
 
 // priority: high | normal | low. assignee is a STAFF id or null. SLA is worked out from lodged date and type.
 export const CASES = [
-  { id: 'RV-24017', type: 'review', notice: '3162457891', lodged: '2026-09-10', channel: 'Online form', priority: 'high', assignee: 'alex',
+  { id: 'RV-24017', category: 'Signal timing', type: 'review', notice: '3162457891', lodged: '2026-09-10', channel: 'Online form', priority: 'high', assignee: 'alex',
     grounds: 'The light turned amber as I got there and I couldn’t stop safely.' },
-  { id: 'RV-24021', type: 'review', notice: '3162457897', lodged: '2026-10-14', channel: 'Phone (contact centre note)', priority: 'normal', assignee: null,
+  { id: 'RV-24021', category: 'Image check by a person', type: 'review', notice: '3162457897', lodged: '2026-10-14', channel: 'Phone (contact centre note)', priority: 'normal', assignee: null,
     grounds: 'I was holding a drink bottle, not a phone. I want to see the photo a person checked.' },
-  { id: 'RV-24022', type: 'review', notice: '3162457898', lodged: '2026-10-02', channel: 'Online form', priority: 'high', assignee: null,
+  { id: 'RV-24022', category: 'Signal timing', type: 'review', notice: '3162457898', lodged: '2026-10-02', channel: 'Online form', priority: 'high', assignee: null,
     grounds: 'The signal was amber for barely a second. I think the timing is wrong.' },
-  { id: 'RV-24023', type: 'review', notice: '3162457899', lodged: '2026-09-29', channel: 'Letter', priority: 'normal', assignee: 'sam',
+  { id: 'RV-24023', category: 'Safety and overtaking', type: 'review', notice: '3162457899', lodged: '2026-09-29', channel: 'Letter', priority: 'normal', assignee: 'sam',
     grounds: 'I was overtaking a truck and had to speed up briefly to get back in lane.' },
-  { id: 'RV-24024', type: 'review', notice: '3162457900', lodged: '2026-10-09', channel: 'Online form', priority: 'normal', assignee: 'jordan',
+  { id: 'RV-24024', category: 'Signage', type: 'review', notice: '3162457900', lodged: '2026-10-09', channel: 'Online form', priority: 'normal', assignee: 'jordan',
     grounds: 'I did not see a warning sign for a mobile camera on Windsor Road.' },
-  { id: 'RV-24025', type: 'review', notice: '3162457901', lodged: '2026-10-19', channel: 'Online form', priority: 'low', assignee: null,
+  { id: 'RV-24025', category: 'Phone use circumstances', type: 'review', notice: '3162457901', lodged: '2026-10-19', channel: 'Online form', priority: 'low', assignee: null,
     grounds: 'My phone was mounted in a cradle and I was using it for navigation.' },
-  { id: 'RV-24026', type: 'review', notice: '3162457890', lodged: '2026-10-21', channel: 'Online form', priority: 'low', assignee: null,
+  { id: 'RV-24026', category: 'Not the driver', type: 'review', notice: '3162457890', lodged: '2026-10-21', channel: 'Online form', priority: 'low', assignee: null,
     grounds: 'I was not driving. I have asked my brother to nominate himself.' },
-  { id: 'CE-24019', type: 'court', notice: '3162457894', lodged: '2026-10-18', channel: 'Online form', priority: 'high', assignee: 'jordan',
+  { id: 'CE-24019', category: 'Timing between cameras', type: 'court', notice: '3162457894', lodged: '2026-10-18', channel: 'Online form', priority: 'high', assignee: 'jordan',
     grounds: 'We run work vehicles on the highway. Our driver’s logbook shows they were within limits. The timing between the cameras must be wrong.' },
-  { id: 'CE-24020', type: 'court', notice: '3162457902', lodged: '2026-10-05', channel: 'Letter', priority: 'normal', assignee: null,
+  { id: 'CE-24020', category: 'Surveyed distance', type: 'court', notice: '3162457902', lodged: '2026-10-05', channel: 'Letter', priority: 'normal', assignee: null,
     grounds: 'The company disputes the surveyed distance between the two cameras.' },
-  { id: 'CE-24023', type: 'court', notice: '3162457899', lodged: '2026-10-16', channel: 'Online form', priority: 'low', assignee: 'alex',
+  { id: 'CE-24023', category: 'Camera certification', type: 'court', notice: '3162457899', lodged: '2026-10-16', channel: 'Online form', priority: 'low', assignee: 'alex',
     grounds: 'I want a magistrate to hear this. The camera was not certified on the day.' },
 ];
 
@@ -176,3 +176,24 @@ export const notice = (n) => NOTICES.find((x) => x.number === n);
 export const cert = (id) => CERTS.find((c) => c.id === id);
 export const kase = (id) => CASES.find((c) => c.id === id);
 export const staff = (id) => STAFF.find((p) => p.id === id);
+
+// Technical requests: Revenue NSW asks Transport a specific technical question about a camera. Revenue keeps the
+// customer case and makes the final decision; Transport only advises. These are simulated seed items.
+// status: AWAITING_TRANSPORT | MORE_INFORMATION_REQUIRED | ADVICE_RECEIVED | CANCELLED
+export const TECH_CATEGORIES = [
+  ['certification', 'Certification'], ['evidence', 'Image or evidence'], ['operation', 'Camera operation'],
+  ['site', 'Site configuration'], ['timing', 'Timing or calculation'], ['other', 'Other'],
+];
+export const TECH_SEED = [
+  { id: 'TR-3002', caseId: 'CE-24020', notice: '3162457902', site: 'AVG-HUM', category: 'timing', by: 'jordan', assignee: 'morgan', at: '2026-10-20',
+    summary: 'Is the 18 km surveyed distance the one in force for this notice?',
+    question: 'The company disputes the surveyed distance between the two cameras. Please confirm the surveyed distance in force on 25 September 2026 and how the average speed was calculated.',
+    status: 'AWAITING_TRANSPORT', thread: [] },
+  { id: 'TR-2991', caseId: 'RV-23988', notice: '3162457790', site: 'PHN-M4', category: 'evidence', by: 'alex', assignee: 'jo', at: '2026-09-18',
+    summary: 'Was a person involved in checking the phone-detection image?',
+    question: 'The customer asks whether a person ever looked at the image. Is the person-check recorded, and can it be shown to the customer?',
+    status: 'ADVICE_RECEIVED', thread: [],
+    response: { by: 'jo', at: '2026-09-22', recommendation: 'valid',
+      advice: 'Every phone-detection image is checked by an authorised adjudicator before a notice is issued. The adjudicator ID and check time are recorded in the evidence metadata (“Person check”), and that record can be quoted to the customer.',
+      scope: 'Applies to any notice from camera PHN-M4 where the metadata shows a person check. It does not apply if the person-check record is missing.' } },
+];

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { Tag } from '@nswds/ui';
 import { Link } from '../../shared/ui.jsx';
 import { fmtDate, fmtTime } from '../../lib/format.js';
@@ -8,16 +7,26 @@ import { site as findSite, staff as findStaff } from '../../data.js';
 import EvidenceViewer from './EvidenceViewer.jsx';
 import CertPanel from './CertPanel.jsx';
 import QuickDecision from './QuickDecision.jsx';
+import { CASE_STATE, activeRequest, validationOf } from '../../lib/workflow.js';
+import { planFaults } from '../../lib/faults.js';
+import { useSim } from '../../lib/useSim.js';
 
 // The double flyout: evidence on the left, certification on the right, decision underneath.
 // Most cases can be decided from here. Opening the full case is optional.
-export default function CaseWorkbench({ row, index, total, user, onPrev, onNext, onClose, onDecided }) {
-  const { dispatch } = useStore();
-  const { c, n, ev, program, sla, assignee } = row;
+export default function CaseWorkbench({ row, agency, index, total, user, onPrev, onNext, onClose, onDecided }) {
+  const { state: store, faultSettings } = useStore();
+  const { c, n, ev, program, sla, assignee, state: st } = row;
+  const sim = useSim(planFaults(n, faultSettings).certs, 600, [n.number]);
+  const validation = validationOf(ev, sim.status);
+  const req = activeRequest(store.tech, c.id);
+  const revenue = agency === 'rnsw';
   const s = findSite(n.site);
   const [tab, setTab] = useState('evidence');
   useEffect(() => { setTab('evidence'); }, [c.id]);
   const risks = ev.notCurrent;
+  // One line each: what the customer says, what the checks found, and what to do next. No pre-judged outcome.
+  const step = st === 'DECIDED' ? 'Decision recorded.' : st === 'AWAITING_TRANSPORT' ? `Waiting for Transport (${req?.id}). You keep the case.` : st === 'MORE_INFORMATION_REQUIRED' ? 'Transport asked you a question. Reply in the panel below.'
+    : st === 'ADVICE_RECEIVED' ? 'Read Transport’s advice, then decide.' : risks ? 'Resolve the certification risk: judge it from the evidence, or ask Transport a specific question.' : 'Evidence and certification are clear. Confirm the plate, then decide.';
 
   return (
     <section className="st-bench" aria-label={`Review of case ${c.id}`}>
@@ -36,6 +45,12 @@ export default function CaseWorkbench({ row, index, total, user, onPrev, onNext,
         </div>
       </header>
 
+      <div className="st-bench__sum" role="group" aria-label="Case summary">
+        <div><span>Customer’s issue</span><strong>{c.category}</strong><em>“{c.grounds.length > 90 ? `${c.grounds.slice(0, 88)}…` : c.grounds}”</em></div>
+        <div><span>Verification</span><strong><Tag size="sm" color={validation.tone}>{validation.label}</Tag></strong><em>{validation.short}</em></div>
+        <div><span>Status</span><strong><Tag size="sm" color={CASE_STATE[st].tone}>{CASE_STATE[st].label}</Tag></strong><em>Next: {step}</em></div>
+      </div>
+
       <div className="st-bench__tabs" role="tablist" aria-label="Review sections">
         <button type="button" role="tab" aria-selected={tab === 'evidence'} onClick={() => setTab('evidence')}>Evidence</button>
         <button type="button" role="tab" aria-selected={tab === 'cert'} onClick={() => setTab('cert')}>Certification{risks ? <b>{risks}</b> : null}</button>
@@ -49,7 +64,9 @@ export default function CaseWorkbench({ row, index, total, user, onPrev, onNext,
               <span aria-hidden="true">!</span> {risks} certification {risks === 1 ? 'risk' : 'risks'} on the camera. <u>See certification</u>
             </button>
           )}
-          <EvidenceViewer items={n.media} program={s.program} />
+          {revenue && risks === 0
+            ? <details className="st-bench__more"><summary>Supporting evidence ({n.media.length} items)</summary><EvidenceViewer items={n.media} program={s.program} /></details>
+            : <EvidenceViewer items={n.media} program={s.program} />}
           <blockquote className="st-quote">“{c.grounds}”<cite>Lodged via {c.channel} on {fmtDate(c.lodged)}</cite></blockquote>
           <dl className="st-facts">
             <div><dt>Offence</dt><dd>{n.offence}</dd></div>
@@ -66,9 +83,8 @@ export default function CaseWorkbench({ row, index, total, user, onPrev, onNext,
         </section>
       </div>
 
-      <QuickDecision k={c} user={user} riskCount={risks} onDecided={onDecided}
-        onAdvice={() => { dispatch({ type: 'note', who: user.id, what: `Technical advice added to ${c.id}`, ref: c.id }); toast.success('Technical advice added'); }} />
-      <p className="st-bench__foot">Need the audit trail or full camera metadata? <Link to={`/staff/case/${c.id}`}>Open the full case ↗</Link> <span className="st-muted">(optional)</span></p>
+      <QuickDecision k={c} n={n} ev={ev} user={user} riskCount={risks} onDecided={onDecided} />
+      <p className="st-bench__foot">Need the audit trail or full camera metadata? <Link to={`/staff/case/${c.id}`}>Open the full case ↗</Link> <span className="st-muted">(optional)</span> <Link to={`/source/revenue?case=${c.id}`}>Back in the Revenue NSW case system ↗</Link> <span className="st-muted">(simulated)</span></p>
     </section>
   );
 }

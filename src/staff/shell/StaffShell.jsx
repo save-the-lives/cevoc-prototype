@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, Kbd, Toaster, TooltipProvider } from '@nswds/ui';
 import { AgencyLockup, Link } from '../../shared/ui.jsx';
 import { go } from '../../lib/router.js';
@@ -8,76 +8,102 @@ import CommandPalette from './CommandPalette.jsx';
 import ShortcutsDialog from './ShortcutsDialog.jsx';
 import UserMenu from './UserMenu.jsx';
 
-const QUEUE_LABEL = { reviews: 'Reviews', court: 'Court elections', approvals: 'Approvals' };
+const QUEUE_LABEL = { reviews: 'Review queue', court: 'Court elections', approvals: 'Approvals' };
 
 // A trail only where it helps: a case sits under its queue. Queue and record pages already name themselves
 // in the side menu and the page heading, so a "Workspace" crumb there would only repeat them.
 function trail(parts) {
   const [, a, b] = parts;
   if (a === 'case') { const k = kase(b); const q = k?.type === 'court' ? 'court' : 'reviews'; return [{ label: QUEUE_LABEL[q], to: `/staff/queue/${q}` }, { label: b }]; }
+  if (a === 'request') return [{ label: 'Technical requests', to: '/staff' }, { label: b }];
   if (a === 'cert') return [{ label: 'Certificate register', to: '/staff/certificates' }, { label: b }];
   if (a === 'camera') return [{ label: 'Cameras', to: '/staff/cameras' }, { label: b }];
   return [];
 }
 
-function SideNav({ active, counts, hot, canApprove }) {
+// Navigation differs by agency: Revenue NSW works customer cases; Transport works technical requests and camera assets.
+export const AGENCY = {
+  rnsw: { title: 'Revenue NSW | Review support' },
+  tfnsw: { title: 'Transport for NSW | Technical assurance' },
+};
+
+function SideNav({ agency, active, counts, hot, canApprove, onSearch }) {
   const item = (to, key, label, n, isHot) => (
     <Link to={to} className={active === key ? 'on' : ''} aria-current={active === key ? 'page' : undefined}>{label} {n !== undefined && <span className={isHot ? 'hot' : ''}>{n}</span>}</Link>
   );
   return (
     <nav className="st-side" aria-label="Workspace">
-      {item('/staff', 'home', 'Dashboard')}
-      <p className="st-side__h">Infringement review</p>
-      {item('/staff/queue/reviews', 'reviews', 'Reviews', counts.review)}
-      {item('/staff/queue/court', 'court', 'Court elections', counts.court)}
-      <p className="st-side__h">Camera certificates</p>
-      {item('/staff/certificates', 'certificates', 'Certificate register', counts.certs)}
-      {item('/staff/cameras', 'cameras', 'Cameras')}
-      {canApprove && item('/staff/queue/approvals', 'approvals', 'Approvals', counts.approvals, hot)}
+      {agency === 'rnsw' ? (
+        <>
+          {item('/staff', 'home', 'Review queue', counts.mine)}
+          {item('/staff/queue/reviews?view=awaiting', 'awaiting', 'Escalations awaiting advice', counts.awaiting)}
+          {item('/staff/queue/reviews?view=completed', 'completed', 'Completed', counts.completed)}
+          <button type="button" className="st-side__btn" onClick={onSearch}>Search</button>
+        </>
+      ) : (
+        <>
+          {item('/staff', 'home', 'Technical requests', counts.techOpen)}
+          {item('/staff/certificates', 'certificates', 'Certificate register', counts.certs)}
+          {item('/staff/cameras', 'cameras', 'Camera assets')}
+          {item('/staff/queue/approvals', 'approvals', 'Certificate approvals', counts.approvals, hot)}
+          {item('/staff/requests?view=history', 'history', 'Technical history')}
+        </>
+      )}
+      <p className="st-side__h">More</p>
+      {item('/staff/insights', 'insights', 'Insights')}
     </nav>
   );
 }
 
 // The frame around every staff page: top bar, search and commands, queues, breadcrumbs, toasts.
-export default function StaffShell({ user, parts, counts, canApprove, hotApprovals, onSwitch, onSignOut, children }) {
+export default function StaffShell({ user, parts, query = {}, counts, canApprove, hotApprovals, onSwitch, onSignOut, children }) {
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const [, a, b] = parts;
   const crumbs = trail(parts);
+  useEffect(() => { document.title = `${AGENCY[user.agency].title} · CEVOC`; }, [user.agency]);
 
   const commands = useMemo(() => [
-    { id: 'c-home', label: 'Go to dashboard', keys: ['g', 'h'], run: () => go('/staff') },
-    { id: 'c-rev', label: 'Go to reviews', keys: ['g', 'r'], run: () => go('/staff/queue/reviews') },
-    { id: 'c-court', label: 'Go to court elections', keys: ['g', 'c'], run: () => go('/staff/queue/court') },
-    { id: 'c-cert', label: 'Go to certificate register', keys: ['g', 'e'], run: () => go('/staff/certificates') },
-    { id: 'c-cams', label: 'Go to cameras', run: () => go('/staff/cameras') },
+    { id: 'c-home', label: user.agency === 'rnsw' ? 'Go to review queue' : 'Go to technical requests', keys: ['g', 'h'], run: () => go('/staff') },
+    { id: 'c-ins', label: 'Go to insights', keys: ['g', 'i'], run: () => go('/staff/insights') },
+    ...(user.agency === 'rnsw' ? [
+      { id: 'c-await', label: 'Go to escalations awaiting advice', keys: ['g', 'w'], run: () => go('/staff/queue/reviews?view=awaiting') },
+      { id: 'c-court', label: 'Go to court elections', keys: ['g', 'c'], run: () => go('/staff/queue/court') },
+    ] : [
+      { id: 'c-cert', label: 'Go to certificate register', keys: ['g', 'e'], run: () => go('/staff/certificates') },
+      { id: 'c-cams', label: 'Go to camera assets', run: () => go('/staff/cameras') },
+    ]),
     ...(canApprove ? [{ id: 'c-appr', label: 'Go to approvals', keys: ['g', 'a'], run: () => go('/staff/queue/approvals') }] : []),
     { id: 'c-keys', label: 'Show keyboard shortcuts', keys: ['?'], run: () => setHelp(true) },
     { id: 'c-out', label: 'Sign out', run: onSignOut },
-  ], [onSignOut, canApprove]);
+  ], [onSignOut, canApprove, user.agency]);
 
   useHotkeys({
     'mod+k': () => setPalette(true), '/': () => setPalette(true), '?': () => setHelp(true), 'mod+/': () => setHelp(true),
-    'g h': () => go('/staff'), 'g r': () => go('/staff/queue/reviews'), 'g c': () => go('/staff/queue/court'), 'g e': () => go('/staff/certificates'), ...(canApprove ? { 'g a': () => go('/staff/queue/approvals') } : {}),
+    'g h': () => go('/staff'), 'g i': () => go('/staff/insights'),
+    ...(user.agency === 'rnsw' ? { 'g r': () => go('/staff'), 'g w': () => go('/staff/queue/reviews?view=awaiting'), 'g c': () => go('/staff/queue/court') } : { 'g e': () => go('/staff/certificates'), 'g t': () => go('/staff') }),
+    ...(canApprove ? { 'g a': () => go('/staff/queue/approvals') } : {}),
   });
 
-  const active = a === 'queue' ? b : a === 'case' ? (kase(b)?.type === 'court' ? 'court' : 'reviews') : a === 'camera' || a === 'cameras' ? 'cameras' : a === 'cert' || a === 'certificates' ? 'certificates' : 'home';
+  const active = a === 'queue' && b === 'approvals' ? 'approvals' : a === 'queue' ? (query.view === 'awaiting' ? 'awaiting' : query.view === 'completed' ? 'completed' : 'home')
+    : a === 'case' ? 'home' : a === 'camera' || a === 'cameras' ? 'cameras' : a === 'cert' || a === 'certificates' ? 'certificates' : a === 'insights' ? 'insights'
+    : a === 'requests' && query.view === 'history' ? 'history' : 'home';
 
   return (
     <TooltipProvider>
       <div className={`st st--${user.agency}`}>
         <header className="st-top">
-          <Link to="/staff" className="st-brand" aria-label={`${user.org}, CEVOC staff home`}>
+          <Link to="/staff" className="st-brand" aria-label={`${AGENCY[user.agency].title}, home`}>
             <AgencyLockup agency={user.agency} />
-            <span className="st-app">CEVOC <small>Staff</small></span>
+            <span className="st-app">{AGENCY[user.agency].title}</span>
           </Link>
-          <button type="button" className="st-searchbtn" onClick={() => setPalette(true)} aria-label="Search records and commands">
+          <button type="button" className="st-searchbtn" onClick={() => setPalette(true)}>
             <span>Search notices, cases, cameras…</span><span className="st-searchbtn__keys"><Kbd>Ctrl</Kbd><Kbd>K</Kbd></span>
           </button>
           <UserMenu user={user} onSwitch={onSwitch} onShortcuts={() => setHelp(true)} onSignOut={onSignOut} />
         </header>
         <div className="st-body">
-          <SideNav active={active} counts={counts} hot={hotApprovals} canApprove={canApprove} />
+          <SideNav agency={user.agency} active={active} counts={counts} hot={hotApprovals} canApprove={canApprove} onSearch={() => setPalette(true)} />
           <main className="st-main">
             {crumbs.length > 1 && <Breadcrumb className="st-crumbs">
               <BreadcrumbList>

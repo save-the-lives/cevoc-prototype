@@ -1,5 +1,6 @@
 import { TODAY } from '../../lib/format.js';
 import { STAFF, PROGRAMS } from '../../data.js';
+import { CASE_STATE } from '../../lib/workflow.js';
 
 // A small Jira-style query language for the work queues.
 //   assignee = me AND waiting > 14 AND certification = "not current" ORDER BY waiting DESC
@@ -28,6 +29,9 @@ export const FIELDS = {
   notcurrent: { type: 'number', get: (r) => r.ev.notCurrent, help: 'How many certificates are not current' },
   assignee: { type: 'user', sortVal: (r) => (r.assignee ? staffName(r.assignee) : '~'), values: ['me', 'unassigned', ...STAFF.filter((p) => p.perms.includes('case:decide')).map((p) => p.name)], get: (r) => r.assignee, help: 'Who has it: me, a name, or unassigned' },
   status: { type: 'enum', values: ['open', 'decided'], get: (r) => (r.decision ? 'decided' : 'open'), help: 'open or decided' },
+  state: { type: 'enum', values: ['open', 'triage', 'awaiting', 'more-info', 'advice', 'reopened', 'decided'], get: (r) => CASE_STATE[r.state].token, help: 'Where it is: open, triage, awaiting (Transport advice), advice, decided' },
+  reason: { type: 'text', get: (r) => r.c.category, help: 'Why the customer asked, e.g. Signal timing' },
+  validation: { type: 'enum', values: ['clear', 'review required', 'unavailable'], get: (r) => r.validation.label.toLowerCase(), help: 'clear, "review required" or unavailable' },
   decision: { type: 'text', get: (r) => r.decision?.label || '', help: 'Decision made' },
 };
 const ALIAS = Object.fromEntries(Object.entries(FIELDS).flatMap(([k, f]) => [[k, k], ...(f.alias || []).map((a) => [a, k])]));
@@ -291,6 +295,18 @@ export const PRESETS = [
   { label: 'Past target', q: 'left < 0 ORDER BY waiting DESC' },
   { label: 'Certificate not current', q: 'certification = "not current"' },
   { label: 'High priority', q: 'priority = high AND status = open' },
+];
+
+// One-click views for Revenue NSW officers. "Unresolved" means not yet decided.
+export const REVENUE_VIEWS = [
+  { id: 'mine', label: 'My unresolved work', q: 'assignee = me AND status = open ORDER BY waiting DESC' },
+  { id: 'action', label: 'Needs action', q: 'status = open AND state != awaiting ORDER BY waiting DESC' },
+  { id: 'awaiting', label: 'Awaiting Transport', q: 'state IN (awaiting, more-info)' },
+  { id: 'advice', label: 'Advice received', q: 'state = advice' },
+  { id: 'risk', label: 'At risk', q: 'status = open AND (left <= 5 OR validation = "review required") ORDER BY left' },
+  { id: 'unassigned', label: 'Unassigned', q: 'status = open AND assignee IS EMPTY' },
+  { id: 'completed', label: 'Completed', q: 'status = decided' },
+  { id: 'all', label: 'All', q: '' },
 ];
 
 export const EXAMPLES = [

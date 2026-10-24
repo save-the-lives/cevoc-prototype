@@ -8,6 +8,11 @@ import ApprovalsQueue from './queue/ApprovalsQueue.jsx';
 import Dashboard from './dashboard/Dashboard.jsx';
 import CertificateRegister from './certs/CertificateRegister.jsx';
 import CameraList from './certs/CameraList.jsx';
+import TechInbox from './tech/TechInbox.jsx';
+import TechRequest from './tech/TechRequest.jsx';
+import WorkSummary, { CertAlerts } from './shell/WorkSummary.jsx';
+import AdviceBlock from './queue/AdviceBlock.jsx';
+import { activeRequest, affectedCases, validationOf } from '../lib/workflow.js';
 import { useStore } from '../lib/store.jsx';
 import { go } from '../lib/router.js';
 import { evaluate, scorecard, impactOf, daysBetween } from '../lib/rules.js';
@@ -151,12 +156,12 @@ function Audit({ refs }) {
   );
 }
 
-function NotForYou() {
+function NotForYou({ what = 'approvals' }) {
   return (
     <div className="st-card">
-      <h1>Approvals aren’t part of your role</h1>
-      <p className="st-muted">Certificate withdrawals are approved by a camera program manager. You can still request a withdrawal from a certificate page, and it will wait here for them.</p>
-      <Link to="/staff">Back to the dashboard</Link>
+      <h1>{what === 'queue' ? 'The review queue belongs to Revenue NSW' : 'Approvals aren’t part of your role'}</h1>
+      <p className="st-muted">{what === 'queue' ? 'Transport receives only the technical questions Revenue NSW asks. You can see them in Technical requests.' : 'Certificate withdrawals are approved by a camera program manager. You can still request a withdrawal from a certificate page, and it will wait here for them.'}</p>
+      <Link to="/staff">Back to your work</Link>
     </div>
   );
 }
@@ -219,8 +224,18 @@ function NoticeRecord({ number, user }) {
 }
 
 
-function CaseRecord({ id, user }) {
-  const { state, dispatch, statusOf } = useStore();
+function ExternalBanner({ query, id }) {
+  if (query?.from !== 'external') return null;
+  return (
+    <div className="ext-banner" role="status">
+      <p><strong>Opened from the Revenue NSW case system (simulated).</strong> Source reference {query.ref || 'RCM-558201'} · case {id}. Nothing is connected: this is a prototype stand-in.</p>
+      <Link to={`/source/revenue?case=${id}`}>← Return to the source system</Link>
+    </div>
+  );
+}
+
+function CaseRecord({ id, user, query }) {
+  const { state, dispatch, statusOf, faultSettings } = useStore();
   const [out, setOut] = useState('');
   const [reason, setReason] = useState('');
   const k = findCase(id);
@@ -231,28 +246,33 @@ function CaseRecord({ id, user }) {
   const done = state.decisions[id];
   const opts = OUTCOMES[k.type];
   const label = opts.find((o) => o[0] === out)?.[1];
+  const req = activeRequest(state.tech, id);
+  const waiting = req && req.status !== 'ADVICE_RECEIVED';
+  const sim = useSim(planFaults(n, faultSettings).certs, 600, [n.number]);
+  const validation = validationOf(ev, sim.status);
 
   const decision = (
     <div className="st-card st-actions">
-      <h3>Decision</h3>
+      <h2 className="st-h3">Decision</h2>
       {done ? (
-        <div className="st-done"><strong>{done.label}</strong><p>{done.reason}</p><p className="st-muted">By {findStaff(done.by)?.name}</p></div>
+        <div className="st-done"><strong>{done.label}</strong><p>{done.reason}</p><p className="st-muted">By {findStaff(done.by)?.name}</p>{can(user, 'case:decide') && <button type="button" className="st-btn ghost" onClick={() => dispatch({ type: 'reopen', id, by: user.id })}>Reopen</button>}</div>
       ) : can(user, 'case:decide') ? (
         <>
+          <AdviceBlock k={k} n={n} ev={ev} user={user} onUse={setReason} />
           {!ev.current && <p className="st-flag">{ev.notCurrent} certificate not current on the day. Upholding may not survive a challenge.</p>}
+          {waiting ? <p className="st-muted">Waiting for Transport’s advice. Cancel the request to decide without it.</p> : <>
           {opts.map(([v, l]) => <label key={v} className="st-radio"><input type="radio" name="o" checked={out === v} onChange={() => setOut(v)} /> {l}</label>)}
           <label className="st-label">Reason (in the customer letter)<textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
           {out && reason.trim().length > 9 && (
             <pre className="st-letter">{`Dear ${n.holder},\n\nThank you for your ${k.type === 'court' ? 'court election' : 'review request'} for penalty notice ${n.number}. We looked carefully at what you told us and at the camera evidence.\n\nOutcome: ${label}.\n${reason.trim()}\n\nRevenue NSW (MOCK, NOT SENT)`}</pre>
           )}
           <button type="button" className="st-btn" disabled={!out || reason.trim().length < 10} onClick={() => dispatch({ type: 'decide', id, d: { label, reason: reason.trim(), by: user.id } })}>Record decision</button>
+          </>}
         </>
       ) : (
         <>
-          <Handoff to="Revenue NSW" what="The decision is made by a Revenue NSW officer." />
-          {can(user, 'inspect:request') && (
-            <button type="button" className="st-btn ghost" onClick={() => dispatch({ type: 'note', who: user.id, what: `Technical advice added to ${id}`, ref: id })}>Add technical advice</button>
-          )}
+          <Handoff to="Revenue NSW" what="The decision is made by a Revenue NSW officer. Transport advises through Technical requests." />
+          {req && <AdviceBlock k={k} n={n} ev={ev} user={user} />}
         </>
       )}
     </div>
@@ -262,6 +282,8 @@ function CaseRecord({ id, user }) {
     <EvidenceView n={n}
       header={
         <>
+          <ExternalBanner query={query} id={k.id} />
+          {query?.from === 'external' && <p className={`st-validation is-${validation.tone}`} role="status"><strong>CEVOC validation: {validation.label}.</strong> {validation.short}.</p>}
           <div className="st-rec-head"><span className="st-type">{k.type === 'court' ? 'Court election' : 'Review'}</span><h1>{k.id}</h1>
             <span className="st-muted">Notice <Link to={`/staff/notice/${n.number}`}>{n.number}</Link> · lodged {fmtDate(k.lodged)} ({daysBetween(k.lodged, TODAY)} days ago)</span></div>
           <blockquote className="st-quote">“{k.grounds}”<cite>{n.holder} · {k.channel}</cite></blockquote>
@@ -391,7 +413,7 @@ function CertRecord({ id, user }) {
             {can(user, 'withdraw:approve') && pend.by !== user.id ? (
               <div className="st-row">
                 <button type="button" className="st-btn ghost" onClick={() => dispatch({ type: 'reject', id: pend.id, by: user.id })}>Reject</button>
-                <button type="button" className="st-btn danger" onClick={() => dispatch({ type: 'approve', id: pend.id, by: user.id })}>Approve</button>
+                <button type="button" className="st-btn danger" onClick={() => dispatch({ type: 'approve', id: pend.id, by: user.id, cases: affectedCases(pend.cert, (x) => state.certStatus[x.id] || x.status, state.decisions) })}>Approve</button>
               </div>
             ) : <p className="st-muted">{pend.by === user.id ? 'Waiting for someone else to approve.' : 'You don’t have approval rights.'}</p>}
           </div>
@@ -405,12 +427,20 @@ function CertRecord({ id, user }) {
   );
 }
 
+function TechRequestPage({ id, user }) {
+  const { state, faultSettings } = useStore();
+  const r = state.tech.find((x) => x.id === id);
+  const n = r && findNotice(r.notice);
+  const plan = useMemo(() => (n ? planFaults(n, faultSettings) : {}), [n?.number, JSON.stringify(faultSettings)]); // eslint-disable-line
+  return <TechRequest id={id} user={user} slots={{ Scorecard, Metadata, plan }} />;
+}
+
 export default function StaffSite({ parts, query }) {
   const { state, dispatch } = useStore();
   const user = findStaff(state.user);
 
   useEffect(() => {
-    if (query.from !== 'app' && query.sso !== 'trusted') return;
+    if (query.from !== 'app' && query.from !== 'external' && query.sso !== 'trusted') return;
     const want = findStaff(query.as)?.id || user?.id || 'alex';
     if (!user || user.id !== want) dispatch({ type: 'signIn', id: want });
   }, [query.from, query.sso, query.as]); // eslint-disable-line
@@ -418,23 +448,29 @@ export default function StaffSite({ parts, query }) {
   if (!user) return <SignIn onPick={(id) => dispatch({ type: 'signIn', id })} />;
 
   const [, a, b] = parts;
-  const open = (t) => CASES.filter((c) => c.type === t && !state.decisions[c.id]).length;
+  const rnsw = user.agency === 'rnsw';
+  const unresolved = CASES.filter((c) => !state.decisions[c.id]);
+  const mineOpen = unresolved.filter((c) => (c.id in state.assign ? state.assign[c.id] : c.assignee) === user.id).length;
+  const awaiting = new Set(state.tech.filter((t) => t.status === 'AWAITING_TRANSPORT' || t.status === 'MORE_INFORMATION_REQUIRED').map((t) => t.caseId)).size;
   const approvals = state.pending.length;
   const canApprove = can(user, 'withdraw:approve');
   let body;
   if (a === 'notice') body = <NoticeRecord key={b} number={b} user={user} />;
-  else if (a === 'case') body = <CaseRecord key={b} id={b} user={user} />;
+  else if (a === 'case') body = <CaseRecord key={b} id={b} user={user} query={query} />;
   else if (a === 'camera') body = <CameraRecord code={b} />;
   else if (a === 'cert') body = <CertRecord key={b} id={b} user={user} />;
   else if (a === 'certificates') body = <CertificateRegister />;
   else if (a === 'cameras') body = <CameraList user={user} />;
+  else if (a === 'request') body = <TechRequestPage key={b} id={b} user={user} />;
+  else if (a === 'requests') body = rnsw ? <NotForYou what="queue" /> : <TechInbox key={query.view || 'open'} user={user} view={query.view || 'open'} />;
   else if (a === 'queue' && b === 'approvals') body = canApprove ? <ApprovalsQueue /> : <NotForYou />;
-  else if (a === 'queue') body = <WorkQueue key={`${b}|${query.q || ''}`} name={b} user={user} initialQuery={query.q || ''} />;
-  else body = <Dashboard user={user} canApprove={canApprove} />;
+  else if (a === 'queue') body = rnsw ? <><CertAlerts /><WorkQueue key={`${b}|${query.q || ''}|${query.view || ''}`} name={b} user={user} initialQuery={query.q || ''} view={query.view || ''} /></> : <NotForYou what="queue" />;
+  else if (a === 'insights') body = <Dashboard user={user} canApprove={canApprove} />;
+  else body = rnsw ? <><CertAlerts /><WorkSummary user={user} /><WorkQueue key="home" name="reviews" user={user} /></> : <><WorkSummary user={user} /><TechInbox key="home" user={user} view="open" /></>;
 
   return (
-    <StaffShell user={user} parts={parts} counts={{ review: open('review'), court: open('court'), approvals, certs: CERTS.length }} canApprove={canApprove} hotApprovals={approvals > 0 && canApprove}
-      onSwitch={(id) => dispatch({ type: 'signIn', id })} onSignOut={() => { dispatch({ type: 'signOut' }); go('/staff'); }}>
+    <StaffShell user={user} parts={parts} query={query} counts={{ mine: mineOpen, awaiting, completed: CASES.length - unresolved.length, techOpen: state.tech.filter((t) => t.status === 'AWAITING_TRANSPORT').length, approvals, certs: CERTS.length }} canApprove={canApprove} hotApprovals={approvals > 0 && canApprove}
+      onSwitch={(id) => { dispatch({ type: 'signIn', id }); go('/staff'); }} onSignOut={() => { dispatch({ type: 'signOut' }); go('/staff'); }}>
       {body}
     </StaffShell>
   );
