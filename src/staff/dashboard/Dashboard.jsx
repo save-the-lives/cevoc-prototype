@@ -191,8 +191,8 @@ export default function Dashboard({ user, canApprove }) {
               ? <Link to="/staff/queue/approvals" className={`kpi is-warn ${state.pending.length ? '' : 'is-quiet'}`}><span className="kpi-l">Approvals</span><b className="kpi-v">{state.pending.length}</b></Link>
               : user.perms.includes('withdraw:request') && <Link to="/staff/certificates" className="kpi is-grey"><span className="kpi-l">My requests</span><b className="kpi-v">{myRequests}</b></Link>}
           </div>
-          <header><h2 id="vz-pri-h">Needs attention</h2><span>late and at risk, top right</span></header>
-          <Scatter points={points} xMax={1.6} yMax={maxRisk} selected={null} onPick={(p) => go(`/staff/queue/${p.c.c.type === 'court' ? 'court' : 'reviews'}?q=${encodeURIComponent(`case = ${p.c.c.id}`)}`)} />
+          <header><h2 id="vz-pri-h">Needs attention</h2><span>Target reply: {state.targets.review} days for reviews, {state.targets.court} for court. Late and at risk: top right.</span></header>
+          <Scatter points={points} xMax={1.6} yMax={maxRisk} selected={null} targetNote={`Target reply: ${state.targets.review} days for reviews, ${state.targets.court} for court elections.`} onPick={(p) => go(`/staff/queue/${p.c.c.type === 'court' ? 'court' : 'reviews'}?q=${encodeURIComponent(`case = ${p.c.c.id}`)}`)} />
         </section>
         <Card title="Who has it" span="4"><Pie items={people} onPick={(k) => drill({ assignee: k })} /></Card>
         <Card title="By camera type" span="4"><Pie items={programs} onPick={(k) => drill({ program: k })} /></Card>

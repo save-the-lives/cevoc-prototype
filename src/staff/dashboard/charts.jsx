@@ -84,19 +84,23 @@ export function Heat({ rows, cols, cells, selected, onPick }) {
 }
 
 // Scatter: x = share of the target reply time used, y = certification risks. Each dot is a case. Top right is urgent.
-export function Scatter({ points, xMax, yMax, onPick, selected }) {
+export function Scatter({ points, xMax, yMax, onPick, selected, targetNote }) {
+  const levels = Array.from({ length: yMax + 1 }, (_, k) => k); // 0..most certificates not current
+  const xTicks = [0, 0.5, 1, 1.5].filter((t) => t <= xMax);
   return (
-    <div className="scat" role="group" aria-label="Cases by waiting time and certification risk">
+    <div className="scat" role="group" aria-label={`Cases by share of the reply time used and number of certificates not current. ${targetNote || ''}`}>
       <i className="scat-zone" aria-hidden="true" />
-      <i className="scat-v" style={{ left: `${(1 / xMax) * 100}%` }} aria-hidden="true"><em>target</em></i>
+      <i className="scat-v" style={{ left: `${(1 / xMax) * 100}%` }} aria-hidden="true"><em>Target reply</em></i>
+      {levels.map((k) => <span key={k} className="scat-yt" aria-hidden="true" style={{ bottom: `${((k + 0.5) / (yMax + 1)) * 100}%` }}>{k}</span>)}
+      {xTicks.map((t) => <span key={t} className="scat-xt" aria-hidden="true" style={{ left: `${(t / xMax) * 100}%` }}>{Math.round(t * 100)}%</span>)}
       {points.map((p) => (
         <button key={p.key} type="button" className={`dot is-${p.tone} ${selected === p.key ? 'is-sel' : ''}`} aria-label={p.label}
           style={{ left: `${Math.min(p.x / xMax, 1) * 100}%`, bottom: `${Math.min(p.y / yMax, 1) * 100}%`, '--s': `${p.size}px` }} onClick={() => onPick?.(p)}>
           <Tip>{p.tip}</Tip>
         </button>
       ))}
-      <span className="scat-x" aria-hidden="true">waiting →</span>
-      <span className="scat-y" aria-hidden="true">cert risk →</span>
+      <span className="scat-x" aria-hidden="true">Share of the reply time used (100% = target)</span>
+      <span className="scat-y" aria-hidden="true">Certificates not current</span>
     </div>
   );
 }

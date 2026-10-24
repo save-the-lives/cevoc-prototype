@@ -648,3 +648,15 @@ button.obtn { border: 0; cursor: pointer; font: 600 14px inherit; }
 @media (max-width: 1000px) { .ogrid { grid-template-columns: minmax(0, 1fr); } .stages ol { grid-template-columns: minmax(0, 1fr); } }
 .ops, .ops-top > div { min-width: 0; }
 .opanel, .st-side { position: relative; }
+
+/* Scatter axes */
+.scat { margin: 6px 12px 58px 52px; }
+.scat-xt, .scat-yt { position: absolute; font-size: 11px; color: #3e4c59; font-variant-numeric: tabular-nums; }
+.scat-xt { top: calc(100% + 4px); transform: translateX(-50%); }
+.scat-yt { right: calc(100% + 6px); transform: translateY(50%); }
+.scat-x { right: auto; left: 50%; top: calc(100% + 22px); transform: translateX(-50%); font-size: 12px; font-weight: 600; color: #3e4c59; white-space: nowrap; }
+.scat-y { left: -48px; top: 0; height: 100%; display: flex; align-items: center; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 12px; font-weight: 600; color: #3e4c59; white-space: nowrap; }
+.scat-v em { font-weight: 700; }
+.scat-note { margin: -44px 0 0; font-size: 12px; color: #3e4c59; }
+@media (max-width: 560px) { .scat-x { white-space: normal; width: 90%; text-align: center; } }
+.scat-v em { white-space: nowrap; }
