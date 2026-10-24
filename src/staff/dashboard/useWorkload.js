@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CASES, CERTS, NOTICES, SITES, STAFF, notice as findNotice } from '../../data.js';
+import { CASES, CERTS, NOTICES, PROGRAMS, SITES, STAFF, notice as findNotice, site as findSite } from '../../data.js';
 import { evaluate } from '../../lib/rules.js';
 import { useStore } from '../../lib/store.jsx';
 import { slaOf } from '../queue/sla.js';
@@ -10,7 +10,7 @@ export function useWorkload(userId) {
   return useMemo(() => {
     const rows = CASES.map((c) => {
       const n = findNotice(c.notice);
-      return { c, n, ev: evaluate(n, statusOf), sla: slaOf(c), assignee: c.id in state.assign ? state.assign[c.id] : c.assignee, decided: !!state.decisions[c.id] };
+      return { c, n, ev: evaluate(n, statusOf), sla: slaOf(c), program: PROGRAMS[findSite(n.site).program].label, assignee: c.id in state.assign ? state.assign[c.id] : c.assignee, decided: !!state.decisions[c.id] };
     });
     const open = rows.filter((r) => !r.decided);
     const queue = (type) => {
@@ -32,6 +32,6 @@ export function useWorkload(userId) {
       return { s, certs: certs.length, withdrawn: certs.filter((c) => statusOf(c) === 'withdrawn').length, cases: cases.length, risk: cases.filter((x) => !x.ev.current).length, lastInspect };
     });
     const attention = open.filter((x) => x.sla.left < 0 || !x.ev.current).sort((a, b) => (b.sla.left < 0) - (a.sla.left < 0) || a.sla.left - b.sla.left).slice(0, 5);
-    return { rows, review: queue('review'), court: queue('court'), people, cameras, attention, noticeCount: NOTICES.length };
+    return { rows, open, statusOf, review: queue('review'), court: queue('court'), people, cameras, attention, noticeCount: NOTICES.length };
   }, [state.assign, state.decisions, state.certStatus, userId, statusOf]);
 }
