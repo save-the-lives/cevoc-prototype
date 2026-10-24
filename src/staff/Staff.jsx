@@ -10,6 +10,7 @@ import CertificateRegister from './certs/CertificateRegister.jsx';
 import CameraList from './certs/CameraList.jsx';
 import TechInbox from './tech/TechInbox.jsx';
 import TechRequest from './tech/TechRequest.jsx';
+import SignIn from './SignIn.jsx';
 import RevenueOps from './ops/RevenueOps.jsx';
 import TransportOps from './ops/TransportOps.jsx';
 import AdviceBlock from './queue/AdviceBlock.jsx';
@@ -28,55 +29,7 @@ import { TODAY, fmtDate, fmtTime } from '../lib/format.js';
 const can = (u, p) => !!u && u.perms.includes(p);
 const isT = (u) => u?.agency === 'tfnsw';
 
-/* ---------- Sign-in (mock SSO, no passwords) ---------- */
-
-const SSO_STEPS = ['Redirecting to your agency sign-in', 'Checking your identity (multi-factor)', 'Loading your role and permissions', 'Signed in'];
-
-// Simulated single sign-on. In real use the agency's identity provider does this; here it is paced so the handshake is visible.
-function SsoHandshake({ person, onDone }) {
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setStep((x) => x + 1), 650);
-    return () => clearInterval(t);
-  }, []);
-  useEffect(() => { if (step >= SSO_STEPS.length) onDone(); }, [step]); // eslint-disable-line
-  const agency = person.agency === 'rnsw' ? 'Revenue NSW' : 'Transport for NSW';
-  return (
-    <div className="st-signin">
-      <div className="st-signin__card" role="status" aria-live="polite">
-        <h1>Signing in with {agency}</h1>
-        <p className="st-muted">Single sign-on, simulated for this prototype. No password is asked for.</p>
-        <ol className="sso">{SSO_STEPS.map((t, i) => <li key={t} className={i < step ? 'is-done' : i === step ? 'is-now' : ''}><span aria-hidden="true">{i < step ? '✓' : i === step ? '…' : ''}</span>{t}</li>)}</ol>
-        <p className="st-muted">{person.name}, {person.role}</p>
-      </div>
-    </div>
-  );
-}
-
-function SignIn({ onPick }) {
-  const [picked, setPicked] = useState(null);
-  if (picked) return <SsoHandshake person={picked} onDone={() => onPick(picked.id)} />;
-  return (
-    <div className="st-signin">
-      <div className="st-signin__card">
-        <div className="st-orgs"><AgencyLockup agency="tfnsw" /><span className="st-div" /><AgencyLockup agency="rnsw" /></div>
-        <h1>Staff sign in</h1>
-        <p>For Transport for NSW and Revenue NSW staff. Use your work account.</p>
-        <div className="st-signin__mock">
-          <div className="snp-strip">PROTOTYPE · CHOOSE A SAMPLE USER · NO PASSWORDS</div>
-          {STAFF.map((p) => (
-            <button key={p.id} type="button" className="st-persona" onClick={() => setPicked(p)}>
-              <span className={`org ${p.agency}`}>{p.agency === 'rnsw' ? 'RNSW' : 'TfNSW'}</span>
-              <span><strong>{p.name}</strong><small>{p.role}</small></span>
-              <span aria-hidden="true">›</span>
-            </button>
-          ))}
-        </div>
-        <p className="st-muted">Coming from your own Transport or Revenue NSW system signs you in automatically.</p>
-      </div>
-    </div>
-  );
-}
+/* ---------- Sign-in: see ./SignIn.jsx ---------- */
 
 /* ---------- Search ---------- */
 
