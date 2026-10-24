@@ -213,7 +213,6 @@
 /* Hand-offs to other systems: invisible until hovered or focused, unless presenter highlight is on */
 .ho { position: relative; display: inline-flex; align-items: center; gap: 8px; }
 .ho__ctl { display: inline-flex; border-radius: 6px; transition: box-shadow .15s; }
-.ho:hover .ho__ctl, .ho:focus-within .ho__ctl, .show-handoffs .ho__ctl { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #e0a800; }
 .ho__tag { display: none; font: 700 11px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border: 1px dashed #e0a800; border-radius: 10px; padding: 2px 8px; white-space: nowrap; }
 .show-handoffs .ho__tag { display: inline-block; }
 .ho__note { position: absolute; z-index: 40; right: 0; bottom: calc(100% + 12px); width: min(320px, 80vw); display: none; flex-direction: column; gap: 4px; padding: 10px 12px; background: #fffdf5; border: 2px dashed #e0a800; border-radius: 8px; box-shadow: 0 10px 28px rgba(0,0,0,.2); font-size: 13px; line-height: 1.4; color: #3d3000; }
@@ -362,3 +361,21 @@ html { scroll-padding-top: var(--pub-stack, 0px); }
 .pub-errsum h3 { margin: 0 0 6px; color: #b81237; font-size: 18px; }
 .pub-errsum ul { margin: 0; padding-left: 20px; } .pub-errsum a { color: #b81237; font-weight: 600; text-decoration: underline; }
 .pub-field .pn-in.is-bad, #pn[aria-invalid="true"] { border: 2px solid #b81237 !important; background: #fff7f8; }
+
+/* Labels inside the speed bar */
+.ss-marks { height: 40px; }
+.ss-reading, .ss-probe { bottom: 6px; }
+.ss-in { position: absolute; top: 50%; transform: translateY(-50%); font: 700 13px 'Public Sans', sans-serif; white-space: nowrap; pointer-events: none; }
+.ss-in-limit { color: #002664; }
+.ss-in-read { color: #002664; } .ss-in-read.is-over { color: #7a0f26; }
+.ss-axis { margin-top: 22px; }
+@media (max-width: 640px) { .ss-in { font-size: 12px; } }
+.rs > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; margin: 0; } .rs > summary::-webkit-details-marker { display: none; }
+.rs > summary::before { content: ''; width: 8px; height: 8px; border-right: 3px solid #00425f; border-bottom: 3px solid #00425f; transform: rotate(-45deg); transition: transform .15s; flex: none; margin: 0 4px 0 2px; }
+.rs[open] > summary::before { transform: rotate(45deg); } .rs[open] > summary { margin-bottom: 10px; }
+.certs li.is-ok { grid-template-columns: minmax(0, 1fr) !important; } /* the Current tag already says it, so no tick */
+
+/* Hand-off cues stay light: no outline around the control, and arrows are never underlined */
+.pub-out > span[aria-hidden="true"], .stat-opt > span[aria-hidden="true"], .pub-link > span[aria-hidden="true"], .pub-act > span[aria-hidden="true"] { display: inline-block; text-decoration: none; margin-left: 4px; }
+.ss-marks { height: 52px; } .ss-reading, .ss-probe { bottom: 16px; }
+.pub-out, .stat-opt { text-decoration: none !important; } .pub-out .u, .stat-opt .u { text-decoration: underline; } .pub-out:hover .u, .stat-opt:hover .u { text-decoration-thickness: 2px; }

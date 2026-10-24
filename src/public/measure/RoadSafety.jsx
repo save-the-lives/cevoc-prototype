@@ -7,13 +7,13 @@ export default function RoadSafety({ speed, limit, vehicle, dateTime }) {
   const lines = safetyLines({ speed, limit, vehicle, dateTime });
   const foot = lines.find((l) => l.foot)?.foot;
   return (
-    <aside className="rs" aria-labelledby="rs-h">
-      <h3 id="rs-h" className="rs-h">Why the limit is {limit} here</h3>
+    <details className="rs">
+      <summary className="rs-h">Why the limit is {limit} here</summary>
       <ul>
         {lines.map((l) => <li key={l.text}><span className="rs-ico"><Icon name={l.icon} /></span><p>{l.text}</p></li>)}
       </ul>
       <p className="rs-goal">NSW’s road safety goal, <em>Towards Zero</em>, is no deaths or serious injuries on our roads. Speed is a factor in around <strong>[X]%</strong> of road deaths in NSW.</p>
       <p className="rs-foot">{foot ? `${foot} ` : ''}Prototype wording: figures to be confirmed with Transport for NSW’s Centre for Road Safety.</p>
-    </aside>
+    </details>
   );
 }

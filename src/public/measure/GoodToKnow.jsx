@@ -7,8 +7,8 @@ const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'sm
 // Teaching cards, specific to the camera program that recorded the offence.
 export default function GoodToKnow({ program }) {
   const cards = CARDS[program] || [];
-  // open on larger screens, folded on a phone to save space
-  const [open, setOpen] = useState(() => window.matchMedia('(min-width: 641px)').matches);
+  // folded by default: the page answers the main questions first, and this is there when someone wants it
+  const [open, setOpen] = useState(false);
   if (!cards.length) return null;
   return (
     <details className="ms-know" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>

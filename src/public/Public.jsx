@@ -214,7 +214,7 @@ function CertList({ n, fault }) {
       <ul className="certs">
         {ev.items.map((it, i) => (
           <li key={i} className={it.current ? 'is-ok' : 'is-warn'}>
-            <span className="certs-ic" aria-hidden="true">{it.current ? '✓' : '!'}</span>
+            {!it.current && <span className="certs-ic" aria-hidden="true">!</span>}
             <div>
               <div className="certs-head"><strong>{it.req.label}</strong><Tag color={it.current ? 'success' : 'warning'} className={it.current ? '' : 'pub-tag-warn'}>{it.current ? 'Current' : 'Not current'}</Tag></div>
               <p>
@@ -324,7 +324,7 @@ function NoticePage({ number }) {
               {OPTIONS.map((o) => (
                 <li key={o.id}>
                   <div><strong>{o.title}</strong><p>{o.text}</p></div>
-                  <Handoff what={o.what} notice={n.number}><button type="button" className="pub-out" onClick={() => setLeaving(o)}>{o.cta}<span aria-hidden="true"> ↗</span><span className="sr-only"> (opens Revenue NSW)</span></button></Handoff>
+                  <Handoff what={o.what} notice={n.number}><button type="button" className="pub-out" onClick={() => setLeaving(o)}><span className="u">{o.cta}</span><span aria-hidden="true"> ↗</span><span className="sr-only"> (opens Revenue NSW)</span></button></Handoff>
                 </li>
               ))}
             </ul>
