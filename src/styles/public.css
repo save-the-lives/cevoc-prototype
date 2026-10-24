@@ -250,9 +250,12 @@
 .ms-signal { margin-right: 2px; }
 
 /* Status of the matter: full at the top, one line once it locks */
-.stat { position: sticky; top: var(--pub-hdr, 0px); z-index: 30; margin: 0 0 12px; background: #eaedf4; border: 1px solid #b8c3dd; border-left: 6px solid #2e5299; border-radius: 8px; color: #002664; transition: box-shadow .2s; }
+.stat { margin: 0 0 12px; background: #eaedf4; border: 1px solid #b8c3dd; border-left: 6px solid #2e5299; border-radius: 8px; color: #002664; transition: box-shadow .2s; }
 .stat.is-warn { background: #fbeee5; border-color: #efc4a6; border-left-color: #c95000; color: #5a2400; }
-.stat.is-stuck { border-radius: 0 0 8px 8px; box-shadow: 0 6px 16px rgba(0,38,100,.18); }
+.stat-pin { position: sticky; top: var(--pub-hdr, 0px); height: 0; z-index: 30; }
+.stat-mini { position: absolute; top: 0; left: 0; right: 0; background: #eaedf4; border: 1px solid #b8c3dd; border-left: 6px solid #2e5299; border-radius: 0 0 8px 8px; color: #002664; box-shadow: 0 6px 16px rgba(0,38,100,.18); }
+.stat-mini.is-warn { background: #fbeee5; border-color: #efc4a6; border-left-color: #c95000; color: #5a2400; }
+.stat-mini.is-warn .stat-ico { background: #c95000; }
 .stat-full { display: grid; grid-template-columns: 1.25fr 1fr 1.25fr; gap: 8px 24px; padding: 14px 18px; }
 .stat-col { min-width: 0; }
 .stat-col p { margin: 4px 0 0; font-size: 15px; color: #22272b; }

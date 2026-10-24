@@ -3,11 +3,14 @@ import { useEffect, useRef, useState } from 'react';
 // Keeps a notice page oriented as the person scrolls: tells us which numbered step they are on, whether the
 // deadline bar has locked to the top, and publishes the pinned heights as CSS variables so the step list,
 // scroll targets and the bar itself all stack without overlapping.
+const MINI_H = 54; // height of the one-line bar before it has rendered
+
 export function useStickyStory(count, resetKey) {
   const pageRef = useRef(null);
   const barRef = useRef(null);
   const tocRef = useRef(null);
   const sentinelRef = useRef(null);
+  const miniRef = useRef(null);
   const [active, setActive] = useState(0);
   const [stuck, setStuck] = useState(false);
 
@@ -19,7 +22,7 @@ export function useStickyStory(count, resetKey) {
     let hdrH = 0;
     const measure = () => {
       hdrH = hdr && getComputedStyle(hdr).position === 'sticky' ? hdr.offsetHeight : 0;
-      const bar = barRef.current ? barRef.current.offsetHeight : 0;
+      const bar = miniRef.current ? miniRef.current.offsetHeight : MINI_H;
       const mobile = window.matchMedia('(max-width: 820px)').matches;
       const toc = mobile && tocRef.current ? tocRef.current.offsetHeight : 0;
       page.style.setProperty('--pub-hdr', `${hdrH}px`);
@@ -37,7 +40,8 @@ export function useStickyStory(count, resetKey) {
       }
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) idx = count - 1;
       setActive(idx);
-      if (sentinelRef.current) setStuck(sentinelRef.current.getBoundingClientRect().top < hdrH - 1);
+      // The full bar has scrolled out from under the header: time for the one-line version.
+      if (barRef.current) setStuck(barRef.current.getBoundingClientRect().bottom <= hdrH + 1);
     };
     let raf = 0;
     const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(spy); };
@@ -46,9 +50,9 @@ export function useStickyStory(count, resetKey) {
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
     const ro = new ResizeObserver(onResize);
-    [barRef.current, tocRef.current, hdr].filter(Boolean).forEach((el) => ro.observe(el));
+    [miniRef.current, tocRef.current, hdr].filter(Boolean).forEach((el) => ro.observe(el));
     return () => { document.documentElement.style.removeProperty('--pub-stack'); cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); ro.disconnect(); };
-  }, [count, resetKey]);
+  }, [count, resetKey, stuck]);
 
   // On a phone the step list scrolls sideways; keep the current step in sight.
   useEffect(() => {
@@ -57,5 +61,5 @@ export function useStickyStory(count, resetKey) {
     tocRef.current?.querySelector('[aria-current="step"]')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
   }, [active]);
 
-  return { pageRef, barRef, tocRef, sentinelRef, active, stuck };
+  return { pageRef, barRef, miniRef, tocRef, sentinelRef, active, stuck };
 }

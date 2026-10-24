@@ -251,7 +251,7 @@ function NoticePage({ number }) {
       <p className="pub-lede">{prog.label} · Penalty notice {n.number}</p>
 
       <div ref={story.sentinelRef} className="pub-sentinel" aria-hidden="true" />
-      <StatusBar status={status} notice={n.number} stuck={story.stuck} barRef={story.barRef} onPay={() => setLeaving(OPTIONS[0])} />
+      <StatusBar status={status} notice={n.number} stuck={story.stuck} barRef={story.barRef} miniRef={story.miniRef} onPay={() => setLeaving(OPTIONS[0])} />
 
       <div className="pub-story">
         <nav className="pub-toc" aria-label="On this page" ref={story.tocRef} style={{ '--prog': story.active / 4 }}>

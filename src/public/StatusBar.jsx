@@ -4,16 +4,11 @@ import Handoff from './Handoff.jsx';
 const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 
 // The matter at a glance, and it stays in view. Full size at the top of the page; once you scroll it folds to one line.
-export default function StatusBar({ status, notice, stuck, barRef, onPay }) {
+export default function StatusBar({ status, notice, stuck, barRef, miniRef, onPay }) {
   return (
-    <section ref={barRef} className={`stat is-${status.tone} ${stuck ? 'is-stuck' : ''}`} aria-label="Status of your matter">
-      {stuck ? (
-        <div className="stat-mini">
-          <span className="stat-ico" aria-hidden="true">{status.tone === 'warn' ? '!' : 'i'}</span>
-          <p>{status.mini}</p>
-          <button type="button" className="stat-opt" onClick={() => jump('q5')}>Options <span aria-hidden="true">↓</span></button>
-        </div>
-      ) : (
+    <>
+    <section ref={barRef} className={`stat is-${status.tone}`} aria-label="Status of your matter">
+      {(
         <div className="stat-full">
           <div className="stat-col stat-who">
             <h2 className="stat-h"><span className="stat-ico" aria-hidden="true">{status.tone === 'warn' ? '!' : 'i'}</span>{status.stage}</h2>
@@ -37,5 +32,16 @@ export default function StatusBar({ status, notice, stuck, barRef, onPay }) {
         </div>
       )}
     </section>
+    {/* Zero-height sticky anchor: the one-line bar floats over the page without ever changing its height, so scrolling can't loop. */}
+    <div className="stat-pin">
+      {stuck && (
+        <div ref={miniRef} className={`stat-mini is-${status.tone}`}>
+          <span className="stat-ico" aria-hidden="true">{status.tone === 'warn' ? '!' : 'i'}</span>
+          <p>{status.mini}</p>
+          <button type="button" className="stat-opt" onClick={() => jump('q5')}>Options <span aria-hidden="true">↓</span></button>
+        </div>
+      )}
+    </div>
+    </>
   );
 }
