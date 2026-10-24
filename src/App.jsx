@@ -26,7 +26,7 @@ class Boundary extends Component {
 function Routes() {
   const { raw, parts, query } = useRoute();
   let body;
-  if (parts[0] === 'demo') body = <Demo />;
+  if (parts[0] === 'demo') body = <Demo section={parts[1]} />;
   else if (parts[0] === 'staff') body = <><StaffSite parts={parts} query={query} /><DemoDock /></>;
   else body = <><PublicSite parts={parts} /><DemoDock /></>;
   return <Boundary key={raw}>{body}</Boundary>;
