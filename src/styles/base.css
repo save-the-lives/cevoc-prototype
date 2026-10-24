@@ -1,0 +1,47 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Public Sans', system-ui, -apple-system, sans-serif; color: #22272b; }
+img, svg, video { max-width: 100%; display: block; }
+a { color: #002664; }
+button { font: inherit; }
+:focus-visible { outline: 3px solid #0086b3; outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.skip { position: absolute; left: -999px; top: 0; z-index: 1000; background: #002664; color: #fff; padding: 10px 14px; }
+.skip:focus { left: 0; }
+
+.spin { display: inline-block; width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -3px; opacity: .7; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
+.tag-ok { background: #e5f6e6; color: #00610a; }
+.tag-warn { background: #fbeee5; color: #a33f00; }
+.owner-tag { display: inline-block; font: 700 11px 'Public Sans', sans-serif; letter-spacing: .06em; text-transform: uppercase; background: #ebebeb; color: #495054; padding: 4px 8px; border-radius: 2px; }
+
+.dlg-scrim { position: fixed; inset: 0; z-index: 900; background: rgba(0, 20, 50, .6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dlg { background: #fff; width: min(560px, 100%); max-height: 94vh; overflow: auto; border-radius: 8px; padding: 20px 24px 24px; outline: none; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+.dlg.is-wide { width: min(1100px, 100%); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.dlg-head h2 { margin: 0; font-size: 20px; color: #002664; }
+.dlg-x { border: 0; background: none; font-size: 30px; line-height: 1; cursor: pointer; color: #002664; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.proto-line { font: 12px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border-left: 3px solid #e0a800; padding: 6px 10px; }
+
+/* Brand lockups (text fallbacks until official files are in public/brand/) */
+.brand-logo { height: 44px; width: auto; }
+.lockup-nsw { display: inline-flex; align-items: center; gap: 8px; color: #002664; }
+.lockup-waratah { color: #d7153a; font-size: 34px; line-height: 1; }
+.lockup-nsw b { display: block; font-size: 18px; letter-spacing: .04em; line-height: 1; }
+.lockup-nsw small { display: block; font-size: 9px; letter-spacing: .18em; font-weight: 700; }
+.lockup-agency { display: inline-block; font-weight: 800; font-size: 14px; padding: 7px 10px; color: #fff; letter-spacing: .02em; }
+.lockup-agency.is-tfnsw { background: #002664; border-left: 5px solid #d7153a; }
+.lockup-agency.is-rnsw { background: #3b2a6b; border-left: 5px solid #d7153a; }
+
+/* Demo-only affordances: amber + hatched so they never read as part of the service */
+.demo-dock { position: fixed; left: 12px; bottom: 12px; z-index: 800; font: 600 12px ui-monospace, Menlo, monospace; color: #6b4e00; background: #fff8e1; border: 1px dashed #e0a800; border-radius: 14px; padding: 5px 10px; text-decoration: none; opacity: .7; }
+.demo-dock:hover { opacity: 1; }
+.snp-pop { position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; width: min(480px, 92vw); background: #fffdf5; border: 2px dashed #e0a800; border-radius: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.2); overflow: hidden; }
+.snp-strip { font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: .08em; padding: 7px 10px; color: #000; background: repeating-linear-gradient(45deg, #ffd54f 0 10px, #ffe082 10px 20px); }
+.snp-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid #f3e2a8; padding: 10px 12px; cursor: pointer; font-size: 14px; line-height: 1.35; }
+.snp-item:hover, .snp-item:focus-visible { background: #fff3cd; }
+.snp-num { font: 700 14px ui-monospace, Menlo, monospace; color: #6b4e00; }
+.snp-meta { color: #333; }
