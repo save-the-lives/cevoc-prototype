@@ -13,14 +13,15 @@ import { useHotkeys } from '../hooks/useHotkeys.js';
 
 export const TECH_VIEWS = [
   { id: 'open', label: 'Active', test: (r) => isWithTransport(r.status) },
-  { id: 'new', label: 'New', test: (r) => r.status === 'AWAITING_TRANSPORT' },
+  { id: 'new', label: 'New referrals', test: (r) => r.status === 'AWAITING_TRANSPORT' },
   { id: 'urgent', label: 'Urgent', test: (r, c) => isWithTransport(r.status) && (['overdue', 'escalated'].includes(escalation(r, c.now, c.days).level) || impactLevel(r, c.tech) === 'Systemic') },
   { id: 'target', label: 'Near or past target', test: (r, c) => isWithTransport(r.status) && escalation(r, c.now, c.days).level !== 'none' },
   { id: 'unassigned', label: 'Unassigned', test: (r) => isWithTransport(r.status) && !r.assignee },
-  { id: 'progress', label: 'In progress', test: (r) => r.status === 'ACKNOWLEDGED' || r.status === 'INVESTIGATING' },
+  { id: 'progress', label: 'Under assessment', test: (r) => r.status === 'ACKNOWLEDGED' || r.status === 'INVESTIGATING' },
+  { id: 'determine', label: 'Awaiting determination', test: (r) => r.status === 'AWAITING_DETERMINATION' },
   { id: 'revenue', label: 'Awaiting Revenue NSW', test: (r) => r.status === 'MORE_INFORMATION_REQUIRED' },
-  { id: 'answered', label: 'Answered', test: (r) => r.status === 'ADVICE_RECEIVED' },
-  { id: 'history', label: 'Technical history', test: (r) => r.status === 'ADVICE_RECEIVED' || r.status === 'CANCELLED' },
+  { id: 'answered', label: 'Determined', test: (r) => r.status === 'ADVICE_RECEIVED' },
+  { id: 'history', label: 'Referral history', test: (r) => r.status === 'ADVICE_RECEIVED' || r.status === 'CANCELLED' },
   { id: 'all', label: 'All', test: () => true },
 ];
 
@@ -40,16 +41,16 @@ export default function TechInbox({ user, view = 'open' }) {
   return (
     <>
       <div className="st-qhead">
-        <h1>{view === 'history' ? 'Technical history' : 'Technical requests'}</h1>
-        <p className="st-muted">Technical questions from Revenue NSW. You advise; Revenue NSW decides the customer’s case. Internal response target {TARGETS.tech} days.</p>
+        <h1>{view === 'history' ? 'Referral history' : 'Referrals from Revenue NSW'}</h1>
+        <p className="st-muted">Matters Revenue NSW has referred. Specialists assess; an authorised role determines; Revenue NSW carries out its downstream steps. Internal target {TARGETS.tech} days (illustrative, not statutory).</p>
       </div>
       <div className="st-toolbar"><div className="st-toolbar__chips"><div className="st-seg" role="group" aria-label="Saved views">
         {TECH_VIEWS.map((x) => <Button key={x.id} size="sm" variant={x.id === v.id ? 'solid' : 'outline'} aria-pressed={x.id === v.id} onClick={() => go(`/staff/requests?view=${x.id}`)}>{x.label}</Button>)}
       </div></div></div>
       <div className="st-pane"><div className="st-grid-wrap is-compact">
-        <Table aria-label="Technical requests" className="st-queue">
+        <Table aria-label="Referrals" className="st-queue">
           <TableHeader><TableRow>
-            <TableHead>Request</TableHead><TableHead>Category</TableHead><TableHead>Camera / site</TableHead><TableHead>Problem summary</TableHead><TableHead>Impact</TableHead><TableHead>Requested by</TableHead><TableHead>Due / age</TableHead><TableHead>Status</TableHead>
+            <TableHead>Request</TableHead><TableHead>Category</TableHead><TableHead>Camera / site</TableHead><TableHead>Reason for referral</TableHead><TableHead>Impact</TableHead><TableHead>Requested by</TableHead><TableHead>Due / age</TableHead><TableHead>Status</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {rows.map(({ r, impact, age, due }, i) => {
@@ -67,7 +68,7 @@ export default function TechInbox({ user, view = 'open' }) {
                 </TableRow>
               );
             })}
-            {!rows.length && <TableRow><TableCell colSpan={8} className="st-muted">Nothing here. Requests appear when Revenue NSW asks a technical question.</TableCell></TableRow>}
+            {!rows.length && <TableRow><TableCell colSpan={8} className="st-muted">Nothing here. Referrals appear when Revenue NSW refers a matter.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </div></div>

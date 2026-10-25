@@ -166,8 +166,8 @@ export const STAFF = [
   { id: 'jo', name: 'Jo Nguyen', org: 'Transport for NSW', agency: 'tfnsw', role: 'Customer inquiry officer', perms: ['inspect:request'] },
   { id: 'kai', name: 'Kai Okoro', org: 'Transport for NSW', agency: 'tfnsw', role: 'Technical systems advisor', perms: ['withdraw:request', 'inspect:request'] },
   { id: 'dana', name: 'Dana Whitfield', org: 'Transport for NSW', agency: 'tfnsw', role: 'Adjudication officer', perms: ['inspect:request'] },
-  { id: 'morgan', name: 'Morgan Smith', org: 'Transport for NSW', agency: 'tfnsw', role: 'Camera program manager', perms: ['withdraw:request', 'withdraw:approve', 'inspect:request', 'team:manage'] },
-  { id: 'sasha', name: 'Sasha Ivanov', org: 'Transport for NSW', agency: 'tfnsw', role: 'Technical assurance manager', perms: ['withdraw:request', 'withdraw:approve', 'inspect:request', 'team:manage'] },
+  { id: 'morgan', name: 'Morgan Smith', org: 'Transport for NSW', agency: 'tfnsw', role: 'Camera program manager', perms: ['withdraw:request', 'withdraw:approve', 'withdraw:determine', 'inspect:request', 'team:manage'] },
+  { id: 'sasha', name: 'Sasha Ivanov', org: 'Transport for NSW', agency: 'tfnsw', role: 'Technical assurance manager', perms: ['withdraw:request', 'withdraw:approve', 'withdraw:determine', 'inspect:request', 'team:manage'] },
   // Revenue NSW. Managers (team:manage) can assign work to others and see team workload.
   { id: 'alex', name: 'Alex Chen', org: 'Revenue NSW', agency: 'rnsw', role: 'Review officer', perms: ['case:decide'] },
   { id: 'sam', name: 'Sam Patel', org: 'Revenue NSW', agency: 'rnsw', role: 'Review officer', perms: ['case:decide'] },
@@ -190,7 +190,7 @@ export const staff = (id) => STAFF.find((p) => p.id === id);
 // status: AWAITING_TRANSPORT | MORE_INFORMATION_REQUIRED | ADVICE_RECEIVED | CANCELLED
 export const TECH_CATEGORIES = [
   ['certification', 'Certification'], ['evidence', 'Image or evidence'], ['operation', 'Camera operation'],
-  ['site', 'Site configuration'], ['timing', 'Timing or calculation'], ['other', 'Other'],
+  ['site', 'Site configuration'], ['timing', 'Timing or calculation'], ['court', 'Court election: defence preparation'], ['other', 'Other'],
 ];
 const HOUR = 3600e3;
 const ago = (h) => Date.now() - h * HOUR;
@@ -207,9 +207,9 @@ export const TECH_SEED = [
   { id: 'TR-2991', caseId: 'RV-23988', notice: '3162457897', site: 'PHN-M4', category: 'evidence', by: 'alex', assignee: 'jo', at: '2026-09-18',
     summary: 'Was a person involved in checking the phone-detection image?',
     question: 'The customer asks whether a person ever looked at the image. Is the person-check recorded, and can it be shown to the customer?',
-    status: 'ADVICE_RECEIVED', thread: [],
-    log: [{ at: ago(24 * 36), type: 'requested', by: 'alex' }, { at: ago(24 * 36 - 2), type: 'acknowledged', by: 'jo' }, { at: ago(24 * 35), type: 'investigating', by: 'jo' }, { at: ago(24 * 32), type: 'advice', by: 'jo' }],
-    response: { by: 'jo', at: '2026-09-22', recommendation: 'valid',
+    status: 'ADVICE_RECEIVED', thread: [], actioned: { by: 'alex', at: '2026-09-24' },
+    log: [{ at: ago(24 * 36), type: 'requested', by: 'alex' }, { at: ago(24 * 36 - 2), type: 'acknowledged', by: 'jo' }, { at: ago(24 * 35), type: 'investigating', by: 'jo' }, { at: ago(24 * 33), type: 'assessed', by: 'jo' }, { at: ago(24 * 32), type: 'determination', by: 'morgan' }, { at: ago(24 * 31), type: 'actioned', by: 'alex' }],
+    response: { by: 'morgan', at: '2026-09-22', recommendation: 'valid', outcome: 'supportable', rationale: 'The person-check record is held and matches the notice.',
       advice: 'Every phone-detection image is checked by an authorised adjudicator before a notice is issued. The adjudicator ID and check time are recorded in the evidence metadata (“Person check”), and that record can be quoted to the customer.',
       scope: 'Applies to any notice from camera PHN-M4 where the metadata shows a person check. It does not apply if the person-check record is missing.' } },
 ];

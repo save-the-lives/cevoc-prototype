@@ -7,7 +7,8 @@ import { site as findSite, staff as findStaff } from '../../data.js';
 import EvidenceViewer from './EvidenceViewer.jsx';
 import CertPanel from './CertPanel.jsx';
 import QuickDecision from './QuickDecision.jsx';
-import { CASE_STATE, activeRequest, validationOf } from '../../lib/workflow.js';
+import { CASE_STATE, activeRequest, matterStatus, validationOf } from '../../lib/workflow.js';
+import MatterStatus from '../tech/MatterStatus.jsx';
 import { planFaults } from '../../lib/faults.js';
 import { useSim } from '../../lib/useSim.js';
 
@@ -25,9 +26,9 @@ export default function CaseWorkbench({ row, agency, index, total, user, onPrev,
   useEffect(() => { setTab('evidence'); }, [c.id]);
   const risks = ev.notCurrent;
   // One line each: what the customer says, what the checks found, and what to do next. No pre-judged outcome.
-  const step = st === 'DECIDED' ? 'Decision recorded.' : st === 'AWAITING_TRANSPORT' ? `Waiting for Transport (${req?.id}). You keep the case.` : st === 'MORE_INFORMATION_REQUIRED' ? 'Transport asked you a question. Reply in the panel below.'
-    : st === 'ADVICE_RECEIVED' ? 'Read Transport’s advice, then decide.' : risks ? 'Resolve the certification risk: judge it from the evidence, or ask Transport a specific question.' : 'Evidence and certification are clear. Confirm the plate, then decide.';
-
+  const status = matterStatus({ n, ev, validation, req });
+  const step = st === 'DECIDED' ? 'Resolved.' : st === 'AWAITING_TRANSPORT' ? `Referred to Transport (${req?.id}). It stays on your list.` : st === 'MORE_INFORMATION_REQUIRED' ? 'Transport asked you a question. Reply in the panel below.'
+    : st === 'ADVICE_RECEIVED' ? 'Transport has determined this. Carry out your downstream steps, then record them.' : c.type === 'court' ? 'Court election: notify Transport so it can support defence preparation.' : risks ? 'A certification issue is open. Refer to Transport: whether enforcement stands is their call.' : 'Certification valid and evidence on record. Confirm the plate, then resolve or refer.';
   return (
     <section className="st-bench" aria-label={`Review of case ${c.id}`}>
       <p className="sr-only" aria-live="polite">Reviewing {c.id}, case {index + 1} of {total}{risks ? `, ${risks} certification risk` : ''}</p>
@@ -45,10 +46,10 @@ export default function CaseWorkbench({ row, agency, index, total, user, onPrev,
         </div>
       </header>
 
-      <div className="st-bench__sum" role="group" aria-label="Case summary">
-        <div><span>Customer’s issue</span><strong>{c.category}</strong><em>“{c.grounds.length > 90 ? `${c.grounds.slice(0, 88)}…` : c.grounds}”</em></div>
-        <div><span>Verification</span><strong><Tag size="sm" color={validation.tone}>{validation.label}</Tag></strong><em>{validation.short}</em></div>
-        <div><span>Status</span><strong><Tag size="sm" color={CASE_STATE[st].tone}>{CASE_STATE[st].label}</Tag></strong><em>Next: {step}</em></div>
+      <MatterStatus status={status} compact />
+      <div className="st-bench__sum is-two" role="group" aria-label="Case summary">
+        <div><span>Reason for the review</span><strong>{c.category}</strong><em>“{c.grounds.length > 110 ? `${c.grounds.slice(0, 108)}…` : c.grounds}”</em></div>
+        <div><span>Next step</span><strong><Tag size="sm" color={CASE_STATE[st].tone}>{CASE_STATE[st].label}</Tag></strong><em>{step}</em></div>
       </div>
 
       <div className="st-bench__tabs" role="tablist" aria-label="Review sections">

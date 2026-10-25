@@ -27,7 +27,7 @@ function CertCard({ i }) {
         )}
         {!limit && cert && <p className="st-muted">{age === 0 ? 'Same day as the offence' : `${age} days before the offence`}</p>}
         {!current && cert && <p className="cp-why">{why}</p>}
-        {!current && <p className="cp-why">Upholding may not survive a challenge.</p>}
+        {!current && <p className="cp-why">This may affect whether enforcement can be supported. Transport decides.</p>}
         {withdrawn && <p className="cp-why">A later certificate ({withdrawn.id}) was withdrawn and doesn’t count.</p>}
       </div>
     </li>

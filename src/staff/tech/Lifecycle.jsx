@@ -5,21 +5,21 @@ import { LIFECYCLE, REQUEST_STATUS, escalation, human, inStateSince, lastActivit
 import { staff as findStaff } from '../../data.js';
 import { fmtDate } from '../../lib/format.js';
 
-const LOGTYPE = ['requested', 'acknowledged', 'investigating', 'advice'];
+const LOGTYPE = [['requested'], ['acknowledged'], ['assessed', 'determination'], ['determination'], ['actioned']];
 const time = (ms) => new Date(ms).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
-// Revenue request -> Transport acknowledgement -> Technical investigation -> Advice returned -> Revenue resolution.
+// Revenue referral -> Transport acknowledgement -> Technical assessment -> Determination issued -> Revenue downstream action.
 // Both agencies see the same lifecycle. Acknowledged is deliberately a separate step from answered.
 export function Lifecycle({ req, decided, compact }) {
-  const cur = req.status === 'AWAITING_TRANSPORT' ? 1 : req.status === 'ADVICE_RECEIVED' ? (decided ? 5 : 4) : req.status === 'CANCELLED' ? -1 : 2;
-  const stamp = (i) => { const l = req.log?.find((x) => x.type === LOGTYPE[i]); return l ? time(l.at) : ''; };
-  if (req.status === 'CANCELLED') return <p className="lc-cancel">Cancelled by Revenue NSW. The lifecycle stopped before advice was returned.</p>;
+  const cur = req.status === 'AWAITING_TRANSPORT' ? 1 : req.status === 'AWAITING_DETERMINATION' ? 3 : req.status === 'ADVICE_RECEIVED' ? (req.actioned || decided ? 5 : 4) : req.status === 'CANCELLED' ? -1 : 2;
+  const stamp = (i) => { const l = req.log?.find((x) => LOGTYPE[i].includes(x.type)); return l ? time(l.at) : ''; };
+  if (req.status === 'CANCELLED') return <p className="lc-cancel">Cancelled by Revenue NSW. The lifecycle stopped before a determination was issued.</p>;
   return (
     <ol className={`lc ${compact ? 'is-compact' : ''}`} aria-label="Request lifecycle">
       {LIFECYCLE.map((label, i) => {
         const done = i < cur || (i === 4 && cur === 5);
         const now = i === cur;
-        const note = i === 2 && req.status === 'ACKNOWLEDGED' ? 'not started' : i === 2 && req.status === 'MORE_INFORMATION_REQUIRED' ? 'paused: waiting for Revenue NSW' : i === 4 && done ? 'decided' : '';
+        const note = i === 2 && req.status === 'ACKNOWLEDGED' ? 'not started' : i === 2 && req.status === 'MORE_INFORMATION_REQUIRED' ? 'paused: waiting for Revenue NSW' : i === 3 && req.status === 'AWAITING_DETERMINATION' ? 'waiting for an authorised role' : i === 4 && done ? 'complete' : '';
         return (
           <li key={label} className={done ? 'is-done' : now ? 'is-now' : ''} aria-current={now ? 'step' : undefined}>
             <span className="lc-dot" aria-hidden="true">{done ? '✓' : i + 1}</span>
@@ -40,7 +40,7 @@ export function RequestMeta({ req, decided, owner }) {
   const next = nextRequired(req, decided);
   const st = REQUEST_STATUS[req.status];
   const who = (id) => findStaff(id)?.name || 'not yet assigned';
-  const ownerText = req.status === 'ADVICE_RECEIVED' || req.status === 'MORE_INFORMATION_REQUIRED' ? `Revenue NSW (${who(req.by)})` : req.status === 'CANCELLED' ? 'None' : `Transport (${who(req.assignee)})`;
+  const ownerText = (req.status === 'ADVICE_RECEIVED' && !req.actioned) || req.status === 'MORE_INFORMATION_REQUIRED' ? `Revenue NSW (${who(req.by)})` : req.status === 'CANCELLED' || req.actioned ? 'None' : `Transport (${who(req.assignee)})`;
   return (
     <dl className="rm">
       <div><dt>Current owner</dt><dd>{owner || ownerText}</dd></div>

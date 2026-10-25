@@ -15,7 +15,8 @@ import SearchHome from './search/SearchHome.jsx';
 import RevenueOps from './ops/RevenueOps.jsx';
 import TransportOps from './ops/TransportOps.jsx';
 import AdviceBlock from './queue/AdviceBlock.jsx';
-import { activeRequest, affectedCases, validationOf } from '../lib/workflow.js';
+import { activeRequest, affectedCases, matterStatus, validationOf } from '../lib/workflow.js';
+import MatterStatus from './tech/MatterStatus.jsx';
 import { useStore } from '../lib/store.jsx';
 import { go } from '../lib/router.js';
 import { evaluate, scorecard, impactOf, daysBetween } from '../lib/rules.js';
@@ -43,8 +44,8 @@ function useVisit(label, to) {
 
 // Scorecard: risks first and in full, everything that passed folded into one quiet line.
 const CONSEQUENCE = {
-  Certification: 'Not current on the day, so upholding may not survive a challenge.',
-  Evidence: 'The evidence may not be enough to uphold this fine.',
+  Certification: 'Not valid on the offence date. Whether enforcement stands is Transport’s call.',
+  Evidence: 'The evidence set may be incomplete.',
 };
 
 function Scorecard({ n, certFault }) {
@@ -140,7 +141,7 @@ function NotForYou({ what = 'approvals' }) {
   return (
     <div className="st-card">
       <h1>{what === 'queue' ? 'The review queue belongs to Revenue NSW' : 'Approvals aren’t part of your role'}</h1>
-      <p className="st-muted">{what === 'queue' ? 'Transport receives only the technical questions Revenue NSW asks. You can see them in Technical requests.' : 'Certificate withdrawals are approved by a camera program manager. You can still request a withdrawal from a certificate page, and it will wait here for them.'}</p>
+      <p className="st-muted">{what === 'queue' ? 'Transport receives only the matters Revenue NSW refers. You can see them in Referrals.' : 'Certificate withdrawals are approved by a camera program manager. You can still request a withdrawal from a certificate page, and it will wait here for them.'}</p>
       <Link to="/staff">Back to your work</Link>
     </div>
   );
@@ -189,7 +190,7 @@ function NoticeRecord({ number, user }) {
   const cases = CASES.filter((c) => c.notice === n.number);
   return (
     <EvidenceView n={n}
-      header={<div className="st-rec-head"><span className="st-type">Penalty notice</span><h1>{n.number}</h1><span className="st-muted">{n.offence} · {n.holder}</span></div>}
+      header={<div className="st-rec-head"><span className="st-type">Penalty notice</span><h1>{n.number}</h1><span className="st-muted">{n.offence}{can(user, 'case:decide') || user.agency === 'rnsw' ? ` · ${n.holder}` : ''}</span></div>}
       aside={
         <>
           <div className="st-card">
@@ -227,32 +228,31 @@ function CaseRecord({ id, user, query }) {
   const opts = OUTCOMES[k.type];
   const label = opts.find((o) => o[0] === out)?.[1];
   const req = activeRequest(state.tech, id);
-  const waiting = req && req.status !== 'ADVICE_RECEIVED';
+  const waiting = !!req || k.type === 'court';
   const sim = useSim(planFaults(n, faultSettings).certs, 600, [n.number]);
   const validation = validationOf(ev, sim.status);
+  const status = matterStatus({ n, ev, validation, req });
+  const customer = user.agency === 'rnsw' ? n.holder : 'Customer (name withheld)';
 
   const decision = (
     <div className="st-card st-actions">
-      <h2 className="st-h3">Decision</h2>
+      <h2 className="st-h3">{user.agency === 'rnsw' ? 'Resolution' : 'Referral'}</h2>
       {done ? (
         <div className="st-done"><strong>{done.label}</strong><p>{done.reason}</p><p className="st-muted">By {findStaff(done.by)?.name}</p>{can(user, 'case:decide') && <button type="button" className="st-btn ghost" onClick={() => dispatch({ type: 'reopen', id, by: user.id })}>Reopen</button>}</div>
       ) : can(user, 'case:decide') ? (
         <>
           <AdviceBlock k={k} n={n} ev={ev} user={user} onUse={setReason} />
-          {!ev.current && <p className="st-flag">{ev.notCurrent} certificate not current on the day. Upholding may not survive a challenge.</p>}
-          {waiting ? <p className="st-muted">Waiting for Transport’s advice. Cancel the request to decide without it.</p> : <>
+          {!ev.current && <p className="st-flag">{ev.notCurrent} certificate not valid on the offence date. Whether enforcement stands is a question for Transport.</p>}
+          {waiting ? <p className="st-muted">{k.type === 'court' ? 'Court-elected matter: prosecution and court steps happen outside CEVOC. Notify Transport above.' : 'This matter follows its referral to Transport. Cancel the referral to resolve it yourself.'}</p> : <>
           {opts.map(([v, l]) => <label key={v} className="st-radio"><input type="radio" name="o" checked={out === v} onChange={() => setOut(v)} /> {l}</label>)}
-          <label className="st-label">Reason (in the customer letter)<textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
-          {out && reason.trim().length > 9 && (
-            <pre className="st-letter">{`Dear ${n.holder},\n\nThank you for your ${k.type === 'court' ? 'court election' : 'review request'} for penalty notice (${n.number}). We looked carefully at what you told us and at the camera evidence.\n\nOutcome: ${label}.\n${reason.trim()}\n\nRevenue NSW (MOCK, NOT SENT)`}</pre>
-          )}
-          <button type="button" className="st-btn" disabled={!out || reason.trim().length < 10} onClick={() => dispatch({ type: 'decide', id, d: { label, reason: reason.trim(), by: user.id } })}>Record decision</button>
+          <label className="st-label">Note for the record<textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
+          <button type="button" className="st-btn" disabled={!out || reason.trim().length < 10} onClick={() => dispatch({ type: 'decide', id, d: { label, reason: reason.trim(), by: user.id } })}>Record resolution</button>
           </>}
         </>
       ) : (
         <>
-          <Handoff to="Revenue NSW" what="The decision is made by a Revenue NSW officer. Transport advises through Technical requests." />
-          {req && <AdviceBlock k={k} n={n} ev={ev} user={user} />}
+          <Handoff to="Revenue NSW" what="Revenue NSW resolves what is within its authority and refers technical questions to Transport. Transport assesses and determines in Referrals." />
+          {req && <><AdviceBlock k={k} n={n} ev={ev} user={user} /><Link to={`/staff/request/${req.id}`}>Open referral {req.id}</Link></>}
         </>
       )}
     </div>
@@ -263,10 +263,10 @@ function CaseRecord({ id, user, query }) {
       header={
         <>
           <ExternalBanner query={query} id={k.id} />
-          {query?.from === 'external' && <p className={`st-validation is-${validation.tone}`} role="status"><strong>CEVOC validation: {validation.label}.</strong> {validation.short}.</p>}
+          <MatterStatus status={status} />
           <div className="st-rec-head"><span className="st-type">{k.type === 'court' ? 'Court election' : 'Review'}</span><h1>{k.id}</h1>
             <span className="st-muted">Penalty notice (<Link to={`/staff/notice/${n.number}`}>{n.number}</Link>) · lodged {fmtDate(k.lodged)} ({daysBetween(k.lodged, TODAY)} days ago)</span></div>
-          <blockquote className="st-quote">“{k.grounds}”<cite>{n.holder} · {k.channel}</cite></blockquote>
+          <blockquote className="st-quote">“{k.grounds}”<cite>{customer} · {k.channel}</cite></blockquote>
         </>
       }
       aside={<>{decision}<Audit refs={[id]} /></>} />

@@ -31,7 +31,7 @@ export default function RevenueOps({ user }) {
   // Urgent, actionable work first. Anything that is merely waiting on someone else goes in the other panel.
   const action = rows.filter((r) => r.st !== 'AWAITING_TRANSPORT').map((r) => {
     let why = 'Needs a decision'; let score = 30; let go = 'Decide';
-    if (r.st === 'ADVICE_RECEIVED') { why = 'Transport advice returned: decide'; score = 100; go = 'Decide'; }
+    if (r.st === 'ADVICE_RECEIVED') { why = 'Transport determination received: carry out downstream steps'; score = 100; go = 'Action downstream'; }
     else if (r.st === 'MORE_INFORMATION_REQUIRED') { why = 'Transport asked you a question'; score = 105; go = 'Reply'; }
     else if (affected.has(r.c.id)) { why = 'A certificate changed on this case'; score = 95; go = 'Review'; }
     else if (r.sla.left < 0) { why = `${-r.sla.left} days past target`; score = 90; go = 'Decide'; }
@@ -54,9 +54,9 @@ export default function RevenueOps({ user }) {
       <div className="otiles">
         <Tile label="New cases" n={fresh.length} sub="Need triage" to={list('state = open')} tone="primary" urgent />
         <Tile label="Awaiting decision" n={deciding.length} sub="With an officer" to={list('state IN (triage, reopened)')} tone="grey" />
-        <Tile label="Awaiting Transport" n={waiting.length} sub="Technical advice requested" to="/staff/queue/reviews?view=awaiting" tone="warn" />
-        <Tile label="Advice back" n={back.length} sub="Requires your action" to={list('state IN (advice, more-info)')} tone="ok" urgent />
-        <Tile label="At risk" n={risk.length} sub="Due within 5 days" to="/staff/queue/reviews?view=risk" tone="bad" urgent />
+        <Tile label="Referred to Transport" n={waiting.length} sub="Not yet determined" to="/staff/queue/reviews?view=awaiting" tone="warn" />
+        <Tile label="Determinations back" n={back.length} sub="Requires your action" to={list('state IN (advice, more-info)')} tone="ok" urgent />
+        <Tile label="Nearing target" n={risk.length} sub="Within 5 days of internal target" to="/staff/queue/reviews?view=risk" tone="bad" urgent />
         <Tile label="Certificate changes" n={critical.length} sub="Affect open cases" to={critical.length ? list(`case IN (${critical.map((r) => `"${r.c.id}"`).join(', ')})`) : '/staff/queue/reviews?view=risk'} tone="bad" urgent />
       </div>
 
@@ -76,7 +76,7 @@ export default function RevenueOps({ user }) {
           ) : <p className="st-muted">Nothing needs action right now.</p>}
         </Panel>
 
-        <Panel title="Waiting on Transport" count={withTransport.length} tone="warn" action={<Link to="/staff/queue/reviews?view=awaiting">View all</Link>} wide>
+        <Panel title="Referred to Transport" count={withTransport.length} tone="warn" action={<Link to="/staff/queue/reviews?view=awaiting">View all</Link>} wide>
           {withTransport.length ? (
             <table className="otable">
               <thead><tr><th>Case</th><th>Request</th><th>Request age</th><th>Technical team</th><th>Status</th><th>Target response</th><th>Escalation</th></tr></thead>

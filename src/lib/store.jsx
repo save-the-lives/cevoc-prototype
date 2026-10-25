@@ -1,15 +1,15 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { CASES, CERTS, TECH_SEED, staff as findStaff } from '../data.js';
-import { isLive, isWithTransport, dueMs, requestedAt } from './workflow.js';
+import { isLive, isWithTransport, dueMs, requestedAt, DETERMINATION } from './workflow.js';
 import { setTargets } from '../staff/queue/sla.js';
 
 // Shared demo state for the browser tab, so the public site reflects staff actions.
-const KEY = 'cevoc-v12-state';
+const KEY = 'cevoc-v13-state';
 const HR = 3600e3;
 // Simulated events, so the feeds are not empty on first load. Everything here is prototype data.
 const SEED_EVENTS = [
-  { id: 'E2', at: Date.now() - 2.5 * HR, kind: 'request', to: ['tfnsw'], text: 'New technical request TR-3002 from Revenue NSW (AVG-HUM): surveyed distance', link: '/staff/request/TR-3002' },
-  { id: 'E1', at: Date.now() - 20 * HR, kind: 'progress', to: ['rnsw'], text: 'TR-3001 investigation started by Jo Nguyen. Not yet answered.', link: '/staff/queue/reviews?q=case%20%3D%20%22CE-24023%22&open=1' },
+  { id: 'E2', at: Date.now() - 2.5 * HR, kind: 'request', to: ['tfnsw'], text: 'New referral TR-3002 from Revenue NSW (AVG-HUM): surveyed distance', link: '/staff/request/TR-3002' },
+  { id: 'E1', at: Date.now() - 20 * HR, kind: 'progress', to: ['rnsw'], text: 'TR-3001 assessment started by Jo Nguyen. No determination yet.', link: '/staff/queue/reviews?q=case%20%3D%20%22CE-24023%22&open=1' },
 ];
 const INITIAL = {
   certStatus: {}, pending: [], audit: [], decisions: {}, recent: [], user: null, assign: {},
@@ -73,26 +73,51 @@ function reducer(s, a) {
     case 'assign': return { ...s, assign: { ...s.assign, ...a.map }, audit: log(s, a.by, a.what, a.ref) };
     // Technical requests. Each transition checks the request is in a state that allows it, and tells the other agency.
     case 'techRequest': return emit({ ...s, tech: [a.req, ...s.tech], audit: log(s, a.req.by, `Requested technical advice (${a.req.id}) on ${a.req.caseId}: ${a.req.summary}`, a.req.caseId) },
-      [{ kind: 'request', to: ['tfnsw'], text: `New technical request ${a.req.id} from Revenue NSW (${a.req.site}): ${a.req.summary}`, link: `/staff/request/${a.req.id}` }]);
+      [{ kind: 'request', to: ['tfnsw'], text: `New referral ${a.req.id} from Revenue NSW (${a.req.site}): ${a.req.summary}`, link: `/staff/request/${a.req.id}` }]);
     case 'techAck': return move(s, a.id, ['AWAITING_TRANSPORT'], { status: 'ACKNOWLEDGED', assignee: a.by }, 'acknowledged', a.by, 'Acknowledged the technical request',
-      (r) => [{ kind: 'progress', to: ['rnsw'], text: `${r.id} acknowledged by ${nm(a.by)}. Acknowledged, not yet answered.`, link: caseLink(r) }]);
+      (r) => [{ kind: 'progress', to: ['rnsw'], text: `${r.id} acknowledged by ${nm(a.by)}. Acknowledged: not yet assessed.`, link: caseLink(r) }]);
     case 'techStart': return move(s, a.id, ['ACKNOWLEDGED'], { status: 'INVESTIGATING' }, 'investigating', a.by, 'Started the technical investigation',
-      (r) => [{ kind: 'progress', to: ['rnsw'], text: `Technical investigation started on ${r.id} (${r.caseId}).`, link: caseLink(r) }]);
-    case 'techRespond': return move(s, a.id, ['INVESTIGATING'], { status: 'ADVICE_RECEIVED', response: a.response }, 'advice', a.response.by, 'Gave technical advice',
+      (r) => [{ kind: 'progress', to: ['rnsw'], text: `Technical assessment started on ${r.id} (${r.caseId}).`, link: caseLink(r) }]);
+    // A specialist records an assessment and recommendation. This is not a determination.
+    case 'techAssess': return move(s, a.id, ['INVESTIGATING'], (r) => ({ status: 'AWAITING_DETERMINATION', assessment: { ...a.assessment, by: a.by, at: new Date().toISOString().slice(0, 10) } }), 'assessed', a.by, 'Recorded a technical assessment and recommendation',
       (r) => [
-        { kind: 'advice', urgent: true, to: ['rnsw'], text: `Transport returned advice on ${r.caseId} (${r.id}). A decision is required.`, link: caseLink(r) },
-        ...(a.related || []).map((c) => ({ kind: 'related', to: ['rnsw'], text: `Advice ${r.id} may be relevant to ${c}, another case at ${r.site}.`, link: `/staff/queue/reviews?q=${encodeURIComponent(`case = "${c}"`)}&open=1` })),
+        { kind: 'progress', to: ['tfnsw'], urgent: true, text: `${r.id} (${r.caseId}): assessment recorded, waiting for an authorised determination.`, link: `/staff/request/${r.id}` },
+        { kind: 'progress', to: ['rnsw'], text: `Assessment recorded on ${r.id} (${r.caseId}). A determination is still to come.`, link: caseLink(r) },
       ]);
-    case 'techClarify': return move(s, a.id, ['ACKNOWLEDGED', 'INVESTIGATING'], (r) => ({ status: 'MORE_INFORMATION_REQUIRED', thread: [...r.thread, { by: a.by, at: now(), text: a.text }] }), 'clarify', a.by, 'Asked Revenue NSW for more information',
+    // Only an authorised Transport role can issue a determination (checked here as well as in the screen).
+    case 'techDetermine': {
+      if (!findStaff(a.by)?.perms.includes('withdraw:determine')) return s;
+      const further = a.response.outcome === 'further-info';
+      return move(s, a.id, ['INVESTIGATING', 'AWAITING_DETERMINATION'],
+        (r) => (further
+          ? { status: 'MORE_INFORMATION_REQUIRED', thread: [...r.thread, { by: a.by, at: now(), text: a.response.rationale }] }
+          : { status: 'ADVICE_RECEIVED', response: { ...(r.assessment || {}), ...a.response, by: a.by, at: new Date().toISOString().slice(0, 10) } }),
+        'determination', a.by, `Issued a determination: ${DETERMINATION[a.response.outcome]}`,
+        (r) => [
+          { kind: 'advice', urgent: true, to: ['rnsw'], text: further ? `Transport needs further information on ${r.caseId} (${r.id}).` : `Transport issued a determination on ${r.caseId} (${r.id}): ${DETERMINATION[a.response.outcome]}. Downstream steps are with Revenue NSW.`, link: caseLink(r) },
+          ...(further ? [] : (a.related || []).map((c) => ({ kind: 'related', to: ['rnsw'], text: `Determination ${r.id} may be relevant to ${c}, another case at ${r.site}.`, link: `/staff/queue/reviews?q=${encodeURIComponent(`case = "${c}"`)}&open=1` }))),
+        ]);
+    }
+    // Revenue NSW records that it has carried out its own downstream steps (in its own systems). Closes the case.
+    case 'downstream': {
+      if (findStaff(a.by)?.agency !== 'rnsw') return s;
+      const r0 = s.tech.find((x) => x.id === a.id);
+      const next = move(s, a.id, ['ADVICE_RECEIVED'], { actioned: { by: a.by, at: new Date().toISOString().slice(0, 10) } }, 'actioned', a.by, 'Carried out downstream steps (simulated)',
+        (r) => [{ kind: 'info', to: ['tfnsw'], text: `Revenue NSW has carried out its downstream steps for ${r.caseId} (${r.id}). Complete.`, link: `/staff/request/${r.id}` }]);
+      if (next === s || !r0) return s;
+      const label = `Downstream steps complete (${DETERMINATION[r0.response?.outcome] || 'determination received'})`;
+      return { ...next, reopened: next.reopened.filter((x) => x !== r0.caseId), decisions: { ...next.decisions, [r0.caseId]: { label, reason: 'Carried out in Revenue NSW systems. Recorded here for visibility only (simulated).', by: a.by } } };
+    }
+    case 'techClarify': return move(s, a.id, ['ACKNOWLEDGED', 'INVESTIGATING', 'AWAITING_DETERMINATION'], (r) => ({ status: 'MORE_INFORMATION_REQUIRED', thread: [...r.thread, { by: a.by, at: now(), text: a.text }] }), 'clarify', a.by, 'Asked Revenue NSW for more information',
       (r) => [{ kind: 'advice', urgent: true, to: ['rnsw'], text: `Transport needs more information on ${r.caseId} (${r.id}): reply to continue.`, link: caseLink(r) }]);
     case 'techReply': return move(s, a.id, ['MORE_INFORMATION_REQUIRED'], (r) => ({ status: 'INVESTIGATING', thread: [...r.thread, { by: a.by, at: now(), text: a.text }] }), 'reply', a.by, 'Replied with more information',
-      (r) => [{ kind: 'request', to: ['tfnsw'], text: `Revenue NSW replied on ${r.id}. Investigation can continue.`, link: `/staff/request/${r.id}` }]);
-    case 'techCancel': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'MORE_INFORMATION_REQUIRED'], { status: 'CANCELLED' }, 'cancelled', a.by, 'Cancelled the technical request',
+      (r) => [{ kind: 'request', to: ['tfnsw'], text: `Revenue NSW replied on ${r.id}. The assessment can continue.`, link: `/staff/request/${r.id}` }]);
+    case 'techCancel': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'AWAITING_DETERMINATION', 'MORE_INFORMATION_REQUIRED'], { status: 'CANCELLED' }, 'cancelled', a.by, 'Cancelled the technical request',
       (r) => [{ kind: 'info', to: ['tfnsw'], text: `Revenue NSW cancelled ${r.id}.`, link: `/staff/request/${r.id}` }]);
-    case 'techEscalate': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'MORE_INFORMATION_REQUIRED'], { escalated: true }, 'note', a.by, 'Escalated internally (simulated)',
+    case 'techEscalate': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'AWAITING_DETERMINATION', 'MORE_INFORMATION_REQUIRED'], { escalated: true }, 'note', a.by, 'Escalated internally (simulated)',
       (r) => [{ kind: 'overdue', urgent: true, to: ['rnsw', 'tfnsw'], text: `${r.id} (${r.caseId}) has been escalated.`, link: `/staff/request/${r.id}` }]);
-    case 'techNote': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'MORE_INFORMATION_REQUIRED', 'ADVICE_RECEIVED'], (r) => ({ thread: [...r.thread, { by: a.by, at: now(), text: a.text, internal: true }] }), 'note', a.by, a.text, () => []);
-    case 'techAssign': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'MORE_INFORMATION_REQUIRED'], { assignee: a.to }, 'note', a.by, `Assigned to ${nm(a.to)}`, () => []);
+    case 'techNote': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'AWAITING_DETERMINATION', 'MORE_INFORMATION_REQUIRED', 'ADVICE_RECEIVED'], (r) => ({ thread: [...r.thread, { by: a.by, at: now(), text: a.text, internal: true }] }), 'note', a.by, a.text, () => []);
+    case 'techAssign': return move(s, a.id, ['AWAITING_TRANSPORT', 'ACKNOWLEDGED', 'INVESTIGATING', 'AWAITING_DETERMINATION', 'MORE_INFORMATION_REQUIRED'], { assignee: a.to }, 'note', a.by, `Assigned to ${nm(a.to)}`, () => []);
     // Presenter controls: skip the clock forward, and pause or refresh the simulated live feed.
     case 'advanceDays': {
       const before = Date.now() + s.skew * 864e5; const after = before + a.days * 864e5;

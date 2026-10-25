@@ -29,9 +29,9 @@ export const FIELDS = {
   notcurrent: { type: 'number', get: (r) => r.ev.notCurrent, help: 'How many certificates are not current' },
   assignee: { type: 'user', sortVal: (r) => (r.assignee ? staffName(r.assignee) : '~'), values: ['me', 'unassigned', ...STAFF.filter((p) => p.perms.includes('case:decide')).map((p) => p.name)], get: (r) => r.assignee, help: 'Who has it: me, a name, or unassigned' },
   status: { type: 'enum', values: ['open', 'decided'], get: (r) => (r.decision ? 'decided' : 'open'), help: 'open or decided' },
-  state: { type: 'enum', values: ['open', 'triage', 'awaiting', 'more-info', 'advice', 'reopened', 'decided'], get: (r) => CASE_STATE[r.state].token, help: 'Where it is: open, triage, awaiting (Transport advice), advice, decided' },
+  state: { type: 'enum', values: ['open', 'triage', 'awaiting', 'more-info', 'advice', 'reopened', 'decided'], get: (r) => CASE_STATE[r.state].token, help: 'Where it is: open, triage, awaiting (referred to Transport), advice (determination received), decided' },
   reason: { type: 'text', get: (r) => r.c.category, help: 'Why the customer asked, e.g. Signal timing' },
-  validation: { type: 'enum', values: ['clear', 'review required', 'unavailable'], get: (r) => r.validation.label.toLowerCase(), help: 'clear, "review required" or unavailable' },
+  validation: { type: 'enum', values: ['valid', 'not valid', 'unavailable'], get: (r) => r.validation.label.toLowerCase(), help: 'Certification: valid, "not valid" or unavailable' },
   decision: { type: 'text', get: (r) => r.decision?.label || '', help: 'Decision made' },
 };
 const ALIAS = Object.fromEntries(Object.entries(FIELDS).flatMap(([k, f]) => [[k, k], ...(f.alias || []).map((a) => [a, k])]));
@@ -301,9 +301,9 @@ export const PRESETS = [
 export const REVENUE_VIEWS = [
   { id: 'mine', label: 'My unresolved work', q: 'assignee = me AND status = open ORDER BY waiting DESC' },
   { id: 'action', label: 'Needs action', q: 'status = open AND state != awaiting ORDER BY waiting DESC' },
-  { id: 'awaiting', label: 'Awaiting Transport', q: 'state IN (awaiting, more-info)' },
-  { id: 'advice', label: 'Advice received', q: 'state = advice' },
-  { id: 'risk', label: 'At risk', q: 'status = open AND (left <= 5 OR validation = "review required") ORDER BY left' },
+  { id: 'awaiting', label: 'Referred to Transport', q: 'state IN (awaiting, more-info)' },
+  { id: 'advice', label: 'Determination received', q: 'state = advice' },
+  { id: 'risk', label: 'Nearing target', q: 'status = open AND (left <= 5 OR validation = "not valid") ORDER BY left' },
   { id: 'unassigned', label: 'Unassigned', q: 'status = open AND assignee IS EMPTY' },
   { id: 'completed', label: 'Completed', q: 'status = decided' },
   { id: 'all', label: 'All', q: '' },

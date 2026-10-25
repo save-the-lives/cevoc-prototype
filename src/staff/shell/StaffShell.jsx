@@ -16,7 +16,7 @@ const QUEUE_LABEL = { reviews: 'Review queue', court: 'Court elections', approva
 function trail(parts) {
   const [, a, b] = parts;
   if (a === 'case') { const k = kase(b); const q = k?.type === 'court' ? 'court' : 'reviews'; return [{ label: QUEUE_LABEL[q], to: `/staff/queue/${q}` }, { label: b }]; }
-  if (a === 'request') return [{ label: 'Technical requests', to: '/staff' }, { label: b }];
+  if (a === 'request') return [{ label: 'Referrals', to: '/staff/requests' }, { label: b }];
   if (a === 'cert') return [{ label: 'Certificate register', to: '/staff/certificates' }, { label: b }];
   if (a === 'camera') return [{ label: 'Cameras', to: '/staff/cameras' }, { label: b }];
   return [];
@@ -38,16 +38,16 @@ function SideNav({ agency, active, counts, hot, canApprove, manager }) {
       {agency === 'rnsw' ? (
         <>
           {item('/staff/queue/reviews', 'queue', 'Review queue', counts.mine)}
-          {item('/staff/queue/reviews?view=awaiting', 'awaiting', 'Escalations awaiting advice', counts.awaiting)}
+          {item('/staff/queue/reviews?view=awaiting', 'awaiting', 'Referred to Transport', counts.awaiting)}
           {item('/staff/queue/reviews?view=completed', 'completed', 'Completed', counts.completed)}
         </>
       ) : (
         <>
-          {item('/staff/requests', 'requests', 'Technical requests', counts.techOpen)}
+          {item('/staff/requests', 'requests', 'Referrals', counts.techOpen)}
           {item('/staff/certificates', 'certificates', 'Certificate register', counts.certs)}
           {item('/staff/cameras', 'cameras', 'Camera assets')}
           {item('/staff/queue/approvals', 'approvals', canApprove ? 'Certificate approvals' : 'Certificate requests', counts.approvals, hot)}
-          {item('/staff/requests?view=history', 'history', 'Technical history')}
+          {item('/staff/requests?view=history', 'history', 'Referral history')}
         </>
       )}
       <p className="st-side__h">More</p>
@@ -68,10 +68,10 @@ export default function StaffShell({ user, parts, query = {}, counts, canApprove
     { id: 'c-home', label: 'Go to your home page', keys: ['g', 'h'], run: () => go('/staff') },
     { id: 'c-search', label: 'Go to search', keys: ['g', 's'], run: () => go('/staff/search') },
     { id: 'c-dash', label: 'Go to the dashboard', keys: ['g', 'd'], run: () => go('/staff/overview') },
-    { id: 'c-main', label: user.agency === 'rnsw' ? 'Go to the review queue' : 'Go to technical requests', keys: ['g', user.agency === 'rnsw' ? 'r' : 't'], run: () => go(user.agency === 'rnsw' ? '/staff/queue/reviews' : '/staff/requests') },
+    { id: 'c-main', label: user.agency === 'rnsw' ? 'Go to the review queue' : 'Go to referrals', keys: ['g', user.agency === 'rnsw' ? 'r' : 't'], run: () => go(user.agency === 'rnsw' ? '/staff/queue/reviews' : '/staff/requests') },
     { id: 'c-ins', label: 'Go to trends', keys: ['g', 'i'], run: () => go('/staff/insights') },
     ...(user.agency === 'rnsw' ? [
-      { id: 'c-await', label: 'Go to escalations awaiting advice', keys: ['g', 'w'], run: () => go('/staff/queue/reviews?view=awaiting') },
+      { id: 'c-await', label: 'Go to matters referred to Transport', keys: ['g', 'w'], run: () => go('/staff/queue/reviews?view=awaiting') },
       { id: 'c-court', label: 'Go to court elections', keys: ['g', 'c'], run: () => go('/staff/queue/court') },
     ] : [
       { id: 'c-cert', label: 'Go to certificate register', keys: ['g', 'e'], run: () => go('/staff/certificates') },

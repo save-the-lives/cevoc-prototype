@@ -13,10 +13,8 @@ import AdviceBlock from './AdviceBlock.jsx';
 // Ready-made reasons so the common outcomes take a click, not a paragraph. They only fill the box; the officer edits freely.
 function templates(out, risk) {
   const by = {
-    uphold: risk ? ['Evidence is clear. The certification risk was reviewed and does not affect this offence.'] : ['Evidence and certification checked and in order.'],
-    withdraw: [...(risk ? ['Withdrawn: the camera certification was not current on the day.'] : []), 'Withdrawn: the evidence is not sufficient to proceed.'],
-    caution: ['Withdrawn and a caution given, taking the circumstances into account.'],
-    brief: ['Brief of evidence to be prepared for the court election.'],
+    answered: ['Customer’s enquiry answered using the certification and evidence on record.'],
+    checked: risk ? [] : ['Certification and evidence checked and in order. No technical concern found.'],
   };
   return by[out] || [];
 }
@@ -32,7 +30,8 @@ export default function QuickDecision({ k, n, ev, user, riskCount, onDecided }) 
   const ready = out && reason.trim().length > 9;
 
   const req = activeRequest(state.tech, k.id);
-  const waiting = req && req.status !== 'ADVICE_RECEIVED';
+  // Once a referral exists, the matter follows the referral (Transport determines, Revenue does downstream steps). No separate Revenue outcome.
+  const waiting = !!req || k.type === 'court';
 
   if (done) {
     return (
@@ -54,7 +53,7 @@ export default function QuickDecision({ k, n, ev, user, riskCount, onDecided }) 
   return (
     <>
     <AdviceBlock k={k} n={n} ev={ev} user={user} onUse={(t) => { setReason(t); document.getElementById('qd-outcome')?.focus(); }} />
-    {waiting ? <div className="st-decide is-wait" role="status"><span>Waiting for Transport’s advice before you decide. Cancel the request above to decide without it.</span></div> : (
+    {waiting ? <div className="st-decide is-wait" role="status"><span>{k.type === 'court' ? 'Court-elected matter: prosecution and court steps happen outside CEVOC. Notify Transport above so it can support defence preparation.' : req && req.status === 'ADVICE_RECEIVED' ? 'Transport has determined this matter. Carry out your downstream steps, then record them above.' : 'Referred to Transport. Cancel the referral above if you want to resolve this yourself.'}</span></div> : (
     <form className="st-decide" onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.currentTarget.requestSubmit(); } }} onSubmit={(e) => {
       e.preventDefault();
       if (!ready) return;
@@ -64,19 +63,19 @@ export default function QuickDecision({ k, n, ev, user, riskCount, onDecided }) 
       onDecided?.(k.id);
     }}>
       <label className="st-decide__f">
-        <span>Outcome <kbd>d</kbd></span>
+        <span>Resolution <kbd>d</kbd></span>
         <select id="qd-outcome" value={out} onChange={(e) => setOut(e.target.value)}>
           <option value="">Choose…</option>
           {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </label>
       <label className="st-decide__f st-decide__reason">
-        <span>Reason, in the customer letter</span>
+        <span>Note for the record</span>
         <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={riskCount ? `Note the ${riskCount} certification risk${riskCount > 1 ? 's' : ''}` : 'At least 10 characters'} />
       </label>
       <Button type="submit" size="sm" disabled={!ready} title="Ctrl+Enter">Record decision</Button>
       <div className="st-decide__aid">
-        {riskCount > 0 && <p className={`st-decide__hint ${out === 'uphold' ? 'is-strong' : ''}`} role={out === 'uphold' ? 'alert' : undefined}>{out === 'uphold' ? `Upholding with ${riskCount} certification ${riskCount > 1 ? 'risks' : 'risk'}. Say why it doesn’t matter.` : `${riskCount} certification ${riskCount > 1 ? 'risks' : 'risk'}: upholding may not survive a challenge.`}</p>}
+        {riskCount > 0 && <p className={`st-decide__hint ${out === 'checked' ? 'is-strong' : ''}`} role={out === 'checked' ? 'alert' : undefined}>{out === 'checked' ? `${riskCount} certification ${riskCount > 1 ? 'issues' : 'issue'} found. “No technical concern” does not fit: refer to Transport instead.` : `${riskCount} certification ${riskCount > 1 ? 'issues' : 'issue'}: whether enforcement stands is Transport’s call. Refer rather than resolve.`}</p>}
         {out && templates(out, riskCount > 0).map((t) => <button key={t} type="button" className="st-decide__chip" onClick={() => setReason(t)} title="Use this reason">{t}</button>)}
         <span className="st-decide__keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> records and moves to the next case</span>
       </div>

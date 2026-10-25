@@ -1,14 +1,15 @@
 /* STAFF: dense, fast, evidence-first workspace. Shared by Transport and Revenue NSW. */
 .st { --ac: #146cfd; --ac-soft: #e1ebff; --ac-softer: #f3f7ff; --ac-line: #b5ccf5; --ac-ring: rgba(20,108,253,.18); --top: #0b1a33; }
-.st--rnsw { --ac: #c4163a; --ac-soft: #fde6eb; --ac-softer: #fff5f7; --ac-line: #f4b9c5; --ac-ring: rgba(196,22,58,.18); --top: #2b0d15; }
+.st--rnsw { --ac: #146cfd; --ac-soft: #e1ebff; --ac-softer: #f3f7ff; --ac-line: #b5ccf5; --ac-ring: rgba(20,108,253,.18); --ac-ink: #003a8c; --top: #0b1a33; }
+.st--tfnsw { --ac: #5b3fa0; --ac-soft: #ece6f8; --ac-softer: #f7f4fc; --ac-line: #cdbfe9; --ac-ring: rgba(91,63,160,.2); --ac-ink: #3d2a73; --top: #1b1033; }
 .st { min-height: 100vh; background: #eef1f5; font-size: 14px; line-height: 1.45; color: #1f2933; }
 .st-top { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 14px; background: var(--top); color: #fff; padding: 8px 16px; border-bottom: 3px solid var(--ac); }
 .st-app { color: #fff; text-decoration: none; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
 .st-app small { font-weight: 400; opacity: .7; margin-left: 4px; }
 .st-type { font: 700 11px ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ac-ink, #003a8c); }
 .org { font: 700 11px ui-monospace, Menlo, monospace; padding: 3px 7px; border-radius: 2px; color: #fff; white-space: nowrap; }
-.org.tfnsw { background: #146cfd; }
-.org.rnsw { background: #c4163a; }
+.org.tfnsw { background: #5b3fa0; }
+.org.rnsw { background: #146cfd; }
 .st-me { white-space: nowrap; font-size: 13px; opacity: .9; }
 .st-out { background: none; color: #fff; border: 1px solid rgba(255,255,255,.4); border-radius: 3px; padding: 4px 10px; cursor: pointer; }
 .st-body { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: calc(100vh - 50px); }
@@ -155,3 +156,14 @@ kbd { border: 1px solid #b6c0cc; border-bottom-width: 2px; border-radius: 3px; p
 .sso2-bar { height: 6px; background: #e3e8ee; border-radius: 3px; overflow: hidden; margin-bottom: 14px; } .sso2-bar i { display: block; height: 100%; background: #002664; transition: width .5s; }
 .sso2-act { display: flex; gap: 10px; justify-content: flex-end; }
 @media (max-width: 640px) { .sso2-stage { grid-template-columns: 1fr; } .sso2-wire { grid-template-columns: repeat(3, 1fr); } }
+
+/* Top navigation (the same on both agencies). Phones keep the scrolling strip above. */
+@media (min-width: 801px) {
+  .st-body { display: block; min-height: calc(100vh - 56px); }
+  .st-side { display: flex; align-items: stretch; gap: 2px; padding: 0 16px; border-right: 0; border-bottom: 1px solid #dde2e8; overflow-x: auto; }
+  .st-side a, .st-side .st-side__btn { padding: 12px 14px; border-radius: 0; border-bottom: 3px solid transparent; gap: 8px; align-items: center; white-space: nowrap; }
+  .st-side a.on { background: transparent; border-bottom-color: var(--ac); color: var(--ac-ink); font-weight: 700; }
+  .st-side a:hover { background: var(--ac-softer); }
+  .st-side__h { display: none; }
+  .st-side a:last-child { margin-left: auto; }
+}

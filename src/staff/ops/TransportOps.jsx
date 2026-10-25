@@ -60,17 +60,17 @@ export default function TransportOps({ user, canApprove }) {
       </div>
 
       <div className="otiles">
-        <Tile label="New requests" n={fresh.length} sub="From Revenue NSW" to="/staff/requests?view=new" tone="primary" urgent />
+        <Tile label="New referrals" n={fresh.length} sub="From Revenue NSW" to="/staff/requests?view=new" tone="primary" urgent />
         <Tile label="Unassigned" n={unassigned.length} sub="Need an owner" to="/staff/requests?view=unassigned" tone="warn" urgent />
-        <Tile label="Urgent advice" n={urgent.length} sub="Overdue or systemic" to="/staff/requests?view=urgent" tone="bad" urgent />
+        <Tile label="Urgent referrals" n={urgent.length} sub="Past target or systemic" to="/staff/requests?view=urgent" tone="bad" urgent />
         <Tile label="Near or past target" n={near.length} sub={`${days}-day response target`} to="/staff/requests?view=target" tone="bad" urgent />
         <Tile label="Approvals" n={state.pending.length} sub={canApprove ? 'Withdraw or restore' : 'Awaiting a program manager'} to="/staff/queue/approvals" tone="warn" urgent={canApprove} />
         <Tile label="Possible systemic" n={systemic} sub="Camera or evidence issues" to="/staff/requests?view=all" tone="primary" />
-        <Tile label="Revenue cases reached" n={reach} sub="Related notices and cases" to="/staff/requests?view=all" tone="grey" />
+        <Tile label="Revenue matters reached" n={reach} sub="Related notices and cases" to="/staff/requests?view=all" tone="grey" />
       </div>
 
       <div className="ogrid">
-        <Panel title="Incoming technical requests" count={incoming.length} tone="warn" action={<Link to="/staff/requests?view=open">View all</Link>} wide>
+        <Panel title="Incoming referrals" count={incoming.length} tone="warn" action={<Link to="/staff/requests?view=open">View all</Link>} wide>
           {incoming.length ? (
             <table className="otable">
               <thead><tr><th>Request</th><th>Review ID</th><th>Category</th><th>Age</th><th>Target</th><th>Status</th><th>Escalation</th><th><span className="sr-only">Action</span></th></tr></thead>
@@ -89,7 +89,7 @@ export default function TransportOps({ user, canApprove }) {
                   </tr>);
               })}</tbody>
             </table>
-          ) : <p className="st-muted">No technical requests need your attention.</p>}
+          ) : <p className="st-muted">No referrals need your attention.</p>}
         </Panel>
 
         <Panel title="Operational exceptions" count={exceptions.length} tone="bad" wide>

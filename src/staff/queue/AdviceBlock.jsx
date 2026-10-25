@@ -4,7 +4,7 @@ import { Button, Tag } from '@nswds/ui';
 import { Dialog, Link } from '../../shared/ui.jsx';
 import { useStore } from '../../lib/store.jsx';
 import { TECH_CATEGORIES, staff as findStaff, site as findSite } from '../../data.js';
-import { REQUEST_STATUS, RECOMMENDATION, activeRequest, categoryLabel, isLive, relatedAdvice, requestsFor } from '../../lib/workflow.js';
+import { DETERMINATION, DETERMINATION_TONE, REQUEST_STATUS, activeRequest, categoryLabel, isLive, relatedAdvice, requestsFor } from '../../lib/workflow.js';
 import { Lifecycle, RequestMeta } from '../tech/Lifecycle.jsx';
 import { fmtDate } from '../../lib/format.js';
 
@@ -17,14 +17,14 @@ export function RelatedAdvice({ site, caseId, onUse }) {
   if (!list.length) return null;
   return (
     <details className="adv-rel">
-      <summary><strong>Potentially related technical advice available</strong> <span>{list.length} answered request{list.length > 1 ? 's' : ''} for this camera. Check it before asking again.</span></summary>
+      <summary><strong>Potentially related earlier determination</strong> <span>{list.length} determination{list.length > 1 ? 's' : ''} for this camera. Check it before referring again.</span></summary>
       {list.map((r) => (
         <div key={r.id} className="adv-rel__item">
-          <p><Tag size="sm" color="grey">{categoryLabel(r.category)}</Tag> <Link to={`/staff/request/${r.id}`}>{r.id}</Link> · answered {fmtDate(r.response.at)} by {findStaff(r.response.by)?.name}</p>
-          <p><strong>Question:</strong> {r.summary}</p>
-          <p><strong>Advice:</strong> {r.response.advice}</p>
+          <p><Tag size="sm" color="grey">{categoryLabel(r.category)}</Tag> <Link to={`/staff/request/${r.id}`}>{r.id}</Link> · determined {fmtDate(r.response.at)} by {findStaff(r.response.by)?.name}</p>
+          <p><strong>Referred:</strong> {r.summary}</p>
+          <p><strong>Determination:</strong> {DETERMINATION[r.response.outcome] || 'Recorded'}. {r.response.rationale || r.response.advice}</p>
           <p><strong>Applies when:</strong> {r.response.scope}</p>
-          {onUse && <Button size="sm" variant="outline" onClick={() => onUse(`Per Transport technical advice ${r.id}: ${r.response.advice}`)}>Use it as the reason, then edit</Button>}
+          {onUse && <Button size="sm" variant="outline" onClick={() => onUse(`Per Transport determination ${r.id} (${DETERMINATION[r.response.outcome] || 'recorded'}): ${r.response.rationale || r.response.advice}`)}>Use it as a reference, then edit</Button>}
           <p className="st-muted">Only use this if the circumstances of this case match. You make the decision.</p>
         </div>
       ))}
@@ -35,8 +35,8 @@ export function RelatedAdvice({ site, caseId, onUse }) {
 function RequestForm({ k, n, ev, user, onClose }) {
   const { state, dispatch } = useStore();
   const s = findSite(n.site);
-  const [cat, setCat] = useState('');
-  const [text, setText] = useState('');
+  const [cat, setCat] = useState(k.type === 'court' ? 'court' : '');
+  const [text, setText] = useState(k.type === 'court' ? `Court election lodged for penalty notice (${n.number}). Please support defence preparation: confirm the certification and evidence that applied.` : '');
   const [busy, setBusy] = useState(false);
   const ok = cat && text.trim().length >= 20;
   const risks = ev.items.filter((i) => !i.current).map((i) => `${i.req.label}${i.why ? ` (${i.why})` : ''}`);
@@ -46,13 +46,13 @@ function RequestForm({ k, n, ev, user, onClose }) {
     setBusy(true);
     const id = nextId(state.tech);
     dispatch({ type: 'techRequest', req: { id, caseId: k.id, notice: n.number, site: n.site, category: cat, by: user.id, assignee: null, at: new Date().toISOString().slice(0, 10), summary: text.trim().split(/[.?!]\s/)[0].slice(0, 110), question: text.trim(), status: 'AWAITING_TRANSPORT', thread: [], log: [{ at: Date.now(), type: 'requested', by: user.id }] } });
-    toast.success(`Technical request ${id} sent to Transport. You still own ${k.id}.`);
+    toast.success(`Referral ${id} sent to Transport. ${k.id} stays on your list.`);
     onClose();
   };
   return (
-    <Dialog title="Request technical advice" onClose={onClose} wide>
+    <Dialog title={k.type === 'court' ? 'Notify Transport of the court election' : 'Refer to Transport'} onClose={onClose} wide>
       <form className="adv-form" onSubmit={submit}>
-        <p className="st-muted">This does not decide the case. {k.id} stays with you while Transport answers, and you make the final decision.</p>
+        <p className="st-muted">{k.type === 'court' ? 'Prosecution and court steps happen outside CEVOC. This tells Transport so it can support defence preparation.' : 'Transport holds the authority to determine technical and certification questions. Referring is not an outcome: the matter stays on your list until Transport determines and you carry out your downstream steps.'}</p>
         <label className="adv-f"><span>What kind of technical question is it?</span>
           <select value={cat} onChange={(e) => setCat(e.target.value)} required>
             <option value="">Choose…</option>
@@ -95,25 +95,26 @@ export default function AdviceBlock({ k, n, ev, user, onUse }) {
     return (
       <div className="adv">
         <RelatedAdvice site={n.site} caseId={k.id} onUse={mayAsk ? onUse : undefined} />
-        {mayAsk && <div className="adv-ask"><Button size="sm" variant="outline" onClick={() => setForm(true)}>Request technical advice…</Button><span className="st-muted">Only if you can’t resolve it from the evidence.</span></div>}
+        {mayAsk && <div className="adv-ask"><Button size="sm" variant="outline" onClick={() => setForm(true)}>{k.type === 'court' ? 'Notify Transport of the court election…' : 'Refer to Transport…'}</Button><span className="st-muted">{k.type === 'court' ? 'Court steps are outside CEVOC.' : 'Only if the technical or certification question is beyond what you can resolve.'}</span></div>}
         {form && <RequestForm k={k} n={n} ev={ev} user={user} onClose={() => setForm(false)} />}
       </div>
     );
   }
   const st = REQUEST_STATUS[req.status];
+  const heading = { ADVICE_RECEIVED: req.actioned ? 'Transport determination: downstream steps complete' : 'Transport has issued a determination', MORE_INFORMATION_REQUIRED: 'Transport needs more information', AWAITING_TRANSPORT: 'Referred: Transport has not acknowledged yet', ACKNOWLEDGED: 'Acknowledged by Transport: not yet assessed', INVESTIGATING: 'Transport is assessing', AWAITING_DETERMINATION: 'Assessment recorded: waiting for an authorised determination' }[req.status];
   return (
-    <div className={`adv adv--${req.status.toLowerCase()}`} role="region" aria-label="Technical advice">
-      <p className="adv-head"><strong>{req.status === 'ADVICE_RECEIVED' ? 'Transport has advised. Your decision is needed' : req.status === 'MORE_INFORMATION_REQUIRED' ? 'Transport needs more information' : req.status === 'AWAITING_TRANSPORT' ? 'Requested: Transport has not acknowledged yet' : req.status === 'ACKNOWLEDGED' ? 'Acknowledged by Transport: not yet answered' : 'Transport is investigating: not yet answered'}</strong> <Tag size="sm" color={st.tone}>{st.label}</Tag> <Link to={`/staff/request/${req.id}`}>{req.id}</Link></p>
-      <p className="st-muted">{categoryLabel(req.category)} · asked by {who(req.by)} · {k.id} stays with Revenue NSW</p>
+    <div className={`adv adv--${req.status.toLowerCase()}`} role="region" aria-label="Referral to Transport">
+      <p className="adv-head"><strong>{heading}</strong> <Tag size="sm" color={st.tone}>{st.label}</Tag> <Link to={`/staff/request/${req.id}`}>{req.id}</Link></p>
+      <p className="st-muted">{categoryLabel(req.category)} · referred by {who(req.by)} · {k.id} stays on your list until the downstream steps are done</p>
       <Lifecycle req={req} decided={decided} compact />
       <RequestMeta req={req} decided={decided} />
       <p className="adv-q">“{req.question}”</p>
       {req.status === 'ADVICE_RECEIVED' && (
         <div className="adv-ans">
-          <p><strong>{RECOMMENDATION[req.response.recommendation]}</strong></p>
-          <p>{req.response.advice}</p>
-          <p className="st-muted">Applies when: {req.response.scope}</p>
-          {mayAsk && onUse && <Button size="sm" variant="outline" onClick={() => onUse(`Per Transport technical advice ${req.id}: ${req.response.advice}`)}>Use it as the reason, then edit</Button>}
+          <p><Tag size="sm" color={DETERMINATION_TONE[req.response.outcome]}>Determination</Tag> <strong>{DETERMINATION[req.response.outcome]}</strong></p>
+          {req.response.rationale && <p>{req.response.rationale}</p>}
+          <p className="st-muted">Transport holds this authority. You inform the customer and carry out downstream steps in Revenue NSW systems; CEVOC does not do that for you.</p>
+          {mayAsk && !req.actioned && <Button size="sm" onClick={() => { dispatch({ type: 'downstream', id: req.id, by: user.id }); toast.success('Recorded: downstream steps complete (simulated)'); }}>Record that downstream steps are complete</Button>}
         </div>
       )}
       {req.status === 'MORE_INFORMATION_REQUIRED' && (
@@ -122,8 +123,8 @@ export default function AdviceBlock({ k, n, ev, user, onUse }) {
           {mayAsk ? <><label className="adv-f"><span>Your reply</span><input value={reply} onChange={(e) => setReply(e.target.value)} /></label><Button size="sm" type="submit" disabled={reply.trim().length < 5}>Send reply</Button></> : <p className="st-muted">Revenue NSW replies.</p>}
         </form>
       )}
-      {mayAsk && isLive(req.status) && <Button size="sm" variant="ghost" onClick={() => { dispatch({ type: 'techCancel', id: req.id, by: user.id }); toast.info(`${req.id} cancelled`); }}>Cancel request</Button>}
-      {all.length > 1 && <p className="st-muted">{all.length} requests on this case.</p>}
+      {mayAsk && isLive(req.status) && <Button size="sm" variant="ghost" onClick={() => { dispatch({ type: 'techCancel', id: req.id, by: user.id }); toast.info(`${req.id} cancelled`); }}>Cancel referral</Button>}
+      {all.length > 1 && <p className="st-muted">{all.length} referrals on this matter.</p>}
     </div>
   );
 }

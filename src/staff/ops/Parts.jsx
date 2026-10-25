@@ -61,11 +61,11 @@ export function StageStrip({ to }) {
   const live = state.tech.filter((r) => r.status !== 'CANCELLED');
   const decided = (r) => !!state.decisions[r.caseId];
   const stages = [
-    ['Revenue request', live.filter((r) => r.status === 'AWAITING_TRANSPORT').length, 'Requested, not yet acknowledged'],
+    ['Revenue referral', live.filter((r) => r.status === 'AWAITING_TRANSPORT').length, 'Referred, not yet acknowledged'],
     ['Transport acknowledgement', live.filter((r) => r.status === 'ACKNOWLEDGED').length, 'Acknowledged, investigation not started'],
-    ['Technical investigation', live.filter((r) => r.status === 'INVESTIGATING' || r.status === 'MORE_INFORMATION_REQUIRED').length, 'Being investigated'],
-    ['Advice returned', live.filter((r) => r.status === 'ADVICE_RECEIVED' && !decided(r)).length, 'Waiting for Revenue NSW to decide'],
-    ['Revenue resolution', live.filter((r) => r.status === 'ADVICE_RECEIVED' && decided(r)).length, 'Decided: complete'],
+    ['Technical assessment', live.filter((r) => ['INVESTIGATING', 'AWAITING_DETERMINATION', 'MORE_INFORMATION_REQUIRED'].includes(r.status)).length, 'Being assessed or awaiting determination'],
+    ['Determination issued', live.filter((r) => r.status === 'ADVICE_RECEIVED' && !decided(r)).length, 'Revenue NSW to act downstream'],
+    ['Revenue downstream action', live.filter((r) => r.status === 'ADVICE_RECEIVED' && decided(r)).length, 'Complete'],
   ];
   return (
     <section className="stages" aria-label="End-to-end lifecycle">
