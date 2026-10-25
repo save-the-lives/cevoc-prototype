@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { REGISTER } from '../register.js';
 
 const STATUSES = ['All', 'Confirmed requirement', 'Assumption to validate', 'Proposed UX improvement', 'Out of scope'];
-const COLOUR = { 'Confirmed requirement': '#146b3a', 'Assumption to validate': '#8c1129', 'Proposed UX improvement': '#5a4300', 'Out of scope': '#495054' };
+const COLOUR = { 'Confirmed requirement': '#86efac', 'Assumption to validate': '#fca5a5', 'Proposed UX improvement': '#fcd34d', 'Out of scope': '#cbd5e1' };
 
 // The business validation register: every assumption the prototype makes, who can settle it, and what it changes.
 export default function Register() {

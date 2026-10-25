@@ -191,6 +191,11 @@ const noHScroll = (p) => p.evaluate(() => document.documentElement.scrollWidth <
       await p.context().close();
     }
     {
+      const p = await newPage(browser);
+      for (const r of ['/demo/register', '/demo/capabilities', '/demo/staff-scenarios']) { await p.goto(BASE + r); await p.waitForTimeout(600); const v = await axe(p); check(`Demo hub ${r}: no axe violations`, v.length === 0, v.join(' ')); }
+      await p.context().close();
+    }
+    {
       const p = await newPage(browser, devices['iPhone 13']); await open(p, '/staff', 'sam');
       check('Revenue landing: no horizontal scroll on a phone', await noHScroll(p));
       await open(p, '/staff', 'jo'); check('Transport landing: no horizontal scroll on a phone', await noHScroll(p));

@@ -1,7 +1,7 @@
 # End-to-end test results
 
-Run: 2026-10-25T19:13:38.353Z  
-Result: **85 passed, 0 failed** of 85 checks.
+Run: 2026-10-25T19:15:57.422Z  
+Result: **88 passed, 0 failed** of 88 checks.
 
 All data is fictitious and all integrations are simulated. These tests run against a local preview build.
 
@@ -112,6 +112,9 @@ All data is fictitious and all integrations are simulated. These tests run again
 | Revenue record: no horizontal scroll at 1360 | PASS |
 | Transport record: no axe violations (WCAG 2.2 AA tags) | PASS |
 | Transport record: no horizontal scroll at 1360 | PASS |
+| Demo hub /demo/register: no axe violations | PASS |
+| Demo hub /demo/capabilities: no axe violations | PASS |
+| Demo hub /demo/staff-scenarios: no axe violations | PASS |
 | Revenue landing: no horizontal scroll on a phone | PASS |
 | Transport landing: no horizontal scroll on a phone | PASS |
 | Keyboard only: typing reaches search results | PASS |

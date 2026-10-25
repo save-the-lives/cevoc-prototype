@@ -17,7 +17,7 @@ const ROWS = [
   ['Court-elected matters', 'Proposed', 'Revenue notifies Transport. Prosecution and court steps are outside CEVOC and are not represented.'],
   ['Four separate status concepts (certification validity, evidence completeness, assessment status, enforcement defensibility)', 'Proposed', 'Needs agreed definitions from the business. Defensibility is only ever set by a Transport determination.'],
 ];
-const TONE = { 'In scope (assumed)': '#146b3a', Proposed: '#5a4300', 'Open decision': '#8c1129' };
+const TONE = { 'In scope (assumed)': '#86efac', Proposed: '#fcd34d', 'Open decision': '#fca5a5', Simulated: '#cbd5e1' };
 
 export default function Capabilities() {
   return (
@@ -28,7 +28,7 @@ export default function Capabilities() {
         <table className="demo-table">
           <thead><tr><th>Capability</th><th>Status</th><th>What it would need</th></tr></thead>
           <tbody>{ROWS.map(([c, s, n]) => (
-            <tr key={c}><td>{c}</td><td><strong style={{ color: TONE[s] || '#22272b' }}>{s}</strong></td><td>{n}</td></tr>))}</tbody>
+            <tr key={c}><td>{c}</td><td><strong style={{ color: TONE[s] || '#e2e8f0' }}>{s}</strong></td><td>{n}</td></tr>))}</tbody>
         </table>
       </div>
     </>

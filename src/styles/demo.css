@@ -132,6 +132,5 @@ a.demo-door:hover { border-color: #a78bfa; }
 .demo-switch { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; cursor: pointer; }
 .demo-switch input { width: 18px; height: 18px; }
 .demo-targets { display: flex; gap: 14px; flex-wrap: wrap; } .demo-targets label { display: grid; gap: 4px; font-weight: 600; } .demo-targets input { width: 90px; padding: 6px 8px; font: inherit; }
-.demo-tablewrap { overflow-x: auto; } .demo-table { border-collapse: collapse; width: 100%; font-size: 14px; } .demo-table th, .demo-table td { border: 1px solid #dde2e8; padding: 8px 10px; text-align: left; vertical-align: top; } .demo-table th { background: #f4f6f9; }
-.demo-table th { color: #22272b !important; }
+.demo-tablewrap { overflow-x: auto; } .demo-table { border-collapse: collapse; width: 100%; font-size: 14px; } .demo-table th, .demo-table td { border: 1px solid #334155; padding: 8px 10px; text-align: left; vertical-align: top; } .demo-table th { background: #111a2e; color: #e2e8f0; }
 .demo-steps a { display: inline-block; padding: 4px 0; min-height: 24px; }
