@@ -65,3 +65,7 @@ Each agency lands on its own live **Operational dashboard** (`#/staff`); trends 
 ## Landing by role, and what is proposed
 
 Doers (officers, advisors, adjudicators) land on **search**; managers (`team:manage`) land on the **dashboard**. Revenue NSW searches from the penalty notice (it is the first gatekeeper once the customer has reviewed the evidence); Transport starts from the camera and its certificates. Both can check a camera's certification by location code and date range. Items that are proposals rather than approved capabilities carry a "Proposed" marker, and the demo hub's **Capability status** page lists each with what it would need (APIs, data, permissions).
+
+## Final brief changes
+
+See `docs/CHANGES.md` (what changed, contradictions found, outstanding decisions), `docs/UX-SPEC.md` (shared patterns), `docs/test-results.md` (`npm run test:e2e`) and `docs/screenshots/` (before and after).

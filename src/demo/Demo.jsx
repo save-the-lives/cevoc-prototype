@@ -5,7 +5,8 @@ import Archetype from './sections/Archetype.jsx';
 import Controls from './sections/Controls.jsx';
 import Capabilities from './sections/Capabilities.jsx';
 import { PublicScenarios, StaffScenarios } from './sections/Scenarios.jsx';
-import { InfoArchitecture, Journey, Questions } from './sections/Reference.jsx';
+import { InfoArchitecture, Journey } from './sections/Reference.jsx';
+import Register from './sections/Register.jsx';
 
 // DEMO HUB: the only place for scenarios, framing, controls and open questions.
 // A left menu groups it by who the person is, so nothing is buried at the bottom of one long page.
@@ -16,7 +17,7 @@ const SECTIONS = {
   'staff-scenarios': { label: 'Staff scenarios', render: () => <StaffScenarios /> },
   journey: { label: 'The journey', render: () => <Journey /> },
   ia: { label: 'Information architecture', render: () => <InfoArchitecture /> },
-  questions: { label: 'Open questions', render: () => <Questions /> },
+  register: { label: 'Validation register', render: () => <Register /> },
   capabilities: { label: 'Capability status', render: () => <Capabilities /> },
   controls: { label: 'Run mode and reset', render: () => <Controls /> },
   ...Object.fromEntries(ARCHETYPES.map((a) => [a.id, { label: a.name, render: () => <Archetype a={a} /> }])),
@@ -26,7 +27,7 @@ const MENU = [
   { items: ['overview'] },
   { title: 'User kinds', items: ARCHETYPES.map((a) => a.id) },
   { title: 'Scenarios', items: ['public-scenarios', 'staff-scenarios'] },
-  { title: 'Reference', items: ['capabilities', 'journey', 'ia', 'questions'] },
+  { title: 'Reference', items: ['register', 'capabilities', 'journey', 'ia'] },
   { title: 'Controls', items: ['controls'] },
 ];
 

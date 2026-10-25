@@ -696,3 +696,8 @@ button.obtn { border: 0; cursor: pointer; font: 600 14px inherit; }
 .sh-tiles { margin-top: 14px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .sh-banner { margin-top: 14px; display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--ac-softer); border: 1px solid var(--ac-line); border-left: 5px solid var(--ac); border-radius: 10px; padding: 12px 16px; } .sh-banner p { margin: 2px 0 0; max-width: 62em; }
 .obtn { background: var(--ac); } .obtn:hover { filter: brightness(.92); }
+/* contrast and link affordance fixes found by the test suite */
+.st-qb__lead { color: var(--ac-ink, #003a8c); }
+.st-rail small, .st-rail span small { color: #4a5562; }
+.st-rail__risk { color: #a33f00; }
+.st-bench__foot a, .cp-card a, .st-main p a, .st-main li > a:not(.obtn):not(.sh-chip) { text-decoration: underline; }

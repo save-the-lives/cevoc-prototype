@@ -1,5 +1,5 @@
 import { Link } from '../../shared/ui.jsx';
-import { ARCHETYPES, IMPLICATIONS, JOURNEY, QA, QUESTIONS } from '../content.js';
+import { ARCHETYPES, IMPLICATIONS, JOURNEY, QA } from '../content.js';
 
 export function Journey() {
   return (
@@ -69,21 +69,6 @@ export function InfoArchitecture() {
       </div>
       <h2>What this means for CEVOC</h2>
       <ul className="demo-list">{IMPLICATIONS.map(([b, t]) => <li key={b}><strong>{b}</strong> {t}</li>)}</ul>
-    </>
-  );
-}
-
-export function Questions() {
-  return (
-    <>
-      <h1>Open questions</h1>
-      <p className="demo-lede">Decisions the prototype can’t make for you.</p>
-      <div className="demo-scroll">
-        <table className="demo-table">
-          <thead><tr><th>Question</th><th>Who decides</th></tr></thead>
-          <tbody>{QUESTIONS.map(([q, w]) => <tr key={q}><td>{q}</td><td>{w}</td></tr>)}</tbody>
-        </table>
-      </div>
     </>
   );
 }

@@ -2,9 +2,9 @@
 const ROWS = [
   ['Staff search across penalty notices, plates, reviews, cameras, certificates and requests', 'In scope (assumed)', 'Uses the notice, certificate and camera records CEVOC already holds. Needs a search API over those records.'],
   ['Role-based landing: doers land on search, managers on the dashboard', 'Proposed', 'Needs role and group claims from single sign-on (for example a manager group).'],
-  ['Certificate check by camera location code and date range', 'Proposed', 'Needs certificate effective dates and withdrawal history from the certificate register, queryable by site and date.'],
-  ['Revenue reviews and court elections in a work queue with decisions', 'Prototype stand-in', 'Revenue NSW already has its own case system. A real CEVOC would show evidence and validation and hand the case back, not replace that system.'],
-  ['Technical request to Transport, with advice returned', 'Proposed', 'Needs agreed referral criteria, the data passed across, and who owns each step. Advice only: Revenue NSW decides the customer’s outcome.'],
+  ['Certificate check by camera location code and date range', 'Existing capability (per brief), recreated', 'The brief lists it as existing in CEVOC. This is an illustration: check it against the real behaviour.'],
+  ['Revenue enquiries in a work queue with a recorded resolution', 'Prototype stand-in', 'Revenue NSW has its own systems. A real CEVOC would show evidence and certification and hand the matter back, not replace them.'],
+  ['Referral to Transport, assessment and determination', 'Proposed', 'Transport holds the authority to determine (including withdrawal); Revenue NSW is informed and acts downstream. Needs agreed criteria, data passed, and a decision on where the determination is recorded.'],
   ['Acknowledge, investigate, advise lifecycle and time in state', 'Proposed (referral orchestration)', 'Needs a shared status model and event timestamps from both agencies.'],
   ['Response targets, “due soon”, overdue and escalation', 'Proposed (SLA-like)', 'Targets are internal and configurable here. They are not statutory. Needs policy owners to set them.'],
   ['Live event feed and notifications', 'Simulated', 'Needs an event channel between systems. Nothing is connected.'],
@@ -13,7 +13,9 @@ const ROWS = [
   ['Opening a case from the agency’s own system, and returning', 'Simulated integration', 'Needs a deep-link contract and a return address from each system.'],
   ['Single sign-on', 'Simulated', 'Needs each agency’s identity provider and group mapping. No credentials are handled here.'],
   ['Decision reasons and a letter preview', 'Proposed (correspondence)', 'Customer correspondence is outside the approved scope. Shown only to illustrate a decision record.'],
-  ['What Transport can see of the customer', 'Open decision', 'The technical workbench currently shows the customer’s stated concern and links to the Revenue case. A data-minimisation rule is needed.'],
+  ['What Transport can see of the customer', 'Proposed (minimised)', 'Transport sees the reason for the review and the evidence, not the customer’s name. The real minimum needs a privacy decision.'],
+  ['Court-elected matters', 'Proposed', 'Revenue notifies Transport. Prosecution and court steps are outside CEVOC and are not represented.'],
+  ['Four separate status concepts (certification validity, evidence completeness, assessment status, enforcement defensibility)', 'Proposed', 'Needs agreed definitions from the business. Defensibility is only ever set by a Transport determination.'],
 ];
 const TONE = { 'In scope (assumed)': '#146b3a', Proposed: '#5a4300', 'Open decision': '#8c1129' };
 
