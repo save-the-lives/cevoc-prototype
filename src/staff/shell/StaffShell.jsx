@@ -28,23 +28,21 @@ export const AGENCY = {
   tfnsw: { title: 'Transport for NSW | Technical assurance' },
 };
 
-function SideNav({ agency, active, counts, hot, canApprove, onSearch }) {
+function SideNav({ agency, active, counts, hot, canApprove, manager }) {
   const item = (to, key, label, n, isHot) => (
     <Link to={to} className={active === key ? 'on' : ''} aria-current={active === key ? 'page' : undefined}>{label} {n !== undefined && <span className={isHot ? 'hot' : ''}>{n}</span>}</Link>
   );
   return (
     <nav className="st-side" aria-label="Workspace">
+      {manager ? <>{item('/staff', 'overview', 'Dashboard')}{item('/staff/search', 'search', 'Search')}</> : <>{item('/staff', 'search', 'Search')}{item('/staff/overview', 'overview', 'Dashboard')}</>}
       {agency === 'rnsw' ? (
         <>
-          {item('/staff', 'home', 'Dashboard')}
           {item('/staff/queue/reviews', 'queue', 'Review queue', counts.mine)}
           {item('/staff/queue/reviews?view=awaiting', 'awaiting', 'Escalations awaiting advice', counts.awaiting)}
           {item('/staff/queue/reviews?view=completed', 'completed', 'Completed', counts.completed)}
-          <button type="button" className="st-side__btn" onClick={onSearch}>Search</button>
         </>
       ) : (
         <>
-          {item('/staff', 'home', 'Dashboard')}
           {item('/staff/requests', 'requests', 'Technical requests', counts.techOpen)}
           {item('/staff/certificates', 'certificates', 'Certificate register', counts.certs)}
           {item('/staff/cameras', 'cameras', 'Camera assets')}
@@ -67,7 +65,9 @@ export default function StaffShell({ user, parts, query = {}, counts, canApprove
   useEffect(() => { document.title = `${AGENCY[user.agency].title} · CEVOC`; }, [user.agency]);
 
   const commands = useMemo(() => [
-    { id: 'c-home', label: 'Go to the dashboard', keys: ['g', 'h'], run: () => go('/staff') },
+    { id: 'c-home', label: 'Go to your home page', keys: ['g', 'h'], run: () => go('/staff') },
+    { id: 'c-search', label: 'Go to search', keys: ['g', 's'], run: () => go('/staff/search') },
+    { id: 'c-dash', label: 'Go to the dashboard', keys: ['g', 'd'], run: () => go('/staff/overview') },
     { id: 'c-main', label: user.agency === 'rnsw' ? 'Go to the review queue' : 'Go to technical requests', keys: ['g', user.agency === 'rnsw' ? 'r' : 't'], run: () => go(user.agency === 'rnsw' ? '/staff/queue/reviews' : '/staff/requests') },
     { id: 'c-ins', label: 'Go to trends', keys: ['g', 'i'], run: () => go('/staff/insights') },
     ...(user.agency === 'rnsw' ? [
@@ -84,14 +84,14 @@ export default function StaffShell({ user, parts, query = {}, counts, canApprove
 
   useHotkeys({
     'mod+k': () => setPalette(true), '/': () => setPalette(true), '?': () => setHelp(true), 'mod+/': () => setHelp(true),
-    'g h': () => go('/staff'), 'g i': () => go('/staff/insights'),
+    'g h': () => go('/staff'), 'g s': () => go('/staff/search'), 'g d': () => go('/staff/overview'), 'g i': () => go('/staff/insights'),
     ...(user.agency === 'rnsw' ? { 'g r': () => go('/staff/queue/reviews'), 'g w': () => go('/staff/queue/reviews?view=awaiting'), 'g c': () => go('/staff/queue/court') } : { 'g e': () => go('/staff/certificates'), 'g t': () => go('/staff/requests') }),
     ...(canApprove ? { 'g a': () => go('/staff/queue/approvals') } : {}),
   });
 
   const active = a === 'queue' && b === 'approvals' ? 'approvals' : a === 'queue' ? (query.view === 'awaiting' ? 'awaiting' : query.view === 'completed' ? 'completed' : 'queue')
     : a === 'case' ? 'queue' : a === 'camera' || a === 'cameras' ? 'cameras' : a === 'cert' || a === 'certificates' ? 'certificates' : a === 'insights' ? 'insights'
-    : a === 'requests' ? (query.view === 'history' ? 'history' : 'requests') : a === 'request' ? 'requests' : 'home';
+    : a === 'requests' ? (query.view === 'history' ? 'history' : 'requests') : a === 'request' ? 'requests' : a === 'search' ? 'search' : a === 'overview' ? 'overview' : (user.perms.includes('team:manage') ? 'overview' : 'search');
 
   return (
     <TooltipProvider>
@@ -108,7 +108,7 @@ export default function StaffShell({ user, parts, query = {}, counts, canApprove
           <UserMenu user={user} onSwitch={onSwitch} onShortcuts={() => setHelp(true)} onSignOut={onSignOut} />
         </header>
         <div className="st-body">
-          <SideNav agency={user.agency} active={active} counts={counts} hot={hotApprovals} canApprove={canApprove} onSearch={() => setPalette(true)} />
+          <SideNav agency={user.agency} active={active} counts={counts} hot={hotApprovals} canApprove={canApprove} manager={user.perms.includes('team:manage')} />
           <main className="st-main">
             {crumbs.length > 1 && <Breadcrumb className="st-crumbs">
               <BreadcrumbList>

@@ -10,6 +10,7 @@ import { useRevenueRows } from './useRevenueRows.js';
 import { Activity, Panel, Scope, StageStrip, TeamWorkload, Tile, q } from './Parts.jsx';
 import { STAFF } from '../../data.js';
 import LiveStatus from './LiveStatus.jsx';
+import Proposed from '../../shared/Proposed.jsx';
 
 const open = (id) => `/staff/queue/reviews?q=${q(`case = "${id}"`)}&open=1`;
 const list = (query) => `/staff/queue/reviews?q=${q(query)}`;
@@ -46,7 +47,7 @@ export default function RevenueOps({ user }) {
   return (
     <div className="ops">
       <div className="ops-top">
-        <div><h1>Operational dashboard</h1><p className="st-muted">Live view of cases and technical requests needing action.</p></div>
+        <div><h1>Operational dashboard <Proposed note="Targets, escalation, event feed and referral tracking are proposals that need business approval." /></h1><p className="st-muted">Live view of cases and technical requests needing action.</p></div>
         <div className="ops-ctl"><Scope value={scope} onChange={setScope} label="Whose work" /><LiveStatus /></div>
       </div>
 

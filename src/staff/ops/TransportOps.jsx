@@ -10,6 +10,7 @@ import { REQUEST_STATUS, categoryLabel, escalation, human, impactLevel, isWithTr
 import { Activity, Panel, Scope, StageStrip, TeamWorkload, Tile } from './Parts.jsx';
 import { STAFF } from '../../data.js';
 import LiveStatus from './LiveStatus.jsx';
+import Proposed from '../../shared/Proposed.jsx';
 
 const RANK = { escalated: 0, overdue: 1, soon: 2, none: 3 };
 
@@ -54,7 +55,7 @@ export default function TransportOps({ user, canApprove }) {
   return (
     <div className="ops">
       <div className="ops-top">
-        <div><h1>Operational dashboard</h1><p className="st-muted">Live view of technical requests and certification issues.</p></div>
+        <div><h1>Operational dashboard <Proposed note="Targets, escalation, event feed and referral tracking are proposals that need business approval." /></h1><p className="st-muted">Live view of technical requests and certification issues.</p></div>
         <div className="ops-ctl"><Scope value={scope} onChange={setScope} label="Whose work" /><LiveStatus /></div>
       </div>
 

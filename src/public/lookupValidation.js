@@ -19,10 +19,10 @@ export function checkNotice(raw) {
 }
 
 // Returns { msg, bad: ['d'|'m'|'y'...] } or null when the date is a real date in the allowed range.
-export function checkDate({ d, m, y }, min = earliestIso(), max = todayIso()) {
+export function checkDate({ d, m, y }, min = earliestIso(), max = todayIso(), what = 'date of the offence') {
   const all = { d: d.trim(), m: m.trim(), y: y.trim() };
   const empty = ['d', 'm', 'y'].filter((k) => !all[k]);
-  if (empty.length === 3) return { msg: 'Enter the date of the offence', bad: ['d', 'm', 'y'] };
+  if (empty.length === 3) return { msg: `Enter the ${what}`, bad: ['d', 'm', 'y'] };
   if (empty.length) {
     const name = { d: 'day', m: 'month', y: 'year' };
     const list = empty.map((k) => name[k]);
@@ -35,8 +35,8 @@ export function checkDate({ d, m, y }, min = earliestIso(), max = todayIso()) {
   if (mon < 1 || mon > 12) return { msg: 'The month must be between 1 and 12', bad: ['m'] };
   if (day < 1 || day > daysIn(mon, yr)) return { msg: `Enter a real date. ${MONTHS[mon - 1]} ${yr} doesn’t have a day ${day}`, bad: ['d'] };
   const iso = `${all.y}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  if (iso > max) return { msg: 'The date of the offence must be in the past', bad: ['d', 'm', 'y'] };
-  if (iso < min) return { msg: `The date of the offence must be within the last ${YEARS_BACK} years`, bad: ['d', 'm', 'y'] };
+  if (iso > max) return { msg: `The ${what} must be in the past`, bad: ['d', 'm', 'y'] };
+  if (iso < min) return { msg: `The ${what} must be within the last ${YEARS_BACK} years`, bad: ['d', 'm', 'y'] };
   return null;
 }
 

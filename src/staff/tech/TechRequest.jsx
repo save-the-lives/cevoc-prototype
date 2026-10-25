@@ -8,6 +8,7 @@ import { useStore } from '../../lib/store.jsx';
 import { CERTS, STAFF, kase as findCase, notice as findNotice, site as findSite, staff as findStaff, PROGRAMS } from '../../data.js';
 import { REQUEST_STATUS, RECOMMENDATION, categoryLabel, impactLevel, isWithTransport } from '../../lib/workflow.js';
 import { Lifecycle, RequestMeta } from './Lifecycle.jsx';
+import Proposed from '../../shared/Proposed.jsx';
 import { CASES } from '../../data.js';
 import EvidenceViewer from '../queue/EvidenceViewer.jsx';
 import CertPanel from '../queue/CertPanel.jsx';
@@ -50,7 +51,7 @@ export default function TechRequest({ id, user, slots }) {
       <div className="st-rec-head"><span className="st-type">Technical request</span><h1>{r.id}</h1>
         <Tag size="sm" color={impact === 'Systemic' ? 'danger' : impact === 'Multiple' ? 'warning' : 'grey'}>{impact}</Tag>
         <span className="st-muted">{categoryLabel(r.category)} · {s.code}</span></div>
-      <div className="tr-flow"><Lifecycle req={r} decided={!!state.decisions[r.caseId]} /><RequestMeta req={r} decided={!!state.decisions[r.caseId]} /></div>
+      <div className="tr-flow"><p className="st-muted">Referral lifecycle <Proposed note="Tracking acknowledgement, investigation and response between agencies is a proposal." /></p><Lifecycle req={r} decided={!!state.decisions[r.caseId]} /><RequestMeta req={r} decided={!!state.decisions[r.caseId]} /></div>
       <p className="st-muted tr-owner"><span className="owner-tag">Revenue NSW</span> decides the customer’s case {r.caseId}. Your advice goes back to them; you cannot uphold or withdraw the fine here.</p>
       <div className="tr-panes">
         <section className="tr-pane" aria-label="Problem and evidence">

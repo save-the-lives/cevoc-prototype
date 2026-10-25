@@ -61,3 +61,7 @@ Each agency lands on its own live **Operational dashboard** (`#/staff`); trends 
 - **Roles:** Revenue (Review officer, Prosecutions officer, Review manager, Operations manager) and Transport (Customer inquiry officer, Adjudication officer, Technical systems advisor, Camera program manager, Technical assurance manager). Managers (`team:manage`) can assign work to others.
 - **Events and timeliness (simulated):** state is shared between browser tabs, so a Revenue window and a Transport window update live. Notifications (bell) and "What changed" list events; "Last updated" goes amber when the feed is paused or quiet. Demo hub > Controls can skip the clock forward (to trigger overdue events) and pause the feed.
 - **Single sign-on** is a paced, simulated handshake. No agency system is connected anywhere.
+
+## Landing by role, and what is proposed
+
+Doers (officers, advisors, adjudicators) land on **search**; managers (`team:manage`) land on the **dashboard**. Revenue NSW searches from the penalty notice (it is the first gatekeeper once the customer has reviewed the evidence); Transport starts from the camera and its certificates. Both can check a camera's certification by location code and date range. Items that are proposals rather than approved capabilities carry a "Proposed" marker, and the demo hub's **Capability status** page lists each with what it would need (APIs, data, permissions).

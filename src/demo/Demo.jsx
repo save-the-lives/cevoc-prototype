@@ -3,6 +3,7 @@ import { ARCHETYPES } from './content.js';
 import Overview from './sections/Overview.jsx';
 import Archetype from './sections/Archetype.jsx';
 import Controls from './sections/Controls.jsx';
+import Capabilities from './sections/Capabilities.jsx';
 import { PublicScenarios, StaffScenarios } from './sections/Scenarios.jsx';
 import { InfoArchitecture, Journey, Questions } from './sections/Reference.jsx';
 
@@ -16,6 +17,7 @@ const SECTIONS = {
   journey: { label: 'The journey', render: () => <Journey /> },
   ia: { label: 'Information architecture', render: () => <InfoArchitecture /> },
   questions: { label: 'Open questions', render: () => <Questions /> },
+  capabilities: { label: 'Capability status', render: () => <Capabilities /> },
   controls: { label: 'Run mode and reset', render: () => <Controls /> },
   ...Object.fromEntries(ARCHETYPES.map((a) => [a.id, { label: a.name, render: () => <Archetype a={a} /> }])),
 };
@@ -24,7 +26,7 @@ const MENU = [
   { items: ['overview'] },
   { title: 'User kinds', items: ARCHETYPES.map((a) => a.id) },
   { title: 'Scenarios', items: ['public-scenarios', 'staff-scenarios'] },
-  { title: 'Reference', items: ['journey', 'ia', 'questions'] },
+  { title: 'Reference', items: ['capabilities', 'journey', 'ia', 'questions'] },
   { title: 'Controls', items: ['controls'] },
 ];
 

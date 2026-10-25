@@ -11,6 +11,7 @@ import CameraList from './certs/CameraList.jsx';
 import TechInbox from './tech/TechInbox.jsx';
 import TechRequest from './tech/TechRequest.jsx';
 import SignIn from './SignIn.jsx';
+import SearchHome from './search/SearchHome.jsx';
 import RevenueOps from './ops/RevenueOps.jsx';
 import TransportOps from './ops/TransportOps.jsx';
 import AdviceBlock from './queue/AdviceBlock.jsx';
@@ -445,6 +446,10 @@ export default function StaffSite({ parts, query }) {
   else if (a === 'queue' && b === 'approvals') body = <ApprovalsQueue canApprove={canApprove} user={user} />;
   else if (a === 'queue') body = rnsw ? <WorkQueue key={`${b}|${query.q || ''}|${query.view || ''}|${query.open || ''}`} name={b} user={user} initialQuery={query.q || ''} view={query.view || ''} autoOpen={query.open === '1'} /> : <NotForYou what="queue" />;
   else if (a === 'insights') body = <Dashboard user={user} canApprove={canApprove} />;
+  else if (a === 'search') body = <SearchHome key="search" user={user} query={query} />;
+  else if (a === 'overview') body = rnsw ? <RevenueOps user={user} /> : <TransportOps user={user} canApprove={canApprove} />;
+  // Doers land on search; managers land on the dashboard.
+  else if (!user.perms.includes('team:manage')) body = <SearchHome key="search" user={user} query={query} />;
   else body = rnsw ? <RevenueOps user={user} /> : <TransportOps user={user} canApprove={canApprove} />;
 
   return (
