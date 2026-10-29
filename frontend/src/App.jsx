@@ -58,6 +58,9 @@ function DevScenarios({ onPick }) {
 
 function Result({ result }) {
   const n = result.notice;
+  if (result.status === 'LIVE_LOOKUP_OFF') {
+    return <section aria-live="polite"><h2>Lookup not available yet</h2><p>{result.summary}</p></section>;
+  }
   if (result.status !== 'FOUND' || !n) {
     return <section aria-live="polite"><h2>No match</h2><p>{result.summary}</p></section>;
   }

@@ -20,10 +20,26 @@ class PenaltyLookupControllerTest {
     @Test
     void foundWithStubAdapter() throws Exception {
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"infringementNumber\":\"1234567890\",\"offenceDate\":\"2026-09-01\"}"))
+                        .content("{\"infringementNumber\":\"9000000001\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FOUND"))
                 .andExpect(jsonPath("$.source").value("STUB"));
+    }
+
+    @Test
+    void unknownNumberReportsLiveLookupOff() throws Exception {
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"1234567890\",\"offenceDate\":\"2026-09-01\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("LIVE_LOOKUP_OFF"));
+    }
+
+    @Test
+    void noMatchIsDistinctFromLiveLookupOff() throws Exception {
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"X000000001\",\"offenceDate\":\"2026-09-01\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NOT_FOUND"));
     }
 
     @Test

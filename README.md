@@ -22,8 +22,10 @@ See `docs/ARCHITECTURE.md`.
 
 | Number | Shows |
 |---|---|
-| 9000000001 (or any other number) | Speed camera: images, video, certificate |
+| 9000000001 | Speed camera: images, video, certificate |
 | 9000000002 | Officer-issued caution: no evidence, no certificate |
 | 9000000003 | Camera-based: one image and certificate |
 | 9000000004 | Red-light camera: two images and certificate, no video |
+| any other number | Friendly "live lookup is switched off until approvals are in place" message |
+| starts with X | No match |
 | X1234 | Not found |
