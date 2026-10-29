@@ -19,10 +19,12 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+        working-directory: prototype
       - run: npm run build
+        working-directory: prototype
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: prototype/dist
   deploy:
     needs: build
     runs-on: ubuntu-latest
