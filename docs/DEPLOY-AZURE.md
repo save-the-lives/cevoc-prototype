@@ -6,21 +6,21 @@ Only `backend/` and `frontend/` deploy. The prototype stays on GitHub Pages.
 Shape: Static Web Apps serves the React site and proxies `/api` to a Container Apps backend (linked backend), so the front end needs no API URL and no CORS setup.
 
 ## One-time setup (Azure CLI, in your subscription)
-    az group create -n cevoc-rg -l australiaeast
-    az acr create -g cevoc-rg -n <uniqueacrname> --sku Basic
-    az containerapp env create -g cevoc-rg -n cevoc-env -l australiaeast
-    az containerapp create -g cevoc-rg -n cevoc-backend --environment cevoc-env \
+    az group create -n cevoc -l australiaeast
+    az acr create -g cevoc -n <uniqueacrname> --sku Basic
+    az containerapp env create -g cevoc -n cevoc-env -l australiaeast
+    az containerapp create -g cevoc -n cevoc-backend --environment cevoc-env \
       --image mcr.microsoft.com/azuredocs/containerapps-helloworld:latest \
       --target-port 8080 --ingress external --min-replicas 0 --max-replicas 2
-    az staticwebapp create -g cevoc-rg -n cevoc-web -l eastasia --sku Standard
+    az staticwebapp create -g cevoc -n cevoc-web -l eastasia --sku Standard
     # Static Web Apps linked backends need the Standard plan; check current pricing and trial terms.
-    az staticwebapp backends link -g cevoc-rg -n cevoc-web \
-      --backend-resource-id $(az containerapp show -g cevoc-rg -n cevoc-backend --query id -o tsv) \
+    az staticwebapp backends link -g cevoc -n cevoc-web \
+      --backend-resource-id $(az containerapp show -g cevoc -n cevoc-backend --query id -o tsv) \
       --backend-region australiaeast
 Also let the pipeline pull images: give the Container App access to the registry (managed identity with AcrPull), per Azure docs.
 
 ## GitHub setup
-Repo variables: `ACR_NAME`, `CONTAINER_APP_NAME` (cevoc-backend), `AZURE_RESOURCE_GROUP` (cevoc-rg).
+Repo variables: `ACR_NAME`, `CONTAINER_APP_NAME` (cevoc-backend), `AZURE_RESOURCE_GROUP` (cevoc).
 Repo secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (an Entra app registration with a federated credential for this repo and Contributor on the resource group), and `AZURE_STATIC_WEB_APPS_API_TOKEN` (from the Static Web App).
 Never commit credentials.
 
@@ -45,3 +45,20 @@ One-time portal steps (about 3 minutes):
 
 The workflow also sets ingress target port 8080 (matches `server.port=8080` and the Dockerfile).
 Stronger alternative to admin keys: turn on the app's system-assigned identity, grant it AcrPull on the registry, and use `az containerapp registry set --identity system` in place of the username/password step.
+
+
+## Backend deploy route (current): GitHub Container Registry
+
+ACR Tasks is blocked on the trial subscription, so the backend deploy workflow builds the image on GitHub
+(Docker Buildx, `type=gha` layer cache, `-DskipTests`; tests stay in App CI), pushes
+`ghcr.io/save-the-lives/cevoc-backend:<sha>` and `:latest`, then runs `az containerapp update --image`.
+No Azure Container Registry is used; the `ACR_NAME` variable is now unused and `cevoccr` can be deleted.
+
+Route chosen: **public package, no pull credentials** (repo is public, data fictitious).
+One-time clicks after the first successful run of the workflow:
+
+1. GitHub > save-the-lives org > Packages > `cevoc-backend` > Package settings > Change visibility > Public.
+2. Re-run the workflow (Actions > Trigger auto deployment for cevoc-backend > Run workflow) so the revision can pull the image.
+
+The final workflow step prints revision health and the backend URL; test `https://<fqdn>/` with notice 9000000001.
+(Older sections above that mention ACR are superseded by this one.)
