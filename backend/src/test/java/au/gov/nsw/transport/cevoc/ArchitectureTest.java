@@ -22,4 +22,22 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule adaptersDoNotTalkToEachOther = noClasses().that().resideInAPackage("..adapter.in..")
             .should().dependOnClassesThat().resideInAPackage("..adapter.out..");
+
+    @ArchTest
+    static final ArchRule coreHasNoCloudSdk = noClasses().that().resideInAnyPackage("..domain..", "..application..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.azure..", "software.amazon..", "com.amazonaws..",
+                    "com.google.cloud..", "com.aliyun..", "com.oracle.bmc..");
+
+    @ArchTest
+    static final ArchRule azureAdapterIsIsolated = noClasses().that().resideInAPackage("..adapter.out.azureblob..")
+            .should().dependOnClassesThat().resideInAnyPackage("..adapter.out.s3..", "software.amazon..", "com.amazonaws..");
+
+    @ArchTest
+    static final ArchRule s3AdapterIsIsolated = noClasses().that().resideInAPackage("..adapter.out.s3..")
+            .should().dependOnClassesThat().resideInAnyPackage("..adapter.out.azureblob..", "com.azure..");
+
+    @ArchTest
+    static final ArchRule onlyAzureAdapterUsesAzureSdk = noClasses()
+            .that().resideOutsideOfPackages("..adapter.out.azureblob..", "..config..")
+            .should().dependOnClassesThat().resideInAPackage("com.azure..");
 }
