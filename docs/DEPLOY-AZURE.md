@@ -45,3 +45,9 @@ One-time portal steps (about 3 minutes):
 
 The workflow also sets ingress target port 8080 (matches `server.port=8080` and the Dockerfile).
 Stronger alternative to admin keys: turn on the app's system-assigned identity, grant it AcrPull on the registry, and use `az containerapp registry set --identity system` in place of the username/password step.
+
+## Backend image: GitHub Container Registry (current route)
+
+Azure ACR Tasks is blocked on the trial subscription (`TasksOperationsNotAllowed`), so the backend workflow builds the image on the GitHub runner and pushes it to `ghcr.io/<owner>/cevoc-backend`. No Azure registry or `ACR_NAME` variable is needed any more.
+
+One-time step after the first successful push: GitHub profile or org, Packages, `cevoc-backend`, Package settings, Change visibility to Public (the repo is public and the data is fictitious). Then re-run the workflow. If you prefer to keep it private, add a repo secret `GHCR_PULL_TOKEN` (classic token, `read:packages` only) and the workflow registers it with the Container App.
