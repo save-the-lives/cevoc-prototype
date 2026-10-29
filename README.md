@@ -17,3 +17,13 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 `https://save-the-lives.github.io/cevoc-prototype` is the published prototype. It is built from `prototype/` by `.github/workflows/deploy.yml` and its URL must not change.
 
 See `docs/ARCHITECTURE.md`.
+
+## Test notice numbers (fictitious, any past offence date)
+
+| Number | Shows |
+|---|---|
+| 9000000001 (or any other number) | Speed camera: images, video, certificate |
+| 9000000002 | Officer-issued caution: no evidence, no certificate |
+| 9000000003 | Camera-based: one image and certificate |
+| 9000000004 | Red-light camera: two images and certificate, no video |
+| X1234 | Not found |
