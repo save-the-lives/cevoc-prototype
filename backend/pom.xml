@@ -64,4 +64,48 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <!--
+      live-browser: OPT-IN, owner-run only. Adds Playwright for Java and the sources under src/live/java
+      (the real RenderedPageSession, plus a loopback-only local-check endpoint). Not part of the default build,
+      the Docker image or app-ci's test job. Used by scripts/live-check.sh; see docs/LIVE-CHECK.md.
+    -->
+    <profile>
+      <id>live-browser</id>
+      <dependencies>
+        <dependency>
+          <groupId>com.microsoft.playwright</groupId>
+          <artifactId>playwright</artifactId>
+          <version>1.49.0</version>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.0</version>
+            <executions>
+              <execution>
+                <id>add-live-sources</id>
+                <phase>generate-sources</phase>
+                <goals><goal>add-source</goal></goals>
+                <configuration>
+                  <sources><source>src/live/java</source></sources>
+                </configuration>
+              </execution>
+              <execution>
+                <id>add-live-tests</id>
+                <phase>generate-test-sources</phase>
+                <goals><goal>add-test-source</goal></goals>
+                <configuration>
+                  <sources><source>src/live-test/java</source></sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

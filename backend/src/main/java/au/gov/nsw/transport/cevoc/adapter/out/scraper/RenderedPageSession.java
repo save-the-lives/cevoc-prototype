@@ -19,8 +19,8 @@ import java.util.Optional;
  *       echoed in exceptions, screenshots or traces, or kept after the call.</li>
  *   <li>{@link #close} discards the browser context, so blob: URLs and the plate die with it.</li>
  * </ul>
- * Only an interface plus a test fake exist today. A headless-browser adapter (for example Playwright behind
- * this interface) is the next step and is NOT built; no browser dependency is on the classpath.
+ * The Playwright implementation lives in src/live/java and is compiled only with the live-browser Maven profile;
+ * the default build has no browser dependency on the classpath.
  */
 public interface RenderedPageSession extends AutoCloseable {
 
