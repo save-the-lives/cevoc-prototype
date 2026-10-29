@@ -41,6 +41,13 @@ public class BeanConfig {
         return new ManifestFirstPenaltyLookupAdapter(new ManifestPenaltyLookupAdapter(), null, scraperEnabled);
     }
 
+    // Prototype scraper: never the default. Also needs cevoc.scraper.evidence.enabled=true; see docs/ARCHITECTURE.md.
+    @Bean
+    @ConditionalOnProperty(name = "cevoc.penalty-lookup.adapter", havingValue = "scraper-evidence")
+    PenaltyLookupPort scraperEvidenceLookup(org.springframework.core.env.Environment env, au.gov.nsw.transport.cevoc.application.port.out.MediaStoragePort media) {
+        return au.gov.nsw.transport.cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media);
+    }
+
     @Bean
     LookupPenaltyUseCase lookupPenaltyUseCase(PenaltyLookupPort port, SignedLinkPort signedLinks) {
         return new LookupPenaltyService(port, signedLinks);
