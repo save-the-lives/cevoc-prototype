@@ -188,7 +188,7 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
         onPointerMove={onPointerMove}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
-        onLostPointerCapture={endPointer}
+        onLostPointerCapture={(e) => { if (e.target === e.currentTarget) endPointer(e); }}
         onClickCapture={onClickCapture}
         onDoubleClick={(e) => { if (gesture.current.type === 'touch') return; if (!controlsAtRest || zoomed) { e.preventDefault(); reset(); } }}
         onKeyDown={onKeyDown}
