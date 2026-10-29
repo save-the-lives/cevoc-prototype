@@ -32,13 +32,8 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
-      - run: mvn -B -Plive-browser test 2>&1 | tee "$RUNNER_TEMP/live.log"
+      - run: mvn -B -Plive-browser test
         working-directory: backend
-      - name: Show errors as annotations
-        if: failure()
-        run: |
-          msg=$(grep -E "ERROR|FAIL|Tests run:.*Fail" "$RUNNER_TEMP/live.log" | head -25 | cut -c1-300 | sed ':a;N;$!ba;s/\n/%0A/g')
-          echo "::error title=live-browser build::$msg"
   frontend:
     runs-on: ubuntu-latest
     steps:
