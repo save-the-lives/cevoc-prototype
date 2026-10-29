@@ -8,6 +8,12 @@ import au.gov.nsw.transport.cevoc.adapter.out.stub.StubMediaAdapter;
 import au.gov.nsw.transport.cevoc.adapter.out.stub.StubPenaltyLookupAdapter;
 import au.gov.nsw.transport.cevoc.application.port.out.CacheInvalidationPort;
 import au.gov.nsw.transport.cevoc.application.port.out.SignedLinkPort;
+import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificateKeyStrategy;
+import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificatePageParser;
+import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificateScraperAdapter;
+import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificateScraperProperties;
+import au.gov.nsw.transport.cevoc.adapter.out.scraper.PoliteHttpFetcher;
+import au.gov.nsw.transport.cevoc.application.port.out.CertificateSourcePort;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,5 +69,29 @@ public class BeanConfig {
     @ConditionalOnProperty(name = "cevoc.media.adapter", havingValue = "azure-blob")
     CacheInvalidationPort azureCacheInvalidation() {
         return new AzureCacheInvalidationAdapter();
+    }
+
+    // ---- certificate scraper: INERT unless cevoc.scraper.certificates.enabled=true (see docs/ARCHITECTURE.md) ----
+
+    @Bean
+    @ConditionalOnProperty(name = "cevoc.scraper.certificates.enabled", havingValue = "true")
+    CertificateSourcePort certificateScraper(
+            @Value("${cevoc.scraper.certificates.approval-reference:}") String approvalReference,
+            @Value("${cevoc.scraper.certificates.page-url:" + CertificateScraperProperties.DEFAULT_PAGE_URL + "}") String pageUrl,
+            @Value("${cevoc.scraper.certificates.user-agent:" + CertificateScraperProperties.DEFAULT_USER_AGENT + "}") String userAgent,
+            @Value("${cevoc.scraper.certificates.min-interval-ms:5000}") long minIntervalMs,
+            @Value("${cevoc.scraper.certificates.connect-timeout-ms:5000}") long connectTimeoutMs,
+            @Value("${cevoc.scraper.certificates.request-timeout-ms:10000}") long requestTimeoutMs,
+            @Value("${cevoc.scraper.certificates.cache-ttl-seconds:300}") long cacheTtlSeconds,
+            @Value("${cevoc.scraper.certificates.key-strategy:BY_PENALTY}") CertificateKeyStrategy keyStrategy) {
+        if (approvalReference.isBlank()) {
+            throw new IllegalStateException("cevoc.scraper.certificates.approval-reference is required: "
+                    + "the source's robots.txt disallows automated access, so record the owner's approval reference first");
+        }
+        CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, userAgent,
+                java.time.Duration.ofMillis(minIntervalMs), java.time.Duration.ofMillis(connectTimeoutMs),
+                java.time.Duration.ofMillis(requestTimeoutMs), java.time.Duration.ofSeconds(cacheTtlSeconds), keyStrategy);
+        return new CertificateScraperAdapter(new PoliteHttpFetcher(props), new CertificatePageParser(), props,
+                java.time.Clock.systemUTC());
     }
 }
