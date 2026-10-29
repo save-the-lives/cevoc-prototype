@@ -33,16 +33,44 @@ export default function App() {
       </form>
 
       {state.phase === 'error' && <p role="alert">{state.message}</p>}
-      {state.phase === 'done' && (
-        <section aria-live="polite">
-          <h2>{state.result.status === 'FOUND' ? 'Your evidence' : 'No match'}</h2>
-          <p>{state.result.summary}</p>
-          <ul>
-            {state.result.evidence.map((e) => <li key={e.url}>{e.title} ({e.kind.toLowerCase()})</li>)}
-          </ul>
-          {state.result.source === 'STUB' && <small>Prototype data only.</small>}
-        </section>
-      )}
+      {state.phase === 'done' && <Result result={state.result} />}
     </main>
+  );
+}
+
+function Result({ result }) {
+  const n = result.notice;
+  if (result.status !== 'FOUND' || !n) {
+    return <section aria-live="polite"><h2>No match</h2><p>{result.summary}</p></section>;
+  }
+  const evidence = result.evidence || [];
+  const isCamera = n.enforcementMethod === 'CAMERA';
+  const certificates = evidence.filter((e) => e.kind === 'CERTIFICATE');
+  const media = evidence.filter((e) => e.kind !== 'CERTIFICATE');
+  return (
+    <section aria-live="polite">
+      <h2>Notice {result.infringementNumber}</h2>
+      <p><strong>{n.statusMessage}</strong></p>
+      <dl>
+        <dt>Amount owing</dt><dd>${n.amountOwing}</dd>
+        <dt>Penalty amount</dt><dd>${n.penaltyAmount}</dd>
+        <dt>Offence</dt><dd>{n.offenceDescription}</dd>
+        <dt>Date and time</dt><dd>{n.offenceDate} {n.offenceTime}</dd>
+        <dt>Location</dt><dd>{n.location}</dd>
+      </dl>
+      <h3>Evidence</h3>
+      {media.length > 0
+        ? <ul>{media.map((e) => <li key={e.url}>{e.title} ({e.kind.toLowerCase()})</li>)}</ul>
+        : <p>{isCamera ? 'Evidence is not available to show yet.' : 'No camera evidence applies to this notice.'}</p>}
+      {isCamera && (
+        <>
+          <h3>Enforcement centre certificate</h3>
+          {certificates.length > 0
+            ? <ul>{certificates.map((e) => <li key={e.url}>{e.title}</li>)}</ul>
+            : <p>Certificate information is not available to show yet.</p>}
+        </>
+      )}
+      {result.source === 'STUB' && <small>Prototype data only.</small>}
+    </section>
   );
 }

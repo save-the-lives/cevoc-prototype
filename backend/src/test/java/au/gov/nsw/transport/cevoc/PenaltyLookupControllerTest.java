@@ -32,4 +32,23 @@ class PenaltyLookupControllerTest {
                         .content("{\"infringementNumber\":\"1234567890\",\"offenceDate\":\"2999-01-01\"}"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void officerIssuedNoticeHasNoEvidence() throws Exception {
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"9000000002\",\"offenceDate\":\"2024-10-23\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notice.enforcementMethod").value("OFFICER_ISSUED"))
+                .andExpect(jsonPath("$.notice.noticeStatus").value("CAUTION"))
+                .andExpect(jsonPath("$.evidence").isEmpty());
+    }
+
+    @Test
+    void cameraNoticeHasEvidenceAndCertificate() throws Exception {
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"9000000003\",\"offenceDate\":\"2018-09-27\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notice.enforcementMethod").value("CAMERA"))
+                .andExpect(jsonPath("$.evidence[1].kind").value("CERTIFICATE"));
+    }
 }

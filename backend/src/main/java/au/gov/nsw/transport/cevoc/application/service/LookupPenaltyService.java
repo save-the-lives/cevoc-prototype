@@ -20,7 +20,7 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
         } catch (RuntimeException e) {
             return new PenaltyLookupResult(PenaltyLookupResult.Status.UNAVAILABLE,
                     request.infringementNumber(), "We could not load this right now. Please try again.",
-                    java.util.List.of(), "ERROR");
+                    null, java.util.List.of(), "ERROR");
         }
     }
 }
