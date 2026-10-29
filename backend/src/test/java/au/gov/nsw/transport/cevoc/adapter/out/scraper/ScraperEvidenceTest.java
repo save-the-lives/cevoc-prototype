@@ -138,12 +138,12 @@ class ScraperEvidenceTest {
     }
 
     @Test
-    void shippedConfigKeepsStubAsDefaultAndScraperOff() throws IOException {
+    void shippedConfigKeepsManifestAsDefaultAndScraperOff() throws IOException {
         Properties p = new Properties();
         try (InputStream in = Files.newInputStream(Path.of("src/main/resources/application.properties"))) {
             p.load(in);
         }
-        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isEqualTo("stub");
+        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isEqualTo("manifest");
         assertThat(p.getProperty("cevoc.scraper.evidence.enabled")).isEqualTo("false");
     }
 }
