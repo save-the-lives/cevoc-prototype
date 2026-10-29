@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!-- FICTITIOUS FIXTURE (state 3, after plate). Invented markup and values. Images are blob: handles, not fetchable URLs.
+     The certificate link's m value is an obviously fake placeholder; the parser must never keep it. -->
+<html lang="en">
+<body>
+  <h2>Penalty Notice Number - 9000000004</h2>
+  <div class="notification">This penalty notice is payable and can be paid online.</div>
+  <div class="details">
+    <div class="row"><span class="label">Date of offence:</span><span class="value">15/01/2026</span></div>
+    <div class="row"><span class="label">Offence Time:</span><span class="value">11:12</span></div>
+    <div class="row"><span class="label">Offence Description:</span><span class="value">Camera recorded</span></div>
+    <div class="row"><span class="label">Demerit Points:</span><span class="value">1</span></div>
+    <div class="row"><span class="label">Penalty Amount:</span><span class="value">$277.00</span></div>
+    <div class="row"><span class="label">Registration number:</span><span class="value">TST123</span></div>
+    <div class="row"><span class="label">Location:</span><span class="value">SAMPLE ROAD, SAMPLETOWN</span></div>
+  </div>
+  <h3>Images</h3>
+  <div class="viewer">
+    <figure class="large">
+      <img src="blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000001" alt="Image 700-1-000000001">
+      <figcaption class="banner">Camera Code: 7109 Direction: North Operator: Fictitious Operator Location: SAMPLE ROAD / EXAMPLE STREET Incident Number: 6 Lane: 2 Offence: Red light Speed Limit: 60 Time since red: 1.2 sec Yellow light duration: 4.0 sec Date: 15 January 2026 Time: 11:12:13.000</figcaption>
+    </figure>
+    <ul class="thumbnails">
+      <li><img src="blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000011" alt="Thumbnail 700-1-000000001"></li>
+      <li><img src="blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000002" alt="Thumbnail 700-1-000000002"></li>
+      <li><img src="blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000003" alt="Thumbnail 700-1-000000003"></li>
+    </ul>
+  </div>
+  <button type="button">Download Images</button>
+  <h3>Camera Certification</h3>
+  <a href="certificateDetails.jsf?p=9000000004&amp;d=15%2F01%2F2026+11%3A12%3A13&amp;s=7109&amp;i=6&amp;m=0123456789abcdef0123456789abcdef">View certification details</a>
+</body>
+</html>

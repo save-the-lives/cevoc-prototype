@@ -1,94 +1,134 @@
 package au.gov.nsw.transport.cevoc.adapter.out.scraper;
 
+import static au.gov.nsw.transport.cevoc.adapter.out.scraper.FakeRenderedPageSession.fixture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import au.gov.nsw.transport.cevoc.domain.EnforcementMethod;
 import au.gov.nsw.transport.cevoc.domain.NoticeStatus;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 
-/** FICTITIOUS fixtures only. */
+/** FICTITIOUS fixtures only (notice 9000000004, plate TST123, camera code 7109, incident 6). */
 class RevenueNswPageParserTest {
 
     private final RevenueNswPageParser parser = new RevenueNswPageParser();
 
-    static String fixture(String name) throws IOException {
-        return Files.readString(Path.of("src/test/resources/fixtures/scraper/" + name), StandardCharsets.UTF_8);
+    @Test
+    void state1LoginPageIsRecognisedFromItsInputs() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state1-login.html"));
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.LOGIN);
+        assertThat(p.unexpectedLoginFields()).isEmpty(); // lastName, firstName, organisation are all disabled
+        assertThat(p.notice()).isNull();
     }
 
     @Test
-    void readsStepOneResultPageAndFindsTheImagesForm() throws IOException {
-        RevenueNswPageParser.Parsed p = parser.parse(fixture("fictitious-penalty-result.html"));
-        assertThat(p.outcome()).isEqualTo(RevenueNswPageParser.Outcome.FOUND);
+    void state1WithAnEnabledNameFieldIsFlagged() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state1-login-needs-name.html"));
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.LOGIN);
+        assertThat(p.unexpectedLoginFields()).containsExactly("lastName");
+    }
+
+    @Test
+    void state2SummaryReadsRowsByLabelAndFindsThePlateForm() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state2-summary.html"));
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.SUMMARY);
+        assertThat(p.noticeNumber()).isEqualTo("9000000004");
         assertThat(p.notice().offenceDate()).isEqualTo(LocalDate.of(2026, 1, 15));
         assertThat(p.notice().offenceTime()).isEqualTo(LocalTime.of(11, 12));
         assertThat(p.notice().offenceDescription()).isEqualTo("Camera recorded");
-        assertThat(p.notice().location()).isEqualTo("SAMPLE ROAD, SAMPLETOWN");
+        assertThat(p.notice().location()).isEqualTo("SAMPLE ROAD, SAMPLETOWN"); // free text, not a code
         assertThat(p.notice().penaltyAmount()).isEqualByComparingTo("277.00");
         assertThat(p.notice().amountOwing()).isEqualByComparingTo("277.00");
         assertThat(p.notice().noticeStatus()).isEqualTo(NoticeStatus.PAYABLE);
-        assertThat(p.notice().statusMessage()).contains("payable & can");
         assertThat(p.notice().enforcementMethod()).isEqualTo(EnforcementMethod.UNKNOWN);
-        assertThat(p.imagesStep()).isNotNull();
-        assertThat(p.imagesStep().action()).isEqualTo("/fixture/images");
-        assertThat(p.imagesStep().registrationField()).isEqualTo("registration");
-        assertThat(p.imagesStep().fixedFields()).containsEntry("token", "fixture-token").containsEntry("viewImages", "1")
-                .doesNotContainKey("registration");
+        assertThat(p.plateFormPresent()).isTrue();
+        assertThat(p.registrationRowPresent()).isFalse();
+        assertThat(p.registrationRequiredShown()).isFalse();
+        assertThat(p.images()).isEmpty();
+        assertThat(p.cameraCode()).isNull();
     }
 
     @Test
-    void readsPaidNoticeWithInlineLabelsAndTwelveHourTime() throws IOException {
-        RevenueNswPageParser.Parsed p = parser.parse(fixture("fictitious-penalty-paid.html"));
-        assertThat(p.outcome()).isEqualTo(RevenueNswPageParser.Outcome.FOUND);
-        assertThat(p.notice().offenceDate()).isEqualTo(LocalDate.of(2026, 2, 3));
-        assertThat(p.notice().offenceTime()).isEqualTo(LocalTime.of(21, 5));
+    void state2PaidNoticeHasNothingOwing() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state2-summary-paid.html"));
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.SUMMARY);
         assertThat(p.notice().noticeStatus()).isEqualTo(NoticeStatus.PAID);
         assertThat(p.notice().amountOwing()).isEqualByComparingTo("0");
-        assertThat(p.imagesStep()).isNull();
+        assertThat(p.plateFormPresent()).isFalse();
     }
 
     @Test
-    void notFoundAndGarbage() throws IOException {
-        assertThat(parser.parse(fixture("fictitious-no-match.html")).outcome()).isEqualTo(RevenueNswPageParser.Outcome.NOT_FOUND);
-        assertThat(parser.parse("<html>site redesigned</html>").outcome()).isEqualTo(RevenueNswPageParser.Outcome.UNRECOGNISED);
-        assertThat(parser.parse("").outcome()).isEqualTo(RevenueNswPageParser.Outcome.UNRECOGNISED);
-        assertThat(parser.parse(null).outcome()).isEqualTo(RevenueNswPageParser.Outcome.UNRECOGNISED);
+    void state2ShowsTheRegistrationRequiredMessage() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state2-required.html"));
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.SUMMARY);
+        assertThat(p.plateFormPresent()).isTrue();
+        assertThat(p.registrationRequiredShown()).isTrue();
     }
 
     @Test
-    void resultPageWithAnUnreadableFieldIsUnrecognisedNotGuessed() {
-        String html = "<p>Date of offence</p><p>not a date</p><p>Penalty Amount</p><p>$10</p>";
-        assertThat(parser.parse(html).outcome()).isEqualTo(RevenueNswPageParser.Outcome.UNRECOGNISED);
+    void state3ReadsImagesBannerCameraCodeAndCertificateLink() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state3-images.html"));
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.IMAGES);
+        assertThat(p.plateFormPresent()).isFalse();
+        assertThat(p.registrationRowPresent()).isTrue();
+        assertThat(p.notice().enforcementMethod()).isEqualTo(EnforcementMethod.CAMERA);
+        assertThat(p.notice().location()).isEqualTo("SAMPLE ROAD, SAMPLETOWN"); // not the banner's Location
+        // large image and its thumbnail share a ref, so three distinct images
+        assertThat(p.images()).extracting(RevenueNswPageParser.ImageRef::ref)
+                .containsExactly("700-1-000000001", "700-1-000000002", "700-1-000000003");
+        assertThat(p.images()).allMatch(i -> i.blobUrl().startsWith("blob:"));
+        assertThat(p.downloadImagesPresent()).isTrue();
+        assertThat(p.cameraCode()).isEqualTo("7109");
+        assertThat(p.certification().notice()).isEqualTo("9000000004");
+        assertThat(p.certification().offenceDateTime()).isEqualTo("15/01/2026 11:12:13");
+        assertThat(p.certification().cameraCode()).isEqualTo("7109");
+        assertThat(p.certification().incidentNumber()).isEqualTo("6");
     }
 
     @Test
-    void readsImagesPageWithCameraCodeAndCertificationLink() throws IOException {
-        RevenueNswPageParser.ImagesPage page = parser.parseImages(fixture("fictitious-images.html"));
-        assertThat(page.media()).hasSize(3);
-        assertThat(page.media().get(0).src()).isEqualTo("/fixture-media/image-1.jpg");
-        assertThat(page.media().get(0).title()).isEqualTo("Camera image 700-1-000000001");
-        assertThat(page.cameraCode()).isEqualTo("TST001");
-        assertThat(page.certificationUrl()).isEqualTo("/fixture/certification");
+    void cameraCodeFallsBackToTheCertificateLinkWhenThereIsNoBanner() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state3-no-banner.html"));
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.IMAGES);
+        assertThat(p.cameraCode()).isEqualTo("7109");
+        assertThat(p.images()).hasSize(1);
+        assertThat(p.downloadImagesPresent()).isFalse();
     }
 
     @Test
-    void speedCameraImagesPageStillGivesCameraCode() throws IOException {
-        RevenueNswPageParser.ImagesPage page = parser.parseImages(fixture("fictitious-images-speed.html"));
-        assertThat(page.media()).hasSize(1);
-        assertThat(page.cameraCode()).isEqualTo("TST777");
-        assertThat(page.certificationUrl()).isNull();
+    void theSignedCertificateValueAndThePlateAreNeverKept() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state3-images.html"));
+        String everything = p.toString();
+        assertThat(everything).doesNotContain("0123456789abcdef0123456789abcdef").doesNotContain("TST123");
+        assertThat(java.util.Arrays.stream(RevenueNswPageParser.CertificationRef.class.getRecordComponents())
+                .map(c -> c.getName())).doesNotContain("m", "signature", "href", "url");
     }
 
     @Test
-    void emptyImagesPageGivesNothing() {
-        RevenueNswPageParser.ImagesPage page = parser.parseImages("<html>nothing</html>");
-        assertThat(page.media()).isEmpty();
-        assertThat(page.cameraCode()).isNull();
-        assertThat(parser.parseImages(null).media()).isEmpty();
+    void statesAreKeyedOnPresenceNotOrder() {
+        // Same content as state 3 with the sections shuffled: details after images, link first.
+        String html = "<body>"
+                + "<a href=\"certificateDetails.jsf?p=9000000004&s=7109&i=6&m=abc\">View certification details</a>"
+                + "<img src=\"blob:x/1\" alt=\"700-1-000000001\">"
+                + "<div><span>Registration number:</span><span>TST123</span></div>"
+                + "<div><span>Location:</span><span>SAMPLE ROAD</span></div>"
+                + "<div><span>Penalty Amount:</span><span>$10.00</span></div>"
+                + "<div><span>Offence Description:</span><span>Test</span></div>"
+                + "<div><span>Offence Time:</span><span>1:05 pm</span></div>"
+                + "<div><span>Date of offence:</span><span>15/01/2026</span></div>"
+                + "<h2>Penalty Notice Number - 9000000004</h2></body>";
+        RevenueNswPageParser.Page p = parser.parse(html);
+        assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.IMAGES);
+        assertThat(p.notice().offenceTime()).isEqualTo(LocalTime.of(13, 5));
+        assertThat(p.cameraCode()).isEqualTo("7109");
+    }
+
+    @Test
+    void garbageAndUnreadableFieldsAreUnrecognisedNotGuessed() {
+        assertThat(parser.parse("<html>site redesigned</html>").state()).isEqualTo(RevenueNswPageParser.State.UNRECOGNISED);
+        assertThat(parser.parse("").state()).isEqualTo(RevenueNswPageParser.State.UNRECOGNISED);
+        assertThat(parser.parse(null).state()).isEqualTo(RevenueNswPageParser.State.UNRECOGNISED);
+        String bad = "<div><span>Date of offence:</span><span>not a date</span></div><div><span>Penalty Amount:</span><span>$10</span></div>";
+        assertThat(parser.parse(bad).state()).isEqualTo(RevenueNswPageParser.State.UNRECOGNISED);
     }
 }

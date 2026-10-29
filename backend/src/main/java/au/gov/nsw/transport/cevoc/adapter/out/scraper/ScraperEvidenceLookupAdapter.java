@@ -11,62 +11,72 @@ import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult.Status;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HexFormat;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * NOT FOR PRODUCTION WITHOUT THE SITE OWNER'S WRITTEN APPROVAL. Prototype only; replace with the real
  * evidence API. See docs/ARCHITECTURE.md ("Scraper adapter").
  *
- * Looks a notice up on the Revenue NSW penalty page, copies each image/video into storage through
- * MediaStoragePort and returns object keys (links are then made by SignedLinkPort as usual).
- * Does nothing at all (no network) unless cevoc.scraper.evidence.enabled=true, a base URL and a contact are set,
- * and cevoc.penalty-lookup.adapter=scraper-evidence. Requests are sequential and rate limited.
+ * Drives the three-state myPenalty flow through a {@link RenderedPageSession} (the site is an Angular app, so
+ * only a rendered DOM is useful): login page, then notice summary, then (with a registration) the images page.
+ * Images are blob: URLs inside the session, so their bytes are read from the same session and copied into
+ * storage through MediaStoragePort; links are then made by SignedLinkPort as usual.
+ * Does nothing at all (no browser, no network) unless cevoc.scraper.evidence.enabled=true, a base URL and a
+ * contact are set, and cevoc.penalty-lookup.adapter=scraper-evidence.
+ *
+ * The registration is transient: held in a local variable for one request, passed to the session, then dropped.
+ * It is never logged (log lines below carry no request values), cached, stored, or part of a cache or storage key.
  */
 public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
 
     static final String SOURCE = "SCRAPER_EVIDENCE";
+    private static final Logger LOG = LoggerFactory.getLogger(ScraperEvidenceLookupAdapter.class);
     private static final Pattern NOTICE_NUMBER = Pattern.compile("[A-Za-z0-9]{4,20}");
+    private static final DateTimeFormatter LOGIN_DATE = DateTimeFormatter.ofPattern("dd/MM/uuuu", Locale.ENGLISH);
     private static final int MAX_CACHE_ENTRIES = 100;
+    private static final int MAX_IMAGES = 20;
 
     private record CacheEntry(PenaltyLookupResult result, Instant expiresAt) {}
 
     private final ScraperSettings settings;
-    private final EvidencePageFetcher fetcher;
+    private final RenderedPageSessionFactory sessions;
     private final RevenueNswPageParser parser;
     private final MediaStoragePort storage;
     private final Clock clock;
     private final RegistrationProvider registrations;
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public ScraperEvidenceLookupAdapter(ScraperSettings settings, EvidencePageFetcher fetcher, RevenueNswPageParser parser,
+    public ScraperEvidenceLookupAdapter(ScraperSettings settings, RenderedPageSessionFactory sessions, RevenueNswPageParser parser,
                                         MediaStoragePort storage, Clock clock) {
-        this(settings, fetcher, parser, storage, clock, RegistrationProvider.none());
+        this(settings, sessions, parser, storage, clock, RegistrationProvider.none());
     }
 
-    public ScraperEvidenceLookupAdapter(ScraperSettings settings, EvidencePageFetcher fetcher, RevenueNswPageParser parser,
+    public ScraperEvidenceLookupAdapter(ScraperSettings settings, RenderedPageSessionFactory sessions, RevenueNswPageParser parser,
                                         MediaStoragePort storage, Clock clock, RegistrationProvider registrations) {
         this.registrations = registrations;
         this.settings = settings;
-        this.fetcher = fetcher;
+        this.sessions = sessions;
         this.parser = parser;
         this.storage = storage;
         this.clock = clock;
     }
 
-    /** synchronized: one lookup at a time, so no parallel hits on the site. */
+    /** synchronized: one lookup (one browser session) at a time, so no parallel hits on the site. */
     @Override
     public synchronized PenaltyLookupResult find(PenaltyLookupRequest request) {
         String number = request.infringementNumber();
@@ -76,67 +86,85 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         if (number == null || !NOTICE_NUMBER.matcher(number).matches() || request.offenceDate() == null) {
             return result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
         }
+        // The cache key is the notice and date only. The plate is never part of it.
         String key = sha(number.toUpperCase(Locale.ROOT) + "|" + request.offenceDate());
-        // The plate lives in this local variable only. Results that needed it are never cached (the cache key
-        // has no plate, so a cached result could otherwise show images to someone who did not supply one).
         String plate = normalisePlate(registrations.registrationFor(request).orElse(null));
-        boolean cacheable = plate == null;
-        CacheEntry cached = cacheable ? cache.get(key) : null;
+        CacheEntry cached = plate == null ? cache.get(key) : null;
         if (cached != null && cached.expiresAt().isAfter(clock.instant())) {
             return cached.result();
         }
-        try {
-            URI base = URI.create(settings.baseUrl());
-            if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null) {
-                return result(Status.UNAVAILABLE, number, "The lookup source is not configured correctly.");
-            }
-            EvidencePageFetcher.Response page = fetcher.get(searchUri(base, number, request));
-            if (page.status() != 200) {
-                return result(Status.UNAVAILABLE, number, "The lookup source is not available right now.");
-            }
-            RevenueNswPageParser.Parsed parsed = parser.parse(new String(page.body(), StandardCharsets.UTF_8));
-            PenaltyLookupResult out = switch (parsed.outcome()) {
-                case NOT_FOUND -> result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
-                case UNRECOGNISED -> result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
-                case FOUND -> found(base, key, number, parsed, plate);
-            };
-            if (cacheable && (out.status() == Status.FOUND || out.status() == Status.NOT_FOUND)) {
+        URI base = URI.create(settings.baseUrl());
+        if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null) {
+            return result(Status.UNAVAILABLE, number, "The lookup source is not configured correctly.");
+        }
+        try (RenderedPageSession session = sessions.open(base)) {
+            PenaltyLookupResult out = run(session, key, number, request, plate);
+            // Anything that carried evidence (or needed a plate) is never cached.
+            if (plate == null && out.evidence().isEmpty() && (out.status() == Status.FOUND || out.status() == Status.NOT_FOUND)) {
                 remember(key, out);
             }
             return out;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            LOG.warn("evidence lookup interrupted");
             return result(Status.UNAVAILABLE, number, "The lookup was interrupted.");
         } catch (IOException | RuntimeException e) {
+            // Class name only: messages from a browser layer could echo form values.
+            LOG.warn("evidence lookup failed: {}", e.getClass().getSimpleName());
             return result(Status.UNAVAILABLE, number, "The lookup source is not available right now.");
         }
     }
 
-    /** Step 1 gave the notice; step 2 (only with a plate and a "View images" form) adds images and the camera code. */
-    private PenaltyLookupResult found(URI base, String key, String number, RevenueNswPageParser.Parsed parsed, String plate)
+    private PenaltyLookupResult run(RenderedPageSession session, String key, String number, PenaltyLookupRequest request, String plate)
             throws IOException, InterruptedException {
-        NoticeDetails notice = parsed.notice();
-        List<EvidenceItem> evidence = List.of();
-        String cameraCode = null;
-        RevenueNswPageParser.ImagesStep step = parsed.imagesStep();
-        if (plate != null && step != null) {
-            URI target = base.resolve(step.action());
-            if (sameHttpsHost(base, target)) {
-                Map<String, String> form = new LinkedHashMap<>(step.fixedFields());
-                form.put(step.registrationField(), plate);
-                EvidencePageFetcher.Response images = fetcher.post(target, form);
-                if (images.status() == 200) {
-                    RevenueNswPageParser.ImagesPage page = parser.parseImages(new String(images.body(), StandardCharsets.UTF_8));
-                    evidence = buffer(base, key, page.media());
-                    cameraCode = page.cameraCode();
-                }
+        // State 1: login page. A notice type that needs extra identity fields is out of scope.
+        RevenueNswPageParser.Page login = parser.parse(session.loginPage());
+        if (login.state() != RevenueNswPageParser.State.LOGIN) {
+            LOG.warn("evidence lookup: login page not recognised");
+            return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
+        }
+        if (!login.unexpectedLoginFields().isEmpty()) {
+            LOG.warn("evidence lookup: login page asks for extra details");
+            return result(Status.UNAVAILABLE, number, "This kind of notice needs details we do not collect.");
+        }
+        // State 2: summary. Still on the login page means the pair was not matched (OPEN QUESTION: the real wording).
+        RevenueNswPageParser.Page page = parser.parse(session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
+        switch (page.state()) {
+            case LOGIN -> {
+                return result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
+            }
+            case UNRECOGNISED -> {
+                LOG.warn("evidence lookup: summary page not recognised");
+                return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
+            }
+            default -> { /* SUMMARY or IMAGES: carry on */ }
+        }
+        if (page.noticeNumber() != null && !page.noticeNumber().equalsIgnoreCase(number)) {
+            LOG.warn("evidence lookup: page shows a different notice number");
+            return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
+        }
+        String summary = "Content from the penalty page.";
+        // State 3: only with a plate and a plate form still on the page.
+        if (page.state() == RevenueNswPageParser.State.SUMMARY && plate != null && page.plateFormPresent()) {
+            RevenueNswPageParser.Page after = parser.parse(session.submitPlate(plate));
+            if (after.state() == RevenueNswPageParser.State.IMAGES) {
+                page = after;
+            } else {
+                // OPEN QUESTION: what the site shows for a wrong plate is unknown. Plate form still there, or
+                // anything that is not the images state, is reported as one generic "not accepted" result.
+                LOG.info("evidence lookup: registration not accepted");
+                summary = "Notice details found. The registration number was not accepted, so no images are shown.";
             }
         }
-        if (!evidence.isEmpty()) {
+        List<EvidenceItem> evidence = page.state() == RevenueNswPageParser.State.IMAGES
+                ? buffer(session, key, page.images()) : List.of();
+        NoticeDetails notice = page.notice();
+        if (!evidence.isEmpty() && notice.enforcementMethod() != EnforcementMethod.CAMERA) {
             notice = new NoticeDetails(notice.offenceDescription(), notice.offenceDate(), notice.offenceTime(), notice.location(),
                     notice.penaltyAmount(), notice.amountOwing(), notice.noticeStatus(), notice.statusMessage(), EnforcementMethod.CAMERA);
         }
-        return new PenaltyLookupResult(Status.FOUND, number, "Content from the penalty page.", notice, evidence, SOURCE, cameraCode);
+        // cameraCode is internal (@JsonIgnore): input for the certificate lookup, banner first, then the s= value.
+        return new PenaltyLookupResult(Status.FOUND, number, summary, notice, evidence, SOURCE, page.cameraCode());
     }
 
     /** Upper-cases and strips spaces and dashes; null when blank or not plausibly a plate. */
@@ -148,39 +176,39 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         return p.matches("[A-Z0-9]{1,8}") ? p : null;
     }
 
-    private static boolean sameHttpsHost(URI base, URI other) {
-        return "https".equalsIgnoreCase(other.getScheme()) && other.getHost() != null && base.getHost().equalsIgnoreCase(other.getHost());
-    }
-
-    /** TODO (needs the real page): how the two inputs are submitted (GET query, POST form, token). Fictitious GET here. */
-    private static URI searchUri(URI base, String number, PenaltyLookupRequest r) {
-        String sep = base.getQuery() == null ? "?" : "&";
-        return URI.create(base + sep + "noticeNumber=" + enc(number) + "&offenceDate=" + enc(r.offenceDate().toString()));
-    }
-
-    /** Copies each media item into storage; skips items that are off-host, non-https, oversize or fail. */
-    private List<EvidenceItem> buffer(URI base, String key, List<RevenueNswPageParser.MediaRef> refs) throws InterruptedException {
+    /**
+     * Copies each image's bytes (read from the same browser session) into storage. Only blob: handles are
+     * accepted; anything else is skipped so this adapter never fetches from elsewhere. Object keys derive from
+     * the notice hash and a counter, never from the plate or the image ref.
+     */
+    private List<EvidenceItem> buffer(RenderedPageSession session, String key, List<RevenueNswPageParser.ImageRef> refs)
+            throws InterruptedException {
         List<EvidenceItem> items = new ArrayList<>();
         int n = 0;
-        for (RevenueNswPageParser.MediaRef ref : refs) {
+        for (RevenueNswPageParser.ImageRef ref : refs) {
+            if (n >= MAX_IMAGES) {
+                break;
+            }
             n++;
+            if (ref.blobUrl() == null || !ref.blobUrl().startsWith("blob:")) {
+                continue;
+            }
             try {
-                URI uri = base.resolve(ref.src());
-                if (!sameHttpsHost(base, uri)) {
-                    continue; // never follow media to another host
-                }
-                EvidencePageFetcher.Response media = fetcher.get(uri);
-                String type = media.contentType() == null ? "" : media.contentType().split(";")[0].trim().toLowerCase(Locale.ROOT);
-                String prefix = ref.kind() == EvidenceItem.Kind.IMAGE ? "image/" : "video/";
-                if (media.status() != 200 || !type.startsWith(prefix) || media.body().length == 0) {
+                Optional<RenderedPageSession.ImageBytes> bytes = session.imageBytes(ref.blobUrl());
+                if (bytes.isEmpty()) {
                     continue;
                 }
-                String objectKey = "scraped/" + key.substring(0, 16) + "/" + ref.kind().name().toLowerCase(Locale.ROOT)
-                        + "-" + n + extension(type);
-                storage.store(objectKey, type, new ByteArrayInputStream(media.body()), media.body().length);
-                items.add(EvidenceItem.ofObject(ref.kind(), ref.title(), objectKey));
+                byte[] data = bytes.get().data();
+                String type = bytes.get().contentType() == null ? ""
+                        : bytes.get().contentType().split(";")[0].trim().toLowerCase(Locale.ROOT);
+                if (data == null || data.length == 0 || data.length > settings.maxBytes() || !type.startsWith("image/")) {
+                    continue;
+                }
+                String objectKey = "scraped/" + key.substring(0, 16) + "/image-" + n + extension(type);
+                storage.store(objectKey, type, new ByteArrayInputStream(data), data.length);
+                items.add(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey));
             } catch (IOException | RuntimeException e) {
-                // skip this item; the notice details are still useful
+                LOG.debug("evidence image skipped: {}", e.getClass().getSimpleName());
             }
         }
         return items;
@@ -211,10 +239,6 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
 
     private static PenaltyLookupResult result(Status status, String number, String summary) {
         return new PenaltyLookupResult(status, number, summary, null, List.of(), SOURCE);
-    }
-
-    private static String enc(String s) {
-        return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 
     private static String sha(String s) {

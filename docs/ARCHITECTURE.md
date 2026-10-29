@@ -58,24 +58,30 @@ Select with `cevoc.penalty-lookup.adapter`: `manifest` (default; manifest first,
 
 Safeguards:
 - Never the default. `stub` stays the default in code, tests and every shipped config. It runs only if `cevoc.penalty-lookup.adapter=scraper-evidence` AND `cevoc.scraper.evidence.enabled=true` (env `CEVOC_SCRAPER_EVIDENCE_ENABLED`, default `false`). It also needs `cevoc.scraper.evidence.base-url` (https) and `cevoc.scraper.evidence.contact`; with any of these missing it returns `LIVE_LOOKUP_OFF` and makes no network call.
-- Polite: identifying User-Agent (`CEVOC-prototype/0.1 (Transport for NSW; contact: ...)`), minimum 5 s between requests (`min-interval-ms`), connect and request timeouts, 25 MB size cap, strictly sequential (no parallelism), no redirects, media only from the same https host, 2 minute result cache (`cache-ttl-seconds`).
+- Polite: identifying User-Agent (`CEVOC-prototype/0.1 (Transport for NSW; contact: ...)`), minimum 5 s between requests (`min-interval-ms`), connect and request timeouts, size cap (`max-bytes`), strictly sequential (no parallelism), images only from the browser session's own blob: handles, 2 minute result cache (`cache-ttl-seconds`, notice details only; never results with images). The pacing, timeout and size settings are for the future browser adapter to honour.
 - Isolation: all HTML knowledge lives in `RevenueNswPageParser`; a site change should break only that class and its fixture.
-- Tests (`ScraperEvidenceTest`) use saved fictitious HTML in `backend/src/test/resources/fixtures/scraper/` and fakes. No live network, no real notice numbers or personal data.
+- Tests (`ScraperEvidenceTest`) use saved fictitious DOM in `backend/src/test/resources/fixtures/scraper/` and a fake `RenderedPageSession`. No live network, no real notice numbers or personal data.
 
-### Two-step page flow (building only; still off)
-The parser now follows the real myPenalty flow, taken from the owner's screenshots (no live request has been made):
-1. Result page (`RevenueNswPageParser.parse`): Date of offence, Offence Time, Offence Description, Demerit Points, Penalty Amount, Location (street and suburb only, not a code), Amount owing, and a paid/payable notice. These are read by their visible labels. The page also has the Images section, which needs the vehicle registration plus "View images"; the parser only finds that form (`ImagesStep`).
-2. Images page (`parseImages`, only when a registration is supplied): image items (refs like `700-1-...`), "Download Images", and "Camera Certification / View certification details". Each image's banner is selectable text, read by `CameraBannerParser` (Camera Code, Direction, Operator, Location, Incident Number, Lane, Offence, Speed Limit, Time since red, Yellow light duration, Date, Time). Every field is optional; the red-light fields are absent for speed cameras. The camera code is the key output.
+### Three-state myPenalty flow (building only; still off)
+Source: the owner's description of the real flow (no live request has ever been made; all fixtures are FICTITIOUS: notice 9000000004, plate TST123, camera code 7109, incident 6).
+1. Login (Angular app, base href `/customer_service/finesonline/`): inputs `pnn` and `dateOfOffence` (DD/MM/YYYY), a Next button; hidden, disabled `lastName`, `firstName`, `organisation` exist for some notice types (if one is enabled, the notice type is out of scope and the lookup is UNAVAILABLE).
+2. Summary: heading "Penalty Notice Number - n", a paid/owing notification box, rows "Date of offence:", "Offence Time:", "Offence Description:", "Demerit Points:", "Penalty Amount:", "Location:" (free text, not a code). The Images section is a separate form with one field `vehicleNumber` ("Registration number:") and a "View images" button; "Registration number is required" shows when empty. No "Registration number:" row yet.
+3. Images: the plate form is replaced by the images section; a "Registration number:" row appears; a large image plus thumbnails, each with a ref like `700-1-<digits>`; "Download Images"; "Camera Certification" with a "View certification details" link to `certificateDetails.jsf` (query p notice, d offence date-time, s camera code, i incident number, m signed value).
 
-The camera code is carried on `PenaltyLookupResult.cameraCode` (`@JsonIgnore`), so it is internal: not in the API response and no frontend change. It is the future input to the certificate lookup, replacing the guessed location code.
+Because the site is Angular, a plain HTTP fetch returns an empty shell, so the adapter talks to a small port, `RenderedPageSession` (+ `RenderedPageSessionFactory`): `loginPage()`, `submitLogin(notice, DD/MM/YYYY)`, `submitPlate(plate)` each return the rendered DOM, and `imageBytes(blobUrl)` returns image bytes from the SAME session (images are `blob:` URLs tied to that browser, not fetchable URLs). Only the interface and a test fake (`FakeRenderedPageSession`) exist. No Playwright/Selenium dependency is added. **Next step: a headless-browser adapter behind this port** (it must own pacing, the identifying user agent, timeouts and the size cap, and must never log or trace the plate). Until then `ScraperEvidenceFactory` wires a factory that always fails, so even an enabled scraper reports UNAVAILABLE and opens nothing.
 
-The vehicle registration comes only from a `RegistrationProvider` (none is wired, so step 2 is skipped today). It is held in a local variable for that one request, sent in the POST body, and never stored, logged, cached or put in fixtures. A result that used a plate is never cached, and storage keys do not derive from it.
+`RevenueNswPageParser.parse` returns one `Page` for any of the three states, decided by what is PRESENT (login inputs, summary rows, plate form, images, "Registration number:" row), not by page order. Rows are read by their visible labels; banner text is excluded so the banner's "Location:" is never mistaken for the notice's.
+
+Camera code: read from the image banner text (`CameraBannerParser`), else from `s=` on the certificate link; carried on `PenaltyLookupResult.cameraCode` (`@JsonIgnore`, internal, not in the API) as the input for the future certificate lookup. The parser keeps only p, d, s, i from the link. The signed `m` value is read-only: it is never stored, logged or constructed, and no certificate URL is built.
+
+Registration (plate) rules: comes only from a `RegistrationProvider` (none wired). It is a local variable for one request, passed to `submitPlate`, never logged (log lines carry no request values; exceptions are logged by class name only), cached, stored, or part of a cache or storage key; the parser never reads the "Registration number:" value. A result that used a plate is never cached. `ScraperEvidenceTest` asserts the plate never appears in captured log output.
+
+Open question: what the site shows for a WRONG plate is unknown. "Plate form still present (or anything other than the images state) after submit" is treated as one generic result: notice details FOUND, no images, summary "registration number was not accepted". Also unknown: how a non-matching notice/date is shown on login (a login page after Next is treated as NOT_FOUND), the real markup of rows/notification box (selectors are guesses), whether the large image or a thumbnail is the better copy, and the owing amount wording (unpaid is assumed to owe the full penalty unless the box shows an amount).
 
 ### TODO before this can work against the real site
-The label-based step 1 reading is expected to be close, but the form action and field names, the image item markup and the exact banner layout are guesses (fixtures are fictitious).
-1. Confirm how the notice inputs are submitted (GET, POST form, token or captcha, identity step) and update `searchUri`.
-2. Check the parser selectors and fixtures against a saved real page (personal data removed); confirm date, time and amount formats.
-3. Confirm how images are served (direct files, lazy loading). Streamed video cannot be buffered by this adapter.
+1. Build the headless-browser `RenderedPageSession` adapter (and a way to run it in CI-free, owner-approved conditions).
+2. Check parser selectors and fixtures against a saved real DOM (personal data removed); confirm date, time and amount formats.
+3. Confirm the wrong-plate and not-found behaviour above.
 4. Check robots.txt and terms; obtain written approval; agree rate limits and a contact address with the owner.
 5. Then plan the move to the real evidence API and delete this adapter.
 
@@ -89,7 +95,7 @@ These notes record what the owner saw on the real pages so a future adapter or t
 
 Modelling implications (for whoever implements the real source): treat plate as a transient request parameter; carry the banner fields as a structured value on the evidence result; keep location as free text in the domain model.
 
-Status: parser, fixtures and any adapter changes for this flow are NOT done in this change. Live access to Revenue NSW pages is not approved for building here (robots.txt disallows it); the owner needs to confirm approval before that work is picked up.
+Status: the parser, fixtures and the session port are built (see "Three-state myPenalty flow" above); no browser adapter exists and no live request is made. Live access to Revenue NSW pages still needs the owner's approval (robots.txt disallows it).
 
 ## Open questions
 - How the Revenue NSW / Service NSW page accepts the two inputs, and whether it needs an identity step. Automated pass-through must be confirmed as permitted before building that adapter.
