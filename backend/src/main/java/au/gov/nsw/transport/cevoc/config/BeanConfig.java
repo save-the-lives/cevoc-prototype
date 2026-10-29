@@ -49,8 +49,11 @@ public class BeanConfig {
     }
 
     @Bean
-    LookupPenaltyUseCase lookupPenaltyUseCase(PenaltyLookupPort port, SignedLinkPort signedLinks) {
-        return new LookupPenaltyService(port, signedLinks);
+    LookupPenaltyUseCase lookupPenaltyUseCase(PenaltyLookupPort port, SignedLinkPort signedLinks,
+            org.springframework.beans.factory.ObjectProvider<CertificateSourcePort> certificates,
+            @Value("${cevoc.scraper.certificates.window-margin-minutes:-1}") long windowMarginMinutes) {
+        return new LookupPenaltyService(port, signedLinks, certificates.getIfAvailable(),
+                windowMarginMinutes < 0 ? null : java.time.Duration.ofMinutes(windowMarginMinutes));
     }
 
     // The media adapter beans implement MediaStoragePort and SignedLinkPort (and for stub, CacheInvalidationPort) directly.

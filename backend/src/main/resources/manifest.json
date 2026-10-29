@@ -1,5 +1,5 @@
 {
-  "_comment": "Fictitious test notices only. No real notice numbers. Offence date comes from the request.",
+  "_comment": "Fictitious test notices only. certificates rows are fictitious; periodFrom/periodTo decide which row covers the offence. No real notice numbers. Offence date comes from the request.",
   "notices": [
     {
       "infringementNumber": "9000000001",
@@ -14,6 +14,11 @@
         "statusMessage": "Payment is due.",
         "enforcementMethod": "CAMERA"
       },
+      "certificates": [
+        {"description": "Fictitious speed camera certificate (superseded)", "type": "Camera", "periodText": "01/01/2000 - 31/12/2009", "periodFrom": "2000-01-01T00:00", "periodTo": "2009-12-31T00:00", "certifiedDate": "2000-01-01", "expiryDate": "2009-12-31"},
+        {"description": "Fictitious camera certificate (current)", "type": "Camera", "periodText": "01/01/2010 - 31/12/2099", "periodFrom": "2010-01-01T00:00", "periodTo": "2099-12-31T00:00", "certifiedDate": "2009-12-20", "expiryDate": "2099-12-31"},
+        {"description": "Fictitious calibration certificate (future)", "type": "Calibration", "periodText": "01/01/2100 - 31/12/2110", "periodFrom": "2100-01-01T00:00", "periodTo": "2110-12-31T00:00", "certifiedDate": "2099-12-20", "expiryDate": "2110-12-31"}
+      ],
       "evidence": [
         {
           "kind": "IMAGE",
@@ -96,6 +101,11 @@
         "statusMessage": "Payment is due.",
         "enforcementMethod": "CAMERA"
       },
+      "certificates": [
+        {"description": "Fictitious speed camera certificate (superseded)", "type": "Camera", "periodText": "01/01/2000 - 31/12/2009", "periodFrom": "2000-01-01T00:00", "periodTo": "2009-12-31T00:00", "certifiedDate": "2000-01-01", "expiryDate": "2009-12-31"},
+        {"description": "Fictitious camera certificate (current)", "type": "Camera", "periodText": "01/01/2010 - 31/12/2099", "periodFrom": "2010-01-01T00:00", "periodTo": "2099-12-31T00:00", "certifiedDate": "2009-12-20", "expiryDate": "2099-12-31"},
+        {"description": "Fictitious calibration certificate (future)", "type": "Calibration", "periodText": "01/01/2100 - 31/12/2110", "periodFrom": "2100-01-01T00:00", "periodTo": "2110-12-31T00:00", "certifiedDate": "2099-12-20", "expiryDate": "2110-12-31"}
+      ],
       "evidence": [
         {
           "kind": "IMAGE",

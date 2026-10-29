@@ -1,6 +1,9 @@
 package au.gov.nsw.transport.cevoc.adapter.out;
 
 import au.gov.nsw.transport.cevoc.application.port.out.PenaltyLookupPort;
+import au.gov.nsw.transport.cevoc.domain.CertificateItem;
+import au.gov.nsw.transport.cevoc.domain.CertificateMatch;
+import au.gov.nsw.transport.cevoc.domain.CertificateRef;
 import au.gov.nsw.transport.cevoc.domain.EnforcementMethod;
 import au.gov.nsw.transport.cevoc.domain.EvidenceItem;
 import au.gov.nsw.transport.cevoc.domain.NoticeDetails;
@@ -13,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,6 +76,34 @@ public class ManifestPenaltyLookupAdapter implements PenaltyLookupPort {
                     e.path("title").asText(), e.path("objectKey").asText()));
         }
         return new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, number,
-                "Prototype data only.", notice, evidence, SOURCE);
+                "Prototype data only.", notice, evidence, SOURCE)
+                .withCertificates(certificates(entry, notice.offenceDate().atTime(notice.offenceTime())), null);
+    }
+
+    /** Optional fictitious "certificates" rows; periodFrom/periodTo (ISO date-time or date) decide which row covers the offence. */
+    private static List<CertificateItem> certificates(JsonNode entry, LocalDateTime offenceAt) {
+        List<CertificateRef> rows = new ArrayList<>();
+        for (JsonNode c : entry.path("certificates")) {
+            rows.add(new CertificateRef(text(c, "description"), text(c, "type"), text(c, "periodText"),
+                    time(c, "periodFrom", false), time(c, "periodTo", true), time(c, "certifiedDate", false),
+                    time(c, "expiryDate", false), null));
+        }
+        return CertificateMatch.mark(rows, offenceAt).stream().map(CertificateItem::from).toList();
+    }
+
+    private static String text(JsonNode n, String field) {
+        return n.hasNonNull(field) ? n.get(field).asText() : null;
+    }
+
+    private static LocalDateTime time(JsonNode n, String field, boolean endOfDay) {
+        String v = text(n, field);
+        if (v == null) {
+            return null;
+        }
+        if (v.length() <= 10) {
+            LocalDate d = LocalDate.parse(v);
+            return endOfDay ? d.atTime(23, 59) : d.atStartOfDay();
+        }
+        return LocalDateTime.parse(v);
     }
 }

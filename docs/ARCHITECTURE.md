@@ -36,7 +36,7 @@ Select with `cevoc.penalty-lookup.adapter`: `manifest` (default; manifest first,
 - `evidence-api`: real image, video and certificate APIs, with caching or buffering.
 
 ## Certificate scraper (inert by default, owner approval required)
-`CertificateSourcePort` (application/port/out) returns `CertificateRef`s for a `CertificateQuery`. The only adapter, `adapter/out/scraper`, reads the enforcement-centre certificates JSF page. It is NOT wired into the lookup flow and is never a default.
+`CertificateSourcePort` (application/port/out) returns `CertificateRef`s for a `CertificateQuery`. The only adapter, `adapter/out/scraper`, reads the enforcement-centre certificates JSF page. It is wired into the lookup flow only as described under "Certificates in the lookup response", and is never a default.
 - Off unless `cevoc.scraper.certificates.enabled=true` (env `CEVOC_SCRAPER_CERTIFICATES_ENABLED`, default false). When enabled, `cevoc.scraper.certificates.approval-reference` (the owner's approval reference) is also required or startup fails.
 - Polite: identifying User-Agent (`...user-agent`), min 5 s between requests (`...min-interval-ms`, floor 2000), connect/request timeouts, one request at a time, no retries, cache of at most 10 minutes (`...cache-ttl-seconds`, default 300).
 - `CertificatePageParser` is the only class that knows the HTML and JSF ViewState handling. Tests use fictitious fixtures in `src/test/resources/scraper/certificates`, never live calls.
@@ -52,6 +52,12 @@ Select with `cevoc.penalty-lookup.adapter`: `manifest` (default; manifest first,
 - Production use still needs the owner's approval (robots.txt disallows automated access); the adapter stays off by default and keeps the approval-reference, polite rate limit and no-live-calls-in-tests safeguards. No real location codes or notice numbers belong in the repo.
 
 - robots.txt disallows automated access. Production use needs the owner's approval, and this adapter should be replaced by the real certificate API.
+
+## Certificates in the lookup response
+`LookupPenaltyService` (application layer) adds a `certificates` list to the lookup result. After the evidence lookup yields an internal camera code, it calls `CertificateSourcePort.findCertificatesCovering(query, offenceAt)` with `locationCode = cameraCode` and a window from `CertificateQuery.aroundOffence` (whole offence day, or offence time +/- `cevoc.scraper.certificates.window-margin-minutes`). The whole list is returned, in page order, with `coversOffence` true on the row(s) whose Period contains the offence date/time.
+- JSON: `certificates: [{description, type, periodText, certifiedDate, expiryDate, coversOffence}]`, dates as `yyyy-MM-dd` strings. The camera code, plate and links are never in the response (`cameraCode` stays `@JsonIgnore`). The existing certificate evidence item is unchanged.
+- Adapters that already carry certificates are left as they are: the manifest adapter maps optional `certificates` rows in `manifest.json` (fictitious; `periodFrom`/`periodTo` decide the covering row) into the same shape.
+- No camera code, or the certificate port disabled (scraper off, the default): empty list, no query. A certificate failure never fails the lookup: it degrades to an empty list with an internal `certificatesNote` (not serialised).
 
 ## Scraper adapter (prototype only, off by default)
 `adapter/out/scraper/` can read a Revenue NSW style penalty page and copy its images and videos into storage through `MediaStoragePort`, returning object keys like any other `PenaltyLookupPort`.
