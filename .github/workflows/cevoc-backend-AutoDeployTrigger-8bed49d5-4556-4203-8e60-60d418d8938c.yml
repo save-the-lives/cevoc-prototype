@@ -75,6 +75,30 @@ jobs:
 
       - name: Deploy new image
         run: |
-          az containerapp ingress update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --target-port 8080
+          # One active revision at a time, so the newest one always gets 100% traffic.
+          az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
+          az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --type external --target-port 8080 --transport auto
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --image "${{ env.IMAGE }}:${{ github.sha }}"
+            --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 0.5 --memory 1.0Gi \
+            --min-replicas 1 --max-replicas 1
+
+      - name: Show what is deployed
+        run: |
+          az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "{images:properties.template.containers[].image, target:properties.configuration.ingress.targetPort, fqdn:properties.configuration.ingress.fqdn, latest:properties.latestRevisionName}" -o json
+          az containerapp revision list --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "[].{name:name,active:properties.active,traffic:properties.trafficWeight,health:properties.healthState,state:properties.runningState,created:properties.createdTime}" -o table
+
+      - name: Check the app answers
+        run: |
+          fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "https://$fqdn/api/penalty-lookups" \
+              -H 'Content-Type: application/json' -d '{"infringementNumber":"9000000001","offenceDate":"2026-01-15"}' || true)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::App did not answer 200 within 4 minutes. See the 'Show what is deployed' step and the Container App console log."
+          exit 1
