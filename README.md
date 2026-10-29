@@ -29,3 +29,9 @@ See `docs/ARCHITECTURE.md`.
 | any other number | Friendly "live lookup is switched off until approvals are in place" message |
 | starts with X | No match |
 | X1234 | Not found |
+
+## Live lookup switches (off by default)
+
+Settable as Azure Container App environment variables, no code change: `CEVOC_EVIDENCE_SCRAPER_ENABLED`,
+`CEVOC_CERTIFICATE_SCRAPER_ENABLED` (both `false`) and `CEVOC_PENALTY_LOOKUP_ADAPTER` (`stub`). The scraper
+adapters are not built yet; see docs/ARCHITECTURE.md. Do not set them to true until approval is obtained.
