@@ -1,0 +1,42 @@
+name: App deploy to Azure (Australia East)
+# Deploys ONLY backend/ and frontend/. Never the prototype (that stays on GitHub Pages).
+# Manual trigger for now. When ready for deploy-on-merge, add:
+#   push:
+#     branches: [main]
+#     paths: ['backend/**', 'frontend/**']
+on:
+  workflow_dispatch:
+permissions:
+  id-token: write   # OIDC login to Azure, no stored passwords
+  contents: read
+concurrency:
+  group: azure-deploy
+  cancel-in-progress: false
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build image in Azure Container Registry
+        run: az acr build --registry "${{ vars.ACR_NAME }}" --image "cevoc-backend:${{ github.sha }}" backend
+      - name: Roll out to Container Apps
+        run: |
+          az containerapp update \
+            --name "${{ vars.CONTAINER_APP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.ACR_NAME }}.azurecr.io/cevoc-backend:${{ github.sha }}"
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: frontend
+          output_location: dist
