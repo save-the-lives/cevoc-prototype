@@ -1,16 +1,14 @@
 name: Trigger auto deployment for cevoc-backend
 
-# When this action will be executed
+# Builds the backend image on GitHub, pushes it to GitHub Container Registry (ghcr.io)
+# and points the Azure Container App at it. No Azure Container Registry / ACR Tasks needed.
+# One-time step: after the first run, make the package public (see docs/DEPLOY-AZURE.md).
 on:
-  # Automatically trigger it when detected changes in repo
   push:
-    branches: 
-      [ main ]
+    branches: [ main ]
     paths:
     - 'backend/**'
     - '.github/workflows/cevoc-backend-AutoDeployTrigger-8bed49d5-4556-4203-8e60-60d418d8938c.yml'
-
-  # Allow manual trigger 
   workflow_dispatch:
 
 concurrency:
@@ -18,20 +16,43 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  ACR_NAME: ${{ vars.ACR_NAME }}
   APP_NAME: cevoc-backend
   RESOURCE_GROUP: cevoc
+  IMAGE: ghcr.io/save-the-lives/cevoc-backend
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions: 
-      id-token: write #This is required for requesting the OIDC JWT Token
-      contents: read #Required when GH token is used to authenticate with private repo
+    permissions:
+      id-token: write   # Azure OIDC login
+      contents: read
+      packages: write   # push to ghcr.io
 
     steps:
-      - name: Checkout to the branch
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image (layer cache, tests skipped; tests run in App CI)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Azure Login
         uses: azure/login@v2
@@ -40,29 +61,18 @@ jobs:
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
 
-      # azure/container-apps-deploy-action cannot build from source without a registry:
-      # it always pushes the image to acrName/registryUrl. So we build in ACR (no local
-      # Docker needed) and point the app at that image. One-time setup: docs/DEPLOY-AZURE.md
-      - name: Check registry is configured
-        run: |
-          if [ -z "$ACR_NAME" ]; then
-            echo "::error::Repo variable ACR_NAME is not set. Create a Basic Azure Container Registry and set it (see docs/DEPLOY-AZURE.md)."
-            exit 1
-          fi
-
-      - name: Build image in Azure Container Registry
-        run: az acr build --registry "$ACR_NAME" --image "cevoc-backend:${{ github.sha }}" backend
-
-      - name: Let the app pull from the registry
-        run: |
-          creds=$(az acr credential show --name "$ACR_NAME" --query "[username, passwords[0].value]" -o tsv)
-          user=$(echo "$creds" | sed -n 1p); pass=$(echo "$creds" | sed -n 2p)
-          echo "::add-mask::$pass"
-          az containerapp registry set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --server "$ACR_NAME.azurecr.io" --username "$user" --password "$pass"
-
-      - name: Deploy new image
+      # Public package route: no pull credentials. If the package is still private the
+      # revision will fail to pull; make it public once (docs/DEPLOY-AZURE.md).
+      - name: Deploy new image (port 8080)
         run: |
           az containerapp ingress update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --target-port 8080
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --image "$ACR_NAME.azurecr.io/cevoc-backend:${{ github.sha }}"
+            --image "$IMAGE:${{ github.sha }}"
+
+      - name: Report revision health and URL
+        run: |
+          sleep 45
+          az containerapp revision list --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "[].{name:name,active:properties.active,health:properties.healthState,running:properties.runningState,traffic:properties.trafficWeight}" -o table
+          fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Backend URL: https://$fqdn  (test with notice 9000000001)"
