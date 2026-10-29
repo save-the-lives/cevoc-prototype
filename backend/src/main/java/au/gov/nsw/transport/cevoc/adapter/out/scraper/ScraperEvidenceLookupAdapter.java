@@ -41,13 +41,13 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     private record CacheEntry(PenaltyLookupResult result, Instant expiresAt) {}
 
     private final ScraperSettings settings;
-    private final PageFetcher fetcher;
+    private final EvidencePageFetcher fetcher;
     private final RevenueNswPageParser parser;
     private final MediaStoragePort storage;
     private final Clock clock;
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public ScraperEvidenceLookupAdapter(ScraperSettings settings, PageFetcher fetcher, RevenueNswPageParser parser,
+    public ScraperEvidenceLookupAdapter(ScraperSettings settings, EvidencePageFetcher fetcher, RevenueNswPageParser parser,
                                         MediaStoragePort storage, Clock clock) {
         this.settings = settings;
         this.fetcher = fetcher;
@@ -76,7 +76,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null) {
                 return result(Status.UNAVAILABLE, number, "The lookup source is not configured correctly.");
             }
-            PageFetcher.Response page = fetcher.get(searchUri(base, number, request));
+            EvidencePageFetcher.Response page = fetcher.get(searchUri(base, number, request));
             if (page.status() != 200) {
                 return result(Status.UNAVAILABLE, number, "The lookup source is not available right now.");
             }
@@ -116,7 +116,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 if (!"https".equalsIgnoreCase(uri.getScheme()) || !base.getHost().equalsIgnoreCase(uri.getHost())) {
                     continue; // never follow media to another host
                 }
-                PageFetcher.Response media = fetcher.get(uri);
+                EvidencePageFetcher.Response media = fetcher.get(uri);
                 String type = media.contentType() == null ? "" : media.contentType().split(";")[0].trim().toLowerCase(Locale.ROOT);
                 String prefix = ref.kind() == EvidenceItem.Kind.IMAGE ? "image/" : "video/";
                 if (media.status() != 200 || !type.startsWith(prefix) || media.body().length == 0) {

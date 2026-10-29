@@ -5,7 +5,7 @@ import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 
 /** Enforces a minimum gap between outgoing requests. Callers are serialised, so there is no parallelism. */
-public final class RateLimiter {
+public final class EvidenceRateLimiter {
 
     private final long minIntervalNanos;
     private final LongSupplier nanoClock;
@@ -13,14 +13,14 @@ public final class RateLimiter {
     private long lastNanos;
     private boolean first = true;
 
-    public RateLimiter(Duration minInterval, LongSupplier nanoClock, LongConsumer sleeperNanos) {
+    public EvidenceRateLimiter(Duration minInterval, LongSupplier nanoClock, LongConsumer sleeperNanos) {
         this.minIntervalNanos = minInterval.toNanos();
         this.nanoClock = nanoClock;
         this.sleeperNanos = sleeperNanos;
     }
 
-    public static RateLimiter system(Duration minInterval) {
-        return new RateLimiter(minInterval, System::nanoTime, nanos -> {
+    public static EvidenceRateLimiter system(Duration minInterval) {
+        return new EvidenceRateLimiter(minInterval, System::nanoTime, nanos -> {
             try {
                 Thread.sleep(nanos / 1_000_000, (int) (nanos % 1_000_000));
             } catch (InterruptedException e) {

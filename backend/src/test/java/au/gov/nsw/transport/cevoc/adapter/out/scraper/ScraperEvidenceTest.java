@@ -38,7 +38,7 @@ class ScraperEvidenceTest {
                 Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
     }
 
-    static class FakeFetcher implements PageFetcher {
+    static class FakeFetcher implements EvidencePageFetcher {
         final List<URI> requested = new ArrayList<>();
         String page;
 
@@ -122,7 +122,7 @@ class ScraperEvidenceTest {
     void rateLimiterWaitsBetweenRequests() {
         long[] now = {0};
         List<Long> sleeps = new ArrayList<>();
-        RateLimiter limiter = new RateLimiter(Duration.ofSeconds(5), () -> now[0], n -> {
+        EvidenceRateLimiter limiter = new EvidenceRateLimiter(Duration.ofSeconds(5), () -> now[0], n -> {
             sleeps.add(n);
             now[0] += n;
         });

@@ -12,15 +12,15 @@ import java.time.Duration;
  * Sequential, rate limited, time limited, size limited GET with an identifying User-Agent.
  * Never follows redirects (the caller decides), never sends cookies or credentials.
  */
-public class PoliteHttpFetcher implements PageFetcher {
+public class EvidencePoliteHttpFetcher implements EvidencePageFetcher {
 
     private final HttpClient client;
     private final String userAgent;
     private final Duration requestTimeout;
     private final long maxBytes;
-    private final RateLimiter limiter;
+    private final EvidenceRateLimiter limiter;
 
-    public PoliteHttpFetcher(HttpClient client, String userAgent, Duration requestTimeout, long maxBytes, RateLimiter limiter) {
+    public EvidencePoliteHttpFetcher(HttpClient client, String userAgent, Duration requestTimeout, long maxBytes, EvidenceRateLimiter limiter) {
         this.client = client;
         this.userAgent = userAgent;
         this.requestTimeout = requestTimeout;

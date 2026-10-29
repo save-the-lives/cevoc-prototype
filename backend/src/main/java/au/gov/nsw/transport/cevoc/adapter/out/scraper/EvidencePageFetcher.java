@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 
 /** Fetches one URL. The only seam to the network, so tests can fake it. */
-public interface PageFetcher {
+public interface EvidencePageFetcher {
 
     record Response(int status, String contentType, byte[] body) {}
 

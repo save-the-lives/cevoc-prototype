@@ -32,8 +32,8 @@ public final class ScraperEvidenceFactory {
                 .connectTimeout(s.connectTimeout())
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
-        RateLimiter limiter = RateLimiter.system(s.minInterval());
-        PageFetcher fetcher = new PoliteHttpFetcher(client, s.userAgent(), s.requestTimeout(), s.maxBytes(), limiter);
+        EvidenceRateLimiter limiter = EvidenceRateLimiter.system(s.minInterval());
+        EvidencePageFetcher fetcher = new EvidencePoliteHttpFetcher(client, s.userAgent(), s.requestTimeout(), s.maxBytes(), limiter);
         return new ScraperEvidenceLookupAdapter(s, fetcher, new RevenueNswPageParser(), media, Clock.systemUTC());
     }
 }
