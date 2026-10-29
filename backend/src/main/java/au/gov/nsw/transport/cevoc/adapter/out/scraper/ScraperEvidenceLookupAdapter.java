@@ -2,7 +2,9 @@ package au.gov.nsw.transport.cevoc.adapter.out.scraper;
 
 import au.gov.nsw.transport.cevoc.application.port.out.MediaStoragePort;
 import au.gov.nsw.transport.cevoc.application.port.out.PenaltyLookupPort;
+import au.gov.nsw.transport.cevoc.domain.EnforcementMethod;
 import au.gov.nsw.transport.cevoc.domain.EvidenceItem;
+import au.gov.nsw.transport.cevoc.domain.NoticeDetails;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupRequest;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult.Status;
@@ -17,6 +19,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,10 +48,17 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     private final RevenueNswPageParser parser;
     private final MediaStoragePort storage;
     private final Clock clock;
+    private final RegistrationProvider registrations;
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
     public ScraperEvidenceLookupAdapter(ScraperSettings settings, EvidencePageFetcher fetcher, RevenueNswPageParser parser,
                                         MediaStoragePort storage, Clock clock) {
+        this(settings, fetcher, parser, storage, clock, RegistrationProvider.none());
+    }
+
+    public ScraperEvidenceLookupAdapter(ScraperSettings settings, EvidencePageFetcher fetcher, RevenueNswPageParser parser,
+                                        MediaStoragePort storage, Clock clock, RegistrationProvider registrations) {
+        this.registrations = registrations;
         this.settings = settings;
         this.fetcher = fetcher;
         this.parser = parser;
@@ -67,7 +77,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             return result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
         }
         String key = sha(number.toUpperCase(Locale.ROOT) + "|" + request.offenceDate());
-        CacheEntry cached = cache.get(key);
+        // The plate lives in this local variable only. Results that needed it are never cached (the cache key
+        // has no plate, so a cached result could otherwise show images to someone who did not supply one).
+        String plate = normalisePlate(registrations.registrationFor(request).orElse(null));
+        boolean cacheable = plate == null;
+        CacheEntry cached = cacheable ? cache.get(key) : null;
         if (cached != null && cached.expiresAt().isAfter(clock.instant())) {
             return cached.result();
         }
@@ -84,10 +98,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             PenaltyLookupResult out = switch (parsed.outcome()) {
                 case NOT_FOUND -> result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
                 case UNRECOGNISED -> result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
-                case FOUND -> new PenaltyLookupResult(Status.FOUND, number, "Content from the penalty page.", parsed.notice(),
-                        buffer(base, key, parsed.media()), SOURCE);
+                case FOUND -> found(base, key, number, parsed, plate);
             };
-            if (out.status() == Status.FOUND || out.status() == Status.NOT_FOUND) {
+            if (cacheable && (out.status() == Status.FOUND || out.status() == Status.NOT_FOUND)) {
                 remember(key, out);
             }
             return out;
@@ -97,6 +110,46 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         } catch (IOException | RuntimeException e) {
             return result(Status.UNAVAILABLE, number, "The lookup source is not available right now.");
         }
+    }
+
+    /** Step 1 gave the notice; step 2 (only with a plate and a "View images" form) adds images and the camera code. */
+    private PenaltyLookupResult found(URI base, String key, String number, RevenueNswPageParser.Parsed parsed, String plate)
+            throws IOException, InterruptedException {
+        NoticeDetails notice = parsed.notice();
+        List<EvidenceItem> evidence = List.of();
+        String cameraCode = null;
+        RevenueNswPageParser.ImagesStep step = parsed.imagesStep();
+        if (plate != null && step != null) {
+            URI target = base.resolve(step.action());
+            if (sameHttpsHost(base, target)) {
+                Map<String, String> form = new LinkedHashMap<>(step.fixedFields());
+                form.put(step.registrationField(), plate);
+                EvidencePageFetcher.Response images = fetcher.post(target, form);
+                if (images.status() == 200) {
+                    RevenueNswPageParser.ImagesPage page = parser.parseImages(new String(images.body(), StandardCharsets.UTF_8));
+                    evidence = buffer(base, key, page.media());
+                    cameraCode = page.cameraCode();
+                }
+            }
+        }
+        if (!evidence.isEmpty()) {
+            notice = new NoticeDetails(notice.offenceDescription(), notice.offenceDate(), notice.offenceTime(), notice.location(),
+                    notice.penaltyAmount(), notice.amountOwing(), notice.noticeStatus(), notice.statusMessage(), EnforcementMethod.CAMERA);
+        }
+        return new PenaltyLookupResult(Status.FOUND, number, "Content from the penalty page.", notice, evidence, SOURCE, cameraCode);
+    }
+
+    /** Upper-cases and strips spaces and dashes; null when blank or not plausibly a plate. */
+    private static String normalisePlate(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String p = raw.replaceAll("[\\s-]", "").toUpperCase(Locale.ROOT);
+        return p.matches("[A-Z0-9]{1,8}") ? p : null;
+    }
+
+    private static boolean sameHttpsHost(URI base, URI other) {
+        return "https".equalsIgnoreCase(other.getScheme()) && other.getHost() != null && base.getHost().equalsIgnoreCase(other.getHost());
     }
 
     /** TODO (needs the real page): how the two inputs are submitted (GET query, POST form, token). Fictitious GET here. */
@@ -113,7 +166,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             n++;
             try {
                 URI uri = base.resolve(ref.src());
-                if (!"https".equalsIgnoreCase(uri.getScheme()) || !base.getHost().equalsIgnoreCase(uri.getHost())) {
+                if (!sameHttpsHost(base, uri)) {
                     continue; // never follow media to another host
                 }
                 EvidencePageFetcher.Response media = fetcher.get(uri);

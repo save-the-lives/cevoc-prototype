@@ -31,7 +31,7 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             List<EvidenceItem> linked = r.evidence().stream()
                     .map(e -> e.withUrl(signedLinks.linkFor(e.url(), LINK_VALIDITY).url()))
                     .toList();
-            return new PenaltyLookupResult(r.status(), r.infringementNumber(), r.summary(), r.notice(), linked, r.source());
+            return new PenaltyLookupResult(r.status(), r.infringementNumber(), r.summary(), r.notice(), linked, r.source(), r.cameraCode());
         } catch (RuntimeException e) {
             return new PenaltyLookupResult(PenaltyLookupResult.Status.UNAVAILABLE,
                     request.infringementNumber(), "We could not load this right now. Please try again.",

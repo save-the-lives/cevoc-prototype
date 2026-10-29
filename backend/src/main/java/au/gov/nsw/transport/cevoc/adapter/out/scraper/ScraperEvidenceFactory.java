@@ -24,8 +24,16 @@ public final class ScraperEvidenceFactory {
                 Duration.ofSeconds(env.getProperty(p + "cache-ttl-seconds", Long.class, ScraperSettings.DEFAULT_CACHE_TTL.toSeconds())),
                 env.getProperty(p + "max-bytes", Long.class, ScraperSettings.DEFAULT_MAX_BYTES));
         if (!s.usable()) {
-            return new ScraperEvidenceLookupAdapter(s, uri -> {
-                throw new IllegalStateException("scraper is off; no network access");
+            return new ScraperEvidenceLookupAdapter(s, new EvidencePageFetcher() {
+                @Override
+                public Response get(java.net.URI uri) {
+                    throw new IllegalStateException("scraper is off; no network access");
+                }
+
+                @Override
+                public Response post(java.net.URI uri, java.util.Map<String, String> form) {
+                    throw new IllegalStateException("scraper is off; no network access");
+                }
             }, new RevenueNswPageParser(), media, Clock.systemUTC());
         }
         HttpClient client = HttpClient.newBuilder()

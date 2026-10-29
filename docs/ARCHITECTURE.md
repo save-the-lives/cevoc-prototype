@@ -62,13 +62,22 @@ Safeguards:
 - Isolation: all HTML knowledge lives in `RevenueNswPageParser`; a site change should break only that class and its fixture.
 - Tests (`ScraperEvidenceTest`) use saved fictitious HTML in `backend/src/test/resources/fixtures/scraper/` and fakes. No live network, no real notice numbers or personal data.
 
-### TODO before this can work against the real site (page structure is unknown)
-1. Arjan supplies a screenshot or page source (saved, with any real notice data removed) of a results page, a not-found page, and a notice with no evidence.
-2. Confirm how the two inputs are submitted (GET, POST form, token or captcha, identity step) and update `searchUri`.
-3. Rewrite `RevenueNswPageParser` selectors and fixtures to match; confirm date, time and amount formats.
-4. Confirm how images and video are served (direct files, lazy loading, streaming). Streamed video cannot be buffered by this adapter.
-5. Check robots.txt and terms; obtain written approval; agree rate limits and a contact address with the owner.
-6. Then plan the move to the real evidence API and delete this adapter.
+### Two-step page flow (building only; still off)
+The parser now follows the real myPenalty flow, taken from the owner's screenshots (no live request has been made):
+1. Result page (`RevenueNswPageParser.parse`): Date of offence, Offence Time, Offence Description, Demerit Points, Penalty Amount, Location (street and suburb only, not a code), Amount owing, and a paid/payable notice. These are read by their visible labels. The page also has the Images section, which needs the vehicle registration plus "View images"; the parser only finds that form (`ImagesStep`).
+2. Images page (`parseImages`, only when a registration is supplied): image items (refs like `700-1-...`), "Download Images", and "Camera Certification / View certification details". Each image's banner is selectable text, read by `CameraBannerParser` (Camera Code, Direction, Operator, Location, Incident Number, Lane, Offence, Speed Limit, Time since red, Yellow light duration, Date, Time). Every field is optional; the red-light fields are absent for speed cameras. The camera code is the key output.
+
+The camera code is carried on `PenaltyLookupResult.cameraCode` (`@JsonIgnore`), so it is internal: not in the API response and no frontend change. It is the future input to the certificate lookup, replacing the guessed location code.
+
+The vehicle registration comes only from a `RegistrationProvider` (none is wired, so step 2 is skipped today). It is held in a local variable for that one request, sent in the POST body, and never stored, logged, cached or put in fixtures. A result that used a plate is never cached, and storage keys do not derive from it.
+
+### TODO before this can work against the real site
+The label-based step 1 reading is expected to be close, but the form action and field names, the image item markup and the exact banner layout are guesses (fixtures are fictitious).
+1. Confirm how the notice inputs are submitted (GET, POST form, token or captcha, identity step) and update `searchUri`.
+2. Check the parser selectors and fixtures against a saved real page (personal data removed); confirm date, time and amount formats.
+3. Confirm how images are served (direct files, lazy loading). Streamed video cannot be buffered by this adapter.
+4. Check robots.txt and terms; obtain written approval; agree rate limits and a contact address with the owner.
+5. Then plan the move to the real evidence API and delete this adapter.
 
 ## Real page flow as reported by the owner (design notes only, 2026-10-30)
 These notes record what the owner saw on the real pages so a future adapter or the real API can be modelled correctly. They contain no real values. Nothing here enables or builds any live access.
