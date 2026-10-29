@@ -8,13 +8,23 @@ const notice = (over) => ({
 
 const IMG = (n, title) => ({ kind: 'IMAGE', title, url: `/samples/image-${n}.jpg`, previewUrl: `/samples/image-${n}-preview.jpg` });
 const CERT = { kind: 'CERTIFICATE', title: 'Sample camera certificate', url: '/samples/cert-1.pdf' };
+const CERTS = [
+  { description: 'Sample speed camera - annual accuracy check', type: 'Annual certificate', periodText: '1 Jan 2025 to 31 Dec 2025',
+    certifiedDate: '2024-12-20', expiryDate: '2025-12-31', coversOffence: false },
+  { description: 'Sample speed camera - annual accuracy check', type: 'Annual certificate', periodText: '1 Jan 2026 to 31 Dec 2026',
+    certifiedDate: '2025-12-18', expiryDate: '2026-12-31', coversOffence: true },
+  { description: 'Sample speed camera - repair and recheck', type: 'Interim certificate', periodText: '1 Apr 2026 to 30 Jun 2026',
+    certifiedDate: '2026-03-30', expiryDate: '2026-06-30', coversOffence: false },
+  { description: 'Sample speed camera - earlier unit', type: 'Annual certificate', periodText: '1 Jan 2024 to 31 Dec 2024',
+    certifiedDate: '2023-12-15', expiryDate: '2024-12-31', coversOffence: false },
+];
 const VIDEO = {
   kind: 'VIDEO', title: 'Sample video (adaptive)', url: '/samples/hls/master.m3u8',
   posterUrl: '/samples/video-1-poster.jpg', downloadUrl: '/samples/video-1.mp4',
 };
 
 export const SCENARIOS = [
-  { number: '9000000001', label: 'Speed camera (images, video, certificate)' },
+  { number: '9000000001', label: 'Speed camera (images, video, certificate list)' },
   { number: '9000000002', label: 'Officer-issued caution (no evidence)' },
   { number: '9000000003', label: 'Ticketless camera (image, certificate)' },
   { number: '9000000009', label: 'Camera with a broken video' },
@@ -40,7 +50,7 @@ export async function mockLookup({ infringementNumber, offenceDate }) {
         { kind: 'VIDEO', title: 'Sample video (missing file)', url: '/samples/hls/missing.m3u8', posterUrl: '/samples/video-1-poster.jpg' },
         { ...VIDEO, title: 'Sample video (still works)' }, CERT] };
     default:
-      return { ...base, notice: notice({ offenceDate }), evidence: [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2'), VIDEO,
+      return { ...base, notice: notice({ offenceDate }), certificates: CERTS, evidence: [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2'), VIDEO,
         { kind: 'VIDEO', title: 'Sample video (plain MP4)', url: '/samples/video-1.mp4', posterUrl: '/samples/video-1-poster.jpg' }, CERT] };
   }
 }

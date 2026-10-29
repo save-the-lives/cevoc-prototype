@@ -28,6 +28,8 @@ See `docs/ARCHITECTURE.md`.
 
 ## Test notice numbers (fictitious, any past offence date)
 
+Frontend: when the lookup response has a non-empty `certificates` array (`description`, `type`, `periodText`, `certifiedDate`, `expiryDate`, `coversOffence`), the result page shows a "Camera certificates" list. Covering rows are badged "Valid on the offence date", others "Not in force on the offence date". Without it, the older certificate display is used. In `?mock=1` dev mode, 9000000001 returns four fictitious rows, one covering.
+
 | Number | Shows |
 |---|---|
 | 9000000001 | Speed camera: images, video, certificate |
