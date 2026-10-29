@@ -39,7 +39,7 @@ public record CertificateScraperProperties(
         }
     }
 
-    /** Builds the query window for an offence using the configured margin (null = whole offence day). */
+    /** {@code locationCode} is the camera code printed in the evidence image banner, used as is. Builds the query window for an offence using the configured margin (null = whole offence day). */
     public CertificateQuery queryFor(String locationCode, LocalDate offenceDate, LocalTime offenceTime) {
         return CertificateQuery.aroundOffence(locationCode, offenceDate, offenceTime, windowMargin);
     }

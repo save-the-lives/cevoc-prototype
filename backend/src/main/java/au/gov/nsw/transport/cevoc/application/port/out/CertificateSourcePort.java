@@ -1,7 +1,9 @@
 package au.gov.nsw.transport.cevoc.application.port.out;
 
+import au.gov.nsw.transport.cevoc.domain.CertificateMatch;
 import au.gov.nsw.transport.cevoc.domain.CertificateQuery;
 import au.gov.nsw.transport.cevoc.domain.CertificateRef;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -11,4 +13,9 @@ import java.util.List;
  */
 public interface CertificateSourcePort {
     List<CertificateRef> findCertificates(CertificateQuery query);
+
+    /** The full list from {@link #findCertificates}, with the row(s) whose Period covers the offence marked. */
+    default List<CertificateMatch> findCertificatesCovering(CertificateQuery query, LocalDateTime offenceAt) {
+        return CertificateMatch.mark(findCertificates(query), offenceAt);
+    }
 }

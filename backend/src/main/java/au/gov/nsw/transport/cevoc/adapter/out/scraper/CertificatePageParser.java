@@ -1,17 +1,23 @@
 package au.gov.nsw.transport.cevoc.adapter.out.scraper;
 
 import au.gov.nsw.transport.cevoc.domain.CertificateRef;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 /**
  * The ONLY class that knows the JSF page's HTML. Everything else works with the small records below.
@@ -20,13 +26,15 @@ import org.jsoup.nodes.Element;
  * mandatory fields "Location code" (short text), "Date/Time from" and "Date/Time to" (both dd/MM/yyyy HH:mm
  * with a calendar picker; "to" is pre-filled with the current date/time); buttons SEARCH, CLEAR, CLOSE.
  *
+ * <p>Results table (known): columns Certificate Description, Certificate type, Period, Certified date, Expiry date,
+ * matched by header text. There is no visible download link; the deep link certificateDetails.jsf carries a signed
+ * "m" parameter, so links are never constructed, only hrefs present in the row are copied.
+ *
  * <p>TODO (owner to supply the saved page source or the results screenshot; a person saves it, with approval):
  * <ol>
  *   <li>The REAL JSF ids/names: form id, location code input, date from, date to, SEARCH button. The constants below
  *       are GUESSES that only match the fictitious fixtures. Real ids come from the page source.</li>
- *   <li>The results layout (table / data list / PrimeFaces datatable) and column order.</li>
- *   <li>How a certificate document is exposed (link href, command link with ViewState, or a download).</li>
- *   <li>The date format in results and the exact "no results" message.</li>
+ *   <li>The exact "no results" message and the exact Period text format (tolerantly parsed meanwhile).</li>
  *   <li>Whether a captcha or login step exists (if so, stop: do not automate).</li>
  * </ol>
  */
@@ -41,13 +49,14 @@ public class CertificatePageParser {
     static final String SEARCH_BUTTON = "searchForm:searchButton";         // button "SEARCH"
     /** Legacy BY_PENALTY only: the real page has no penalty number field. */
     static final String PENALTY_INPUT = "searchForm:penaltyNumber";
-    static final String RESULT_ROW_SELECTOR = "table#results tbody tr.certificate-row";
-    static final String NO_RESULTS_SELECTOR = ".no-results";
+    /** "No results" marker: a guess (plus the PrimeFaces empty-message class). Absence of both a table and this throws. */
+    static final String NO_RESULTS_SELECTOR = ".no-results, .ui-datatable-empty-message";
     // ----------------------------------------------------------------------------
     /** Format shown on the real page's date/time fields (known). */
     static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    /** Result date format: unknown, guess. */
-    static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    /** Result dates: dd/MM/yyyy with an optional HH:mm[:ss]. Tolerant because the exact result format is not confirmed. */
+    private static final Pattern DATE_TIME =
+            Pattern.compile("(\\d{1,2})/(\\d{1,2})/(\\d{4})(?:\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?");
 
     /** What a POST needs: where to submit and the hidden fields (including javax.faces.ViewState). */
     public record FormState(String actionUrl, String viewState, Map<String, String> hiddenFields) {}
@@ -94,27 +103,92 @@ public class CertificatePageParser {
         return Jsoup.parse(html).selectFirst(NO_RESULTS_SELECTOR) != null;
     }
 
+    /**
+     * Parses the results table. Columns are found by header text (Certificate Description, Certificate type,
+     * Period, Certified date, Expiry date), not position. Returns an empty list for a "no results" page and throws
+     * ScrapeException when neither a results table nor a no-results marker is present (layout changed).
+     */
     public List<CertificateRef> parseCertificates(String html) {
-        List<CertificateRef> out = new ArrayList<>();
-        for (Element row : Jsoup.parse(html).select(RESULT_ROW_SELECTOR)) {
-            String number = text(row, ".cert-number");
-            if (number.isEmpty()) continue;
-            out.add(new CertificateRef(number, text(row, ".cert-title"), date(text(row, ".cert-date")),
-                    row.select("a.cert-link").attr("href")));
+        Document doc = Jsoup.parse(html);
+        if (doc.selectFirst(NO_RESULTS_SELECTOR) != null) return List.of();
+        for (Element table : doc.select("table")) {
+            Element headerRow = table.select("tr").stream().filter(r -> !r.select("th").isEmpty()).findFirst().orElse(null);
+            if (headerRow == null) continue;
+            Map<String, Integer> cols = columns(headerRow.select("th"));
+            if (!cols.containsKey("description") || !cols.containsKey("period")) continue;
+            List<CertificateRef> out = new ArrayList<>();
+            for (Element row : table.select("tr")) {
+                Elements cells = new Elements(row.children().stream().filter(c -> c.normalName().equals("td")).toList());
+                if (cells.isEmpty() || cells.stream().anyMatch(c -> c.hasAttr("colspan"))) continue; // header/empty-message rows
+                String period = cell(cells, cols.get("period"));
+                LocalDateTime[] window = period(period);
+                out.add(new CertificateRef(
+                        nullIfEmpty(cell(cells, cols.get("description"))),
+                        nullIfEmpty(cell(cells, cols.get("type"))),
+                        nullIfEmpty(period),
+                        window[0], window[1],
+                        dateTime(cell(cells, cols.get("certified")), false),
+                        dateTime(cell(cells, cols.get("expiry")), false),
+                        href(row)));
+            }
+            return out;
         }
-        return out;
+        throw new ScrapeException("Results table not found: page structure changed");
     }
 
-    private static String text(Element row, String css) {
-        Element e = row.selectFirst(css);
-        return e == null ? "" : e.text().trim();
+    private static Map<String, Integer> columns(Elements headers) {
+        Map<String, Integer> cols = new HashMap<>();
+        for (int i = 0; i < headers.size(); i++) {
+            String h = headers.get(i).text().trim().toLowerCase(Locale.ROOT);
+            if (h.contains("description")) cols.putIfAbsent("description", i);
+            else if (h.contains("type")) cols.putIfAbsent("type", i);
+            else if (h.contains("period")) cols.putIfAbsent("period", i);
+            else if (h.contains("certified")) cols.putIfAbsent("certified", i);
+            else if (h.contains("expiry")) cols.putIfAbsent("expiry", i);
+        }
+        return cols;
     }
 
-    private static LocalDate date(String s) {
-        if (s.isEmpty()) return null;
+    private static String cell(Elements cells, Integer idx) {
+        return idx == null || idx >= cells.size() ? "" : cells.get(idx).text().trim();
+    }
+
+    private static String nullIfEmpty(String s) {
+        return s.isEmpty() ? null : s;
+    }
+
+    /** First usable href in the row (never constructed). "#" and javascript: links are not usable. */
+    private static String href(Element row) {
+        for (Element a : row.select("a[href]")) {
+            String h = a.attr("href").trim();
+            if (!h.isEmpty() && !h.startsWith("#") && !h.toLowerCase(Locale.ROOT).startsWith("javascript:")) return h;
+        }
+        return null;
+    }
+
+    /** The first two dd/MM/yyyy[ HH:mm[:ss]] values in the Period text, whatever separates them. Else both null. */
+    static LocalDateTime[] period(String text) {
+        Matcher m = DATE_TIME.matcher(text);
+        if (!m.find()) return new LocalDateTime[] {null, null};
+        LocalDateTime from = toDateTime(m, false);
+        if (!m.find()) return new LocalDateTime[] {null, null};
+        LocalDateTime to = toDateTime(m, true);
+        return from == null || to == null ? new LocalDateTime[] {null, null} : new LocalDateTime[] {from, to};
+    }
+
+    /** dd/MM/yyyy with optional time. Date-only gives 00:00, or end of day when endOfDay is true. Unparseable gives null. */
+    static LocalDateTime dateTime(String text, boolean endOfDay) {
+        Matcher m = DATE_TIME.matcher(text);
+        return m.find() ? toDateTime(m, endOfDay) : null;
+    }
+
+    private static LocalDateTime toDateTime(Matcher m, boolean endOfDay) {
         try {
-            return LocalDate.parse(s, DATE_FORMAT);
-        } catch (DateTimeParseException e) {
+            LocalDate d = LocalDate.of(Integer.parseInt(m.group(3)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(1)));
+            if (m.group(4) == null) return endOfDay ? d.atTime(LocalTime.MAX) : d.atStartOfDay();
+            int sec = m.group(6) == null ? 0 : Integer.parseInt(m.group(6));
+            return d.atTime(Integer.parseInt(m.group(4)), Integer.parseInt(m.group(5)), sec);
+        } catch (DateTimeException e) {
             return null;
         }
     }
