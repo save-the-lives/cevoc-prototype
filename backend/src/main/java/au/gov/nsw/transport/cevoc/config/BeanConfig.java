@@ -90,14 +90,16 @@ public class BeanConfig {
             @Value("${cevoc.scraper.certificates.connect-timeout-ms:5000}") long connectTimeoutMs,
             @Value("${cevoc.scraper.certificates.request-timeout-ms:10000}") long requestTimeoutMs,
             @Value("${cevoc.scraper.certificates.cache-ttl-seconds:300}") long cacheTtlSeconds,
-            @Value("${cevoc.scraper.certificates.key-strategy:BY_PENALTY}") CertificateKeyStrategy keyStrategy) {
+            @Value("${cevoc.scraper.certificates.key-strategy:VIA_ENFORCEMENT_SITE}") CertificateKeyStrategy keyStrategy,
+            @Value("${cevoc.scraper.certificates.window-margin-minutes:-1}") long windowMarginMinutes) {
         if (approvalReference.isBlank()) {
             throw new IllegalStateException("cevoc.scraper.certificates.approval-reference is required: "
                     + "the source's robots.txt disallows automated access, so record the owner's approval reference first");
         }
         CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, userAgent,
                 java.time.Duration.ofMillis(minIntervalMs), java.time.Duration.ofMillis(connectTimeoutMs),
-                java.time.Duration.ofMillis(requestTimeoutMs), java.time.Duration.ofSeconds(cacheTtlSeconds), keyStrategy);
+                java.time.Duration.ofMillis(requestTimeoutMs), java.time.Duration.ofSeconds(cacheTtlSeconds), keyStrategy,
+                windowMarginMinutes < 0 ? null : java.time.Duration.ofMinutes(windowMarginMinutes));
         return new CertificateScraperAdapter(new PoliteHttpFetcher(props), new CertificatePageParser(), props,
                 java.time.Clock.systemUTC());
     }

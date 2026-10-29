@@ -1,8 +1,17 @@
-<!-- FICTITIOUS fixture. Invented structure, not the real page. -->
+<!-- FICTITIOUS fixture. Labels and date format follow the real page; ids and markup are invented. -->
 <html><body>
+<h1>Customer Enquiry and Verification of Certificate</h1>
 <form id="searchForm" name="searchForm" method="post" action="/cevoc/pages/sdro/searchCertificates.jsf">
   <input type="hidden" name="searchForm" value="searchForm"/>
-  <input type="text" name="searchForm:penaltyNumber"/>
+  <label for="searchForm:locationCode">Location code *</label>
+  <input type="text" id="searchForm:locationCode" name="searchForm:locationCode"/>
+  <label for="searchForm:dateTimeFrom">Date/Time from *</label>
+  <input type="text" id="searchForm:dateTimeFrom" name="searchForm:dateTimeFrom" placeholder="dd/MM/yyyy HH:mm"/>
+  <label for="searchForm:dateTimeTo">Date/Time to *</label>
+  <input type="text" id="searchForm:dateTimeTo" name="searchForm:dateTimeTo" value="30/10/2026 06:25"/>
+  <button type="submit" name="searchForm:searchButton">SEARCH</button>
+  <button type="reset" name="searchForm:clearButton">CLEAR</button>
+  <button type="button" name="searchForm:closeButton">CLOSE</button>
   <input type="hidden" name="javax.faces.ViewState" value="FICTITIOUS-VIEWSTATE-1"/>
 </form>
 </body></html>

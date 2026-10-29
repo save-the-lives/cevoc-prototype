@@ -8,6 +8,9 @@ import au.gov.nsw.transport.cevoc.domain.CertificateQuery;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,22 +20,20 @@ import org.junit.jupiter.api.Test;
 /** Uses a fake fetcher serving fictitious fixtures: no network. */
 class CertificateScraperAdapterTest {
 
-    /** Serves the form on GET; on POST serves canned HTML chosen by whether a site number was posted. */
+    /** Serves the form on GET; on POST records the body and serves canned HTML. */
     static class FakeFetcher implements PageFetcher {
         final List<String> calls = new ArrayList<>();
-        final String penaltyOnlyResponse;
-        final String withSiteResponse;
+        final List<Map<String, String>> posts = new ArrayList<>();
+        final String response;
 
-        FakeFetcher(String penaltyOnlyResponse, String withSiteResponse) {
-            this.penaltyOnlyResponse = penaltyOnlyResponse;
-            this.withSiteResponse = withSiteResponse;
-        }
+        FakeFetcher(String response) { this.response = response; }
 
         @Override public String get(String url) { calls.add("GET"); return CertificatePageParserTest.fixture("search-form.html"); }
 
         @Override public String postForm(String url, Map<String, String> f) {
             calls.add("POST");
-            return f.containsKey(CertificatePageParser.SITE_INPUT) ? withSiteResponse : penaltyOnlyResponse;
+            posts.add(f);
+            return response;
         }
     }
 
@@ -48,33 +49,73 @@ class CertificateScraperAdapterTest {
                 Duration.ofSeconds(5), Duration.ofSeconds(5), Duration.ofSeconds(10), Duration.ofMinutes(5), s);
     }
 
+    private static final LocalDate DAY = LocalDate.of(2026, 10, 30);
+
     @Test
-    void directByPenaltyAndCachesResult() {
-        var f = new FakeFetcher(CertificatePageParserTest.fixture("results-certificates.html"), "");
+    void defaultStrategyIsLocationAndWholeDayWindowAndCaches() {
+        var f = new FakeFetcher(CertificatePageParserTest.fixture("results-certificates.html"));
         var clock = new MutableClock();
-        var a = new CertificateScraperAdapter(f, new CertificatePageParser(), props(CertificateKeyStrategy.BY_PENALTY), clock);
-        assertEquals(2, a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-1")).size());
-        a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-1"));
+        var p = props(CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
+        var a = new CertificateScraperAdapter(f, new CertificatePageParser(), p, clock);
+        var q = p.queryFor("TEST-LOC-01", DAY, LocalTime.of(11, 12));
+        assertEquals(2, a.findCertificates(q).size());
+        a.findCertificates(q);
         assertEquals(List.of("GET", "POST"), f.calls, "second call served from cache");
+        Map<String, String> post = f.posts.get(0);
+        assertEquals("TEST-LOC-01", post.get(CertificatePageParser.LOCATION_CODE_INPUT));
+        assertEquals("30/10/2026 00:00", post.get(CertificatePageParser.DATE_FROM_INPUT));
+        assertEquals("30/10/2026 23:59", post.get(CertificatePageParser.DATE_TO_INPUT));
         clock.now = clock.now.plus(Duration.ofMinutes(6));
-        a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-1"));
+        a.findCertificates(q);
         assertEquals(4, f.calls.size(), "cache expired");
     }
 
     @Test
-    void penaltyThenSiteThenCertificates() {
-        var f = new FakeFetcher(CertificatePageParserTest.fixture("results-sites.html"),
-                CertificatePageParserTest.fixture("results-certificates.html"));
+    void configuredMarginNarrowsWindow() {
+        var p = new CertificateScraperProperties("https://example.invalid/page.jsf", "test-agent",
+                Duration.ofSeconds(5), Duration.ofSeconds(5), Duration.ofSeconds(10), Duration.ofMinutes(5),
+                CertificateKeyStrategy.VIA_ENFORCEMENT_SITE, Duration.ofMinutes(30));
+        var q = p.queryFor("TEST-LOC-01", DAY, LocalTime.of(11, 12));
+        assertEquals(LocalDateTime.of(2026, 10, 30, 10, 42), q.from());
+        assertEquals(LocalDateTime.of(2026, 10, 30, 11, 42), q.to());
+    }
+
+    @Test
+    void differentWindowIsNotServedFromCache() {
+        var f = new FakeFetcher(CertificatePageParserTest.fixture("results-certificates.html"));
         var a = new CertificateScraperAdapter(f, new CertificatePageParser(), props(CertificateKeyStrategy.VIA_ENFORCEMENT_SITE), new MutableClock());
-        assertEquals(2, a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-2")).size());
-        assertEquals(List.of("GET", "POST", "GET", "POST"), f.calls);
+        a.findCertificates(CertificateQuery.aroundOffence("TEST-LOC-01", DAY, LocalTime.NOON, null));
+        a.findCertificates(CertificateQuery.aroundOffence("TEST-LOC-01", DAY.plusDays(1), LocalTime.NOON, null));
+        assertEquals(4, f.calls.size());
+    }
+
+    @Test
+    void locationStrategyRequiresLocationAndWindow() {
+        var f = new FakeFetcher("");
+        var a = new CertificateScraperAdapter(f, new CertificatePageParser(), props(CertificateKeyStrategy.VIA_ENFORCEMENT_SITE), new MutableClock());
+        assertThrows(IllegalArgumentException.class, () -> a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-1")));
+        assertTrue(f.calls.isEmpty(), "no network call for an invalid query");
+    }
+
+    @Test
+    void legacyByPenaltyStillWorksAgainstFixtures() {
+        var f = new FakeFetcher(CertificatePageParserTest.fixture("results-certificates.html"));
+        var a = new CertificateScraperAdapter(f, new CertificatePageParser(), props(CertificateKeyStrategy.BY_PENALTY), new MutableClock());
+        assertEquals(2, a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-1")).size());
+        assertEquals("TEST-PEN-1", f.posts.get(0).get(CertificatePageParser.PENALTY_INPUT));
     }
 
     @Test
     void noResultsGivesEmptyList() {
-        var f = new FakeFetcher(CertificatePageParserTest.fixture("no-results.html"), "");
-        var a = new CertificateScraperAdapter(f, new CertificatePageParser(), props(CertificateKeyStrategy.BY_PENALTY), new MutableClock());
-        assertTrue(a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-3")).isEmpty());
+        var f = new FakeFetcher(CertificatePageParserTest.fixture("no-results.html"));
+        var a = new CertificateScraperAdapter(f, new CertificatePageParser(), props(CertificateKeyStrategy.VIA_ENFORCEMENT_SITE), new MutableClock());
+        assertTrue(a.findCertificates(CertificateQuery.aroundOffence("TEST-LOC-01", DAY, LocalTime.NOON, null)).isEmpty());
+    }
+
+    @Test
+    void queryRejectsReversedWindow() {
+        assertThrows(IllegalArgumentException.class, () -> CertificateQuery.ofLocation("TEST-LOC-01",
+                LocalDateTime.of(2026, 10, 30, 12, 0), LocalDateTime.of(2026, 10, 30, 11, 0)));
     }
 
     @Test

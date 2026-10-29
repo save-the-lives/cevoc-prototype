@@ -37,47 +37,40 @@ public class CertificateScraperAdapter implements CertificateSourcePort {
 
     @Override
     public synchronized List<CertificateRef> findCertificates(CertificateQuery query) {
-        String key = query.penaltyNumber() + "|" + query.enforcementSiteNumber();
+        String key = query.penaltyNumber() + "|" + query.locationCode() + "|" + query.from() + "|" + query.to();
         Cached hit = cache.get(key);
         Instant now = clock.instant();
         if (hit != null && hit.at().plus(props.cacheTtl()).isAfter(now)) return hit.value();
         cache.values().removeIf(c -> !c.at().plus(props.cacheTtl()).isAfter(now));
 
         List<CertificateRef> result = switch (props.keyStrategy()) {
+            case VIA_ENFORCEMENT_SITE -> byLocationAndWindow(query);
             case BY_PENALTY -> byPenalty(query);
-            case VIA_ENFORCEMENT_SITE -> viaSite(query);
         };
         cache.put(key, new Cached(now, result));
         return result;
     }
 
-    private List<CertificateRef> byPenalty(CertificateQuery q) {
-        String html = search(q.penaltyNumber(), q.enforcementSiteNumber());
+    /** Real page: location code + date/time range, one search. The caller resolves penalty -> location code. */
+    private List<CertificateRef> byLocationAndWindow(CertificateQuery q) {
+        if (q.locationCode() == null || q.from() == null || q.to() == null) {
+            throw new IllegalArgumentException("VIA_ENFORCEMENT_SITE needs locationCode, from and to");
+        }
+        String html = search(state -> parser.buildSearchPost(state, q.locationCode(), q.from(), q.to()));
         return parser.hasNoResults(html) ? List.of() : parser.parseCertificates(html);
     }
 
-    /** penalty -> enforcement site number(s) -> certificates. A site number in the query skips the first step. */
-    private List<CertificateRef> viaSite(CertificateQuery q) {
-        List<String> sites;
-        if (q.enforcementSiteNumber() != null) {
-            sites = List.of(q.enforcementSiteNumber());
-        } else {
-            String html = search(q.penaltyNumber(), null);
-            if (parser.hasNoResults(html)) return List.of();
-            sites = parser.parseSites(html).stream().map(CertificatePageParser.SiteRef::siteNumber).toList();
-        }
-        List<CertificateRef> all = new java.util.ArrayList<>();
-        for (String site : sites) {
-            String html = search(q.penaltyNumber(), site);
-            if (!parser.hasNoResults(html)) all.addAll(parser.parseCertificates(html));
-        }
-        return List.copyOf(all);
+    /** Unsupported by the real page; kept for fictitious fixtures only. */
+    private List<CertificateRef> byPenalty(CertificateQuery q) {
+        if (q.penaltyNumber() == null) throw new IllegalArgumentException("BY_PENALTY needs penaltyNumber");
+        String html = search(state -> parser.buildPenaltySearchPost(state, q.penaltyNumber()));
+        return parser.hasNoResults(html) ? List.of() : parser.parseCertificates(html);
     }
 
     /** Fresh GET each time so the ViewState is current, then one POST. */
-    private String search(String penaltyNumber, String siteNumber) {
+    private String search(java.util.function.Function<CertificatePageParser.FormState, Map<String, String>> body) {
         String page = fetcher.get(props.pageUrl());
         CertificatePageParser.FormState state = parser.parseForm(page, props.pageUrl());
-        return fetcher.postForm(state.actionUrl(), parser.buildSearchPost(state, penaltyNumber, siteNumber));
+        return fetcher.postForm(state.actionUrl(), body.apply(state));
     }
 }

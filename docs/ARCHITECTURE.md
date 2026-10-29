@@ -40,11 +40,16 @@ Select with `cevoc.penalty-lookup.adapter`: `manifest` (default; manifest first,
 - Off unless `cevoc.scraper.certificates.enabled=true` (env `CEVOC_SCRAPER_CERTIFICATES_ENABLED`, default false). When enabled, `cevoc.scraper.certificates.approval-reference` (the owner's approval reference) is also required or startup fails.
 - Polite: identifying User-Agent (`...user-agent`), min 5 s between requests (`...min-interval-ms`, floor 2000), connect/request timeouts, one request at a time, no retries, cache of at most 10 minutes (`...cache-ttl-seconds`, default 300).
 - `CertificatePageParser` is the only class that knows the HTML and JSF ViewState handling. Tests use fictitious fixtures in `src/test/resources/scraper/certificates`, never live calls.
-- Key strategy `cevoc.scraper.certificates.key-strategy`: `BY_PENALTY` (penalty number gives certificates directly, default) or `VIA_ENFORCEMENT_SITE` (penalty -> enforcement site number -> certificate). OPEN QUESTION: Arjan to confirm which applies.
-- robots.txt disallows automated access. Production use needs the owner's approval, and this adapter should be replaced by the real certificate API.
+- Key strategy `cevoc.scraper.certificates.key-strategy`: `VIA_ENFORCEMENT_SITE` (default; RESOLVED, matches the real page) or `BY_PENALTY` (NOT supported by the real page; fictitious fixtures only). The real page "Customer Enquiry and Verification of Certificate" (`searchCertificates.jsf`) is keyed by mandatory `Location code`, `Date/Time from` and `Date/Time to` (dd/MM/yyyy HH:mm; "to" is pre-filled with now), with buttons SEARCH, CLEAR, CLOSE. It has no penalty number field, so the flow is penalty lookup -> `NoticeDetails.location` + offence date/time -> `EnforcementSiteResolver` -> location code -> certificates valid in the window.
+- `CertificateQuery` carries `locationCode` + `from`/`to` (minute precision). The window is the whole offence day (00:00 to 23:59) by default; `cevoc.scraper.certificates.window-margin-minutes` (unset by default) narrows it to offence time +/- N minutes (0 to 1440). `CertificateScraperProperties.queryFor(...)` builds it.
+- `EnforcementSiteResolver` (application/port/out) takes the lookup result's `NoticeDetails` and returns an optional location code. Only stub implementation: `ManifestEnforcementSiteResolver`, which maps the notice `location` text (case and spacing ignored) to the optional `locationCode` in `manifest.json` (fictitious codes such as `TEST-LOC-01`). It is not wired into the lookup flow. UNCONFIRMED: whether the penalty page exposes a real location code or only a descriptive place name. If only a name, the owner must supply a maintained name-to-code table.
 
-### TODO for Arjan (page structure is unknown; selectors in `CertificatePageParser` are guesses)
-Supply a screenshot or the page source (saved by a person, with approval) showing: form id; penalty number and enforcement site number input names; search button name; results layout (table/datalist/PrimeFaces) and column order; how a site is selected; how a certificate document is referenced (link, command link, download); date format and the "no results" message; whether any captcha or login exists (if so, do not automate). Then update the constants and fixtures.
+### What is resolved and what is still unknown
+- Resolved: the certificates page is keyed by location code plus date range, not penalty number.
+- Unknown (owner to supply the saved page source or the results screenshot): the result table layout and column order; how the certificate PDF or link is exposed; the real JSF field ids (form, location code, date from, date to, SEARCH button). The ids in `CertificatePageParser` are guesses with a TODO, isolated as constants. Also unknown: results date format, "no results" message, any captcha or login.
+- Production use still needs the owner's approval (robots.txt disallows automated access); the adapter stays off by default and keeps the approval-reference, polite rate limit and no-live-calls-in-tests safeguards. No real location codes or notice numbers belong in the repo.
+
+- robots.txt disallows automated access. Production use needs the owner's approval, and this adapter should be replaced by the real certificate API.
 
 ## Scraper adapter (prototype only, off by default)
 `adapter/out/scraper/` can read a Revenue NSW style penalty page and copy its images and videos into storage through `MediaStoragePort`, returning object keys like any other `PenaltyLookupPort`.
@@ -68,4 +73,4 @@ Safeguards:
 ## Open questions
 - How the Revenue NSW / Service NSW page accepts the two inputs, and whether it needs an identity step. Automated pass-through must be confirmed as permitted before building that adapter.
 - The public certificates page (`/cevoc/pages/sdro/searchCertificates.jsf`) blocks automated fetching via robots.txt. Its form structure needs to be captured by a person.
-- Certificates key: by penalty number alone, or penalty -> enforcement site number -> certificate (see the scraper section).
+- Certificates key: RESOLVED, location code plus date range (see the scraper section). Still open: result layout, certificate link exposure, real JSF ids, and whether the penalty page gives a real location code or only a place name.

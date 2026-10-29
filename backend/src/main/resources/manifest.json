@@ -3,6 +3,7 @@
   "notices": [
     {
       "infringementNumber": "9000000001",
+      "locationCode": "TEST-LOC-01",
       "notice": {
         "offenceDescription": "Exceed speed limit by 10km/h or less",
         "offenceTime": "11:12:00",
@@ -39,6 +40,7 @@
     },
     {
       "infringementNumber": "9000000002",
+      "locationCode": "TEST-LOC-02",
       "notice": {
         "offenceDescription": "Park continuously for longer than indicated",
         "offenceTime": "14:47:00",
@@ -53,6 +55,7 @@
     },
     {
       "infringementNumber": "9000000003",
+      "locationCode": "TEST-LOC-03",
       "notice": {
         "offenceDescription": "Travel or attempt travel without valid ticket - adult",
         "offenceTime": "08:05:00",
@@ -82,6 +85,7 @@
     },
     {
       "infringementNumber": "9000000004",
+      "locationCode": "TEST-LOC-04",
       "notice": {
         "offenceDescription": "Fail to stop at red traffic light",
         "offenceTime": "17:31:00",
