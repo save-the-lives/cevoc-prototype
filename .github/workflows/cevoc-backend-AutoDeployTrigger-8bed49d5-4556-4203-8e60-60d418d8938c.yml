@@ -93,12 +93,12 @@ jobs:
       - name: Check the app answers
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          for i in $(seq 1 24); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "https://$fqdn/api/penalty-lookups" \
+          for i in $(seq 1 16); do
+            code=$(curl -m 15 -s -o /dev/null -w '%{http_code}' -X POST "https://$fqdn/api/penalty-lookups" \
               -H 'Content-Type: application/json' -d '{"infringementNumber":"9000000001","offenceDate":"2026-01-15"}' || true)
             echo "attempt $i: HTTP $code"
             [ "$code" = "200" ] && exit 0
             sleep 10
           done
-          echo "::error::App did not answer 200 within 4 minutes. See the 'Show what is deployed' step and the Container App console log."
+          echo "::error::App did not answer 200 within about 4 minutes. See the 'Show what is deployed' step and the Container App console log."
           exit 1
