@@ -2,6 +2,8 @@ package au.gov.nsw.transport.cevoc.config;
 
 import au.gov.nsw.transport.cevoc.adapter.out.azureblob.AzureBlobMediaAdapter;
 import au.gov.nsw.transport.cevoc.adapter.out.azureblob.AzureCacheInvalidationAdapter;
+import au.gov.nsw.transport.cevoc.adapter.out.ManifestFirstPenaltyLookupAdapter;
+import au.gov.nsw.transport.cevoc.adapter.out.ManifestPenaltyLookupAdapter;
 import au.gov.nsw.transport.cevoc.adapter.out.stub.StubMediaAdapter;
 import au.gov.nsw.transport.cevoc.adapter.out.stub.StubPenaltyLookupAdapter;
 import au.gov.nsw.transport.cevoc.application.port.out.CacheInvalidationPort;
@@ -21,9 +23,16 @@ import org.springframework.context.annotation.Configuration;
 public class BeanConfig {
 
     @Bean
-    @ConditionalOnProperty(name = "cevoc.penalty-lookup.adapter", havingValue = "stub", matchIfMissing = true)
+    @ConditionalOnProperty(name = "cevoc.penalty-lookup.adapter", havingValue = "stub")
     PenaltyLookupPort stubPenaltyLookup() {
         return new StubPenaltyLookupAdapter();
+    }
+
+    /** Default. Manifest first; live source only when cevoc.scraper.enabled=true (no live adapter exists yet). */
+    @Bean
+    @ConditionalOnProperty(name = "cevoc.penalty-lookup.adapter", havingValue = "manifest", matchIfMissing = true)
+    PenaltyLookupPort manifestFirstPenaltyLookup(@Value("${cevoc.scraper.enabled:false}") boolean scraperEnabled) {
+        return new ManifestFirstPenaltyLookupAdapter(new ManifestPenaltyLookupAdapter(), null, scraperEnabled);
     }
 
     @Bean

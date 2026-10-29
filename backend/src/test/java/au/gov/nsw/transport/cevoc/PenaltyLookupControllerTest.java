@@ -18,24 +18,25 @@ class PenaltyLookupControllerTest {
     @Autowired MockMvc mvc;
 
     @Test
-    void foundWithStubAdapter() throws Exception {
+    void foundInManifest() throws Exception {
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"9000000001\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FOUND"))
-                .andExpect(jsonPath("$.source").value("STUB"));
+                .andExpect(jsonPath("$.source").value("MANIFEST"));
     }
 
     @Test
-    void unknownNumberReportsLiveLookupOff() throws Exception {
+    void manifestMissReportsLiveLookupDisabled() throws Exception {
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"1234567890\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("LIVE_LOOKUP_OFF"));
+                .andExpect(jsonPath("$.status").value("LIVE_LOOKUP_DISABLED"))
+                .andExpect(jsonPath("$.summary").value("Live lookup against the source sites is switched off until approvals are in place."));
     }
 
     @Test
-    void noMatchIsDistinctFromLiveLookupOff() throws Exception {
+    void noMatchIsDistinctFromLiveLookupDisabled() throws Exception {
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"X000000001\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(status().isOk())
@@ -66,5 +67,15 @@ class PenaltyLookupControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notice.enforcementMethod").value("CAMERA"))
                 .andExpect(jsonPath("$.evidence[1].kind").value("CERTIFICATE"));
+    }
+
+    @Test
+    void redLightNoticeHasTwoImagesAndCertificate() throws Exception {
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"9000000004\",\"offenceDate\":\"2026-09-01\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FOUND"))
+                .andExpect(jsonPath("$.evidence.length()").value(3))
+                .andExpect(jsonPath("$.evidence[2].kind").value("CERTIFICATE"));
     }
 }

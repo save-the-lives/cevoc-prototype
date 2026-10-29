@@ -26,6 +26,6 @@ See `docs/ARCHITECTURE.md`.
 | 9000000002 | Officer-issued caution: no evidence, no certificate |
 | 9000000003 | Camera-based: one image and certificate |
 | 9000000004 | Red-light camera: two images and certificate, no video |
-| any other number | Friendly "live lookup is switched off until approvals are in place" message |
-| starts with X | No match |
+| any other number | "Live lookup against the source sites is switched off until approvals are in place." (status LIVE_LOOKUP_DISABLED; only while `CEVOC_SCRAPER_ENABLED` is false, the default) |
+| starts with X | No match (NOT_FOUND) |
 | X1234 | Not found |

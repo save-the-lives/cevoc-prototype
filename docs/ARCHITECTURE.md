@@ -9,6 +9,7 @@ Hexagonal. Dependencies point inwards: `adapter` -> `application` -> `domain`. `
                               MediaStoragePort, SignedLinkPort, CacheInvalidationPort (media, cloud-neutral)
       application/service/    LookupPenaltyService
       adapter/in/web/         REST controller (public, unauthenticated)
+      adapter/out/            ManifestPenaltyLookupAdapter (resources/manifest.json), ManifestFirstPenaltyLookupAdapter (manifest, then live if enabled)
       adapter/out/stub/       StubPenaltyLookupAdapter (fictitious data), StubMediaAdapter (sample-file links)
       adapter/out/azureblob/  Azure Blob adapter (SAS links); the only place com.azure is allowed (plus config)
       adapter/out/s3/         placeholder only: where the AWS adapter will go
@@ -30,7 +31,7 @@ The backend never proxies media bytes. It only returns short-lived links; the br
 4. Do not touch `domain` or `application`; `ArchitectureTest` will fail if AWS types leak in.
 
 ## Swapping sources later
-Select with `cevoc.penalty-lookup.adapter`. Planned adapters, none built yet:
+Select with `cevoc.penalty-lookup.adapter`: `manifest` (default; manifest first, then the live source only if `cevoc.scraper.enabled=true`, else status `LIVE_LOOKUP_DISABLED`) or `stub`. Env: `CEVOC_PENALTY_LOOKUP_ADAPTER`, `CEVOC_SCRAPER_ENABLED` (default false). No live adapter is wired yet, so enabling it reports UNAVAILABLE. Planned adapters, none built yet:
 - `revenue-nsw`: pass the notice number and offence date to the public Revenue NSW / Service NSW page and extract the returned content.
 - `evidence-api`: real image, video and certificate APIs, with caching or buffering.
 

@@ -1,0 +1,120 @@
+{
+  "_comment": "Fictitious test notices only. No real notice numbers. Offence date comes from the request.",
+  "notices": [
+    {
+      "infringementNumber": "9000000001",
+      "notice": {
+        "offenceDescription": "Exceed speed limit by 10km/h or less",
+        "offenceTime": "11:12:00",
+        "location": "SAMPLE ROAD, SAMPLETOWN",
+        "penaltyAmount": "277.00",
+        "amountOwing": "277.00",
+        "noticeStatus": "PAYABLE",
+        "statusMessage": "Payment is due.",
+        "enforcementMethod": "CAMERA"
+      },
+      "evidence": [
+        {
+          "kind": "IMAGE",
+          "title": "Sample image",
+          "objectKey": "image-1.jpg",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        },
+        {
+          "kind": "VIDEO",
+          "title": "Sample video",
+          "objectKey": "video-1.mp4",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        },
+        {
+          "kind": "CERTIFICATE",
+          "title": "Sample camera certificate",
+          "objectKey": "cert-1.pdf",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        }
+      ]
+    },
+    {
+      "infringementNumber": "9000000002",
+      "notice": {
+        "offenceDescription": "Park continuously for longer than indicated",
+        "offenceTime": "14:47:00",
+        "location": "SAMPLE STREET, SAMPLETOWN",
+        "penaltyAmount": "136.00",
+        "amountOwing": "0.00",
+        "noticeStatus": "CAUTION",
+        "statusMessage": "This penalty has been replaced with a caution. You no longer need to pay.",
+        "enforcementMethod": "OFFICER_ISSUED"
+      },
+      "evidence": []
+    },
+    {
+      "infringementNumber": "9000000003",
+      "notice": {
+        "offenceDescription": "Travel or attempt travel without valid ticket - adult",
+        "offenceTime": "08:05:00",
+        "location": "SAMPLE STATION",
+        "penaltyAmount": "200.00",
+        "amountOwing": "200.00",
+        "noticeStatus": "PAYABLE",
+        "statusMessage": "Payment is due.",
+        "enforcementMethod": "CAMERA"
+      },
+      "evidence": [
+        {
+          "kind": "IMAGE",
+          "title": "Sample image",
+          "objectKey": "image-1.jpg",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        },
+        {
+          "kind": "CERTIFICATE",
+          "title": "Sample enforcement centre certificate",
+          "objectKey": "cert-1.pdf",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        }
+      ]
+    },
+    {
+      "infringementNumber": "9000000004",
+      "notice": {
+        "offenceDescription": "Fail to stop at red traffic light",
+        "offenceTime": "17:31:00",
+        "location": "SAMPLE AVENUE, SAMPLETOWN",
+        "penaltyAmount": "464.00",
+        "amountOwing": "464.00",
+        "noticeStatus": "PAYABLE",
+        "statusMessage": "Payment is due.",
+        "enforcementMethod": "CAMERA"
+      },
+      "evidence": [
+        {
+          "kind": "IMAGE",
+          "title": "Sample image 1",
+          "objectKey": "image-1.jpg",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        },
+        {
+          "kind": "IMAGE",
+          "title": "Sample image 2",
+          "objectKey": "image-2.jpg",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        },
+        {
+          "kind": "CERTIFICATE",
+          "title": "Sample camera certificate",
+          "objectKey": "cert-1.pdf",
+          "licence": "CC0-1.0 (fictitious sample)",
+          "attribution": "Prototype sample file, no real source"
+        }
+      ]
+    }
+  ]
+}

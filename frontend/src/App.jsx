@@ -58,7 +58,7 @@ function DevScenarios({ onPick }) {
 
 function Result({ result }) {
   const n = result.notice;
-  if (result.status === 'LIVE_LOOKUP_OFF') {
+  if (result.status === 'LIVE_LOOKUP_OFF' || result.status === 'LIVE_LOOKUP_DISABLED') {
     return <section aria-live="polite"><h2>Lookup not available yet</h2><p>{result.summary}</p></section>;
   }
   if (result.status !== 'FOUND' || !n) {
@@ -70,7 +70,7 @@ function Result({ result }) {
   const media = evidence.filter((e) => e.kind !== 'CERTIFICATE');
   return (
     <section aria-live="polite" className="result">
-      {result.source === 'STUB' && <p className="banner" role="note"><strong>Prototype data only.</strong> This is not a real notice.</p>}
+      {(result.source === 'STUB' || result.source === 'MANIFEST') && <p className="banner" role="note"><strong>Prototype data only.</strong> This is not a real notice.</p>}
       <h2>Notice {result.infringementNumber}</h2>
       <p className="status"><strong>{n.statusMessage}</strong></p>
       <dl className="details">
