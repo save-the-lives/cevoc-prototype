@@ -19,6 +19,7 @@ import au.gov.nsw.transport.cevoc.application.service.LookupPenaltyService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /** Composition root: the only place that picks which adapter fills each port. */
 @Configuration
@@ -32,6 +33,7 @@ public class BeanConfig {
 
     /** Manifest/stub first; live sources only if a scraper adapter bean exists (none by default). */
     @Bean
+    @Primary
     PenaltyLookupPort penaltyLookup(StubPenaltyLookupAdapter manifest,
                                     ObjectProvider<EvidenceSourcePort> evidence,
                                     ObjectProvider<CertificateSourcePort> certificates) {
