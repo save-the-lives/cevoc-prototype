@@ -57,7 +57,7 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
             context.setDefaultNavigationTimeout(step.toMillis());
             return new PlaywrightSession(playwright, browser, context, baseUrl, settings.maxBytes(), step, limiter,
                     captureDir == null ? null : new HtmlCapture(captureDir));
-        } catch (PlaywrightException | RuntimeException e) {
+        } catch (RuntimeException e) {
             closeQuietly(context, browser, playwright);
             // First line only, no cause: nothing about the target should leak from here.
             throw new IOException("could not start the browser: " + firstLine(e.getMessage()));
