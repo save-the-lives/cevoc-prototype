@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { lookupPenalty, mockEnabled } from './api.js';
 import EvidenceItem from './EvidenceItem.jsx';
+import CertificateList from './CertificateList.jsx';
+import { hasCertificateList } from './certs.js';
 import './styles.css';
 
 export default function App() {
@@ -90,7 +92,8 @@ function Result({ result }) {
           </>
         )
         : <p>{isCamera ? 'Evidence is not available to show yet.' : 'No camera evidence applies to this notice.'}</p>}
-      {isCamera && (
+      {isCamera && hasCertificateList(result) && <CertificateList certificates={result.certificates} />}
+      {isCamera && !hasCertificateList(result) && (
         <>
           <h3>Enforcement centre certificate</h3>
           {certificates.length > 0
