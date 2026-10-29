@@ -37,3 +37,24 @@ Select with `cevoc.penalty-lookup.adapter`. Planned adapters, none built yet:
 ## Open questions
 - How the Revenue NSW / Service NSW page accepts the two inputs, and whether it needs an identity step. Automated pass-through must be confirmed as permitted before building that adapter.
 - The public certificates page (`/cevoc/pages/sdro/searchCertificates.jsf`) blocks automated fetching via robots.txt. Its form structure needs to be captured by a person.
+
+## Live lookup order and scraper switches (build-only, OFF everywhere)
+
+`LayeredPenaltyLookup` answers in this order: (1) the manifest/stub lookup; (2) if that says live lookup is
+switched off AND a live source adapter exists, ask `EvidenceSourcePort` (notice details, images, videos;
+media is buffered into the media storage port, never proxied per view) and/or `CertificateSourcePort`;
+(3) otherwise the friendly "switched off" result (`LIVE_LOOKUP_OFF`) stands.
+
+No scraper adapter exists yet, so the switches below currently do nothing. When one is built it must be a bean
+conditional on its flag, never the default, polite (identifying User-Agent, rate limit, timeouts, brief cache),
+tested only against fictitious saved HTML, and used only after the site owner has approved automated access
+(robots.txt currently disallows it). Production use should be replaced by the real API.
+
+| Environment variable | Property | Default |
+|---|---|---|
+| `CEVOC_EVIDENCE_SCRAPER_ENABLED` | `cevoc.evidence.scraper.enabled` | `false` |
+| `CEVOC_CERTIFICATE_SCRAPER_ENABLED` | `cevoc.certificate.scraper.enabled` | `false` |
+| `CEVOC_PENALTY_LOOKUP_ADAPTER` | `cevoc.penalty-lookup.adapter` | `stub` |
+
+Open question: if certificates are keyed by enforcement site rather than notice number, add an
+`EnforcementSiteLookupPort` (stub with fictitious site numbers) in front of `CertificateSourcePort`.

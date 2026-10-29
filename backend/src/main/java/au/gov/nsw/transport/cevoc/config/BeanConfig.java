@@ -8,6 +8,10 @@ import au.gov.nsw.transport.cevoc.application.port.out.CacheInvalidationPort;
 import au.gov.nsw.transport.cevoc.application.port.out.SignedLinkPort;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
+import au.gov.nsw.transport.cevoc.application.port.out.CertificateSourcePort;
+import au.gov.nsw.transport.cevoc.application.port.out.EvidenceSourcePort;
+import au.gov.nsw.transport.cevoc.application.service.LayeredPenaltyLookup;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import au.gov.nsw.transport.cevoc.application.port.in.LookupPenaltyUseCase;
 import au.gov.nsw.transport.cevoc.application.port.out.PenaltyLookupPort;
@@ -22,8 +26,16 @@ public class BeanConfig {
 
     @Bean
     @ConditionalOnProperty(name = "cevoc.penalty-lookup.adapter", havingValue = "stub", matchIfMissing = true)
-    PenaltyLookupPort stubPenaltyLookup() {
+    StubPenaltyLookupAdapter stubPenaltyLookup() {
         return new StubPenaltyLookupAdapter();
+    }
+
+    /** Manifest/stub first; live sources only if a scraper adapter bean exists (none by default). */
+    @Bean
+    PenaltyLookupPort penaltyLookup(StubPenaltyLookupAdapter manifest,
+                                    ObjectProvider<EvidenceSourcePort> evidence,
+                                    ObjectProvider<CertificateSourcePort> certificates) {
+        return new LayeredPenaltyLookup(manifest, evidence.getIfAvailable(), certificates.getIfAvailable());
     }
 
     @Bean
