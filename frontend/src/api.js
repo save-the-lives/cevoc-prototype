@@ -1,5 +1,9 @@
 // Single place the UI talks to the backend. Swap the backend adapter, not this file.
+// Dev only: open the page with ?mock=1 to use built-in fixtures (stripped from production builds).
+export const mockEnabled = import.meta.env.DEV && new URLSearchParams(window.location.search).has('mock');
+
 export async function lookupPenalty({ infringementNumber, offenceDate }) {
+  if (mockEnabled) return (await import('./mock.js')).mockLookup({ infringementNumber, offenceDate });
   const res = await fetch('/api/penalty-lookups', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
