@@ -29,3 +29,8 @@ See `docs/ARCHITECTURE.md`.
 | any other number | Friendly "live lookup is switched off until approvals are in place" message |
 | starts with X | No match |
 | X1234 | Not found |
+
+## Environment variables
+- `CEVOC_CORS_ALLOWED_ORIGINS`: front end origins allowed to call `/api`.
+- `AZURE_STORAGE_CONNECTION_STRING`: only with `cevoc.media.adapter=azure-blob`.
+- `CEVOC_SCRAPER_CERTIFICATES_ENABLED` (default `false`): enables the enforcement-centre certificates page scraper. The source's robots.txt disallows automated access, so production use needs the owner's approval (also set `cevoc.scraper.certificates.approval-reference`) and it should be replaced by the real API. See `docs/ARCHITECTURE.md`.
