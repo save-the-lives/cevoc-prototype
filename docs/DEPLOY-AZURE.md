@@ -31,3 +31,17 @@ Actions > "App deploy to Azure" > Run workflow. CI (`app-ci.yml`) runs the backe
 - Automatic deploy on every merge to `main`, or manual only (manual for now).
 - Static Web Apps region: the service resolves to a nearby region; confirm data residency needs. The Container Apps backend is in Australia East.
 - Keep data fictitious and the "prototype only" banner on until real sources are connected.
+
+## Backend auto-deploy (cevoc-backend, resource group `cevoc`)
+`.github/workflows/cevoc-backend-AutoDeployTrigger-*.yml` deploys `backend/` on push to `main`.
+`azure/container-apps-deploy-action` cannot build from source without a registry (it always pushes to `acrName`/`registryUrl`), so the workflow uses `az acr build` and `az containerapp update` instead.
+
+One-time portal steps (about 3 minutes):
+1. Azure portal > Create a resource > Container Registry. Resource group `cevoc`, Australia East, SKU Basic, any globally unique name (lowercase letters and digits, for example `cevocacr123`). Create.
+2. Open the registry > Settings > Access keys > turn on "Admin user". (This lets the app pull without role assignments. The workflow reads the keys itself.)
+3. GitHub repo > Settings > Secrets and variables > Actions > Variables > New repository variable: `ACR_NAME` = the registry name (no `.azurecr.io`).
+4. Check the sign-in identity (the app registration behind `CEVOCBACKEND_AZURE_CLIENT_ID`) has Contributor on resource group `cevoc` (needed to build in ACR, set registry and update the app).
+5. Re-run the workflow (Actions > Trigger auto deployment for cevoc-backend > Run workflow).
+
+The workflow also sets ingress target port 8080 (matches `server.port=8080` and the Dockerfile).
+Stronger alternative to admin keys: turn on the app's system-assigned identity, grant it AcrPull on the registry, and use `az containerapp registry set --identity system` in place of the username/password step.
