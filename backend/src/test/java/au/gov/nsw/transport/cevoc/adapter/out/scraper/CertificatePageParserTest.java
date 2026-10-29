@@ -1,16 +1,18 @@
 package au.gov.nsw.transport.cevoc.adapter.out.scraper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import au.gov.nsw.transport.cevoc.domain.CertificateMatch;
 import au.gov.nsw.transport.cevoc.domain.CertificateRef;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -61,13 +63,81 @@ class CertificatePageParserTest {
         assertThrows(ScrapeException.class, () -> parser.parseForm("<html></html>", "https://example.invalid/"));
     }
 
+    private static final LocalDateTime OFFENCE = LocalDateTime.of(2026, 10, 30, 11, 12, 13);
+
     @Test
-    void parsesCertificatesAndToleratesBadDate() {
+    void parsesAllFiveColumns() {
         List<CertificateRef> certs = parser.parseCertificates(fixture("results-certificates.html"));
-        assertEquals(2, certs.size());
-        assertEquals("TEST-CERT-0001", certs.get(0).certificateNumber());
-        assertEquals(LocalDate.of(2024, 3, 5), certs.get(0).issuedDate());
-        assertNull(certs.get(1).issuedDate());
+        assertEquals(5, certs.size());
+        CertificateRef a = certs.get(0);
+        assertEquals("TEST camera certificate A", a.description());
+        assertEquals("Camera", a.type());
+        assertEquals("01/07/2026 00:00 - 31/12/2026 23:59", a.periodText());
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), a.periodFrom());
+        assertEquals(LocalDateTime.of(2026, 12, 31, 23, 59), a.periodTo());
+        assertEquals(LocalDateTime.of(2026, 7, 2, 9, 30), a.certifiedDate());
+        assertEquals(LocalDateTime.of(2027, 12, 31, 0, 0), a.expiryDate());
+        assertNull(a.documentRef(), "no download link in the table: nothing is constructed");
+    }
+
+    @Test
+    void dateOnlyPeriodCoversWholeLastDayAndCopiesRealHref() {
+        CertificateRef d = parser.parseCertificates(fixture("results-certificates.html")).get(3);
+        assertEquals(LocalDateTime.of(2026, 10, 30, 0, 0), d.periodFrom());
+        assertEquals(LocalTime.MAX, d.periodTo().toLocalTime());
+        assertEquals("/docs/test-d.pdf", d.documentRef());
+    }
+
+    @Test
+    void toleratesUnparseableValues() {
+        CertificateRef e = parser.parseCertificates(fixture("results-certificates.html")).get(4);
+        assertEquals("TEST certificate E", e.description());
+        assertNull(e.type());
+        assertNull(e.periodFrom());
+        assertNull(e.periodTo());
+        assertNull(e.certifiedDate());
+        assertNull(e.expiryDate());
+        assertFalse(e.covers(OFFENCE), "unknown window never covers");
+    }
+
+    @Test
+    void columnsAreMatchedByHeaderNotPosition() {
+        List<CertificateRef> certs = parser.parseCertificates(fixture("results-reordered.html"));
+        assertEquals(1, certs.size());
+        CertificateRef c = certs.get(0);
+        assertEquals("TEST reordered certificate", c.description());
+        assertEquals("Camera", c.type());
+        assertEquals(LocalDateTime.of(2026, 11, 1, 0, 0), c.periodTo());
+        assertEquals(LocalDateTime.of(2030, 1, 1, 0, 0), c.expiryDate());
+        assertNull(c.documentRef(), "# links are not usable");
+    }
+
+    @Test
+    void marksOnlyCoveringRowsAndKeepsFullList() {
+        List<CertificateMatch> all = CertificateMatch.mark(parser.parseCertificates(fixture("results-certificates.html")), OFFENCE);
+        assertEquals(5, all.size());
+        assertEquals(List.of(true, false, false, true, false), all.stream().map(CertificateMatch::covering).toList());
+        assertEquals("TEST camera certificate A", all.get(0).certificate().description());
+    }
+
+    @Test
+    void periodEndsAreInclusive() {
+        CertificateRef a = parser.parseCertificates(fixture("results-certificates.html")).get(0);
+        assertTrue(a.covers(a.periodFrom()));
+        assertTrue(a.covers(a.periodTo()));
+        assertFalse(a.covers(a.periodFrom().minusMinutes(1)));
+        assertFalse(a.covers(a.periodTo().plusMinutes(1)));
+    }
+
+    @Test
+    void emptyDatatableMessageIsNoResults() {
+        assertTrue(parser.hasNoResults(fixture("results-empty-message.html")));
+        assertTrue(parser.parseCertificates(fixture("results-empty-message.html")).isEmpty());
+    }
+
+    @Test
+    void missingResultsTableIsAScrapeException() {
+        assertThrows(ScrapeException.class, () -> parser.parseCertificates("<html><body><p>Unexpected</p></body></html>"));
     }
 
     @Test

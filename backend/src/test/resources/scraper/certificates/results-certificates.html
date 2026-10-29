@@ -1,7 +1,24 @@
-<!-- FICTITIOUS fixture: invented numbers (TEST-*), invented structure. -->
+<!-- FICTITIOUS fixture: invented descriptions and dates. Column headers follow the real page; markup is invented.
+     No download links, as on the real table (one row has a plain href to exercise href copying). -->
 <html><body>
-<table id="results"><tbody>
-  <tr class="certificate-row"><td class="cert-number">TEST-CERT-0001</td><td class="cert-title">Sample camera certificate</td><td class="cert-date">05/03/2024</td><td><a class="cert-link" href="/docs/sample-1.pdf">View</a></td></tr>
-  <tr class="certificate-row"><td class="cert-number">TEST-CERT-0002</td><td class="cert-title">Sample enforcement certificate</td><td class="cert-date">not a date</td><td><a class="cert-link" href="/docs/sample-2.pdf">View</a></td></tr>
-</tbody></table>
+<form id="resultsForm">
+<table id="resultsTable">
+  <thead>
+    <tr>
+      <th><span>Certificate Description</span></th>
+      <th><span>Certificate type</span></th>
+      <th><span>Period</span></th>
+      <th><span>Certified date</span></th>
+      <th><span>Expiry date</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>TEST camera certificate A</td><td>Camera</td><td>01/07/2026 00:00 - 31/12/2026 23:59</td><td>02/07/2026 09:30</td><td>31/12/2027</td></tr>
+    <tr><td>TEST camera certificate B</td><td>Camera</td><td>01/01/2026 00:00 - 30/06/2026 23:59</td><td>02/01/2026</td><td>30/06/2027</td></tr>
+    <tr><td>TEST speed certificate C</td><td>Speed</td><td>25/10/2026 08:00 - 30/10/2026 06:00</td><td>25/10/2026</td><td>25/10/2027</td></tr>
+    <tr><td><a href="/docs/test-d.pdf">TEST day certificate D</a></td><td>Speed</td><td>30/10/2026 to 30/10/2026</td><td>29/10/2026</td><td>29/10/2027</td></tr>
+    <tr><td>TEST certificate E</td><td></td><td>not a period</td><td>not a date</td><td></td></tr>
+  </tbody>
+</table>
+</form>
 </body></html>

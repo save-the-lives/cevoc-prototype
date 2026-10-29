@@ -58,7 +58,7 @@ class CertificateScraperAdapterTest {
         var p = props(CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
         var a = new CertificateScraperAdapter(f, new CertificatePageParser(), p, clock);
         var q = p.queryFor("TEST-LOC-01", DAY, LocalTime.of(11, 12));
-        assertEquals(2, a.findCertificates(q).size());
+        assertEquals(5, a.findCertificates(q).size());
         a.findCertificates(q);
         assertEquals(List.of("GET", "POST"), f.calls, "second call served from cache");
         Map<String, String> post = f.posts.get(0);
@@ -68,6 +68,18 @@ class CertificateScraperAdapterTest {
         clock.now = clock.now.plus(Duration.ofMinutes(6));
         a.findCertificates(q);
         assertEquals(4, f.calls.size(), "cache expired");
+    }
+
+    @Test
+    void cameraCodeIsUsedDirectlyAsLocationCodeAndCoveringRowsAreMarked() {
+        var f = new FakeFetcher(CertificatePageParserTest.fixture("results-certificates.html"));
+        var p = props(CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
+        var a = new CertificateScraperAdapter(f, new CertificatePageParser(), p, new MutableClock());
+        var q = p.queryFor("9999", DAY, LocalTime.of(11, 12, 13));
+        var marked = a.findCertificatesCovering(q, LocalDateTime.of(2026, 10, 30, 11, 12, 13));
+        assertEquals("9999", f.posts.get(0).get(CertificatePageParser.LOCATION_CODE_INPUT));
+        assertEquals(5, marked.size());
+        assertEquals(2, marked.stream().filter(m -> m.covering()).count());
     }
 
     @Test
@@ -101,7 +113,7 @@ class CertificateScraperAdapterTest {
     void legacyByPenaltyStillWorksAgainstFixtures() {
         var f = new FakeFetcher(CertificatePageParserTest.fixture("results-certificates.html"));
         var a = new CertificateScraperAdapter(f, new CertificatePageParser(), props(CertificateKeyStrategy.BY_PENALTY), new MutableClock());
-        assertEquals(2, a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-1")).size());
+        assertEquals(5, a.findCertificates(CertificateQuery.ofPenalty("TEST-PEN-1")).size());
         assertEquals("TEST-PEN-1", f.posts.get(0).get(CertificatePageParser.PENALTY_INPUT));
     }
 
