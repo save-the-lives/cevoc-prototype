@@ -19,7 +19,8 @@ import java.util.List;
  *   9000000003  travel without a valid ticket, camera-based: image evidence and certificate
  *   9000000004  red-light camera notice: two images, certificate, no video
  *   X...        no match
- *   anything else: generic camera sample
+ *   anything else: not in the sample data, so we report that live lookup is switched off
+ *   (no live source adapter is enabled; the stub is the manifest stand-in)
  */
 public class StubPenaltyLookupAdapter implements PenaltyLookupPort {
 
@@ -51,13 +52,16 @@ public class StubPenaltyLookupAdapter implements PenaltyLookupPort {
                     List.of(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Sample image 1", "image-1.jpg"),
                             EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Sample image 2", "image-2.jpg"),
                             EvidenceItem.ofObject(EvidenceItem.Kind.CERTIFICATE, "Sample camera certificate", "cert-1.pdf")));
-            default -> found(n, new NoticeDetails("Exceed speed limit by 10km/h or less",
+            case "9000000001" -> found(n, new NoticeDetails("Exceed speed limit by 10km/h or less",
                     r.offenceDate(), LocalTime.of(11, 12), "SAMPLE ROAD, SAMPLETOWN",
                     new BigDecimal("277.00"), new BigDecimal("277.00"), NoticeStatus.PAYABLE,
                     "Payment is due.", EnforcementMethod.CAMERA),
                     List.of(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Sample image", "image-1.jpg"),
                             EvidenceItem.ofObject(EvidenceItem.Kind.VIDEO, "Sample video", "video-1.mp4"),
                             EvidenceItem.ofObject(EvidenceItem.Kind.CERTIFICATE, "Sample camera certificate", "cert-1.pdf")));
+            default -> new PenaltyLookupResult(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF, n,
+                    "Looking up other notices is switched off for now, until approvals are in place. You can try the sample notice numbers.",
+                    null, List.of(), SOURCE);
         };
     }
 

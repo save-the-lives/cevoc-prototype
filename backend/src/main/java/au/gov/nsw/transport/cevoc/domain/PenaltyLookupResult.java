@@ -15,5 +15,5 @@ public record PenaltyLookupResult(
         List<EvidenceItem> evidence,
         String source) {
 
-    public enum Status { FOUND, NOT_FOUND, UNAVAILABLE }
+    public enum Status { FOUND, NOT_FOUND, UNAVAILABLE, LIVE_LOOKUP_OFF }
 }
