@@ -138,12 +138,13 @@ class ScraperEvidenceTest {
     }
 
     @Test
-    void shippedConfigKeepsStubAsDefaultAndScraperOff() throws IOException {
+    void shippedConfigNeverDefaultsToScraperAndKeepsScraperOff() throws IOException {
         Properties p = new Properties();
         try (InputStream in = Files.newInputStream(Path.of("src/main/resources/application.properties"))) {
             p.load(in);
         }
-        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isEqualTo("stub");
+        // default is the manifest-first lookup (or stub); a scraper adapter must never be the shipped default
+        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isIn("manifest", "stub");
         assertThat(p.getProperty("cevoc.scraper.evidence.enabled")).isEqualTo("false");
     }
 }
