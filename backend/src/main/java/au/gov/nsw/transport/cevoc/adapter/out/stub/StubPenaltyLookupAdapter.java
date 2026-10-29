@@ -41,15 +41,15 @@ public class StubPenaltyLookupAdapter implements PenaltyLookupPort {
                     r.offenceDate(), LocalTime.of(8, 5), "SAMPLE STATION",
                     new BigDecimal("200.00"), new BigDecimal("200.00"), NoticeStatus.PAYABLE,
                     "Payment is due.", EnforcementMethod.CAMERA),
-                    List.of(new EvidenceItem(EvidenceItem.Kind.IMAGE, "Sample image", "/samples/image-1.jpg"),
-                            new EvidenceItem(EvidenceItem.Kind.CERTIFICATE, "Sample enforcement centre certificate", "/samples/cert-1.pdf")));
+                    List.of(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Sample image", "image-1.jpg"),
+                            EvidenceItem.ofObject(EvidenceItem.Kind.CERTIFICATE, "Sample enforcement centre certificate", "cert-1.pdf")));
             default -> found(n, new NoticeDetails("Exceed speed limit by 10km/h or less",
                     r.offenceDate(), LocalTime.of(11, 12), "SAMPLE ROAD, SAMPLETOWN",
                     new BigDecimal("277.00"), new BigDecimal("277.00"), NoticeStatus.PAYABLE,
                     "Payment is due.", EnforcementMethod.CAMERA),
-                    List.of(new EvidenceItem(EvidenceItem.Kind.IMAGE, "Sample image", "/samples/image-1.jpg"),
-                            new EvidenceItem(EvidenceItem.Kind.VIDEO, "Sample video", "/samples/video-1.mp4"),
-                            new EvidenceItem(EvidenceItem.Kind.CERTIFICATE, "Sample camera certificate", "/samples/cert-1.pdf")));
+                    List.of(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Sample image", "image-1.jpg"),
+                            EvidenceItem.ofObject(EvidenceItem.Kind.VIDEO, "Sample video", "video-1.mp4"),
+                            EvidenceItem.ofObject(EvidenceItem.Kind.CERTIFICATE, "Sample camera certificate", "cert-1.pdf")));
         };
     }
 
