@@ -21,6 +21,7 @@ env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/cevoc-backend
   APP_NAME: cevoc-backend
   RESOURCE_GROUP: cevoc
+  GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
 
 jobs:
   build-and-deploy:
@@ -68,8 +69,6 @@ jobs:
       # (classic PAT with read:packages). Skipped when the package is public.
       - name: Let the app pull from ghcr.io (private package only)
         if: ${{ env.GHCR_PULL_TOKEN != '' }}
-        env:
-          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         run: |
           az containerapp registry set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --server ghcr.io --username "${{ github.repository_owner }}" --password "$GHCR_PULL_TOKEN"
