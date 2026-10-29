@@ -70,6 +70,18 @@ Safeguards:
 5. Check robots.txt and terms; obtain written approval; agree rate limits and a contact address with the owner.
 6. Then plan the move to the real evidence API and delete this adapter.
 
+## Real page flow as reported by the owner (design notes only, 2026-10-30)
+These notes record what the owner saw on the real pages so a future adapter or the real API can be modelled correctly. They contain no real values. Nothing here enables or builds any live access.
+
+1. Penalty result page: shows date of offence, offence time, offence description, demerit points, penalty amount, location, amount owing and a paid/owing notice. Location is a free-text street and suburb string (for example "Example Road, EXAMPLETOWN"), not a site code. Mapping that string to a certificates location code needs an owner-supplied name-to-code table (site register), which must be kept private and out of this public repo.
+2. Evidence is a second step: "Enter your vehicle registration number to view images". The plate is a runtime-only input. It must never be stored, logged, cached or committed, and fixtures must use obviously fictitious plates.
+3. Evidence page: each image carries a banner of real, selectable text, so no OCR is needed. Reported fields: camera code (four digits), direction, operator, location (intersection text), incident number, lane, offence, speed limit, time since red, yellow light duration, date (dd Month yyyy) and time (hh:mm:ss.SSS). Each image has its own reference in a `700-1-<digits>` pattern. The page offers Download Images and a Camera Certification section with a "View certification details" link.
+4. Certificates page lookup would use camera code and date window. Still UNCONFIRMED: whether the certificates "Location code" equals the evidence camera code. The owner is checking by hand.
+
+Modelling implications (for whoever implements the real source): treat plate as a transient request parameter; carry the banner fields as a structured value on the evidence result; keep location as free text in the domain model.
+
+Status: parser, fixtures and any adapter changes for this flow are NOT done in this change. Live access to Revenue NSW pages is not approved for building here (robots.txt disallows it); the owner needs to confirm approval before that work is picked up.
+
 ## Open questions
 - How the Revenue NSW / Service NSW page accepts the two inputs, and whether it needs an identity step. Automated pass-through must be confirmed as permitted before building that adapter.
 - The public certificates page (`/cevoc/pages/sdro/searchCertificates.jsf`) blocks automated fetching via robots.txt. Its form structure needs to be captured by a person.
