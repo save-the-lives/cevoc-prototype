@@ -50,6 +50,8 @@ export default function EvidenceVideo({ item }) {
           if (policy.startLevel >= 0) hls.startLevel = policy.startLevel;
           setLevels(data.levels.map((l, i) => ({ i, height: l.height })).sort((a, b) => b.height - a.height));
           setStatus('ready');
+          // Play may have been pressed before hls.js was ready; its onPlay found no instance to start.
+          if (!video.paused) hls.startLoad();
         });
         hls.on(Hls.Events.ERROR, (_e, data) => {
           if (!data.fatal) return;
