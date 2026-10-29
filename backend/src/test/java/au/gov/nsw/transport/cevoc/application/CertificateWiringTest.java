@@ -126,7 +126,7 @@ class CertificateWiringTest {
     void jsonShapeHasExactlyTheAgreedFieldsAndNoInternals() throws Exception {
         var certs = new FakeCerts(List.of(ref("current", DAY.minusDays(1).atStartOfDay(), DAY.atTime(23, 59))), null);
         PenaltyLookupResult r = service(evidence("7109"), certs, null).lookup(REQ);
-        JsonNode json = new ObjectMapper().valueToTree(r);
+        JsonNode json = new ObjectMapper().findAndRegisterModules().valueToTree(r);
         JsonNode c = json.get("certificates").get(0);
         assertThat(c.fieldNames()).toIterable().containsExactlyInAnyOrder(
                 "description", "type", "periodText", "certifiedDate", "expiryDate", "coversOffence");
