@@ -1,0 +1,12 @@
+Camera Code: 0000
+Direction: Northbound
+Operator: Example Operator
+Location: Example Road northbound at the intersection with Sample Street, EXAMPLETOWN
+Incident Number: 000000
+Lane: 2
+Offence: Fictitious test offence
+Speed Limit: 60
+Time since red: 0.0 s
+Yellow light duration: 0.0 s
+Date: 05 March 2024
+Time: 14:07:09.123
