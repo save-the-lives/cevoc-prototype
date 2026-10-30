@@ -184,8 +184,10 @@ jobs:
             sleep 5
           done
           t=$(printf %s "$LIVE_CHECK_TOKEN" | tr -d '[:space:]'); echo "::error::workflow token length ${#LIVE_CHECK_TOKEN} (stripped ${#t}) sha256 prefix $(printf %s "$t" | sha256sum | cut -c1-6)"
+          curl -m 15 -s -i -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" -H "X-Live-Check-Token: $LIVE_CHECK_TOKEN" "https://$fqdn/live-check/ping" | head -12 | tr -d '\r' | while IFS= read -r l; do echo "::error::ping $l"; done || true
+          curl -m 15 -s -i -X OPTIONS -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: x-live-check-token,content-type" "https://$fqdn/live-check/lookup" | head -12 | tr -d '\r' | while IFS= read -r l; do echo "::error::preflight $l"; done || true
           echo "::error::last answers: without token HTTP $noauth, with token HTTP $auth"
           az containerapp revision list --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "[0].{health:properties.healthState,state:properties.runningState,replicas:properties.replicas}" -o tsv | while IFS= read -r l; do echo "::error::revision $l"; done || true
-          az containerapp logs show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --type console --tail 40 --format text 2>&1 | cut -c1-300 | while IFS= read -r l; do echo "::error::log $l"; done || true
+          az containerapp logs show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --type console --tail 300 --format text 2>&1 | grep -E "guard active|Started |ERROR|Exception|live-check" | cut -c1-300 | head -25 | while IFS= read -r l; do echo "::error::log $l"; done || true
           echo "::error::Live-check app did not answer as expected within about 4 minutes (Chromium image is larger; check the revision health and console log)."
           exit 1
