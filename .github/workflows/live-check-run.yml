@@ -1,6 +1,9 @@
-name: Live check run (reads secrets, prints only the redacted summary)
-# Manual only. Reads LIVE_NOTICE, LIVE_OFFENCE_DATE (DD/MM/YYYY) and optional LIVE_REGISTRATION from repo secrets,
-# calls the live-check endpoint of the deployed Azure app, and prints the summary the app returns (no raw values).
+name: Live check run (reads the LIVE_CASES secret, prints only redacted summaries)
+# Manual only. Repo secret LIVE_CASES is a JSON array, for example (fictitious values):
+#   [{"label":"case 1","notice":"9000000004","date":"15/01/2026","plate":"TST123"},
+#    {"label":"case 2","notice":"9000000001","date":"15/01/2026"}]
+# "plate" is optional, "date" is DD/MM/YYYY. Each case is sent to the deployed app's live-check endpoint and only the
+# app's redacted summary is printed under its label. Values are masked in the log and never echoed.
 on:
   workflow_dispatch:
 permissions:
@@ -19,21 +22,27 @@ jobs:
           client-id: ${{ secrets.CEVOCBACKEND_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
-      - name: Run the live check
+      - name: Run the cases
         env:
-          LIVE_NOTICE: ${{ secrets.LIVE_NOTICE }}
-          LIVE_OFFENCE_DATE: ${{ secrets.LIVE_OFFENCE_DATE }}
-          LIVE_REGISTRATION: ${{ secrets.LIVE_REGISTRATION }}
+          LIVE_CASES: ${{ secrets.LIVE_CASES }}
         run: |
           set +x
-          for v in "$LIVE_NOTICE" "$LIVE_OFFENCE_DATE" "$LIVE_REGISTRATION"; do [ -n "$v" ] && echo "::add-mask::$v"; done
-          [ -n "$LIVE_NOTICE" ] && [ -n "$LIVE_OFFENCE_DATE" ] || { echo "::error::Set secrets LIVE_NOTICE and LIVE_OFFENCE_DATE (DD/MM/YYYY)."; exit 1; }
-          d="$LIVE_OFFENCE_DATE"
-          iso="${d:6:4}-${d:3:2}-${d:0:2}"
-          echo "::add-mask::$iso"
+          [ -n "$LIVE_CASES" ] || { echo "::error::Secret LIVE_CASES is not set."; exit 1; }
+          # Mask every value first so nothing can leak into the log.
+          while IFS= read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done < <(printf %s "$LIVE_CASES" | jq -r '.[]? | .notice, .date, .plate' 2>/dev/null)
+          printf %s "$LIVE_CASES" | jq -e 'type=="array" and length>0 and all(.[]; (.notice|type=="string") and (.date|test("^[0-9]{2}/[0-9]{2}/[0-9]{4}$")))' >/dev/null 2>&1 \
+            || { echo "::error::LIVE_CASES is not valid. It must be a JSON array of {label, notice, date (DD/MM/YYYY), plate optional}. Contents not shown."; exit 1; }
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          body=$(jq -n --arg n "$LIVE_NOTICE" --arg d "$iso" --arg r "$LIVE_REGISTRATION" '{notice:$n, offenceDate:$d, registration: (if $r=="" then null else $r end)}')
-          code=$(curl -m 170 -s -o resp.txt -w '%{http_code}' -X POST "https://$fqdn/live-check/lookup" -H 'Content-Type: application/json' -d "$body" || true)
-          echo "HTTP $code"
-          # the app returns a redacted summary; print it, with any value we know masked by the runner
-          cat resp.txt | tee "$GITHUB_STEP_SUMMARY"
+          n=$(printf %s "$LIVE_CASES" | jq 'length')
+          echo "Running $n case(s) against the deployed app"
+          for i in $(seq 0 $((n-1))); do
+            label=$(printf %s "$LIVE_CASES" | jq -r ".[$i].label // \"case $((i+1))\"")
+            body=$(printf %s "$LIVE_CASES" | jq -c ".[$i] | {notice:.notice, offenceDate:(.date[6:10]+\"-\"+.date[3:5]+\"-\"+.date[0:2]), registration:(.plate // null)}")
+            code=$(curl -m 170 -s -o resp.txt -w '%{http_code}' -X POST "https://$fqdn/live-check/lookup" -H 'Content-Type: application/json' -d "$body" || true)
+            echo "::group::$label (HTTP $code)"
+            cat resp.txt
+            echo
+            echo "::endgroup::"
+            { echo "### $label (HTTP $code)"; echo '```'; cat resp.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            sleep 6
+          done
