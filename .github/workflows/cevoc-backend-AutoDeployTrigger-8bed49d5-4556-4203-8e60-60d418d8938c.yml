@@ -22,6 +22,8 @@ env:
   APP_NAME: cevoc-backend
   RESOURCE_GROUP: cevoc
   GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+  # Owner-run live check. OFF unless the repository VARIABLE LIVE_CHECK_ENABLED is exactly 'true' (see docs/LIVE-CHECK.md).
+  LIVE: ${{ vars.LIVE_CHECK_ENABLED == 'true' && 'true' || 'false' }}
 
 jobs:
   build-and-deploy:
@@ -47,7 +49,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check live-check settings
+        if: ${{ env.LIVE == 'true' }}
+        env:
+          LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
+          CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
+          LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
+        run: |
+          echo "::notice::LIVE_CHECK_ENABLED is true: building and deploying the live-check variant (cpu 2, memory 4Gi)."
+          [ -n "$LIVE_CHECK_TOKEN" ] || { echo "::error::Secret LIVE_CHECK_TOKEN is not set."; exit 1; }
+          case "$CEVOC_BASE_URL" in https://?*) ;; *) echo "::error::Variable CEVOC_BASE_URL must be an https URL."; exit 1;; esac
+          [ -n "$LIVE_CONTACT" ] || { echo "::error::Variable LIVE_CONTACT is not set."; exit 1; }
+
       - name: Build and push image
+        if: ${{ env.LIVE != 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: backend
@@ -57,6 +72,18 @@ jobs:
             ${{ env.IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Live variant: own tag, never :latest, so the default image is never replaced by it.
+      - name: Build and push live-check image
+        if: ${{ env.LIVE == 'true' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          build-args: LIVE_BROWSER=true
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}-live
+          cache-from: type=gha,scope=live
+          cache-to: type=gha,scope=live,mode=max
 
       - name: Azure Login
         uses: azure/login@v2
@@ -74,16 +101,45 @@ jobs:
             --server ghcr.io --username "${{ github.repository_owner }}" --password "$GHCR_PULL_TOKEN"
 
       - name: Deploy new image
+        if: ${{ env.LIVE != 'true' }}
         run: |
           # One active revision at a time, so the newest one always gets 100% traffic.
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
+          # Also switches the live-check settings off again if an earlier run turned them on (empty value = off / unset).
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 0.5 --memory 1.0Gi \
             --min-replicas 1 --max-replicas 1 \
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=manifest CEVOC_SCRAPER_ENABLED=false \
-            CEVOC_SCRAPER_EVIDENCE_ENABLED=false CEVOC_SCRAPER_CERTIFICATES_ENABLED=false
+            CEVOC_SCRAPER_EVIDENCE_ENABLED=false CEVOC_SCRAPER_CERTIFICATES_ENABLED=false \
+            CEVOC_SCRAPER_EVIDENCE_BROWSER= CEVOC_LIVECHECK_ENABLED=false CEVOC_LIVECHECK_TOKEN= \
+            CEVOC_SCRAPER_EVIDENCE_BASE_URL= CEVOC_SCRAPER_EVIDENCE_CONTACT=
+          az containerapp secret remove --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --secret-names live-check-token >/dev/null 2>&1 || true
+
+      - name: Deploy live-check image
+        if: ${{ env.LIVE == 'true' }}
+        env:
+          LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
+          CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
+          LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
+        run: |
+          echo "::add-mask::$LIVE_CHECK_TOKEN"
+          az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
+          az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --type external --target-port 8080 --transport auto
+          # The token is stored as a Container App secret and only referenced (secretref) from the env var.
+          az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --secrets "live-check-token=$LIVE_CHECK_TOKEN" >/dev/null
+          az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+            --image "${{ env.IMAGE }}:${{ github.sha }}-live" --cpu 2 --memory 4Gi \
+            --min-replicas 1 --max-replicas 1 \
+            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=scraper-evidence CEVOC_SCRAPER_ENABLED=true \
+            CEVOC_SCRAPER_EVIDENCE_ENABLED=true CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright \
+            CEVOC_SCRAPER_CERTIFICATES_ENABLED=false CEVOC_LIVECHECK_ENABLED=true \
+            "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" \
+            CEVOC_LIVECHECK_TOKEN=secretref:live-check-token >/dev/null
 
       - name: Show what is deployed
         run: |
@@ -93,6 +149,7 @@ jobs:
             --query "[].{name:name,active:properties.active,traffic:properties.trafficWeight,health:properties.healthState,state:properties.runningState,created:properties.createdTime}" -o table
 
       - name: Check the app answers
+        if: ${{ env.LIVE != 'true' }}
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           for i in $(seq 1 16); do
@@ -103,4 +160,22 @@ jobs:
             sleep 10
           done
           echo "::error::App did not answer 200 within about 4 minutes. See the 'Show what is deployed' step and the Container App console log."
+          exit 1
+
+      # Live mode: do not call /api/penalty-lookups (it would hit the real site). /live-check/ping is harmless:
+      # 401 without the token proves the guard is on, 200 with it proves the token and settings reached the app.
+      - name: Check the live-check app answers
+        if: ${{ env.LIVE == 'true' }}
+        env:
+          LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
+        run: |
+          fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          for i in $(seq 1 24); do
+            noauth=$(curl -m 15 -s -o /dev/null -w '%{http_code}' "https://$fqdn/live-check/ping" || true)
+            auth=$(curl -m 15 -s -o /dev/null -w '%{http_code}' -H "X-Live-Check-Token: $LIVE_CHECK_TOKEN" "https://$fqdn/live-check/ping" || true)
+            echo "attempt $i: without token HTTP $noauth, with token HTTP $auth"
+            [ "$noauth" = "401" ] && [ "$auth" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::Live-check app did not answer as expected within about 4 minutes (Chromium image is larger; check the revision health and console log)."
           exit 1

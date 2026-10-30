@@ -45,7 +45,7 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
         BrowserContext context = null;
         try {
             playwright = Playwright.create();
-            browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(headless));
+            browser = playwright.chromium().launch(launchOptions(headless));
             context = browser.newContext(new Browser.NewContextOptions()
                     .setUserAgent(settings.userAgent())
                     .setLocale("en-AU")
@@ -93,5 +93,17 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
 
     private static String firstLine(String m) {
         return m == null ? "" : m.lines().findFirst().orElse("");
+    }
+
+    /**
+     * In the container image (env CEVOC_BROWSER_CONTAINER=true) Chromium cannot create its own sandbox, so the container is the
+     * sandbox and /dev/shm is small; the flags below are added only there. Local runs are unchanged.
+     */
+    static BrowserType.LaunchOptions launchOptions(boolean headless) {
+        var o = new BrowserType.LaunchOptions().setHeadless(headless);
+        if ("true".equalsIgnoreCase(System.getenv("CEVOC_BROWSER_CONTAINER"))) {
+            o.setArgs(java.util.List.of("--no-sandbox", "--disable-dev-shm-usage"));
+        }
+        return o;
     }
 }

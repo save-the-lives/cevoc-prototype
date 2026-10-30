@@ -34,6 +34,28 @@ jobs:
           cache: maven
       - run: mvn -B -Plive-browser test
         working-directory: backend
+  # Builds both Docker variants (nothing pushed). The live variant must contain Chromium, and Chromium must start (--version)
+  # so missing OS libraries show up here, not on the owner's phone. No site access.
+  backend-docker-variants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Default image builds and has no browser
+        run: |
+          docker build -t cevoc-default backend
+          docker run --rm --entrypoint sh cevoc-default -c 'test ! -d /ms-playwright && echo "default: no browser, ok"'
+      - name: Live image builds and Chromium starts
+        run: |
+          docker build --build-arg LIVE_BROWSER=true -t cevoc-live backend
+          docker run --rm --entrypoint sh cevoc-live -c '
+            set -e
+            ls /ms-playwright
+            found=0
+            for b in $(find /ms-playwright -type f \( -name chrome -o -name headless_shell \)); do
+              echo "$b"; "$b" --version; found=1
+            done
+            [ "$found" = 1 ]
+            id -un'
   frontend:
     runs-on: ubuntu-latest
     steps:

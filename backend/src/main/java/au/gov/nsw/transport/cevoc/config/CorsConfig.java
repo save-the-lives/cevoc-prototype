@@ -29,5 +29,11 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .allowedHeaders("Content-Type")
                 .maxAge(3600);
+        // Owner-run live check (only answers when cevoc.live-check.enabled=true and a token is set; token guard in livecheck.LiveCheckGuard).
+        registry.addMapping("/live-check/**")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "POST", "OPTIONS")
+                .allowedHeaders("Content-Type", "X-Live-Check-Token")
+                .maxAge(3600);
     }
 }
