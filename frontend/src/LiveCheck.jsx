@@ -42,7 +42,7 @@ export default function LiveCheck() {
           <input type="text" value={fields.notice} onChange={set('notice')} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" required />
         </label>
         <label>Offence date (DD/MM/YYYY)
-          <input type="text" inputMode="numeric" placeholder="DD/MM/YYYY" value={fields.date} onChange={set('date')} autoComplete="off" spellCheck="false" required />
+          <input type="text" inputMode="text" autoCapitalize="off" autoCorrect="off" placeholder="DD/MM/YYYY" value={fields.date} onChange={set('date')} autoComplete="off" spellCheck="false" required />
         </label>
         <label>Registration number (optional)
           <input type="password" value={fields.registration} onChange={set('registration')} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" />
