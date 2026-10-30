@@ -27,7 +27,7 @@ export function buildRequest(fields) {
   if (!/^[A-Za-z0-9]{4,20}$/.test(notice)) return { ok: false, error: 'Penalty notice number should be 4 to 20 letters or digits.' };
   const offenceDate = parseOffenceDate(fields.date);
   if (!offenceDate) return { ok: false, error: 'Offence date must be a real date as DD/MM/YYYY.' };
-  if (registration && !/^[A-Za-z0-9 -]{1,10}$/.test(registration)) return { ok: false, error: 'Registration should be up to 10 letters, digits, spaces or dashes.' };
+  if (registration && registration.length > 20) return { ok: false, error: 'Registration should be 20 characters or fewer.' };
   return { ok: true, request: { token, body: { notice, offenceDate, registration: registration || null } } };
 }
 

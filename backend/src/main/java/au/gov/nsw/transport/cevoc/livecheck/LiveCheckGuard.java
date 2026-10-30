@@ -26,7 +26,7 @@ public class LiveCheckGuard implements HandlerInterceptor {
     private final Semaphore oneAtATime = new Semaphore(1);
 
     public LiveCheckGuard(String token) {
-        this.expectedDigest = token == null || token.isBlank() ? null : sha256(token);
+        this.expectedDigest = token == null || token.isBlank() ? null : sha256(token.strip());
     }
 
     @Override
@@ -40,7 +40,7 @@ public class LiveCheckGuard implements HandlerInterceptor {
         }
         String presented = request.getHeader(HEADER);
         // Hash both sides so the compared arrays always have the same length, then compare in constant time.
-        boolean ok = MessageDigest.isEqual(expectedDigest, sha256(presented == null ? "" : presented)) && presented != null;
+        boolean ok = MessageDigest.isEqual(expectedDigest, sha256(presented == null ? "" : presented.strip())) && presented != null;
         if (!ok) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return false;

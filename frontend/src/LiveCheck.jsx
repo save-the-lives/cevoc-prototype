@@ -45,7 +45,7 @@ export default function LiveCheck() {
           <input type="text" inputMode="text" autoCapitalize="off" autoCorrect="off" placeholder="DD/MM/YYYY" value={fields.date} onChange={set('date')} autoComplete="off" spellCheck="false" required />
         </label>
         <label>Registration number (optional)
-          <input type="password" value={fields.registration} onChange={set('registration')} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" />
+          <input type="text" value={fields.registration} onChange={set('registration')} autoComplete="off" autoCapitalize="characters" autoCorrect="off" spellCheck="false" />
         </label>
         <button className="btn primary lc-btn" disabled={busy}>{busy ? 'Checking, this can take a minute...' : 'Run check'}</button>
       </form>
