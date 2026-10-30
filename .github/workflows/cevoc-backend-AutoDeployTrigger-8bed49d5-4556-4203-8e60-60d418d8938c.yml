@@ -97,8 +97,14 @@ jobs:
       - name: Let the app pull from ghcr.io (private package only)
         if: ${{ env.GHCR_PULL_TOKEN != '' }}
         run: |
-          az containerapp registry set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --server ghcr.io --username "${{ github.repository_owner }}" --password "$GHCR_PULL_TOKEN"
+          # Setting the registry makes a new revision (about 90 s), so only do it when it is not already set.
+          have=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "length(properties.configuration.registries[?server=='ghcr.io'])" -o tsv)
+          if [ "$have" = "0" ] || [ -z "$have" ]; then
+            az containerapp registry set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
+              --server ghcr.io --username "${{ github.repository_owner }}" --password "$GHCR_PULL_TOKEN"
+          else
+            echo "ghcr.io registry already set; skipping"
+          fi
 
       - name: Deploy new image
         if: ${{ env.LIVE != 'true' }}
@@ -152,12 +158,12 @@ jobs:
         if: ${{ env.LIVE != 'true' }}
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          for i in $(seq 1 16); do
+          for i in $(seq 1 32); do
             code=$(curl -m 15 -s -o /dev/null -w '%{http_code}' -X POST "https://$fqdn/api/penalty-lookups" \
               -H 'Content-Type: application/json' -d '{"infringementNumber":"9000000001","offenceDate":"2026-01-15"}' || true)
             echo "attempt $i: HTTP $code"
             [ "$code" = "200" ] && exit 0
-            sleep 10
+            sleep 5
           done
           echo "::error::App did not answer 200 within about 4 minutes. See the 'Show what is deployed' step and the Container App console log."
           exit 1
@@ -170,12 +176,12 @@ jobs:
           LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          for i in $(seq 1 24); do
+          for i in $(seq 1 48); do
             noauth=$(curl -m 15 -s -o /dev/null -w '%{http_code}' "https://$fqdn/live-check/ping" || true)
             auth=$(curl -m 15 -s -o /dev/null -w '%{http_code}' -H "X-Live-Check-Token: $LIVE_CHECK_TOKEN" "https://$fqdn/live-check/ping" || true)
             echo "attempt $i: without token HTTP $noauth, with token HTTP $auth"
             [ "$noauth" = "401" ] && [ "$auth" = "200" ] && exit 0
-            sleep 10
+            sleep 5
           done
           t=$(printf %s "$LIVE_CHECK_TOKEN" | tr -d '[:space:]'); echo "::error::workflow token length ${#LIVE_CHECK_TOKEN} (stripped ${#t}) sha256 prefix $(printf %s "$t" | sha256sum | cut -c1-6)"
           echo "::error::last answers: without token HTTP $noauth, with token HTTP $auth"
