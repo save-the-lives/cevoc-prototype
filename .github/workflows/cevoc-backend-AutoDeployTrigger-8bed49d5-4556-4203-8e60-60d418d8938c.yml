@@ -178,6 +178,7 @@ jobs:
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           bad=0
           for i in $(seq 1 30); do
+            noauth=$(curl -m 15 -s -o /dev/null -w '%{http_code}' "https://$fqdn/live-check/ping" || true)
             echo "attempt $i: HTTP $noauth"
             [ "$noauth" = "200" ] && exit 0
             # A real HTTP answer that is not success, many times in a row, will not fix itself: stop early.
