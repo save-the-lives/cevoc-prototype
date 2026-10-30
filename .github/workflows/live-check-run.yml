@@ -1,0 +1,39 @@
+name: Live check run (reads secrets, prints only the redacted summary)
+# Manual only. Reads LIVE_NOTICE, LIVE_OFFENCE_DATE (DD/MM/YYYY) and optional LIVE_REGISTRATION from repo secrets,
+# calls the live-check endpoint of the deployed Azure app, and prints the summary the app returns (no raw values).
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+env:
+  APP_NAME: cevoc-backend
+  RESOURCE_GROUP: cevoc
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CEVOCBACKEND_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Run the live check
+        env:
+          LIVE_NOTICE: ${{ secrets.LIVE_NOTICE }}
+          LIVE_OFFENCE_DATE: ${{ secrets.LIVE_OFFENCE_DATE }}
+          LIVE_REGISTRATION: ${{ secrets.LIVE_REGISTRATION }}
+        run: |
+          set +x
+          for v in "$LIVE_NOTICE" "$LIVE_OFFENCE_DATE" "$LIVE_REGISTRATION"; do [ -n "$v" ] && echo "::add-mask::$v"; done
+          [ -n "$LIVE_NOTICE" ] && [ -n "$LIVE_OFFENCE_DATE" ] || { echo "::error::Set secrets LIVE_NOTICE and LIVE_OFFENCE_DATE (DD/MM/YYYY)."; exit 1; }
+          d="$LIVE_OFFENCE_DATE"
+          iso="${d:6:4}-${d:3:2}-${d:0:2}"
+          echo "::add-mask::$iso"
+          fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          body=$(jq -n --arg n "$LIVE_NOTICE" --arg d "$iso" --arg r "$LIVE_REGISTRATION" '{notice:$n, offenceDate:$d, registration: (if $r=="" then null else $r end)}')
+          code=$(curl -m 170 -s -o resp.txt -w '%{http_code}' -X POST "https://$fqdn/live-check/lookup" -H 'Content-Type: application/json' -d "$body" || true)
+          echo "HTTP $code"
+          # the app returns a redacted summary; print it, with any value we know masked by the runner
+          cat resp.txt | tee "$GITHUB_STEP_SUMMARY"
