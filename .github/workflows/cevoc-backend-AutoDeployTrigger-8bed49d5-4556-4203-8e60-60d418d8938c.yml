@@ -153,14 +153,19 @@ jobs:
         if: ${{ env.LIVE != 'true' }}
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          for i in $(seq 1 32); do
+          bad=0
+          # Not up yet (no answer, 502/503/504) may fix itself: wait up to about 2.5 minutes.
+          # A real answer that is not 200 will not: three in a row is enough.
+          for i in $(seq 1 30); do
             code=$(curl -m 15 -s -o /dev/null -w '%{http_code}' -X POST "https://$fqdn/api/penalty-lookups" \
               -H 'Content-Type: application/json' -d '{"infringementNumber":"9000000001","offenceDate":"2026-01-15"}' || true)
             echo "attempt $i: HTTP $code"
             [ "$code" = "200" ] && exit 0
+            case "$code" in 000|"" |502|503|504) bad=0;; *) bad=$((bad+1));; esac
+            [ "$bad" -ge 3 ] && break
             sleep 5
           done
-          echo "::error::App did not answer 200 within about 4 minutes. See the 'Show what is deployed' step and the Container App console log."
+          echo "::error::App did not answer 200 (no answer for about 2.5 minutes, or three real non-200 replies). See the 'Show what is deployed' step and the Container App console log."
           exit 1
 
       # Live mode: do not call /api/penalty-lookups (it would hit the real site). /live-check/ping is harmless:
@@ -172,12 +177,12 @@ jobs:
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           bad=0
-          for i in $(seq 1 48); do
+          for i in $(seq 1 30); do
             echo "attempt $i: HTTP $noauth"
             [ "$noauth" = "200" ] && exit 0
             # A real HTTP answer that is not success, many times in a row, will not fix itself: stop early.
-            case "$noauth" in 000|"") bad=0;; *) bad=$((bad+1));; esac
-            [ "$bad" -ge 8 ] && break
+            case "$noauth" in 000|""|502|503|504) bad=0;; *) bad=$((bad+1));; esac
+            [ "$bad" -ge 3 ] && break
             sleep 5
           done
           curl -m 15 -s -i -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" "https://$fqdn/live-check/ping" | head -12 | tr -d '\r' | while IFS= read -r l; do echo "::error::ping $l"; done || true
