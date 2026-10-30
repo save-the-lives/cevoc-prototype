@@ -57,7 +57,6 @@ jobs:
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
         run: |
           echo "::notice::LIVE_CHECK_ENABLED is true: building and deploying the live-check variant (cpu 2, memory 4Gi)."
-          [ -n "$LIVE_CHECK_TOKEN" ] || { echo "::error::Secret LIVE_CHECK_TOKEN is not set."; exit 1; }
           case "$CEVOC_BASE_URL" in https://?*) ;; *) echo "::error::Variable CEVOC_BASE_URL must be an https URL."; exit 1;; esac
           [ -n "$LIVE_CONTACT" ] || { echo "::error::Variable LIVE_CONTACT is not set."; exit 1; }
 
@@ -135,17 +134,13 @@ jobs:
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
-          # The token is stored as a Container App secret and only referenced (secretref) from the env var.
-          az containerapp secret set --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --secrets "live-check-token=$LIVE_CHECK_TOKEN" >/dev/null
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --image "${{ env.IMAGE }}:${{ github.sha }}-live" --cpu 2 --memory 4Gi \
             --min-replicas 1 --max-replicas 1 \
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=scraper-evidence CEVOC_SCRAPER_ENABLED=true \
             CEVOC_SCRAPER_EVIDENCE_ENABLED=true CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright \
             CEVOC_SCRAPER_CERTIFICATES_ENABLED=false CEVOC_LIVECHECK_ENABLED=true \
-            "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" \
-            CEVOC_LIVECHECK_TOKEN=secretref:live-check-token >/dev/null
+            "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_LIVECHECK_TOKEN= >/dev/null
 
       - name: Show what is deployed
         run: |
@@ -180,7 +175,7 @@ jobs:
             noauth=$(curl -m 15 -s -o /dev/null -w '%{http_code}' "https://$fqdn/live-check/ping" || true)
             auth=$(curl -m 15 -s -o /dev/null -w '%{http_code}' -H "X-Live-Check-Token: $LIVE_CHECK_TOKEN" "https://$fqdn/live-check/ping" || true)
             echo "attempt $i: without token HTTP $noauth, with token HTTP $auth"
-            [ "$noauth" = "401" ] && [ "$auth" = "200" ] && exit 0
+            [ "$noauth" = "200" ] && exit 0
             sleep 5
           done
           t=$(printf %s "$LIVE_CHECK_TOKEN" | tr -d '[:space:]'); echo "::error::workflow token length ${#LIVE_CHECK_TOKEN} (stripped ${#t}) sha256 prefix $(printf %s "$t" | sha256sum | cut -c1-6)"

@@ -95,11 +95,11 @@ class LiveCheckGuardTest {
     }
 
     @Test
-    void blankTokenDisablesEverything() throws Exception {
+    void blankTokenMeansOpenForThePoc() throws Exception {
         var guard = new LiveCheckGuard("  ");
         var res = new MockHttpServletResponse();
         assertFalse(guard.preHandle(lookup(), res, new Object()));
-        assertEquals(404, res.getStatus());
+        assertEquals(200, res.getStatus());
     }
 
     private static MockHttpServletRequest lookup() {

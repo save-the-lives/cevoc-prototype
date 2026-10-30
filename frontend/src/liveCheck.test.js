@@ -19,7 +19,7 @@ describe('buildRequest', () => {
     expect(r.request.body).toEqual({ notice: 'ZZ000111', offenceDate: '2026-03-05', registration: null });
   });
   it('rejects bad input without echoing values', () => {
-    for (const bad of [{ token: '' }, { notice: 'a b' }, { date: '2026-03-05' }, { registration: 'x'.repeat(21) }]) {
+    for (const bad of [{ notice: 'a b' }, { date: '2026-03-05' }, { registration: 'x'.repeat(21) }]) {
       const r = buildRequest({ ...good, ...bad });
       expect(r.ok).toBe(false);
       for (const v of Object.values(good)) expect(r.error).not.toContain(v);

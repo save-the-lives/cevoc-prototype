@@ -23,7 +23,6 @@ export function buildRequest(fields) {
   const token = (fields.token || '').trim();
   const notice = (fields.notice || '').trim();
   const registration = (fields.registration || '').trim();
-  if (!token) return { ok: false, error: 'Enter the access token.' };
   if (!/^[A-Za-z0-9]{4,20}$/.test(notice)) return { ok: false, error: 'Penalty notice number should be 4 to 20 letters or digits.' };
   const offenceDate = parseOffenceDate(fields.date);
   if (!offenceDate) return { ok: false, error: 'Offence date must be a real date as DD/MM/YYYY.' };
@@ -64,7 +63,7 @@ export async function runLiveCheck(fields, { fetchImpl = fetch, base = '' } = {}
       method: 'POST',
       cache: 'no-store',
       credentials: 'omit',
-      headers: { 'Content-Type': 'application/json', 'X-Live-Check-Token': built.request.token },
+      headers: built.request.token ? { 'Content-Type': 'application/json', 'X-Live-Check-Token': built.request.token } : { 'Content-Type': 'application/json' },
       body: JSON.stringify(built.request.body),
     });
     if (!res.ok) return { ok: false, error: errorForStatus(res.status) };

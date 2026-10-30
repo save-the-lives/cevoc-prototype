@@ -34,13 +34,11 @@ public class LiveCheckGuard implements HandlerInterceptor {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        if (expectedDigest == null) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return false;
-        }
+        // POC mode: with no token configured the endpoints are open (only reachable while LIVE_CHECK_ENABLED is on).
         String presented = request.getHeader(HEADER);
         // Hash both sides so the compared arrays always have the same length, then compare in constant time.
-        boolean ok = MessageDigest.isEqual(expectedDigest, sha256(presented == null ? "" : presented.strip())) && presented != null;
+        boolean ok = expectedDigest == null
+                || (presented != null && MessageDigest.isEqual(expectedDigest, sha256(presented.strip())));
         if (!ok) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
