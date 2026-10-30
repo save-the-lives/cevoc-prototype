@@ -25,15 +25,8 @@ public class LiveCheckGuard implements HandlerInterceptor {
     private final byte[] expectedDigest; // null when no token is configured
     private final Semaphore oneAtATime = new Semaphore(1);
 
-    private final int expectedLen; // TEMPORARY debug: remove once the 401 is explained
-
     public LiveCheckGuard(String token) {
         this.expectedDigest = token == null || token.isBlank() ? null : sha256(token.strip());
-        this.expectedLen = token == null ? 0 : token.strip().length();
-    }
-
-    private static String hex3(byte[] d) {
-        return d == null ? "none" : String.format("%02x%02x%02x", d[0], d[1], d[2]);
     }
 
     @Override
@@ -49,9 +42,6 @@ public class LiveCheckGuard implements HandlerInterceptor {
         // Hash both sides so the compared arrays always have the same length, then compare in constant time.
         boolean ok = MessageDigest.isEqual(expectedDigest, sha256(presented == null ? "" : presented.strip())) && presented != null;
         if (!ok) {
-            String p = presented == null ? "" : presented.strip();
-            response.setHeader("X-Guard-Debug", "expected=" + expectedLen + "/" + hex3(expectedDigest)
-                    + " presented=" + p.length() + "/" + hex3(sha256(p)));
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }
