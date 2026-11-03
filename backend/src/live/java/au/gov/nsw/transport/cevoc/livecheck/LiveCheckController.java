@@ -1,5 +1,6 @@
 package au.gov.nsw.transport.cevoc.livecheck;
 
+import au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic;
 import au.gov.nsw.transport.cevoc.adapter.out.scraper.RequestScopedRegistration;
 import au.gov.nsw.transport.cevoc.application.port.in.LookupPenaltyUseCase;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupRequest;
@@ -63,7 +64,11 @@ public class LiveCheckController {
             return ResponseEntity.badRequest().body("registration not in the expected shape\n");
         }
         var request = new PenaltyLookupRequest(body.notice(), date);
-        var result = RequestScopedRegistration.with(plate, () -> useCase.lookup(request));
-        return ResponseEntity.ok(LiveCheckSummary.of(result));
+        String summary = RequestScopedRegistration.with(plate, () -> {
+            LookupDiagnostic.clear();
+            var result = useCase.lookup(request);
+            return LiveCheckSummary.of(result, LookupDiagnostic.take());
+        });
+        return ResponseEntity.ok(summary);
     }
 }

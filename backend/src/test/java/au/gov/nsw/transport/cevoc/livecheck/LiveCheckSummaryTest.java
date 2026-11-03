@@ -47,4 +47,29 @@ class LiveCheckSummaryTest {
         assertThat(LiveCheckSummary.state(summaryOnly)).startsWith("2 summary");
         assertThat(LiveCheckSummary.of(un)).contains("(no notice details)").contains("camera code found  : no");
     }
+
+    @Test
+    void failureDetailIsPrintedFromTheFixedVocabularyOnly() {
+        PenaltyLookupResult un = new PenaltyLookupResult(Status.UNAVAILABLE, "9000000004", "x", null, List.of(), "S");
+        String reason = au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic
+                .fromFailure("browser step 'login' failed: Timeout 30000ms exceeded for TST123 at 9000000004");
+        assertThat(reason).isEqualTo("step=login; cause=timeout");
+        String s = LiveCheckSummary.of(un, reason);
+        assertThat(s).contains("failure detail     : step=login; cause=timeout");
+        assertThat(s).doesNotContain("9000000004").doesNotContain("TST123");
+        assertThat(LiveCheckSummary.of(un)).doesNotContain("failure detail");
+    }
+
+    @Test
+    void diagnosticMapsKnownBrowserFailures() {
+        assertThat(au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic
+                .fromFailure("could not start the browser: Executable doesn't exist at /x")).isEqualTo("step=start; cause=browser-not-installed");
+        assertThat(au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic
+                .fromFailure("browser step 'login' failed: Navigation failed because net::ERR_NAME_NOT_RESOLVED")).isEqualTo("step=login; cause=ERR_NAME_NOT_RESOLVED");
+        assertThat(au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic
+                .fromFailure("browser step 'submit-login' failed: IllegalStateException")).isEqualTo("step=submit-login; cause=IllegalStateException");
+        String page = au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic
+                .fromUnreadablePage("login", "<html><body>Access Denied 9000000004</body></html>");
+        assertThat(page).contains("looks-blocked=yes").contains("has-pnn-field=no").doesNotContain("9000000004");
+    }
 }

@@ -12,8 +12,16 @@ public final class LiveCheckSummary {
     private LiveCheckSummary() {}
 
     public static String of(PenaltyLookupResult r) {
+        return of(r, null);
+    }
+
+    /** {@code failure} is a fixed-vocabulary reason from LookupDiagnostic (step, cause token, yes/no markers), or null. */
+    public static String of(PenaltyLookupResult r, String failure) {
         StringBuilder sb = new StringBuilder();
         sb.append("state reached      : ").append(state(r)).append('\n');
+        if (present(failure)) {
+            sb.append("failure detail     : ").append(failure).append('\n');
+        }
         sb.append("lookup status      : ").append(r.status()).append('\n');
         NoticeDetails n = r.notice();
         sb.append("fields found       : ");

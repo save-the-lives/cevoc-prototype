@@ -111,6 +111,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         } catch (IOException | RuntimeException e) {
             // Class name only: messages from a browser layer could echo form values.
             LOG.warn("evidence lookup failed: {}", e.getClass().getSimpleName());
+            LookupDiagnostic.set(LookupDiagnostic.fromFailure(e instanceof IOException ? e.getMessage() : "failed: " + e.getClass().getSimpleName()));
             return result(Status.UNAVAILABLE, number, "The lookup source is not available right now.");
         }
     }
@@ -118,9 +119,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     private PenaltyLookupResult run(RenderedPageSession session, String key, String number, PenaltyLookupRequest request, String plate)
             throws IOException, InterruptedException {
         // State 1: login page. A notice type that needs extra identity fields is out of scope.
-        RevenueNswPageParser.Page login = parser.parse(session.loginPage());
+        String loginHtml = session.loginPage();
+        RevenueNswPageParser.Page login = parser.parse(loginHtml);
         if (login.state() != RevenueNswPageParser.State.LOGIN) {
             LOG.warn("evidence lookup: login page not recognised");
+            LookupDiagnostic.set(LookupDiagnostic.fromUnreadablePage("login", loginHtml));
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
         if (!login.unexpectedLoginFields().isEmpty()) {
@@ -128,13 +131,15 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             return result(Status.UNAVAILABLE, number, "This kind of notice needs details we do not collect.");
         }
         // State 2: summary. Still on the login page means the pair was not matched (OPEN QUESTION: the real wording).
-        RevenueNswPageParser.Page page = parser.parse(session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
+        String summaryHtml = session.submitLogin(number, request.offenceDate().format(LOGIN_DATE));
+        RevenueNswPageParser.Page page = parser.parse(summaryHtml);
         switch (page.state()) {
             case LOGIN -> {
                 return result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
             }
             case UNRECOGNISED -> {
                 LOG.warn("evidence lookup: summary page not recognised");
+                LookupDiagnostic.set(LookupDiagnostic.fromUnreadablePage("summary", summaryHtml));
                 return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
             }
             default -> { /* SUMMARY or IMAGES: carry on */ }
