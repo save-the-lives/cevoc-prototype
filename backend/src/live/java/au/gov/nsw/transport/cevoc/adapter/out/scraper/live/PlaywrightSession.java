@@ -198,15 +198,57 @@ final class PlaywrightSession implements RenderedPageSession {
         }
         // In-page fetch of a blob: URL: no request to the site, so no pacing needed.
         return step("image", () -> {
-            Object o = page.evaluate(FETCH_JS, Arrays.asList(blobUrl, maxBytes));
-            if (!(o instanceof Map<?, ?> m) || !(m.get("b64") instanceof String b64) || b64.isEmpty()) {
-                return Optional.<ImageBytes>empty();
+            // 1) in-page fetch of the blob; 2) draw the loaded img onto a canvas; 3) screenshot the element.
+            try {
+                Object o = page.evaluate(FETCH_JS, Arrays.asList(blobUrl, maxBytes));
+                if (o instanceof Map<?, ?> m && m.get("b64") instanceof String b64 && !b64.isEmpty()) {
+                    String type = m.get("type") instanceof String t ? t.toLowerCase(Locale.ROOT) : "";
+                    note("image-path=fetch");
+                    return Optional.of(new ImageBytes(type, Base64.getDecoder().decode(b64)));
+                }
+                note("fetch=empty");
+            } catch (PlaywrightException e) {
+                String m = String.valueOf(e.getMessage()).toLowerCase(Locale.ROOT);
+                note("fetch=failed" + (m.contains("content security policy") ? "-csp" : m.contains("failed to fetch") ? "-typeerror" : "-other"));
             }
-            String type = m.get("type") instanceof String t ? t.toLowerCase(Locale.ROOT) : "";
-            byte[] data = Base64.getDecoder().decode(b64);
-            return Optional.of(new ImageBytes(type, data));
+            Locator img = page.locator("img[src=\"" + blobUrl.replace("\"", "") + "\"]").first();
+            try {
+                Object o = img.evaluate(CANVAS_JS);
+                if (o instanceof String d && d.startsWith("data:image/png;base64,")) {
+                    note("image-path=canvas");
+                    return Optional.of(new ImageBytes("image/png", Base64.getDecoder().decode(d.substring(d.indexOf(',') + 1))));
+                }
+                note("canvas=empty");
+            } catch (PlaywrightException e) {
+                note("canvas=failed");
+            }
+            try {
+                byte[] png = img.screenshot();
+                if (png != null && png.length > 0 && png.length <= maxBytes) {
+                    note("image-path=shot");
+                    return Optional.of(new ImageBytes("image/png", png));
+                }
+                note("shot=empty");
+            } catch (PlaywrightException e) {
+                note("shot=failed");
+            }
+            return Optional.<ImageBytes>empty();
         });
     }
+
+    private static void note(String marker) {
+        au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note(marker);
+    }
+
+    private static final String CANVAS_JS = """
+            el => {
+              if (!el.complete || !el.naturalWidth) return null;
+              const c = document.createElement('canvas');
+              c.width = el.naturalWidth; c.height = el.naturalHeight;
+              c.getContext('2d').drawImage(el, 0, 0);
+              return c.toDataURL('image/png');
+            }
+            """;
 
     @Override
     public void close() {
