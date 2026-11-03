@@ -95,6 +95,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         URI base = URI.create(settings.baseUrl());
         if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null) {
+            LookupDiagnostic.set("step=config; cause=base-url-not-https");
             return result(Status.UNAVAILABLE, number, "The lookup source is not configured correctly.");
         }
         try (RenderedPageSession session = sessions.open(base)) {
@@ -128,6 +129,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         if (!login.unexpectedLoginFields().isEmpty()) {
             LOG.warn("evidence lookup: login page asks for extra details");
+            LookupDiagnostic.set("step=login; cause=extra-login-fields");
             return result(Status.UNAVAILABLE, number, "This kind of notice needs details we do not collect.");
         }
         // State 2: summary. Still on the login page means the pair was not matched (OPEN QUESTION: the real wording).
@@ -146,6 +148,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         if (page.noticeNumber() != null && !page.noticeNumber().equalsIgnoreCase(number)) {
             LOG.warn("evidence lookup: page shows a different notice number");
+            LookupDiagnostic.set("step=summary; cause=notice-number-mismatch");
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
         String summary = "Content from the penalty page.";
