@@ -150,8 +150,10 @@ final class PlaywrightSession implements RenderedPageSession {
                     page.locator(NEXT_CSS));
             settle();
             markAfterClick();
+            // Hidden alert templates exist on the login page from the start, so only a VISIBLE alert counts, and the
+            // login inputs disappearing (the app moved on) counts too.
             waitUntil(() -> page.locator(PLATE).count() > 0 || page.getByText(SUMMARY_HEADING).count() > 0
-                    || (page.locator(PNN).count() > 0 && page.locator(ERROR_CSS).count() > 0));
+                    || page.locator(PNN).count() == 0 || visibleAlerts() > 0);
             return snapshot("2-after-login");
         });
     }
@@ -167,7 +169,7 @@ final class PlaywrightSession implements RenderedPageSession {
             settle();
             // Thumbnails are blob: images. A visible error with the plate field still present ends the wait early.
             waitUntil(() -> page.locator(BLOB_IMG).count() > 0
-                    || (page.locator(PLATE).count() > 0 && page.locator(ERROR_CSS).count() > 0));
+                    || (page.locator(PLATE).count() > 0 && visibleAlerts() > 0));
             // Let the rest of the thumbnails arrive: wait for the count to stop changing (bounded).
             int last = -1;
             for (int i = 0; i < 6; i++) {
