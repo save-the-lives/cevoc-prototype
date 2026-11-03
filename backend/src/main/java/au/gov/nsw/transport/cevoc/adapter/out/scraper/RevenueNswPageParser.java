@@ -328,6 +328,10 @@ public class RevenueNswPageParser {
                 continue;
             }
             String ref = refFor(img);
+            if (ref == null && src.startsWith("blob:")) {
+                // The page gave no reference for this thumbnail; it is still evidence, so number it.
+                ref = "image-" + (byRef.size() + 1);
+            }
             if (ref != null) {
                 byRef.putIfAbsent(ref, new ImageRef(ref, src));
             }

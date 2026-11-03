@@ -198,6 +198,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             throws InterruptedException {
         List<EvidenceItem> items = new ArrayList<>();
         int n = 0;
+        int noBytes = 0;
+        int rejected = 0;
+        int failed = 0;
         for (RevenueNswPageParser.ImageRef ref : refs) {
             if (n >= MAX_IMAGES) {
                 break;
@@ -209,21 +212,26 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             try {
                 Optional<RenderedPageSession.ImageBytes> bytes = session.imageBytes(ref.blobUrl());
                 if (bytes.isEmpty()) {
+                    noBytes++;
                     continue;
                 }
                 byte[] data = bytes.get().data();
                 String type = bytes.get().contentType() == null ? ""
                         : bytes.get().contentType().split(";")[0].trim().toLowerCase(Locale.ROOT);
                 if (data == null || data.length == 0 || data.length > settings.maxBytes() || !type.startsWith("image/")) {
+                    rejected++;
                     continue;
                 }
                 String objectKey = "scraped/" + key.substring(0, 16) + "/image-" + n + extension(type);
                 storage.store(objectKey, type, new ByteArrayInputStream(data), data.length);
                 items.add(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey));
             } catch (IOException | RuntimeException e) {
+                failed++;
                 LOG.debug("evidence image skipped: {}", e.getClass().getSimpleName());
             }
         }
+        LookupDiagnostic.note("image-refs=" + refs.size() + "; image-stored=" + items.size() + "; image-no-bytes=" + noBytes
+                + "; image-rejected=" + rejected + "; image-failed=" + failed);
         return items;
     }
 
