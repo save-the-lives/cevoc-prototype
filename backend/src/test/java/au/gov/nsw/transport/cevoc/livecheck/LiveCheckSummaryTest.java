@@ -71,5 +71,10 @@ class LiveCheckSummaryTest {
         String page = au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic
                 .fromUnreadablePage("login", "<html><body>Access Denied 9000000004</body></html>");
         assertThat(page).contains("looks-blocked=yes").contains("has-pnn-field=no").doesNotContain("9000000004");
+        String structure = au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.fromUnreadablePage("login",
+                "<html><body><app-root><form><input id=\"pnn\" type=\"text\"><input formcontrolname=\"dateOfOffence\"></form>"
+                        + "<button>Next</button> Sample words 9000000004</app-root></body></html>");
+        assertThat(structure).contains("inputs=2").contains("forms=1").contains("pnn-by=no/yes/no")
+                .contains("dateOfOffence-by=no/no/yes").contains("app-root=yes").doesNotContain("Sample").doesNotContain("9000000004");
     }
 }

@@ -30,6 +30,14 @@ class RevenueNswPageParserTest {
     }
 
     @Test
+    void loginInputsIdentifiedByIdOrFormcontrolnameAreStillLogin() {
+        String byId = "<html><body><input id=\"pnn\"><input id=\"dateOfOffence\"><button>Next</button></body></html>";
+        String byControl = "<html><body><input formcontrolname=\"pnn\"><input formcontrolname=\"dateOfOffence\"></body></html>";
+        assertThat(parser.parse(byId).state()).isEqualTo(RevenueNswPageParser.State.LOGIN);
+        assertThat(parser.parse(byControl).state()).isEqualTo(RevenueNswPageParser.State.LOGIN);
+    }
+
+    @Test
     void state1WithAnEnabledNameFieldIsFlagged() {
         RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state1-login-needs-name.html"));
         assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.LOGIN);

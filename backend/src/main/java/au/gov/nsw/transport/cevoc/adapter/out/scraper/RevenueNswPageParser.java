@@ -126,8 +126,8 @@ public class RevenueNswPageParser {
     }
 
     private Page read(Document doc) {
-        boolean loginForm = doc.selectFirst("input[name=pnn]") != null && doc.selectFirst("input[name=dateOfOffence]") != null;
-        boolean plateForm = doc.selectFirst("input[name=" + PLATE_INPUT + "]") != null;
+        boolean loginForm = field(doc, "pnn") != null && field(doc, "dateOfOffence") != null;
+        boolean plateForm = field(doc, PLATE_INPUT) != null;
         String heading = heading(doc);
         if (loginForm && !plateForm) {
             // Both login inputs exist only on the login page; its labels look like summary labels, so decide here.
@@ -169,12 +169,17 @@ public class RevenueNswPageParser {
         return new Page(State.IMAGES, heading, camera, false, false, registrationRow, List.of(), images, download, code, cert);
     }
 
+    /** An input identified by name, id or formcontrolname (the markup was inferred, so all three are accepted). */
+    static Element field(Element root, String key) {
+        return root.selectFirst("input[name=" + key + "], input#" + key + ", input[formcontrolname=" + key + "]");
+    }
+
     // ---- state 1 -------------------------------------------------------------------------------------
 
     private static List<String> unexpectedLoginFields(Document doc) {
         List<String> out = new ArrayList<>();
         for (String name : OPTIONAL_LOGIN_FIELDS) {
-            Element input = doc.selectFirst("input[name=" + name + "]");
+            Element input = field(doc, name);
             if (input != null && !input.hasAttr("disabled")) {
                 out.add(name);
             }
@@ -309,8 +314,8 @@ public class RevenueNswPageParser {
     /** Inside the images (plate) form, or the login form. */
     private static boolean insideForm(Element el) {
         Element form = el.closest("form");
-        return form != null && (form.selectFirst("input[name=" + PLATE_INPUT + "]") != null
-                || form.selectFirst("input[name=pnn]") != null);
+        return form != null && (field(form, PLATE_INPUT) != null
+                || field(form, "pnn") != null);
     }
 
     // ---- state 3 -------------------------------------------------------------------------------------

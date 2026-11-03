@@ -79,8 +79,46 @@ public final class LookupDiagnostic {
                 + "; has-date-field=" + yn(lower.contains("dateofoffence"))
                 + "; has-next-button=" + yn(lower.contains("next"))
                 + "; has-penalty-notice-heading=" + yn(lower.contains("penalty notice number"))
+                + structure(h)
                 + "; looks-blocked=" + yn(lower.contains("access denied") || lower.contains("captcha")
                         || lower.contains("forbidden") || lower.contains("unusual traffic"));
+    }
+
+    private static final String[] KNOWN_FIELDS = {"pnn", "dateOfOffence", "lastName", "vehicleNumber"};
+
+    /** Element structure only: counts and which known field keys appear as name/id/formcontrolname. */
+    private static String structure(String html) {
+        try {
+            org.jsoup.nodes.Document d = org.jsoup.Jsoup.parse(html);
+            StringBuilder sb = new StringBuilder();
+            sb.append("; inputs=").append(Math.min(d.select("input").size(), 20));
+            sb.append("; forms=").append(Math.min(d.select("form").size(), 9));
+            sb.append("; buttons=").append(Math.min(d.select("button, input[type=submit]").size(), 20));
+            sb.append("; iframes=").append(Math.min(d.select("iframe").size(), 9));
+            sb.append("; app-root=").append(yn(!d.select("app-root, #root, #app").isEmpty()));
+            sb.append("; body-text=").append(bucket(d.body() == null ? 0 : d.body().text().length()));
+            for (String k : KNOWN_FIELDS) {
+                sb.append("; ").append(k).append("-by=")
+                        .append(yn(!d.select("input[name=" + k + "]").isEmpty())).append("/")
+                        .append(yn(!d.select("input#" + k).isEmpty())).append("/")
+                        .append(yn(!d.select("input[formcontrolname=" + k + "]").isEmpty()));
+            }
+            sb.append("; input-types=");
+            java.util.TreeSet<String> types = new java.util.TreeSet<>();
+            for (org.jsoup.nodes.Element e : d.select("input")) {
+                String t = e.attr("type").toLowerCase(Locale.ROOT);
+                types.add(java.util.Set.of("text", "hidden", "tel", "date", "number", "checkbox", "submit", "password", "email").contains(t) ? t : (t.isEmpty() ? "none" : "other"));
+            }
+            sb.append(String.join(",", types));
+            sb.append("; visible-blocked-words=").append(yn(blockedWords(d.body() == null ? "" : d.body().text().toLowerCase(Locale.ROOT))));
+            return sb.toString();
+        } catch (RuntimeException e) {
+            return "; structure=unreadable";
+        }
+    }
+
+    private static boolean blockedWords(String t) {
+        return t.contains("access denied") || t.contains("captcha") || t.contains("forbidden") || t.contains("unusual traffic");
     }
 
     private static String bucket(int n) {
