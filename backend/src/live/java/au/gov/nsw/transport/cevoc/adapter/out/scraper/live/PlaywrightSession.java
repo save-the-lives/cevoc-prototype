@@ -91,7 +91,23 @@ final class PlaywrightSession implements RenderedPageSession {
             }
         });
         this.page = context.newPage();
+        // Diagnostics only: method and HTTP status of script-made POST/PUT calls, never URLs or bodies.
+        this.page.onResponse(resp -> {
+            try {
+                String type = resp.request().resourceType();
+                String method = resp.request().method();
+                if (("xhr".equals(type) || "fetch".equals(type)) && !"GET".equals(method) && postStatuses.size() < 8) {
+                    postStatuses.add(method + ":" + resp.status());
+                }
+            } catch (RuntimeException ignored) {
+                // diagnostics must never break the flow
+            }
+        });
     }
+
+    private final java.util.List<String> postStatuses = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+    private static final String[] ALERT_WORDS = {"not found", "no match", "incorrect", "invalid", "captcha", "robot", "try again",
+            "unable", "error", "required", "does not match", "not recognised", "verify"};
 
     static String loginUrl(URI base) {
         String path = base.getPath();
@@ -248,10 +264,50 @@ final class PlaywrightSession implements RenderedPageSession {
             au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("alerts-after=" + Math.min(page.locator(ERROR_CSS).count(), 9)
                     + "; invalid-after=" + Math.min(page.locator(".ng-invalid, [aria-invalid=\"true\"]").count(), 9)
                     + "; path-changed=" + (page.url().contains(DEFAULT_PATH) ? "no" : "yes")
-                    + "; hash-changed=" + (page.url().contains("#") ? "yes" : "no"));
+                    + "; hash-changed=" + (page.url().contains("#") ? "yes" : "no")
+                    + "; post-calls=" + (postStatuses.isEmpty() ? "none" : String.join(",", postStatuses))
+                    + "; iframe-kinds=" + iframeKinds()
+                    + "; alert-visible=" + visibleAlerts()
+                    + "; alert-words=" + alertWords());
         } catch (RuntimeException e) {
             au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("markers-after=unreadable");
         }
+    }
+
+    private String iframeKinds() {
+        java.util.TreeSet<String> kinds = new java.util.TreeSet<>();
+        for (Locator f : page.locator("iframe").all()) {
+            String src = String.valueOf(f.getAttribute("src")).toLowerCase(Locale.ROOT);
+            kinds.add(src.contains("recaptcha") ? "recaptcha" : src.contains("google") ? "google" : src.contains("hcaptcha") ? "hcaptcha" : "other");
+        }
+        return kinds.isEmpty() ? "none" : String.join(",", kinds);
+    }
+
+    private int visibleAlerts() {
+        int n = 0;
+        for (Locator a : page.locator(ERROR_CSS).all()) {
+            if (a.isVisible() && !a.innerText().isBlank()) {
+                n++;
+            }
+        }
+        return Math.min(n, 9);
+    }
+
+    /** Which words of a fixed vocabulary appear in the visible alert text. The text itself is never kept. */
+    private String alertWords() {
+        StringBuilder text = new StringBuilder();
+        for (Locator a : page.locator(ERROR_CSS).all()) {
+            if (a.isVisible()) {
+                text.append(a.innerText().toLowerCase(Locale.ROOT)).append(' ');
+            }
+        }
+        java.util.List<String> hit = new java.util.ArrayList<>();
+        for (String w : ALERT_WORDS) {
+            if (text.indexOf(w) >= 0) {
+                hit.add(w.replace(' ', '-'));
+            }
+        }
+        return hit.isEmpty() ? "none" : String.join(",", hit);
     }
 
     /** Clicks the first candidate that exists; throws if none does. */
