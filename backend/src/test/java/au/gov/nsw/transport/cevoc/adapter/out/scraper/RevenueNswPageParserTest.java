@@ -23,6 +23,13 @@ class RevenueNswPageParserTest {
     }
 
     @Test
+    void loginPageThatLabelsItsFieldPenaltyNoticeNumberIsStillLogin() {
+        String html = "<html><body><label>Penalty Notice Number: Date of offence:</label>"
+                + "<input name=\"pnn\"><input name=\"dateOfOffence\"><button>Next</button></body></html>";
+        assertThat(parser.parse(html).state()).isEqualTo(RevenueNswPageParser.State.LOGIN);
+    }
+
+    @Test
     void state1WithAnEnabledNameFieldIsFlagged() {
         RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state1-login-needs-name.html"));
         assertThat(p.state()).isEqualTo(RevenueNswPageParser.State.LOGIN);
