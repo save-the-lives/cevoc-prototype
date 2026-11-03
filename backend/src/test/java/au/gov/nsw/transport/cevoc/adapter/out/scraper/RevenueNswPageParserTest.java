@@ -24,7 +24,7 @@ class RevenueNswPageParserTest {
 
     @Test
     void loginPageThatLabelsItsFieldPenaltyNoticeNumberIsStillLogin() {
-        String html = "<html><body><label>Penalty Notice Number: Date of offence:</label>"
+        String html = "<html><body><label>Penalty Notice Number: Date of offence: 01/01/2026</label>"
                 + "<input name=\"pnn\"><input name=\"dateOfOffence\"><button>Next</button></body></html>";
         assertThat(parser.parse(html).state()).isEqualTo(RevenueNswPageParser.State.LOGIN);
     }

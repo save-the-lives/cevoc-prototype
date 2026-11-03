@@ -129,6 +129,11 @@ public class RevenueNswPageParser {
         boolean loginForm = doc.selectFirst("input[name=pnn]") != null && doc.selectFirst("input[name=dateOfOffence]") != null;
         boolean plateForm = doc.selectFirst("input[name=" + PLATE_INPUT + "]") != null;
         String heading = heading(doc);
+        if (loginForm && !plateForm) {
+            // Both login inputs exist only on the login page; its labels look like summary labels, so decide here.
+            return new Page(State.LOGIN, null, null, false, false, false, unexpectedLoginFields(doc),
+                    List.of(), false, null, null);
+        }
         boolean summaryValues = value(doc, L_DATE) != null || value(doc, L_PENALTY) != null;
         // The login page labels its own field "Penalty notice number", so a heading alone never makes a summary there.
         boolean detailsPresent = summaryValues || (heading != null && !loginForm);
