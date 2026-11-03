@@ -68,6 +68,6 @@ With `SAVE_HTML=yes`, `live-capture/<time>-1-login.html`, `-2-after-login.html`,
 
 ## For developers
 
-The `LiveCheckGuard` interceptor (default build, active only when `cevoc.live-check.enabled=true`) holds the token check, the one-at-a-time limit and the 404-when-no-token rule; env names: `CEVOC_LIVECHECK_ENABLED`, `CEVOC_LIVECHECK_TOKEN`. Docker: `docker build --build-arg LIVE_BROWSER=true backend`.
+The `LiveCheckGuard` interceptor (default build, active only when `cevoc.live-check.enabled=true`) holds the token check, the one-at-a-time limit and the 404-when-no-token rule; env names: `CEVOC_LIVECHECK_ENABLED`, `CEVOC_LIVECHECK_TOKEN`. Docker: `docker build backend` (one image, always with Chromium; the live check is switched on only by the env settings above).
 
 Source set `backend/src/live/java` (Playwright session and factory, the local-check endpoint) is added by `build-helper-maven-plugin` only under `-Plive-browser`. `ScraperEvidenceFactory` loads the factory by name, so the default build has no Playwright reference. CI runs `mvn test` (default build, with unit tests for the profile-free parts) and a compile-and-test job with `-Plive-browser` that launches no browser.

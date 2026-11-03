@@ -56,12 +56,12 @@ jobs:
           CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
         run: |
-          echo "::notice::LIVE_CHECK_ENABLED is true: building and deploying the live-check variant (cpu 2, memory 4Gi)."
+          echo "::notice::LIVE_CHECK_ENABLED is true: deploying the one image with the live-check settings on (cpu 2, memory 4Gi)."
           case "$CEVOC_BASE_URL" in https://?*) ;; *) echo "::error::Variable CEVOC_BASE_URL must be an https URL."; exit 1;; esac
           [ -n "$LIVE_CONTACT" ] || { echo "::error::Variable LIVE_CONTACT is not set."; exit 1; }
 
+      # One image for both modes (always contains Chromium). Layers: base, deps + Chromium, then the thin app layer.
       - name: Build and push image
-        if: ${{ env.LIVE != 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: backend
@@ -71,18 +71,6 @@ jobs:
             ${{ env.IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # Live variant: own tag, never :latest, so the default image is never replaced by it.
-      - name: Build and push live-check image
-        if: ${{ env.LIVE == 'true' }}
-        uses: docker/build-push-action@v6
-        with:
-          context: backend
-          build-args: LIVE_BROWSER=true
-          push: true
-          tags: ${{ env.IMAGE }}:${{ github.sha }}-live
-          cache-from: type=gha,scope=live
-          cache-to: type=gha,scope=live,mode=max
 
       - name: Azure Login
         uses: azure/login@v2
@@ -135,7 +123,7 @@ jobs:
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --image "${{ env.IMAGE }}:${{ github.sha }}-live" --cpu 2 --memory 4Gi \
+            --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 2 --memory 4Gi \
             --min-replicas 1 --max-replicas 1 \
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=scraper-evidence CEVOC_SCRAPER_ENABLED=true \
             CEVOC_SCRAPER_EVIDENCE_ENABLED=true CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright \

@@ -1,32 +1,33 @@
-# LIVE_BROWSER=false (default): the image as before, no browser. LIVE_BROWSER=true: owner-run live-check variant
-# (-Plive-browser, Chromium + OS deps + Playwright browsers, Ubuntu 22.04 JRE). See docs/LIVE-CHECK.md.
-ARG LIVE_BROWSER=false
+# One image, always with Chromium (-Plive-browser). The live check is switched on only by env settings at deploy time
+# (CEVOC_LIVECHECK_ENABLED, CEVOC_SCRAPER_*), see docs/LIVE-CHECK.md. Scrapers are off unless those are set.
+# Layer order, most stable first, so an app-code change rebuilds only the build step and the last (thin) layer:
+#   1. JDK/Maven base  2. pom.xml -> dependencies + Playwright CLI jars  3. JRE base, Chromium + OS deps  4. app jar
 
-FROM maven:3.9-eclipse-temurin-21 AS build
-ARG LIVE_BROWSER
+FROM maven:3.9-eclipse-temurin-21 AS deps
 WORKDIR /src
 COPY pom.xml .
-RUN P=""; [ "$LIVE_BROWSER" = "true" ] && P="-Plive-browser"; mvn -B -q $P dependency:go-offline
+RUN mvn -B -q -Plive-browser dependency:go-offline \
+    && mvn -B -q -Plive-browser dependency:copy-dependencies -DincludeArtifactIds=playwright,driver,driver-bundle,gson -DoutputDirectory=/pw
+
+FROM deps AS build
 COPY src ./src
-RUN P=""; [ "$LIVE_BROWSER" = "true" ] && P="-Plive-browser"; mvn -B -q $P -DskipTests package
-# Only used by the live variant: the Playwright CLI jars, to install the browsers into the runtime image.
-RUN if [ "$LIVE_BROWSER" = "true" ]; then mvn -B -q -Plive-browser dependency:copy-dependencies -DincludeArtifactIds=playwright,driver,driver-bundle,gson -DoutputDirectory=/pw; else mkdir /pw; fi
+RUN mvn -B -q -Plive-browser -DskipTests package
 
-FROM eclipse-temurin:21-jre AS runtime-false
-
-FROM eclipse-temurin:21-jre-jammy AS runtime-true
+# Browser layer: depends only on the Playwright jars (pom.xml), never on app code.
+FROM eclipse-temurin:21-jre-jammy AS browser
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     CEVOC_BROWSER_CONTAINER=true
-COPY --from=build /pw /pw
+COPY --from=deps /pw /pw
 RUN java -cp "/pw/*" com.microsoft.playwright.CLI install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* /pw \
     && useradd --system --no-create-home app && chmod -R a+rX /ms-playwright
 # Set after the install above (it would skip the install). The app must never try to download browsers at run time.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-USER app
 
-FROM runtime-${LIVE_BROWSER}
+# App layer: the thin one.
+FROM browser
 WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
+USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
