@@ -98,7 +98,7 @@ class LiveCheckGuardTest {
     void blankTokenMeansOpenForThePoc() throws Exception {
         var guard = new LiveCheckGuard("  ");
         var res = new MockHttpServletResponse();
-        assertFalse(guard.preHandle(lookup(), res, new Object()));
+        assertTrue(guard.preHandle(lookup(), res, new Object()));
         assertEquals(200, res.getStatus());
     }
 
