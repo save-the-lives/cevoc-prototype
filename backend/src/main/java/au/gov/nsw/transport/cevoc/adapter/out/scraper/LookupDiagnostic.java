@@ -105,6 +105,8 @@ public final class LookupDiagnostic {
             sb.append("; inputs=").append(Math.min(d.select("input").size(), 20));
             sb.append("; forms=").append(Math.min(d.select("form").size(), 9));
             sb.append("; buttons=").append(Math.min(d.select("button, input[type=submit]").size(), 20));
+            sb.append("; imgs=").append(Math.min(d.select("img").size(), 40));
+            sb.append("; blob-imgs=").append(Math.min(d.select("img[src^=blob:]").size(), 40));
             sb.append("; iframes=").append(Math.min(d.select("iframe").size(), 9));
             sb.append("; app-root=").append(yn(!d.select("app-root, #root, #app").isEmpty()));
             sb.append("; body-text=").append(bucket(d.body() == null ? 0 : d.body().text().length()));

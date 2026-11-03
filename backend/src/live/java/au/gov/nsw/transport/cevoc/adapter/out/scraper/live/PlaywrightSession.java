@@ -164,9 +164,14 @@ final class PlaywrightSession implements RenderedPageSession {
         return step("submit-plate", () -> {
             fill(PLATE, registration);
             pace();
+            au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("plate-kept="
+                    + (registration.equals(page.locator(PLATE).first().inputValue()) ? "yes" : "no")
+                    + "; view-buttons=" + Math.min(page.locator(VIEW_CSS).count(), 9)
+                    + "; view-disabled=" + (page.locator(VIEW_CSS).count() > 0 && page.locator(VIEW_CSS).first().isDisabled() ? "yes" : "no"));
             click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("View images")),
                     page.locator(VIEW_CSS));
             settle();
+            au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("view-clicked=yes");
             // Thumbnails are blob: images. A visible error with the plate field still present ends the wait early.
             waitUntil(() -> page.locator(BLOB_IMG).count() > 0
                     || (page.locator(PLATE).count() > 0 && visibleAlerts() > 0));
@@ -180,6 +185,8 @@ final class PlaywrightSession implements RenderedPageSession {
                 last = now;
                 page.waitForTimeout(1500);
             }
+            au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("blob-imgs-live=" + Math.min(page.locator(BLOB_IMG).count(), 40)
+                    + "; alerts-visible=" + visibleAlerts() + "; alert-words=" + alertWords() + "; post-calls=" + String.join(",", postStatuses));
             return snapshot("3-after-plate");
         });
     }

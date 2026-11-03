@@ -154,8 +154,12 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         String summary = "Content from the penalty page.";
         // State 3: only with a plate and a plate form still on the page.
+        LookupDiagnostic.note("plate-given=" + (plate != null ? "yes" : "no") + "; plate-form=" + (page.plateFormPresent() ? "yes" : "no")
+                + "; summary-state=" + page.state());
         if (page.state() == RevenueNswPageParser.State.SUMMARY && plate != null && page.plateFormPresent()) {
-            RevenueNswPageParser.Page after = parser.parse(session.submitPlate(plate));
+            String afterHtml = session.submitPlate(plate);
+            RevenueNswPageParser.Page after = parser.parse(afterHtml);
+            LookupDiagnostic.note("after-plate-state=" + after.state() + "; " + LookupDiagnostic.structureOf(afterHtml));
             if (after.state() == RevenueNswPageParser.State.IMAGES) {
                 page = after;
             } else {
