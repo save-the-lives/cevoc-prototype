@@ -75,9 +75,9 @@ class LiveCheckGuardTest {
         @Autowired MockMvc mvc;
 
         @Test
-        void endpointsDisabledEvenWithAHeader() throws Exception {
-            mvc.perform(get("/live-check/ping")).andExpect(status().isNotFound());
-            mvc.perform(get("/live-check/ping").header(LiveCheckGuard.HEADER, "anything")).andExpect(status().isNotFound());
+        void endpointsAreOpenForThePocWhenNoTokenIsConfigured() throws Exception {
+            mvc.perform(get("/live-check/ping")).andExpect(status().isOk());
+            mvc.perform(get("/live-check/ping").header(LiveCheckGuard.HEADER, "anything")).andExpect(status().isOk());
         }
     }
 
