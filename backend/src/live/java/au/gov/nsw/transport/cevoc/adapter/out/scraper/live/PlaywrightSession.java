@@ -129,9 +129,11 @@ final class PlaywrightSession implements RenderedPageSession {
             fill(PNN, noticeNumber);
             fill(DATE, offenceDate);
             pace();
+            markFilled(noticeNumber, offenceDate);
             click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next").setExact(true)),
                     page.locator(NEXT_CSS));
             settle();
+            markAfterClick();
             waitUntil(() -> page.locator(PLATE).count() > 0 || page.getByText(SUMMARY_HEADING).count() > 0
                     || (page.locator(PNN).count() > 0 && page.locator(ERROR_CSS).count() > 0));
             return snapshot("2-after-login");
@@ -224,6 +226,31 @@ final class PlaywrightSession implements RenderedPageSession {
         if (!value.equals(input.inputValue())) {
             input.clear();
             input.pressSequentially(value, new Locator.PressSequentiallyOptions().setDelay(60));
+        }
+    }
+
+    /** Diagnostics only: yes/no markers about the filled form, never the values. */
+    private void markFilled(String notice, String date) {
+        try {
+            au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("pnn-kept="
+                    + (notice.equals(page.locator(PNN).first().inputValue()) ? "yes" : "no")
+                    + "; date-kept=" + (date.equals(page.locator(DATE).first().inputValue()) ? "yes" : "no")
+                    + "; next-count=" + Math.min(page.locator(NEXT_CSS).count(), 9)
+                    + "; next-disabled=" + (page.locator(NEXT_CSS).count() > 0 && page.locator(NEXT_CSS).first().isDisabled() ? "yes" : "no")
+                    + "; invalid-before=" + Math.min(page.locator(".ng-invalid, [aria-invalid=\"true\"]").count(), 9));
+        } catch (RuntimeException e) {
+            au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("markers-before=unreadable");
+        }
+    }
+
+    private void markAfterClick() {
+        try {
+            au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("alerts-after=" + Math.min(page.locator(ERROR_CSS).count(), 9)
+                    + "; invalid-after=" + Math.min(page.locator(".ng-invalid, [aria-invalid=\"true\"]").count(), 9)
+                    + "; path-changed=" + (page.url().contains(DEFAULT_PATH) ? "no" : "yes")
+                    + "; hash-changed=" + (page.url().contains("#") ? "yes" : "no"));
+        } catch (RuntimeException e) {
+            au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("markers-after=unreadable");
         }
     }
 

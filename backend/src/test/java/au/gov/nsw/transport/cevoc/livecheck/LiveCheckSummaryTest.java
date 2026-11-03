@@ -76,5 +76,12 @@ class LiveCheckSummaryTest {
                         + "<button>Next</button> Sample words 9000000004</app-root></body></html>");
         assertThat(structure).contains("inputs=2").contains("forms=1").contains("pnn-by=no/yes/no")
                 .contains("dateOfOffence-by=no/no/yes").contains("app-root=yes").doesNotContain("Sample").doesNotContain("9000000004");
+
+        au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.clear();
+        au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("pnn-kept=yes");
+        au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("after-next "
+                + au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.structureOf("<html><body><input id=\"pnn\"></body></html>"));
+        assertThat(au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.take())
+                .startsWith("pnn-kept=yes; after-next inputs=1");
     }
 }

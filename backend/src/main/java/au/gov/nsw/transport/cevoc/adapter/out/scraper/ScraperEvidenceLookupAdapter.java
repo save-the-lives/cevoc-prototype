@@ -137,6 +137,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         RevenueNswPageParser.Page page = parser.parse(summaryHtml);
         switch (page.state()) {
             case LOGIN -> {
+                LookupDiagnostic.note("after-next " + LookupDiagnostic.structureOf(summaryHtml));
                 return result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
             }
             case UNRECOGNISED -> {

@@ -27,6 +27,17 @@ public final class LookupDiagnostic {
         CURRENT.set(reason);
     }
 
+    /** Adds one fixed-vocabulary marker (token=yes/no/number) to the reason being built on this thread. */
+    public static void note(String marker) {
+        String cur = CURRENT.get();
+        CURRENT.set(cur == null ? marker : cur + "; " + marker);
+    }
+
+    /** Page structure markers (counts, field keys, yes/no) for a page that was readable but not the expected one. */
+    public static String structureOf(String html) {
+        return structure(html == null ? "" : html).replaceFirst("^; ", "");
+    }
+
     /** Returns the reason recorded on this thread (or null) and forgets it. */
     public static String take() {
         String v = CURRENT.get();
