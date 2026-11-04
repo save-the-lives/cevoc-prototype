@@ -47,6 +47,15 @@ public interface RenderedPageSession extends AutoCloseable {
     /** Bytes behind a blob: URL seen in the DOM returned by this same session; empty if unavailable. */
     Optional<ImageBytes> imageBytes(String blobUrl) throws IOException, InterruptedException;
 
+    /**
+     * Follows the evidence page's "View certification details" link in THIS session (the signed link value never
+     * leaves the browser) and returns the rendered DOM of the certificates page it leads to. Empty when the page has
+     * no such link. Failures are IOException. Default: not supported.
+     */
+    default Optional<String> openCertification() throws IOException, InterruptedException {
+        return Optional.empty();
+    }
+
     @Override
     void close();
 }

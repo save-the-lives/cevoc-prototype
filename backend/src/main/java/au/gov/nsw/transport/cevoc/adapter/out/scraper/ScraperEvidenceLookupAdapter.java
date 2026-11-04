@@ -80,6 +80,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     @Override
     public synchronized PenaltyLookupResult find(PenaltyLookupRequest request) {
         String number = request.infringementNumber();
+        CertificateHandoff.clear();
         if (!settings.usable()) {
             return result(Status.LIVE_LOOKUP_OFF, number, "Looking up this notice is switched off for now, until approvals are in place.");
         }
@@ -171,6 +172,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         List<EvidenceItem> evidence = page.state() == RevenueNswPageParser.State.IMAGES
                 ? buffer(session, key, page.images()) : List.of();
+        followCertification(session, page);
         NoticeDetails notice = page.notice();
         if (!evidence.isEmpty() && notice.enforcementMethod() != EnforcementMethod.CAMERA) {
             notice = new NoticeDetails(notice.offenceDescription(), notice.offenceDate(), notice.offenceTime(), notice.location(),
@@ -178,6 +180,36 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         // cameraCode is internal (@JsonIgnore): input for the certificate lookup, banner first, then the s= value.
         return new PenaltyLookupResult(Status.FOUND, number, summary, notice, evidence, SOURCE, page.cameraCode());
+    }
+
+    /**
+     * After the images state: follows the page's certification link in the SAME session and hands the rendered
+     * certificates page to the certificate source through {@link CertificateHandoff}. Never fails the lookup; the
+     * outcome is recorded as a fixed-vocabulary step (outcome ok|failed|skipped plus a whitelisted cause token).
+     */
+    private static void followCertification(RenderedPageSession session, RevenueNswPageParser.Page page) throws InterruptedException {
+        if (page.state() != RevenueNswPageParser.State.IMAGES) {
+            LookupDiagnostic.note(LookupDiagnostic.certStep("skipped", "no-images"));
+            return;
+        }
+        if (page.certification() == null) {
+            LookupDiagnostic.note(LookupDiagnostic.certStep("skipped", "no-link"));
+            return;
+        }
+        try {
+            Optional<String> html = session.openCertification();
+            if (html.isEmpty() || html.get().isBlank()) {
+                LookupDiagnostic.note(LookupDiagnostic.certStep("failed", "no-page"));
+                return;
+            }
+            CertificateHandoff.put(html.get());
+            LookupDiagnostic.note(LookupDiagnostic.certStep("ok", null));
+            LookupDiagnostic.note(LookupDiagnostic.certPageStructureOf(html.get()));
+        } catch (IOException | RuntimeException e) {
+            LOG.warn("certification page failed: {}", e.getClass().getSimpleName());
+            String reason = LookupDiagnostic.fromFailure(e instanceof IOException ? e.getMessage() : "failed: " + e.getClass().getSimpleName());
+            LookupDiagnostic.note(LookupDiagnostic.certStep("failed", reason.substring(reason.indexOf("cause=") + 6)));
+        }
     }
 
     /** Upper-cases and strips spaces and dashes; null when blank or not plausibly a plate. */

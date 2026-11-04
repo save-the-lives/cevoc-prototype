@@ -106,4 +106,17 @@ public class BeanConfig {
         return new CertificateScraperAdapter(new PoliteHttpFetcher(props), new CertificatePageParser(), props,
                 java.time.Clock.systemUTC());
     }
+
+    /**
+     * Browser route for certificates: the evidence scraper (browser=playwright) follows the page's certification link in
+     * its own Chromium session and hands the rendered page over; this source only parses it. Needs the evidence scraper
+     * to be enabled, so it is inert by default. Not created when the HTTP certificate scraper above is enabled.
+     */
+    @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
+            "'${cevoc.scraper.evidence.browser:}'.equalsIgnoreCase('playwright') && ${cevoc.scraper.evidence.enabled:false}")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(CertificateSourcePort.class)
+    CertificateSourcePort browserCertificateSource() {
+        return new au.gov.nsw.transport.cevoc.adapter.out.scraper.BrowserCertificateSourceAdapter(new CertificatePageParser());
+    }
 }

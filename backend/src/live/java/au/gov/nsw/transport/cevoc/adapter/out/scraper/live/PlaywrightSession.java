@@ -39,6 +39,7 @@ final class PlaywrightSession implements RenderedPageSession {
     private static final String NEXT_CSS = "button:has-text(\"Next\"), input[type=\"submit\"][value=\"Next\"], a:has-text(\"Next\")";
     private static final String VIEW_CSS = "button:has-text(\"View images\"), input[type=\"submit\"][value*=\"View images\" i], a:has-text(\"View images\")";
     private static final String ERROR_CSS = "[role=\"alert\"], .alert-danger, .error, .has-error, .text-danger, .mat-error, .invalid-feedback";
+    private static final String CERT_LINK_CSS = "a:has-text(\"View certification details\")";
     private static final String BLOB_IMG = "img[src^=\"blob:\"]";
     private static final Pattern SUMMARY_HEADING = Pattern.compile("Penalty Notice Number\\s*[-–:]\\s*\\w+");
     private static final String FETCH_JS = """
@@ -84,7 +85,8 @@ final class PlaywrightSession implements RenderedPageSession {
         context.route("**/*", route -> {
             var req = route.request();
             boolean topNav = req.isNavigationRequest() && req.frame().parentFrame() == null;
-            if (topNav && !sameHost(req.url(), host)) {
+            if (topNav && !sameHost(req.url(), host) && !certificateHost(req.url())) {
+                abortedNavs.incrementAndGet();
                 route.abort();
             } else {
                 route.resume();
@@ -105,6 +107,7 @@ final class PlaywrightSession implements RenderedPageSession {
         });
     }
 
+    private final java.util.concurrent.atomic.AtomicInteger abortedNavs = new java.util.concurrent.atomic.AtomicInteger();
     private final java.util.List<String> postStatuses = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
     private static final String[] ALERT_WORDS = {"not found", "no match", "incorrect", "invalid", "captcha", "robot", "try again",
             "unable", "error", "required", "does not match", "not recognised", "verify"};
@@ -115,6 +118,16 @@ final class PlaywrightSession implements RenderedPageSession {
             return URI.create(base.getScheme() + "://" + base.getAuthority() + DEFAULT_PATH).toString();
         }
         return base.toString();
+    }
+
+    /** The certificates site lives under the Transport for NSW domain; the certification link may lead there. */
+    static boolean certificateHost(String url) {
+        try {
+            String h = URI.create(url).getHost();
+            return h != null && ("transport.nsw.gov.au".equalsIgnoreCase(h) || h.toLowerCase(Locale.ROOT).endsWith(".transport.nsw.gov.au"));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     static boolean sameHost(String url, String host) {
@@ -189,6 +202,55 @@ final class PlaywrightSession implements RenderedPageSession {
                     + "; alerts-visible=" + visibleAlerts() + "; alert-words=" + alertWords() + "; post-calls=" + String.join(",", postStatuses));
             return snapshot("3-after-plate");
         });
+    }
+
+    @Override
+    public Optional<String> openCertification() throws IOException, InterruptedException {
+        return step("certificates", () -> {
+            Locator link = page.locator(CERT_LINK_CSS);
+            if (link.count() == 0) {
+                note("cert-link=absent");
+                return Optional.<String>empty();
+            }
+            pace();
+            java.util.concurrent.atomic.AtomicReference<Page> opened = new java.util.concurrent.atomic.AtomicReference<>();
+            java.util.function.Consumer<Page> onOpen = opened::set;
+            String before = page.url();
+            int abortedBefore = abortedNavs.get();
+            context.onPage(onOpen);
+            try {
+                link.first().click();
+                waitUntil(() -> opened.get() != null || !before.equals(page.url()));
+            } finally {
+                context.offPage(onOpen);
+            }
+            Page target = opened.get() != null ? opened.get() : page;
+            try {
+                target.waitForLoadState(LoadState.DOMCONTENTLOADED, new Page.WaitForLoadStateOptions().setTimeout(stepTimeout.toMillis()));
+                target.waitForLoadState(LoadState.NETWORKIDLE,
+                        new Page.WaitForLoadStateOptions().setTimeout(Math.min(10_000, stepTimeout.toMillis())));
+            } catch (PlaywrightException ignored) {
+                // carry on with what is rendered
+            }
+            String url = target.url();
+            note("cert-link=present; cert-popup=" + (opened.get() != null ? "yes" : "no")
+                    + "; cert-url-host=" + hostKind(url) + "; cert-nav-aborted=" + Math.min(abortedNavs.get() - abortedBefore, 9)
+                    + "; cert-path-jsf=" + (url.toLowerCase(Locale.ROOT).contains(".jsf") ? "yes" : "no")
+                    + "; cert-url-changed=" + (before.equals(url) ? "no" : "yes"));
+            String html = target.content();
+            if (capture != null) {
+                capture.save("4-certificates", html);
+            }
+            return Optional.of(html);
+        });
+    }
+
+    /** same | transport | other | blank: where the page is, as a token (never the URL). */
+    private String hostKind(String url) {
+        if (url == null || url.isBlank() || "about:blank".equals(url)) {
+            return "blank";
+        }
+        return sameHost(url, URI.create(loginUrl).getHost()) ? "same" : certificateHost(url) ? "transport" : "other";
     }
 
     @Override

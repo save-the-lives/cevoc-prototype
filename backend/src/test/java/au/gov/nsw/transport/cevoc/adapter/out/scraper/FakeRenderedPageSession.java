@@ -38,6 +38,10 @@ class FakeRenderedPageSession implements RenderedPageSession {
     final List<String> loginInputs = new ArrayList<>();
     final Map<String, ImageBytes> blobs = new HashMap<>();
     boolean closed;
+    /** Rendered certificates page returned by openCertification; null = the link leads nowhere (empty). */
+    String certificationHtml = fixture("fictitious-certification-table.html");
+    /** When set, openCertification throws (message in the style of the browser layer). */
+    boolean failCertification;
 
     FakeRenderedPageSession() {
         blobs.put("blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000001", new ImageBytes("image/jpeg", new byte[] {1, 2, 3}));
@@ -71,6 +75,15 @@ class FakeRenderedPageSession implements RenderedPageSession {
     public Optional<ImageBytes> imageBytes(String blobUrl) {
         calls.add("imageBytes");
         return Optional.ofNullable(blobs.get(blobUrl));
+    }
+
+    @Override
+    public Optional<String> openCertification() throws IOException {
+        calls.add("openCertification");
+        if (failCertification) {
+            throw new IOException("browser step 'certificates' failed: Timeout 30000ms exceeded");
+        }
+        return Optional.ofNullable(certificationHtml);
     }
 
     @Override

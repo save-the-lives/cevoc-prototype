@@ -95,6 +95,80 @@ public final class LookupDiagnostic {
                         || lower.contains("forbidden") || lower.contains("unusual traffic"));
     }
 
+    /**
+     * Structure of the certificates page reached by the browser route: counts, header labels from a fixed vocabulary
+     * (anything else is "other"), yes/no markers. Never any text or value from the page.
+     */
+    public static String certPageStructureOf(String html) {
+        try {
+            org.jsoup.nodes.Document d = org.jsoup.Jsoup.parse(html == null ? "" : html);
+            StringBuilder sb = new StringBuilder("cert-html-size=").append(bucket(html == null ? 0 : html.length()));
+            sb.append("; cert-body-text=").append(bucket(d.body() == null ? 0 : d.body().text().length()));
+            sb.append("; cert-tables=").append(Math.min(d.select("table").size(), 9));
+            sb.append("; cert-rows=").append(Math.min(d.select("tbody tr, table tr:has(td)").size(), 99));
+            sb.append("; cert-headers=");
+            java.util.List<String> heads = new java.util.ArrayList<>();
+            for (org.jsoup.nodes.Element th : d.select("th")) {
+                if (heads.size() >= 12) break;
+                heads.add(vocab(th.text()));
+            }
+            sb.append(heads.isEmpty() ? "none" : String.join(",", heads));
+            sb.append("; cert-label-cells=");
+            java.util.TreeSet<String> labels = new java.util.TreeSet<>();
+            for (org.jsoup.nodes.Element e : d.select("td, dt, label, span")) {
+                String t = e.ownText().trim();
+                if (!t.isEmpty() && t.length() <= 40 && e.select("td, dt, label").size() <= 1) {
+                    String v = vocab(t);
+                    if (!"other".equals(v)) labels.add(v);
+                }
+            }
+            sb.append(labels.isEmpty() ? "none" : String.join(",", labels));
+            sb.append("; cert-datatable-class=").append(yn(!d.select(".ui-datatable, .dataTable, table.table").isEmpty()));
+            sb.append("; cert-empty-marker=").append(yn(!d.select(".no-results, .ui-datatable-empty-message").isEmpty()));
+            sb.append("; cert-paginator=").append(yn(!d.select(".ui-paginator, .pagination, .paginator").isEmpty()));
+            sb.append("; cert-forms=").append(Math.min(d.select("form").size(), 9));
+            sb.append("; cert-inputs=").append(Math.min(d.select("input").size(), 20));
+            sb.append("; cert-buttons=").append(Math.min(d.select("button, input[type=submit], input[type=button]").size(), 20));
+            sb.append("; cert-links=").append(Math.min(d.select("a[href]").size(), 99));
+            int locFields = 0;
+            int dateFields = 0;
+            for (org.jsoup.nodes.Element in : d.select("input")) {
+                String idn = (in.id() + " " + in.attr("name")).toLowerCase(Locale.ROOT);
+                if (idn.contains("location")) locFields++;
+                if (idn.contains("date")) dateFields++;
+            }
+            sb.append("; cert-location-field=").append(yn(locFields > 0));
+            sb.append("; cert-date-fields=").append(Math.min(dateFields, 9));
+            sb.append("; cert-viewstate=").append(yn(html != null && html.contains("ViewState")));
+            sb.append("; cert-password-field=").append(yn(!d.select("input[type=password]").isEmpty()));
+            sb.append("; cert-blocked-words=").append(yn(blockedWords(d.body() == null ? "" : d.body().text().toLowerCase(Locale.ROOT))));
+            return sb.toString();
+        } catch (RuntimeException e) {
+            return "cert-structure=unreadable";
+        }
+    }
+
+    /** Maps a header or label text onto a fixed vocabulary; everything unknown is "other". */
+    private static String vocab(String text) {
+        String h = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
+        if (h.contains("description")) return "description";
+        if (h.contains("type")) return "type";
+        if (h.contains("period")) return "period";
+        if (h.contains("certified")) return "certified";
+        if (h.contains("expiry")) return "expiry";
+        if (h.contains("location")) return "location";
+        if (h.contains("status")) return "status";
+        if (h.contains("action") || h.contains("view")) return "action";
+        if (h.contains("date")) return "date";
+        if (h.contains("number") || h.equals("no") || h.equals("no.")) return "number";
+        return "other";
+    }
+
+    /** One fixed-vocabulary certificates step marker: step name, outcome ok|failed|skipped, whitelisted cause token. */
+    public static String certStep(String outcome, String cause) {
+        return "step=certificates; outcome=" + outcome + (cause == null ? "" : "; cause=" + cause);
+    }
+
     private static final String[] KNOWN_FIELDS = {"pnn", "dateOfOffence", "lastName", "vehicleNumber"};
 
     /** Element structure only: counts and which known field keys appear as name/id/formcontrolname. */

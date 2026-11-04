@@ -139,14 +139,85 @@ public class CertificatePageParser {
     private static Map<String, Integer> columns(Elements headers) {
         Map<String, Integer> cols = new HashMap<>();
         for (int i = 0; i < headers.size(); i++) {
-            String h = headers.get(i).text().trim().toLowerCase(Locale.ROOT);
-            if (h.contains("description")) cols.putIfAbsent("description", i);
-            else if (h.contains("type")) cols.putIfAbsent("type", i);
-            else if (h.contains("period")) cols.putIfAbsent("period", i);
-            else if (h.contains("certified")) cols.putIfAbsent("certified", i);
-            else if (h.contains("expiry")) cols.putIfAbsent("expiry", i);
+            String k = key(headers.get(i).text());
+            if (k != null) cols.putIfAbsent(k, i);
         }
         return cols;
+    }
+
+    /** Which of the five known columns a header or label text names, or null. */
+    static String key(String text) {
+        String h = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
+        if (h.contains("description")) return "description";
+        if (h.contains("type")) return "type";
+        if (h.contains("period")) return "period";
+        if (h.contains("certified")) return "certified";
+        if (h.contains("expiry")) return "expiry";
+        return null;
+    }
+
+    /**
+     * Reads the RENDERED certificates page reached through the browser route (the certification link of the evidence
+     * page). Accepts a results table (as {@link #parseCertificates}) or, failing that, a label/value layout
+     * (label cells, dt/dd or label elements naming the five known fields). An explicit no-results marker gives an
+     * empty list; a page with neither layout throws ScrapeException.
+     */
+    public List<CertificateRef> parseRendered(String html) {
+        Document doc = Jsoup.parse(html);
+        if (doc.selectFirst(NO_RESULTS_SELECTOR) != null) return List.of();
+        try {
+            return parseCertificates(html);
+        } catch (ScrapeException noTable) {
+            List<CertificateRef> labelled = parseLabelled(doc);
+            if (labelled.isEmpty()) throw noTable;
+            return labelled;
+        }
+    }
+
+    private static List<CertificateRef> parseLabelled(Document doc) {
+        List<CertificateRef> out = new ArrayList<>();
+        Map<String, String> cur = new LinkedHashMap<>();
+        for (Element e : doc.select("tr, dt, label")) {
+            List<String[]> pairs = new ArrayList<>();
+            if (e.normalName().equals("tr")) {
+                Elements cells = new Elements(e.children().stream().filter(c -> c.normalName().equals("td") || c.normalName().equals("th")).toList());
+                for (int i = 0; i + 1 < cells.size(); i += 2) {
+                    pairs.add(new String[] {labelKey(cells.get(i)), cells.get(i + 1).text().trim()});
+                }
+            } else if (e.parents().stream().noneMatch(a -> a.normalName().equals("tr"))) {
+                Element value = e.nextElementSibling();
+                if (value != null) pairs.add(new String[] {labelKey(e), value.text().trim()});
+            }
+            for (String[] p : pairs) {
+                if (p[0] == null) continue;
+                if (cur.containsKey(p[0])) {
+                    addRecord(out, cur);
+                    cur = new LinkedHashMap<>();
+                }
+                cur.put(p[0], p[1]);
+            }
+        }
+        addRecord(out, cur);
+        return out;
+    }
+
+    private static String labelKey(Element label) {
+        String t = label.text().trim();
+        return t.isEmpty() || t.length() > 40 ? null : key(t);
+    }
+
+    private static void addRecord(List<CertificateRef> out, Map<String, String> rec) {
+        if (!rec.containsKey("description") && !rec.containsKey("period")) return;
+        String period = rec.getOrDefault("period", "");
+        LocalDateTime[] window = period(period);
+        out.add(new CertificateRef(
+                nullIfEmpty(rec.getOrDefault("description", "")),
+                nullIfEmpty(rec.getOrDefault("type", "")),
+                nullIfEmpty(period),
+                window[0], window[1],
+                dateTime(rec.getOrDefault("certified", ""), false),
+                dateTime(rec.getOrDefault("expiry", ""), false),
+                null));
     }
 
     private static String cell(Elements cells, Integer idx) {
