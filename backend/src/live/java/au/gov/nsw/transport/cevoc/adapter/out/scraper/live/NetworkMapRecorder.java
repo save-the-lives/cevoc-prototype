@@ -55,6 +55,14 @@ final class NetworkMapRecorder {
         context.onRequest(req -> guard(() -> onRequest(req)));
         context.onResponse(resp -> guard(() -> onResponse(resp)));
         context.onRequestFailed(req -> guard(() -> onFailed(req)));
+        context.onPage(p -> guard(() -> {
+            addNav("page-opened", null);
+            p.onFrameNavigated(f -> guard(() -> {
+                if (f.parentFrame() == null) {
+                    addNav("navigated", f.url());
+                }
+            }));
+        }));
     }
 
     void step(String label) {
@@ -115,7 +123,14 @@ final class NetworkMapRecorder {
             e = open.get(resp.request());
         }
         if (e == null) {
-            return;
+            onRequest(resp.request()); // a hop whose request event was not seen (redirect, popup): record it now
+            synchronized (this) {
+                e = open.get(resp.request());
+            }
+            if (e == null) {
+                return;
+            }
+            e.step = e.step + "(late)";
         }
         e.status = resp.status();
         e.redirect = e.status >= 300 && e.status < 400;
@@ -144,7 +159,8 @@ final class NetworkMapRecorder {
         }
         String size = NetworkMapRedaction.sizeBucket(body.length);
         if (e.contentType.startsWith("image/")) {
-            e.respShape = "image " + size + " ~" + NetworkMapRedaction.approxKb(body.length) + " px=" + NetworkMapRedaction.pixelSize(body);
+            e.respShape = "image " + size + " ~" + NetworkMapRedaction.approxKb(body.length) + " px=" + NetworkMapRedaction.pixelSize(body)
+                    + ("unknown".equals(NetworkMapRedaction.pixelSize(body)) ? " " + NetworkMapRedaction.imageHint(body) : "");
         } else if (e.contentType.contains("json")) {
             String text = new String(body, java.nio.charset.StandardCharsets.UTF_8);
             e.respShape = NetworkMapRedaction.jsonShape(text) + " (" + size + ")";
@@ -153,6 +169,14 @@ final class NetworkMapRecorder {
             e.respShape = "binary " + size + (startsWith(body, "%PDF") ? " pdf" : "");
         } else {
             e.respShape = "other " + size;
+        }
+    }
+
+    private final List<String> navs = new ArrayList<>();
+
+    private synchronized void addNav(String what, String url) {
+        if (navs.size() < 30) {
+            navs.add("NETMAP nav step=" + step + " " + what + (url == null ? "" : " " + NetworkMapRedaction.url(url)));
         }
     }
 
@@ -213,6 +237,7 @@ final class NetworkMapRecorder {
                     .append(e.respJwt ? " resp-has-jwt=yes" : "");
             out.add(sb.toString());
         }
+        out.addAll(navs);
         for (var s : statics.entrySet()) {
             out.add("NETMAP static " + s.getKey() + " x" + s.getValue());
         }

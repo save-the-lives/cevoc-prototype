@@ -129,21 +129,24 @@ public final class NetworkMapRedaction {
         }
     }
 
-    /** "{id:class+length#tag}": only the character class and length of an identifier-like segment, never its content. */
+    /**
+     * "{id:mask#tag}": the character-class MASK of an identifier-like segment (A upper, a lower, 9 digit, - _ . kept,
+     * anything else ?), or "long<n>" past 40 characters; plus the salted tag. Never the content.
+     */
     static String idTag(String s) {
-        String cls;
-        if (s.matches("[A-Z]+")) {
-            cls = "upper";
-        } else if (s.matches("[a-z]+")) {
-            cls = "lower";
-        } else if (s.matches("[0-9a-f]+")) {
-            cls = "hex";
-        } else if (s.matches("[A-Za-z0-9]+")) {
-            cls = "alnum";
+        String body;
+        if (s.length() > 40) {
+            body = "long" + Math.min(s.length(), 999);
         } else {
-            cls = "other";
+            StringBuilder m = new StringBuilder();
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                m.append(Character.isDigit(c) ? '9' : (c >= 'A' && c <= 'Z') ? 'A' : (c >= 'a' && c <= 'z') ? 'a'
+                        : (c == '-' || c == '_' || c == '.') ? c : '?');
+            }
+            body = m.toString();
         }
-        return "{id:" + cls + Math.min(s.length(), 99) + "#" + salted(s) + "}";
+        return "{id:" + body + "#" + salted(s) + "}";
     }
 
     /** Query string reduced to key NAMES only (sorted, whitelisted), as "?a&b", or "" when none. */
@@ -267,6 +270,36 @@ public final class NetworkMapRedaction {
             }
         }
         return "unknown";
+    }
+
+    /**
+     * Format diagnostics for an image body: its 4 magic bytes in hex and, for a JPEG, the first marker codes. These are
+     * fixed file-format codes, not content. Used only when the pixel size could not be read.
+     */
+    public static String imageHint(byte[] d) {
+        if (d == null || d.length < 4) {
+            return "none";
+        }
+        StringBuilder sb = new StringBuilder("magic=");
+        for (int i = 0; i < 4; i++) {
+            sb.append(String.format("%02x", d[i] & 0xFF));
+        }
+        if ((d[0] & 0xFF) == 0xFF && (d[1] & 0xFF) == 0xD8) {
+            sb.append(" markers=");
+            int i = 2;
+            int n = 0;
+            while (i + 3 < d.length && n < 10) {
+                if ((d[i] & 0xFF) != 0xFF) {
+                    sb.append("!");
+                    break;
+                }
+                int m = d[i + 1] & 0xFF;
+                sb.append(String.format("%02x", m)).append(',');
+                n++;
+                i += (m == 0xD8 || m == 0x01 || (m >= 0xD0 && m <= 0xD7)) ? 2 : 2 + (((d[i + 2] & 0xFF) << 8) | (d[i + 3] & 0xFF));
+            }
+        }
+        return sb.toString();
     }
 
     private static long u32(byte[] d, int o) {
