@@ -73,3 +73,8 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+      # Touch viewer tests on an iPhone-sized Chromium (invented mock data, no backend, no network to any real site).
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npx playwright test
+        working-directory: frontend

@@ -41,16 +41,21 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
     private static final class Stored {
         final String contentType;
         final byte[] data;
-        final Instant expiresAt;
+        final Instant createdAt;
+        volatile Instant expiresAt;
         byte[] thumbnail;
         byte[] medium;
 
-        Stored(String contentType, byte[] data, Instant expiresAt) {
+        Stored(String contentType, byte[] data, Instant createdAt, Instant expiresAt) {
+            this.createdAt = createdAt;
             this.contentType = contentType;
             this.data = data;
             this.expiresAt = expiresAt;
         }
     }
+
+    /** Total life of an object however often it is read. */
+    static final Duration MAX_LIFE = Duration.ofMinutes(60);
 
     private record Token(String objectKey, Instant expiresAt) {}
 
@@ -94,7 +99,7 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
             it.remove();
         }
         objects.put(objectKey, new Stored(contentType == null ? "application/octet-stream" : contentType, data,
-                clock.instant().plus(retention)));
+                clock.instant(), clock.instant().plus(retention)));
         totalBytes += data.length;
     }
 
@@ -142,6 +147,20 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
             purge();
             Token t = tokens.get(token);
             s = t == null ? null : objects.get(t.objectKey());
+            if (s != null) {
+                // Reading keeps a page that is still being read alive: the object and this link are extended by the
+                // retention time from now, never beyond the total cap since the object was stored.
+                Instant now = clock.instant();
+                Instant cap = s.createdAt.plus(MAX_LIFE);
+                Instant extended = now.plus(retention);
+                if (extended.isAfter(cap)) {
+                    extended = cap;
+                }
+                if (extended.isAfter(s.expiresAt)) {
+                    s.expiresAt = extended;
+                }
+                tokens.put(token, new Token(t.objectKey(), extended.isAfter(t.expiresAt()) ? extended : t.expiresAt()));
+            }
         }
         if (s == null) {
             return Optional.empty();

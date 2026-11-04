@@ -109,3 +109,12 @@ input { font: inherit; min-height: 44px; padding: 6px 10px; border: 1px solid #5
 .lc-img-fit { display: block; max-width: 100%; height: auto; }
 .lc-img-actual { display: block; max-width: none; height: auto; }
 .lc-figure figcaption { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+/* Full-viewport fallback for browsers without the element Fullscreen API (iOS Safari). dvh follows the visible area as the toolbar moves. */
+.zp-overlay { position: fixed; inset: 0; z-index: 1000; height: 100vh; height: 100dvh; border-radius: 0; background: #0e1116;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.zp-overlay .zp-viewport { flex: 1; aspect-ratio: auto; min-height: 0; }
+.zp-fs .zp-viewport { flex: 1; aspect-ratio: auto; }
+.spin { display: inline-block; width: 1em; height: 1em; border: 2px solid #8a94a3; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

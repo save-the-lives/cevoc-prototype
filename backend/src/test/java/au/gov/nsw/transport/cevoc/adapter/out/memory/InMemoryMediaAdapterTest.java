@@ -90,13 +90,28 @@ class InMemoryMediaAdapterTest {
         InMemoryMediaAdapter m = new InMemoryMediaAdapter("", Duration.ofMinutes(20), 64L << 20, clock);
         store(m, "k", jpeg(10, 10));
         String t = token(m.linkFor("k", Duration.ofMinutes(5)).url());
-        assertThat(m.read(t, null)).isPresent();
         clock.now = clock.now.plus(Duration.ofMinutes(6));
         assertThat(m.read(t, null)).isEmpty(); // link expired
         String t2 = token(m.linkFor("k", Duration.ofMinutes(60)).url());
         clock.now = clock.now.plus(Duration.ofMinutes(15));
         assertThat(m.read(t2, null)).isEmpty(); // object retention (20 minutes in total) is the upper bound
         assertThat(m.exists("k")).isFalse();
+    }
+
+    @Test
+    void readingKeepsAPageAliveButNeverBeyondTheTotalCap() throws Exception {
+        MutableClock clock = new MutableClock();
+        InMemoryMediaAdapter m = new InMemoryMediaAdapter("", Duration.ofMinutes(20), 64L << 20, clock);
+        store(m, "k", jpeg(10, 10));
+        String t = token(m.linkFor("k", Duration.ofMinutes(5)).url());
+        for (int i = 0; i < 5; i++) { // a reader who comes back every 15 minutes
+            clock.now = clock.now.plus(Duration.ofMinutes(15));
+            if (i < 3) {
+                assertThat(m.read(t, null)).isPresent();
+            }
+        }
+        // 75 minutes after storing: past the 60 minute cap, so it is gone however recently it was read
+        assertThat(m.read(t, null)).isEmpty();
     }
 
     @Test

@@ -28,6 +28,8 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
   const [dragging, setDragging] = useState(false);
   const [animate, setAnimate] = useState(false);
   const [isFs, setIsFs] = useState(false);
+  const [overlay, setOverlay] = useState(false); // full-viewport fallback where the element Fullscreen API does not exist (iOS Safari)
+  const returnFocus = useRef(null);
 
   const commit = useCallback((next, { smooth = false } = {}) => {
     const c = clampView(next, sizeRef.current.w, sizeRef.current.h);
@@ -162,20 +164,36 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
-  const canFs = typeof document !== 'undefined' && (document.fullscreenEnabled || !!onFullscreenFallback);
+  const canFs = typeof document !== 'undefined';
+  const closeOverlay = useCallback(() => { setOverlay(false); returnFocus.current?.focus?.(); }, []);
   const toggleFs = () => {
     if (document.fullscreenElement === rootRef.current) { document.exitFullscreen?.(); return; }
-    if (document.fullscreenEnabled && rootRef.current.requestFullscreen) {
-      rootRef.current.requestFullscreen().catch(() => onFullscreenFallback?.());
-    } else onFullscreenFallback?.();
+    if (overlay) { closeOverlay(); return; }
+    if (document.fullscreenEnabled && rootRef.current?.requestFullscreen) {
+      rootRef.current.requestFullscreen().catch(() => (onFullscreenFallback ? onFullscreenFallback() : openOverlay()));
+    } else if (onFullscreenFallback) onFullscreenFallback();
+    else openOverlay();
   };
+  function openOverlay() { returnFocus.current = document.activeElement; setOverlay(true); }
+
+  // The overlay locks page scrolling behind it, closes on Escape and puts focus on its Close button.
+  useEffect(() => {
+    if (!overlay) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') closeOverlay(); };
+    document.addEventListener('keydown', onKey);
+    rootRef.current?.querySelector('.zp-close')?.focus();
+    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); };
+  }, [overlay, closeOverlay]);
 
   const zoomed = view.scale > 1;
   const pct = `${Math.round(view.scale * 100)}%`;
   const touchAction = zoomed || pointers.current.size > 1 ? 'none' : 'pan-y';
 
   return (
-    <div className={`zp${isFs ? ' zp-fs' : ''}`} ref={rootRef}>
+    <div className={`zp${isFs || overlay ? ' zp-fs' : ''}${overlay ? ' zp-overlay' : ''}`} ref={rootRef}
+      role={overlay ? 'dialog' : undefined} aria-modal={overlay || undefined} aria-label={overlay ? label : undefined}>
       <div
         className={`zp-viewport${dragging ? ' is-dragging' : ''}${zoomed ? ' is-zoomed' : ''}`}
         ref={viewportRef}
@@ -206,10 +224,11 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
         <button type="button" onClick={() => zoomStep(1)} disabled={view.scale >= 6} aria-label="Zoom in">+</button>
         <button type="button" onClick={reset} disabled={!zoomed} aria-label="Reset zoom">Reset</button>
         {canFs && (
-          <button type="button" onClick={toggleFs} aria-pressed={isFs} aria-label={isFs ? 'Exit full screen' : 'Full screen'}>
-            {isFs ? 'Exit full screen' : 'Full screen'}
+          <button type="button" onClick={toggleFs} aria-pressed={isFs || overlay} aria-label={isFs || overlay ? 'Exit full screen' : 'Full screen'}>
+            {isFs || overlay ? 'Exit full screen' : 'Full screen'}
           </button>
         )}
+        {overlay && <button type="button" className="zp-close" onClick={closeOverlay}>Close</button>}
         {renderTools?.(view)}
       </div>
     </div>

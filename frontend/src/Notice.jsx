@@ -1,5 +1,6 @@
 import { Suspense, lazy, useState } from 'react';
 import { ListSkeleton, PhotoSkeleton } from './Skeleton.jsx';
+import { ExpiredContext } from './expired.js';
 import { hasCertificateList } from './certs.js';
 import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
@@ -109,7 +110,7 @@ function Failed({ what, onRetry }) {
  * still loading ('loading'), arrived ('ready') or failed ('error'); `result` is null until the notice details arrive.
  * Each section announces its own change politely. Options and help need no data, so they are always shown.
  */
-export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, plateBusy, onRetry, onStartAgain, headingRef }) {
+export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, plateBusy, onRetry, onRerun, onStartAgain, headingRef }) {
   const detailsLoading = sections.details === 'loading';
   const detailsFailed = sections.details === 'error' || (!detailsLoading && !result);
   const n = result?.notice;
@@ -136,6 +137,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
       : ev === 'not-applicable' ? undefined : 'We can’t show the photos yet.';
 
   return (
+    <ExpiredContext.Provider value={onRerun || null}>
     <div className="wrap page-body">
       <p className="crumb"><button type="button" className="linklike" onClick={onStartAgain}>← Look up a different notice</button></p>
       {query && (
@@ -217,5 +219,6 @@ export default function Notice({ result, query, sections = READY, registrationGi
         </div>
       </div>
     </div>
+    </ExpiredContext.Provider>
   );
 }

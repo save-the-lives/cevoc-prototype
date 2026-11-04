@@ -43,6 +43,8 @@ export default function App() {
   useEffect(() => cancel, []);
 
   const popSkip = useRef(false);
+  // The number plate is kept only in this tab's memory (never stored, never in the address), so expired photos can be re-fetched in one tap.
+  const plateRef = useRef(undefined);
 
   const stream = useCallback(async (query, registration, onFail) => {
     cancel();
@@ -90,20 +92,25 @@ export default function App() {
     });
   };
 
-  const submit = (query) => begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true });
+  const submit = (query) => { plateRef.current = query.registration; return begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true }); };
 
   // Re-runs the whole lookup (no number plate is kept, so a plate is asked for again inline if the source needs it).
-  const retry = () => begin(found.query, undefined, { fresh: false });
+  const retry = () => { plateRef.current = undefined; return begin(found.query, undefined, { fresh: false }); };
+
+  // The stored photos expired: run the same check again with the same values (plate included, from this tab's memory).
+  const rerun = () => begin(found.query, plateRef.current, { fresh: false });
 
   // The registration is asked for inline on the notice page and sent with a fresh request: it is held only for that call.
   const retryWithPlate = async (registration) => {
     liveRef.current = restartSections(liveRef.current);
     setLive(liveRef.current);
+    plateRef.current = registration;
     setFound((f) => ({ ...f, registrationGiven: true }));
     await stream(found.query, registration, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
   };
 
   const startAgain = () => {
+    plateRef.current = undefined;
     cancel(); setBusy(false);
     if (window.history.state?.notice) window.history.back(); else { setFound(null); setView({ name: 'form', outcome: null, misses: 0 }); }
   };
@@ -120,7 +127,7 @@ export default function App() {
         {view.name === 'notice' && found
           ? <Notice result={foundResult} query={found.query}
             sections={{ details: foundResult ? 'ready' : live?.finished || live?.details ? 'error' : 'loading', evidence: live.evidence.state, certificates: live.certificates.state }}
-            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onStartAgain={startAgain} headingRef={headingRef} />
+            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onRerun={rerun} onStartAgain={startAgain} headingRef={headingRef} />
           : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>

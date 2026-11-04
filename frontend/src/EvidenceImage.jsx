@@ -1,9 +1,38 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Component, Suspense, lazy, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { ExpiredContext } from './expired.js';
 import { downloadHref, stagesFor } from './media.js';
 
 // The zoom and pan viewer is its own chunk: it is fetched when someone opens a photo (or points at the button).
 const loadViewer = () => import('./ZoomPan.jsx');
-const ZoomPan = lazy(loadViewer);
+
+/** Catches a viewer that failed to load (a stale page after a new release, a dropped connection) and says so. */
+class ViewerBoundary extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidUpdate(prev) { if (prev.attempt !== this.props.attempt && this.state.failed) this.setState({ failed: false }); }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="notice-box" role="alert">
+        <p>The zoom viewer could not load. Your connection may have dropped, or this page is out of date.</p>
+        <p>
+          <button type="button" className="btn" onClick={this.props.onRetry}>Try again</button>{' '}
+          <button type="button" className="linklike" onClick={() => window.location.reload()}>Reload the page</button>
+        </p>
+      </div>
+    );
+  }
+}
+
+/** Distinguishes an expired link (404/410) from other failures: the browser's own image error carries no status. */
+async function linkExpired(url) {
+  try {
+    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.status === 404 || res.status === 410;
+  } catch {
+    return false;
+  }
+}
 
 /** A retry asks for the file again instead of reusing a failed or cached answer. */
 function bust(url, tries) {
@@ -33,6 +62,10 @@ export default function EvidenceImage({ item }) {
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [tries, setTries] = useState(0);
   const [broken, setBroken] = useState(false); // the picture on the page could not be loaded
+  const [expired, setExpired] = useState(false);
+  const [viewerTry, setViewerTry] = useState(0);
+  const rerun = useContext(ExpiredContext);
+  const Viewer = useMemo(() => lazy(loadViewer), [viewerTry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) return undefined;
@@ -58,13 +91,15 @@ export default function EvidenceImage({ item }) {
   const img = (
     <img className="media-img" src={src} alt={alt} width={item.width || undefined} height={item.height || undefined}
       loading={open ? 'eager' : 'lazy'} decoding="async" draggable="false"
-      onError={() => setBroken(true)} onLoad={() => setBroken(false)} />
+      onError={() => { setBroken(true); linkExpired(src).then((gone) => { if (gone) setExpired(true); }); }} onLoad={() => setBroken(false)} />
   );
 
   return (
     <div className="media-body">
       {open
-        ? <Suspense fallback={<div className="media-frame">{img}</div>}><ZoomPan label={`${item.title}, image`}>{img}</ZoomPan></Suspense>
+        ? <ViewerBoundary attempt={viewerTry} onRetry={() => setViewerTry((n) => n + 1)}>
+            <Suspense fallback={<div className="media-frame">{img}</div>}><Viewer label={`${item.title}, image`}>{img}</Viewer></Suspense>
+          </ViewerBoundary>
         : <div className="media-frame" style={{ aspectRatio: '16 / 10' }}>{img}</div>}
       {!open && (
         <button type="button" className="btn zoom-open" onClick={() => setOpen(true)} onPointerEnter={loadViewer} onFocus={loadViewer}>
@@ -72,8 +107,13 @@ export default function EvidenceImage({ item }) {
         </button>
       )}
       <p className="media-status" role="status">
-        {open && status === 'loading' && 'Loading a sharper copy...'}
-        {(broken || (open && status === 'error')) && (
+        {open && status === 'loading' && <><span className="spin" aria-hidden="true" />Loading a sharper copy...</>}
+        {expired && (
+          <>
+            These photos expired. {rerun ? <button type="button" className="btn" onClick={rerun}>Run the check again</button> : 'Run the check again.'}
+          </>
+        )}
+        {!expired && (broken || (open && status === 'error')) && (
           <>
             {!broken && stages.length > 1 && level > 0 ? 'Showing a lower quality copy. ' : 'This image could not be loaded. '}
             <button type="button" className="linklike" onClick={() => { setBroken(false); setTries((t) => t + 1); }}>Try again</button>
