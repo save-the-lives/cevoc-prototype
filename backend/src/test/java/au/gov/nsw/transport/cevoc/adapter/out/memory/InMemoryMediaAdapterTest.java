@@ -103,14 +103,13 @@ class InMemoryMediaAdapterTest {
         MutableClock clock = new MutableClock();
         InMemoryMediaAdapter m = new InMemoryMediaAdapter("", Duration.ofMinutes(20), 64L << 20, clock);
         store(m, "k", jpeg(10, 10));
-        String t = token(m.linkFor("k", Duration.ofMinutes(5)).url());
-        for (int i = 0; i < 5; i++) { // a reader who comes back every 15 minutes
-            clock.now = clock.now.plus(Duration.ofMinutes(15));
-            if (i < 3) {
-                assertThat(m.read(t, null)).isPresent();
-            }
+        String t = token(m.linkFor("k", Duration.ofMinutes(15)).url());
+        for (int i = 0; i < 5; i++) { // a reader who comes back every 10 minutes: 10, 20, 30, 40, 50
+            clock.now = clock.now.plus(Duration.ofMinutes(10));
+            assertThat(m.read(t, null)).isPresent();
         }
-        // 75 minutes after storing: past the 60 minute cap, so it is gone however recently it was read
+        // 70 minutes after storing: past the 60 minute cap, so it is gone however recently it was read
+        clock.now = clock.now.plus(Duration.ofMinutes(20));
         assertThat(m.read(t, null)).isEmpty();
     }
 
