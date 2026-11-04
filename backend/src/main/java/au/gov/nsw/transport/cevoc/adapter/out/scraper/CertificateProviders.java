@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 
 /**
@@ -28,6 +30,8 @@ public final class CertificateProviders {
     public static final String SEARCH_PAGE_HTTP = "search-page-http";
     public static final String HTTP_FORM = "http-form";
     public static final String BROWSER_LINK = "browser-link";
+
+    private static final Logger LOG = LoggerFactory.getLogger(CertificateProviders.class);
 
     private CertificateProviders() {}
 
@@ -55,6 +59,10 @@ public final class CertificateProviders {
         List<String> ids = ids(env);
         if (ids.isEmpty()) {
             return null;
+        }
+        if (ids.contains(SEARCH_PAGE) || ids.contains(BROWSER_LINK)) {
+            LOG.warn("A browser-based certificate provider is active. This is PROTOTYPE-ONLY: production uses the API providers, "
+                    + "and the Chromium route is removed at cutover (see docs/ARCHITECTURE.md).");
         }
         List<CertificateSourcePort> ports = new ArrayList<>();
         for (String id : ids) {

@@ -103,11 +103,13 @@ A direct client can fetch originals without a browser: take the identifiers from
 - In the map the document request showed no response (still pending when the session closed) in the run that reached it; the certificate result in that run was 0 rows. So the shape of the certificate response is NOT yet observed, and it is an HTML (JSF) page on a TfNSW host, not part of the Revenue NSW JSON service. It falls under the TfNSW approval gate (section 4b), not the Revenue NSW approval.
 
 ### Certificates provider list (the cutover seam, built)
+**The browser option is PROTOTYPE-ONLY** (`search-page` and `browser-link`, the Chromium session, the `live-browser` profile, the live-check endpoints): production uses the API providers and the browser pieces are deleted at cutover (list in docs/ARCHITECTURE.md). Live-mode default order is `search-page`; `search-page-http` is kept and tested but not in the default order; `tfnsw-api` is added in front by config.
+
 Certificates are the one concern whose provider list exists in code today: `cevoc.certificates.providers` is an ordered, comma-separated list (env `CEVOC_CERTIFICATES_PROVIDERS`), every provider implements `CertificateSourcePort` and returns the canonical shape below, and `CertificateProviders` / `CertificateProviderChain` pick and order them. Nothing listed (the default) means no certificate source and the `certificates` step reports skipped.
 
 | id | what it is | status |
 |---|---|---|
-| `search-page-http` | the same search page with plain HTTP and no browser: GET it, read the JSF hidden fields and field names from the page, POST the search form (camera code, offence day); fresh in-memory cookie per lookup | INTERIM, same owner approval (2026-11-04); replaced by `tfnsw-api`. Normally listed first, browser route as fallback |
+| `search-page-http` | the same search page with plain HTTP and no browser: GET it, read the JSF hidden fields and field names from the page, POST the search form (camera code, offence day); fresh in-memory cookie per lookup | INTERIM, same owner approval (2026-11-04); replaced by `tfnsw-api`. Not in the default order |
 | `search-page` | the public search page `searchCertificates.jsf` in its own headless-browser session: camera code as Location code, offence day as Date/Time from and to | INTERIM. Approved by the project owner on 2026-11-04 although robots.txt disallows automated access. Replaced by `tfnsw-api` when that exists |
 | `tfnsw-api` | the TfNSW certificate API | reserved; listing it today fails at start-up with "not available yet" |
 | `http-form` | plain HTTP form scraper (older design) | legacy; also what `cevoc.scraper.certificates.enabled=true` selects when no list is given |
@@ -117,7 +119,7 @@ Cutover is a config change only: `cevoc.certificates.providers=tfnsw-api,search-
 
 Canonical result (what any provider returns, via `CertificateRef`, shown to the page as `CertificateItem`): `description`, `type`, `periodText` (as shown) with parsed `periodFrom`/`periodTo`, `certifiedDate`, `expiryDate` and an optional `documentRef` exactly as given by the source; the page receives `{description, type, periodText, certifiedDate, expiryDate, coversOffence}` with dates as `yyyy-MM-dd`. `coversOffence` is true when the Period window contains the offence date and time. The camera code is the query input (Location code) and is never part of the result.
 
-Every provider that contacts a source needs the owner's approval reference (`cevoc.certificates.approval-reference`, env `CEVOC_CERTIFICATES_APPROVAL_REFERENCE`). The deploy workflow passes the provider and the reference only when the repository variable `CERTS_APPROVAL_REF` is non-empty.
+Every provider that contacts a source needs the owner's approval reference (`cevoc.certificates.approval-reference`, env `CEVOC_CERTIFICATES_APPROVAL_REFERENCE`). The live-mode deploy passes the provider and the fixed owner approval reference `owner-approved-2026-11-04`.
 
 ### Feasibility of a direct (browser-free) route
 Looks feasible for notice details and images, with caveats:
