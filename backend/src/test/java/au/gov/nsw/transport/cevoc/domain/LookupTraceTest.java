@@ -22,7 +22,7 @@ class LookupTraceTest {
     }
 
     @Test
-    void recordsOkAndFailedStepsAndFillsTheRestAsSkipped() {
+    void recordsOkAndFailedStepsAndFillsTheRestAsSkipped() throws Exception {
         LookupTrace t = LookupTrace.begin(false);
         assertThat(t.run(LookupStep.START_BROWSER, () -> "session")).isEqualTo("session");
         assertThatThrownBy(() -> t.run(LookupStep.OPEN_LOGIN, () -> {
