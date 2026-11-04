@@ -118,14 +118,17 @@ jobs:
           CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
           CERTS_APPROVAL_REF: ${{ vars.CERTS_APPROVAL_REF }}
+          CERTS_PROVIDERS: ${{ vars.CERTS_PROVIDERS }}
         run: |
           echo "::add-mask::$LIVE_CHECK_TOKEN"
           # Certificates (interim search-page provider, owner-approved 2026-11-04): only when the repository VARIABLE
           # CERTS_APPROVAL_REF is non-empty; its value is the approval reference. Otherwise nothing is passed.
           CERTS_ARGS=()
           if [ -n "$CERTS_APPROVAL_REF" ]; then
-            CERTS_ARGS=(CEVOC_CERTIFICATES_PROVIDERS=search-page "CEVOC_CERTIFICATES_APPROVAL_REFERENCE=$CERTS_APPROVAL_REF")
-            echo "::notice::CERTS_APPROVAL_REF is set: the certificates search-page provider is passed to the app (value not shown)."
+            # Optional repository variable CERTS_PROVIDERS (ordered list of known ids) overrides the default order.
+            case "${CERTS_PROVIDERS:-search-page-http,search-page}" in *[!a-z,-]*) echo "::error::CERTS_PROVIDERS may only contain a-z, comma and hyphen."; exit 1;; esac
+            CERTS_ARGS=("CEVOC_CERTIFICATES_PROVIDERS=${CERTS_PROVIDERS:-search-page-http,search-page}" "CEVOC_CERTIFICATES_APPROVAL_REFERENCE=$CERTS_APPROVAL_REF")
+            echo "::notice::CERTS_APPROVAL_REF is set: the certificates providers are passed to the app (value not shown)."
           else
             echo "::notice::CERTS_APPROVAL_REF is not set: no certificate settings are passed."
           fi

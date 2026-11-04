@@ -16,21 +16,29 @@ import java.util.Locale;
 public final class CertificateProviderChain implements CertificateSourcePort {
 
     private final List<CertificateSourcePort> providers;
+    private final List<String> ids;
 
     public CertificateProviderChain(List<CertificateSourcePort> providers) {
-        if (providers == null || providers.isEmpty()) {
+        this(java.util.stream.IntStream.range(0, providers == null ? 0 : providers.size()).mapToObj(i -> "provider-" + (i + 1)).toList(), providers);
+    }
+
+    /** {@code ids} name the providers for the live-check diagnostics (fixed config ids, never values). */
+    public CertificateProviderChain(List<String> ids, List<CertificateSourcePort> providers) {
+        if (providers == null || providers.isEmpty() || ids == null || ids.size() != providers.size()) {
             throw new IllegalArgumentException("at least one certificate provider is needed");
         }
         this.providers = List.copyOf(providers);
+        this.ids = List.copyOf(ids);
     }
 
     @Override
     public List<CertificateRef> findCertificates(CertificateQuery query) {
         RuntimeException last = null;
-        for (CertificateSourcePort p : providers) {
+        for (int i = 0; i < providers.size(); i++) {
             try {
-                return p.findCertificates(query);
+                return providers.get(i).findCertificates(query);
             } catch (RuntimeException e) {
+                LookupDiagnostic.note("cert-provider-failed=" + ids.get(i));
                 if (isRefusal(e)) {
                     throw e;
                 }

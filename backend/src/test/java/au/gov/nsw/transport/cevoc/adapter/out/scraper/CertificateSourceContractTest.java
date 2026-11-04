@@ -116,3 +116,11 @@ class ChainContractTest extends CertificateSourceContractTest {
         return new CertificateProviderChain(List.of(failing, new SearchPageContractTest().providerServing(resultsPage)));
     }
 }
+
+/** search-page-http: GET the form, POST the search with plain HTTP, served by a fake fetcher. */
+class SearchPageHttpContractTest extends CertificateSourceContractTest {
+    @Override
+    CertificateSourcePort providerServing(String resultsPage) {
+        return SearchPageHttpCertificateSourceTest.source(new SearchPageHttpCertificateSourceTest.FormFetcher(resultsPage));
+    }
+}

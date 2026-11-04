@@ -11,6 +11,7 @@ import org.springframework.core.env.Environment;
 /**
  * Builds the certificate source from {@code cevoc.certificates.providers}, an ordered, comma-separated list:
  * <ul>
+ *   <li>{@code search-page-http}: the same search page with plain HTTP (GET, read the JSF hidden fields, POST the search form), no browser; interim;</li>
  *   <li>{@code search-page}: the public certificates search page in a headless browser (interim, owner-approved 2026-11-04);</li>
  *   <li>{@code tfnsw-api}: reserved for the TfNSW API route; not available yet, so listing it fails at start-up;</li>
  *   <li>{@code http-form}: the plain HTTP form scraper (legacy; also selected by cevoc.scraper.certificates.enabled=true when no list is given);</li>
@@ -24,6 +25,7 @@ public final class CertificateProviders {
 
     public static final String SEARCH_PAGE = "search-page";
     public static final String TFNSW_API = "tfnsw-api";
+    public static final String SEARCH_PAGE_HTTP = "search-page-http";
     public static final String HTTP_FORM = "http-form";
     public static final String BROWSER_LINK = "browser-link";
 
@@ -58,14 +60,15 @@ public final class CertificateProviders {
         for (String id : ids) {
             ports.add(switch (id) {
                 case SEARCH_PAGE -> searchPage(env);
+                case SEARCH_PAGE_HTTP -> searchPageHttp(env);
                 case HTTP_FORM -> httpForm(env);
                 case BROWSER_LINK -> new BrowserCertificateSourceAdapter(new CertificatePageParser());
                 case TFNSW_API -> throw new IllegalStateException("certificate provider tfnsw-api is not available yet");
                 default -> throw new IllegalStateException("unknown certificate provider '" + id
-                        + "' (known: search-page, http-form, browser-link)");
+                        + "' (known: search-page-http, search-page, http-form, browser-link)");
             });
         }
-        return ports.size() == 1 ? ports.get(0) : new CertificateProviderChain(ports);
+        return ports.size() == 1 ? ports.get(0) : new CertificateProviderChain(ids, ports);
     }
 
     private static String approval(Environment env) {
@@ -86,6 +89,21 @@ public final class CertificateProviders {
         Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
         return new SearchPageCertificateSource(ScraperEvidenceFactory.sessionsFor(env), pageUrl, new CertificatePageParser(), ttl,
                 Clock.systemUTC());
+    }
+
+    private static CertificateSourcePort searchPageHttp(Environment env) {
+        approval(env);
+        ScraperSettings s = ScraperEvidenceFactory.settings(env);
+        if (s.contact() == null || s.contact().isBlank()) {
+            throw new IllegalStateException("cevoc.scraper.evidence.contact is required: the user agent must identify who is calling");
+        }
+        String pageUrl = env.getProperty("cevoc.certificates.search-page.url", SearchPageCertificateSource.DEFAULT_PAGE_URL);
+        Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
+        CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, s.userAgent(), s.minInterval(),
+                s.connectTimeout(), s.requestTimeout(), ttl, CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
+        // A fresh fetcher per lookup: the session cookie lives in memory for that one lookup only.
+        return new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props), pageUrl, new CertificatePageParser(),
+                EvidenceRateLimiter.system(s.minInterval()), ttl, Clock.systemUTC());
     }
 
     private static CertificateSourcePort httpForm(Environment env) {

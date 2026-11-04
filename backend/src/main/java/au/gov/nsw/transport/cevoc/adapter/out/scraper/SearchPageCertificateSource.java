@@ -81,6 +81,7 @@ public class SearchPageCertificateSource implements CertificateSourcePort {
             // The browser layer already scrubbed the message and keeps it to one line (cause words such as blocked-403).
             throw new ScrapeException(e.getMessage() == null ? "failed" : e.getMessage().lines().findFirst().orElse("failed"));
         }
+        LookupDiagnostic.note("cert-provider=search-page");
         cache.put(key, new Cached(now, rows));
         return rows;
     }

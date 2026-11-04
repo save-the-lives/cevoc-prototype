@@ -63,7 +63,12 @@ public class PoliteHttpFetcher implements PageFetcher {
             waitForSlot();
             try {
                 HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
-                if (resp.statusCode() / 100 != 2) {
+                int code = resp.statusCode();
+                if (code == 401 || code == 403 || code == 429) {
+                    // A refusal ends the attempt; callers must not retry or go another way round.
+                    throw new ScrapeException("blocked-" + code);
+                }
+                if (code / 100 != 2) {
                     throw new ScrapeException("Source returned HTTP " + resp.statusCode());
                 }
                 return resp.body();
