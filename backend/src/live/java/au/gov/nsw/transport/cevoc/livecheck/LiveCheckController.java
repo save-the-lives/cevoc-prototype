@@ -2,6 +2,7 @@ package au.gov.nsw.transport.cevoc.livecheck;
 
 import au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic;
 import au.gov.nsw.transport.cevoc.adapter.out.scraper.RequestScopedRegistration;
+import au.gov.nsw.transport.cevoc.adapter.out.scraper.live.NetworkMapHolder;
 import au.gov.nsw.transport.cevoc.application.port.in.LookupPenaltyUseCase;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupRequest;
 import java.time.LocalDate;
@@ -36,7 +37,7 @@ public class LiveCheckController {
         this.useCase = useCase;
     }
 
-    public record Body(String notice, String offenceDate, String registration) {
+    public record Body(String notice, String offenceDate, String registration, Boolean networkMap) {
         @Override
         public String toString() {
             return "Body";
@@ -64,10 +65,23 @@ public class LiveCheckController {
             return ResponseEntity.badRequest().body("registration not in the expected shape\n");
         }
         var request = new PenaltyLookupRequest(body.notice(), date);
+        // Network map: structure-only call map, only when asked for (default off). See NetworkMapRedaction.
+        boolean wantMap = Boolean.TRUE.equals(body.networkMap());
         String summary = RequestScopedRegistration.with(plate, () -> {
             LookupDiagnostic.clear();
-            var result = useCase.lookup(request);
-            return LiveCheckSummary.of(result, LookupDiagnostic.take());
+            if (wantMap) {
+                NetworkMapHolder.request();
+            }
+            try {
+                var result = useCase.lookup(request);
+                String text = LiveCheckSummary.of(result, LookupDiagnostic.take());
+                if (wantMap) {
+                    text = text + String.join("\n", NetworkMapHolder.take()) + "\n";
+                }
+                return text;
+            } finally {
+                NetworkMapHolder.take();
+            }
         });
         return ResponseEntity.ok(summary);
     }

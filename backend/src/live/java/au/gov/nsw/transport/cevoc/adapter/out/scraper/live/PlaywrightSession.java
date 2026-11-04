@@ -92,6 +92,10 @@ final class PlaywrightSession implements RenderedPageSession {
                 route.resume();
             }
         });
+        this.netmap = NetworkMapHolder.wanted() ? new NetworkMapRecorder() : null;
+        if (netmap != null) {
+            netmap.attach(context);
+        }
         this.page = context.newPage();
         // Diagnostics only: method and HTTP status of script-made POST/PUT calls, never URLs or bodies.
         this.page.onResponse(resp -> {
@@ -108,6 +112,14 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     private final java.util.concurrent.atomic.AtomicInteger abortedNavs = new java.util.concurrent.atomic.AtomicInteger();
+    private final NetworkMapRecorder netmap;
+
+    private void tag(String label) {
+        if (netmap != null) {
+            netmap.step(label);
+        }
+    }
+
     private final java.util.List<String> postStatuses = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
     private static final String[] ALERT_WORDS = {"not found", "no match", "incorrect", "invalid", "captcha", "robot", "try again",
             "unable", "error", "required", "does not match", "not recognised", "verify"};
@@ -142,6 +154,7 @@ final class PlaywrightSession implements RenderedPageSession {
     @Override
     public String loginPage() throws IOException, InterruptedException {
         return step("login", () -> {
+            tag("open-login");
             pace();
             page.navigate(loginUrl, new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
             waitUntil(() -> page.locator(PNN).count() > 0 && page.locator(DATE).count() > 0);
@@ -155,6 +168,7 @@ final class PlaywrightSession implements RenderedPageSession {
         redactor.add(noticeNumber);
         redactor.add(offenceDate);
         return step("submit-login", () -> {
+            tag("submit-login");
             fill(PNN, noticeNumber);
             fill(DATE, offenceDate);
             pace();
@@ -167,6 +181,7 @@ final class PlaywrightSession implements RenderedPageSession {
             // login inputs disappearing (the app moved on) counts too.
             waitUntil(() -> page.locator(PLATE).count() > 0 || page.getByText(SUMMARY_HEADING).count() > 0
                     || page.locator(PNN).count() == 0 || visibleAlerts() > 0);
+            tag("read-summary");
             return snapshot("2-after-login");
         });
     }
@@ -175,12 +190,14 @@ final class PlaywrightSession implements RenderedPageSession {
     public String submitPlate(String registration) throws IOException, InterruptedException {
         redactor.add(registration);
         return step("submit-plate", () -> {
+            tag("give-plate");
             fill(PLATE, registration);
             pace();
             au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("plate-kept="
                     + (registration.equals(page.locator(PLATE).first().inputValue()) ? "yes" : "no")
                     + "; view-buttons=" + Math.min(page.locator(VIEW_CSS).count(), 9)
                     + "; view-disabled=" + (page.locator(VIEW_CSS).count() > 0 && page.locator(VIEW_CSS).first().isDisabled() ? "yes" : "no"));
+            tag("view-images");
             click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("View images")),
                     page.locator(VIEW_CSS));
             settle();
@@ -200,6 +217,7 @@ final class PlaywrightSession implements RenderedPageSession {
             }
             au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("blob-imgs-live=" + Math.min(page.locator(BLOB_IMG).count(), 40)
                     + "; alerts-visible=" + visibleAlerts() + "; alert-words=" + alertWords() + "; post-calls=" + String.join(",", postStatuses));
+            tag("capture-images");
             return snapshot("3-after-plate");
         });
     }
@@ -314,6 +332,9 @@ final class PlaywrightSession implements RenderedPageSession {
 
     @Override
     public void close() {
+        if (netmap != null) {
+            NetworkMapHolder.deposit(netmap.lines());
+        }
         redactor.clear();
         PlaywrightSessionFactory.closeQuietly(context, browser, playwright);
     }

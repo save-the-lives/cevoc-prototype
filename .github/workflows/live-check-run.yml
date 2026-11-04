@@ -6,6 +6,11 @@ name: Live check run (reads the LIVE_CASES secret, prints only redacted summarie
 # app's redacted summary is printed under its label. Values are masked in the log and never echoed.
 on:
   workflow_dispatch:
+    inputs:
+      network_map:
+        description: "Also print the redacted NETWORK MAP (structure only: paths with ids replaced, header and key names, value types, sizes). Default off."
+        type: boolean
+        default: false
 permissions:
   contents: read
   id-token: write
@@ -25,6 +30,7 @@ jobs:
       - name: Run the cases
         env:
           LIVE_CASES: ${{ secrets.LIVE_CASES }}
+          NETWORK_MAP: ${{ inputs.network_map }}
         run: |
           set +x
           [ -n "$LIVE_CASES" ] || { echo "::error::Secret LIVE_CASES is not set."; exit 1; }
@@ -37,7 +43,7 @@ jobs:
           echo "Running $n case(s) against the deployed app"
           for i in $(seq 0 $((n-1))); do
             label=$(printf %s "$LIVE_CASES" | jq -r ".[$i].label // \"case $((i+1))\"")
-            body=$(printf %s "$LIVE_CASES" | jq -c ".[$i] | {notice:.notice, offenceDate:(.date[6:10]+\"-\"+.date[3:5]+\"-\"+.date[0:2]), registration:(.plate // null)}")
+            body=$(printf %s "$LIVE_CASES" | jq -c --arg nm "$NETWORK_MAP" ".[$i] | {notice:.notice, offenceDate:(.date[6:10]+\"-\"+.date[3:5]+\"-\"+.date[0:2]), registration:(.plate // null), networkMap:(\$nm==\"true\")}")
             code=$(curl -m 170 -s -o resp.txt -w '%{http_code}' -X POST "https://$fqdn/live-check/lookup" -H 'Content-Type: application/json' -d "$body" || true)
             echo "::group::$label (HTTP $code)"
             cat resp.txt
