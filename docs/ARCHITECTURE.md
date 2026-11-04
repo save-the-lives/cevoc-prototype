@@ -2,7 +2,7 @@
 
 Hexagonal. Dependencies point inwards: `adapter` -> `application` -> `domain`. `ArchitectureTest` enforces this.
 
-    backend/src/main/java/au/gov/nsw/transport/cevoc
+    backend/src/main/java/cevoc
       domain/                 records only, no framework
       application/port/in/    LookupPenaltyUseCase   (what the outside can ask)
       application/port/out/   PenaltyLookupPort      (how we get content)
@@ -74,7 +74,7 @@ After the images state, `ScraperEvidenceLookupAdapter` calls `RenderedPageSessio
 
 Safeguards:
 - Never the default. `stub` stays the default in code, tests and every shipped config. It runs only if `cevoc.penalty-lookup.adapter=scraper-evidence` AND `cevoc.scraper.evidence.enabled=true` (env `CEVOC_SCRAPER_EVIDENCE_ENABLED`, default `false`). It also needs `cevoc.scraper.evidence.base-url` (https) and `cevoc.scraper.evidence.contact`; with any of these missing it returns `LIVE_LOOKUP_OFF` and makes no network call.
-- Polite: identifying User-Agent (`CEVOC-prototype/0.1 (Transport for NSW; contact: ...)`), minimum 5 s between requests (`min-interval-ms`), connect and request timeouts, size cap (`max-bytes`), strictly sequential (no parallelism), images only from the browser session's own blob: handles, 2 minute result cache (`cache-ttl-seconds`, notice details only; never results with images). The pacing, timeout and size settings are for the future browser adapter to honour.
+- Polite: identifying User-Agent (`cevoc-prototype/1.0 (contact: ...)`), minimum 5 s between requests (`min-interval-ms`), connect and request timeouts, size cap (`max-bytes`), strictly sequential (no parallelism), images only from the browser session's own blob: handles, 2 minute result cache (`cache-ttl-seconds`, notice details only; never results with images). The pacing, timeout and size settings are for the future browser adapter to honour.
 - Isolation: all HTML knowledge lives in `RevenueNswPageParser`; a site change should break only that class and its fixture.
 - Tests (`ScraperEvidenceTest`) use saved fictitious DOM in `backend/src/test/resources/fixtures/scraper/` and a fake `RenderedPageSession`. No live network, no real notice numbers or personal data.
 

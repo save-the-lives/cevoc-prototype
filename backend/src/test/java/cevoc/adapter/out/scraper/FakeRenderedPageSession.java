@@ -1,0 +1,122 @@
+package cevoc.adapter.out.scraper;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Test fake for the RenderedPageSession port. Serves FICTITIOUS saved DOM fixtures for the three states and
+ * canned image bytes for blob: handles. No browser, no network.
+ */
+class FakeRenderedPageSession implements RenderedPageSession {
+
+    static String fixture(String name) {
+        try {
+            return Files.readString(Path.of("src/test/resources/fixtures/scraper/" + name), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    String loginHtml = fixture("fictitious-state1-login.html");
+    String summaryHtml = fixture("fictitious-state2-summary.html");
+    String imagesHtml = fixture("fictitious-state3-images.html");
+    /** The registration this fake accepts; any other value leaves the summary (plate form still present). */
+    String acceptedPlate = "TST123";
+    /** When set, submitLogin returns the login page again (notice not matched). */
+    boolean rejectLogin;
+    /** When set, submitPlate throws an IOException whose message contains the plate (to prove it is not logged). */
+    boolean failOnPlate;
+
+    final List<String> calls = new ArrayList<>();
+    final List<String> loginInputs = new ArrayList<>();
+    final Map<String, ImageBytes> blobs = new HashMap<>();
+    boolean closed;
+    /** Rendered certificates page returned by openCertification; null = the link leads nowhere (empty). */
+    String certificationHtml = fixture("fictitious-certification-table.html");
+    /** When set, openCertification throws (message in the style of the browser layer). */
+    boolean failCertification;
+
+    FakeRenderedPageSession() {
+        blobs.put("blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000001", new ImageBytes("image/jpeg", new byte[] {1, 2, 3}));
+        blobs.put("blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000002", new ImageBytes("image/png", png(8, 6),
+                new cevoc.domain.ImageSize(0, 0, 4, 3, 8, 6, 0, cevoc.domain.CapturePath.CANVAS)));
+        // 000...003 deliberately has no bytes
+    }
+
+    /** A real, tiny, fictitious PNG of the given pixel size. */
+    static byte[] png(int w, int h) {
+        try {
+            var out = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public String loginPage() {
+        calls.add("loginPage");
+        return loginHtml;
+    }
+
+    @Override
+    public String submitLogin(String noticeNumber, String offenceDate) {
+        calls.add("submitLogin");
+        loginInputs.add(noticeNumber + "|" + offenceDate);
+        return rejectLogin ? loginHtml : summaryHtml;
+    }
+
+    @Override
+    public String submitPlate(String registration) throws IOException {
+        calls.add("submitPlate");
+        if (failOnPlate) {
+            throw new IOException("browser failed while typing " + registration);
+        }
+        return acceptedPlate.equals(registration) ? imagesHtml : summaryHtml;
+    }
+
+    @Override
+    public Optional<ImageBytes> imageBytes(String blobUrl) {
+        calls.add("imageBytes");
+        return Optional.ofNullable(blobs.get(blobUrl));
+    }
+
+    @Override
+    public Optional<String> openCertification() throws IOException {
+        calls.add("openCertification");
+        if (failCertification) {
+            throw new IOException("browser step 'certificates' failed: Timeout 30000ms exceeded");
+        }
+        return Optional.ofNullable(certificationHtml);
+    }
+
+    /** Rendered results returned by searchCertificates (the search page route); null = nothing usable (empty). */
+    String searchHtml = CertificatePageParserTest.fixture("results-certificates.html");
+    /** When set, searchCertificates throws an IOException with this message (in the style of the browser layer). */
+    String searchFailure;
+    final List<String> searches = new ArrayList<>();
+
+    @Override
+    public Optional<String> searchCertificates(String pageUrl, String locationCode, java.time.LocalDateTime from,
+                                               java.time.LocalDateTime to) throws IOException {
+        calls.add("searchCertificates");
+        searches.add(pageUrl + "|" + locationCode + "|" + from + "|" + to);
+        if (searchFailure != null) {
+            throw new IOException(searchFailure);
+        }
+        return Optional.ofNullable(searchHtml);
+    }
+
+    @Override
+    public void close() {
+        closed = true;
+    }
+}
