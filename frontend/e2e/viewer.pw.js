@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+const card = (page) => page.locator('.media-card').first();
+
 // iPhone 13 emulation: touch, mobile viewport. All data comes from the dev mock (invented).
 async function openFirstPhoto(page) {
   await page.goto('/?mock=1');
@@ -8,20 +10,21 @@ async function openFirstPhoto(page) {
   await page.tap('button[type=submit]');
   await page.waitForSelector('h1');
   await page.locator('button.zoom-open').first().waitFor({ timeout: 15_000 });
+  await page.locator('.cert-list').waitFor({ timeout: 15_000 }); // every section has arrived: nothing above the photo changes height any more
+  await page.locator('video').first().waitFor({ state: 'attached', timeout: 15_000 }); // the lazy video player has mounted too
+  await page.waitForTimeout(500);
   await page.locator('button.zoom-open').first().tap();
-  await page.waitForSelector('.zp-viewport', { timeout: 10_000 });
+  await card(page).locator('.zp-viewport').waitFor({ timeout: 10_000 });
 }
 
-const card = (page) => page.locator('.media-card').first();
-
 const scaleOf = (page) => page.evaluate(() => {
-  const m = new DOMMatrix(getComputedStyle(document.querySelector('.zp-content')).transform);
+  const m = new DOMMatrix(getComputedStyle(document.querySelector('.media-card .zp-content')).transform);
   return Math.round(m.a * 100) / 100;
 });
 
 async function twoFingers(page, from, to, steps = 6) {
-  await page.locator('.zp-viewport').first().scrollIntoViewIfNeeded();
-  const box = await page.locator('.zp-viewport').first().boundingBox();
+  await card(page).locator('.zp-viewport').first().scrollIntoViewIfNeeded();
+  const box = await card(page).locator('.zp-viewport').first().boundingBox();
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
   const cdp = await page.context().newCDPSession(page);
@@ -51,8 +54,8 @@ test('plus and minus buttons zoom and Reset returns to 1x', async ({ page }) => 
 
 test('double tap zooms in and a second double tap resets', async ({ page }) => {
   await openFirstPhoto(page);
-  await page.locator('.zp-viewport').first().scrollIntoViewIfNeeded();
-  const box = await page.locator('.zp-viewport').first().boundingBox();
+  await card(page).locator('.zp-viewport').first().scrollIntoViewIfNeeded();
+  const box = await card(page).locator('.zp-viewport').first().boundingBox();
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
   const doubleTap = async () => { await page.touchscreen.tap(x, y); await page.touchscreen.tap(x, y); };

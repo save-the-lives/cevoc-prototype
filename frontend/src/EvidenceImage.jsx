@@ -1,5 +1,7 @@
 import { Component, Suspense, lazy, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ExpiredContext } from './expired.js';
+import { QueueContext } from './evidenceLoader.js';
+import { STATE } from './loadQueue.js';
 import { downloadHref, stagesFor } from './media.js';
 
 // The zoom and pan viewer is its own chunk: it is fetched when someone opens a photo (or points at the button).
@@ -65,10 +67,21 @@ export default function EvidenceImage({ item }) {
   const [expired, setExpired] = useState(false);
   const [viewerTry, setViewerTry] = useState(0);
   const rerun = useContext(ExpiredContext);
+  const q = useContext(QueueContext);
+  const [full, setFull] = useState(() => q?.queue.state(item.url) ?? STATE.IDLE);
+  useEffect(() => {
+    if (!q) return undefined;
+    const sync = () => setFull(q.queue.state(item.url) ?? STATE.IDLE);
+    sync();
+    return q.queue.subscribe(sync);
+  }, [q, item.url]);
+  const eagerThumb = !q || q.eager.includes(item.url);
   const Viewer = useMemo(() => lazy(loadViewer), [viewerTry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) return undefined;
+    if (q && stages.length > 1) q.queue.prioritize(item.url);
+    if (full === STATE.READY && levelRef.current < stages.length - 1) { levelRef.current = stages.length - 1; setLevel(stages.length - 1); setStatus('ready'); return undefined; }
     let live = true;
     const kept = [];
     (async () => {
@@ -90,8 +103,8 @@ export default function EvidenceImage({ item }) {
   const alt = item.alt || item.title;
   const img = (
     <img className="media-img" src={src} alt={alt} width={item.width || undefined} height={item.height || undefined}
-      loading={open ? 'eager' : 'lazy'} decoding="async" draggable="false"
-      onError={() => { setBroken(true); linkExpired(src).then((gone) => { if (gone) setExpired(true); }); }} onLoad={() => setBroken(false)} />
+      loading={open || eagerThumb ? 'eager' : 'lazy'} fetchPriority={eagerThumb ? 'high' : 'auto'} decoding="async" draggable="false"
+      onError={() => { q?.thumbDone(item.url); setBroken(true); linkExpired(src).then((gone) => { if (gone) setExpired(true); }); }} onLoad={() => { setBroken(false); q?.thumbDone(item.url); }} />
   );
 
   return (
@@ -105,6 +118,11 @@ export default function EvidenceImage({ item }) {
         <button type="button" className="btn zoom-open" onClick={() => setOpen(true)} onPointerEnter={loadViewer} onFocus={loadViewer}>
           Zoom in<span className="sr-only"> on {item.title}</span>
         </button>
+      )}
+      {q && stages.length > 1 && !open && (
+        <p className="media-progress" aria-live="polite">
+          {full === STATE.READY ? 'Full size ready' : full === STATE.LOADING ? <><span className="spin" aria-hidden="true" />Loading full size…</> : full === STATE.ERROR ? 'Full size not loaded yet' : 'Full size waiting'}
+        </p>
       )}
       <p className="media-status" role="status">
         {open && status === 'loading' && <><span className="spin" aria-hidden="true" />Loading a sharper copy...</>}
