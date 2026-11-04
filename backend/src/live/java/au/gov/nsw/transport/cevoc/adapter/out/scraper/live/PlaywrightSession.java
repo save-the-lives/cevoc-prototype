@@ -259,6 +259,11 @@ final class PlaywrightSession implements RenderedPageSession {
                 context.offPage(onOpen);
             }
             Page dest = opened.get() != null ? opened.get() : page;
+            // A new tab starts as about:blank and then navigates: wait until it has a real address.
+            waitUntil(() -> {
+                String u = dest.url();
+                return u != null && !u.isBlank() && !"about:blank".equals(u);
+            });
             try {
                 dest.waitForLoadState(LoadState.DOMCONTENTLOADED, new Page.WaitForLoadStateOptions().setTimeout(stepTimeout.toMillis()));
                 dest.waitForLoadState(LoadState.NETWORKIDLE,
@@ -271,7 +276,24 @@ final class PlaywrightSession implements RenderedPageSession {
                     + "; cert-url-host=" + hostKind(url) + "; cert-nav-aborted=" + Math.min(abortedNavs.get() - abortedBefore, 9)
                     + "; cert-path-jsf=" + (url.toLowerCase(Locale.ROOT).contains(".jsf") ? "yes" : "no")
                     + "; cert-url-changed=" + (before.equals(url) ? "no" : "yes"));
-            String html = dest.content();
+            String html = null;
+            for (int i = 0; i < 6 && html == null; i++) {
+                try {
+                    html = dest.content();
+                } catch (PlaywrightException e) {
+                    // "page is navigating": let it finish, then read again
+                    note("cert-content-retry=" + (i + 1));
+                    dest.waitForTimeout(1500);
+                    try {
+                        dest.waitForLoadState(LoadState.DOMCONTENTLOADED, new Page.WaitForLoadStateOptions().setTimeout(5_000));
+                    } catch (PlaywrightException ignored) {
+                        // keep trying
+                    }
+                }
+            }
+            if (html == null) {
+                html = dest.content();
+            }
             if (capture != null) {
                 capture.save("4-certificates", html);
             }
