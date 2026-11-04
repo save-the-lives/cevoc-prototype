@@ -24,19 +24,22 @@ class NetworkMapRedactionTest {
                 .isEqualTo("/v1/notices/{n}/images/{n}");
         assertThat(NetworkMapRedaction.path("/api/items/123e4567-e89b-12d3-a456-426614174000/view"))
                 .isEqualTo("/api/items/{uuid}/view");
-        assertThat(NetworkMapRedaction.path("/api/plate/TST123/x")).isEqualTo("/api/plate/{id:alnum6}/x");
-        assertThat(NetworkMapRedaction.path("/api/notice-9000000004")).isEqualTo("/api/{id:other17}");
-        assertThat(NetworkMapRedaction.path("/static/main.4f3a2b1c.js")).isEqualTo("/static/{id:other16}");
+        assertThat(NetworkMapRedaction.path("/api/plate/TST123/x")).matches("/api/plate/\\{id:alnum6#[0-9a-f]{4}\\}/x");
+        assertThat(NetworkMapRedaction.path("/api/notice-9000000004")).matches("/api/\\{id:other17#[0-9a-f]{4}\\}");
+        assertThat(NetworkMapRedaction.path("/static/main.4f3a2b1c.js")).matches("/static/\\{id:other16#[0-9a-f]{4}\\}");
         assertThat(NetworkMapRedaction.path("/static/main.js")).isEqualTo("/static/main.js");
-        assertThat(NetworkMapRedaction.path("/api/getImages;jsessionid=abc")).isEqualTo("/api/{id:other24}");
-        assertThat(NetworkMapRedaction.path("/api/ABCDEF")).isEqualTo("/api/{id:upper6}");
+        assertThat(NetworkMapRedaction.path("/api/getImages;jsessionid=abc")).matches("/api/\\{id:other24#[0-9a-f]{4}\\}");
+        assertThat(NetworkMapRedaction.path("/api/ABCDEF")).matches("/api/\\{id:upper6#[0-9a-f]{4}\\}");
         assertThat(NetworkMapRedaction.path("/")).isEqualTo("/");
+        // the same identifier gets the same tag within a run, a different one a different tag
+        assertThat(NetworkMapRedaction.path("/i/AB-12-xy")).isEqualTo(NetworkMapRedaction.path("/i/AB-12-xy"));
+        assertThat(NetworkMapRedaction.path("/i/AB-12-xy")).isNotEqualTo(NetworkMapRedaction.path("/i/AB-12-xz"));
     }
 
     @Test
     void jwtInThePathIsNeverEmitted() {
         String out = NetworkMapRedaction.path("/auth/" + JWT + "/refresh");
-        assertThat(out).isEqualTo("/auth/{id:other" + JWT.length() + "}/refresh");
+        assertThat(out).matches("/auth/\\{id:other" + JWT.length() + "#[0-9a-f]{4}\\}/refresh");
         assertClean(out);
         assertClean(NetworkMapRedaction.url("https://api.example.invalid/x/" + JWT + "?token=" + JWT));
     }
@@ -46,6 +49,8 @@ class NetworkMapRedactionTest {
         assertThat(NetworkMapRedaction.queryKeys("noticeId=9000000004&plate=TST123&b=2&a=1"))
                 .isEqualTo("?a&b&noticeId&plate");
         assertThat(NetworkMapRedaction.queryKeys("9000000004=x&" + JWT + "=y&ok=1")).isEqualTo("?%3F&ok".replace("%3F", "?"));
+        assertThat(NetworkMapRedaction.queryKeys("size=full&id=full9000000004&mode=TST123&when=2026-01-15"))
+                .isEqualTo("?id&mode&size=full&when");
         assertThat(NetworkMapRedaction.queryKeys("")).isEmpty();
         assertThat(NetworkMapRedaction.queryKeys(null)).isEmpty();
         assertClean(NetworkMapRedaction.queryKeys("a=9000000004&TST123=1&x=" + JWT));
@@ -137,6 +142,10 @@ class NetworkMapRedactionTest {
         var bos = new java.io.ByteArrayOutputStream();
         javax.imageio.ImageIO.write(img, "png", bos);
         assertThat(NetworkMapRedaction.pixelSize(bos.toByteArray())).isEqualTo("40x30");
+        var jos = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(img, "jpg", jos);
+        assertThat(NetworkMapRedaction.pixelSize(jos.toByteArray())).isEqualTo("40x30");
+        assertThat(NetworkMapRedaction.approxKb(123_456)).isEqualTo("120KB");
         assertThat(NetworkMapRedaction.pixelSize(new byte[100])).isEqualTo("unknown");
         assertThat(NetworkMapRedaction.pixelSize(null)).isEqualTo("unknown");
     }

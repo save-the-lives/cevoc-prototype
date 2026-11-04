@@ -28,6 +28,14 @@ public final class NetworkMapRedaction {
     private static final Pattern CONTENT_TYPE_OK = Pattern.compile("[a-z0-9.+-]{1,40}/[a-z0-9.+-]{1,60}");
     private static final Pattern JWT = Pattern.compile("eyJ[A-Za-z0-9_-]{5,}\\.[A-Za-z0-9_-]{5,}\\.[A-Za-z0-9_-]*");
     private static final Pattern ISO_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}([T ].*)?|\\d{1,2}/\\d{1,2}/\\d{4}.*");
+    private static final Set<String> ENUM_VALUES = Set.of("thumb", "thumbnail", "small", "medium", "large", "full",
+            "original", "orig", "preview", "high", "low", "xl", "lg", "md", "sm", "true", "false");
+    private static final byte[] SALT = new byte[16];
+
+    static {
+        new java.security.SecureRandom().nextBytes(SALT);
+    }
+
     private static final int MAX_DEPTH = 6;
     private static final int MAX_KEYS = 25;
     private static final int MAX_SHAPE = 1500;
@@ -105,7 +113,23 @@ public final class NetworkMapRedaction {
         return idTag(s);
     }
 
-    /** "{id:class+length}": only the character class and length of an identifier-like segment, never its content. */
+    /**
+     * 4 hex chars of SHA-256(per-process random salt + value): equal segments within one run show the same tag, so
+     * "same id in all calls" is visible; the salt is never emitted and changes every start, so nothing can be
+     * looked up or compared across runs.
+     */
+    static String salted(String s) {
+        try {
+            var md = java.security.MessageDigest.getInstance("SHA-256");
+            md.update(SALT);
+            byte[] h = md.digest(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return String.format("%02x%02x", h[0], h[1]);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "0000";
+        }
+    }
+
+    /** "{id:class+length#tag}": only the character class and length of an identifier-like segment, never its content. */
     static String idTag(String s) {
         String cls;
         if (s.matches("[A-Z]+")) {
@@ -119,7 +143,7 @@ public final class NetworkMapRedaction {
         } else {
             cls = "other";
         }
-        return "{id:" + cls + Math.min(s.length(), 99) + "}";
+        return "{id:" + cls + Math.min(s.length(), 99) + "#" + salted(s) + "}";
     }
 
     /** Query string reduced to key NAMES only (sorted, whitelisted), as "?a&b", or "" when none. */
@@ -133,7 +157,11 @@ public final class NetworkMapRedaction {
                 continue;
             }
             int eq = pair.indexOf('=');
-            keys.add(key(eq < 0 ? pair : pair.substring(0, eq)));
+            String k = key(eq < 0 ? pair : pair.substring(0, eq));
+            // A value is shown only if it is one of a few fixed size/mode words, so "size=full" is visible but
+            // no identifier, date or token ever is.
+            String v = eq < 0 ? "" : decode(pair.substring(eq + 1)).toLowerCase(Locale.ROOT);
+            keys.add(!"?".equals(k) && ENUM_VALUES.contains(v) ? k + "=" + v : k);
             if (keys.size() >= 15) {
                 break;
             }
@@ -204,26 +232,50 @@ public final class NetworkMapRedaction {
                 : bytes < 2_000_000 ? "<2MB" : bytes < 5_000_000 ? "<5MB" : ">=5MB";
     }
 
-    /** Pixel size "WxH" read from the image header, or "unknown". Dimensions only, no pixel data is kept. */
-    public static String pixelSize(byte[] data) {
-        if (data == null || data.length < 24) {
+    /** Pixel size "WxH" read from a PNG or JPEG header, or "unknown". Dimensions only; no pixel data is kept. */
+    public static String pixelSize(byte[] d) {
+        if (d == null || d.length < 24) {
             return "unknown";
         }
-        try (var in = javax.imageio.ImageIO.createImageInputStream(new java.io.ByteArrayInputStream(data))) {
-            var readers = javax.imageio.ImageIO.getImageReaders(in);
-            if (readers.hasNext()) {
-                var r = readers.next();
-                try {
-                    r.setInput(in, true, true);
-                    return r.getWidth(0) + "x" + r.getHeight(0);
-                } finally {
-                    r.dispose();
+        // PNG: signature, then IHDR with big-endian width and height at offsets 16 and 20.
+        if ((d[0] & 0xFF) == 0x89 && d[1] == 'P' && d[2] == 'N' && d[3] == 'G') {
+            return u32(d, 16) + "x" + u32(d, 20);
+        }
+        // JPEG: walk the segments to the first start-of-frame marker.
+        if ((d[0] & 0xFF) == 0xFF && (d[1] & 0xFF) == 0xD8) {
+            int i = 2;
+            while (i + 9 < d.length) {
+                if ((d[i] & 0xFF) != 0xFF) {
+                    i++;
+                    continue;
                 }
+                int m = d[i + 1] & 0xFF;
+                if (m == 0xFF) {
+                    i++;
+                    continue;
+                }
+                if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC) {
+                    int h = ((d[i + 5] & 0xFF) << 8) | (d[i + 6] & 0xFF);
+                    int w = ((d[i + 7] & 0xFF) << 8) | (d[i + 8] & 0xFF);
+                    return w + "x" + h;
+                }
+                if (m == 0xD8 || m == 0x01 || (m >= 0xD0 && m <= 0xD7)) {
+                    i += 2;
+                    continue;
+                }
+                i += 2 + (((d[i + 2] & 0xFF) << 8) | (d[i + 3] & 0xFF));
             }
-        } catch (java.io.IOException | RuntimeException e) {
-            // fall through
         }
         return "unknown";
+    }
+
+    private static long u32(byte[] d, int o) {
+        return ((long) (d[o] & 0xFF) << 24) | ((d[o + 1] & 0xFF) << 16) | ((d[o + 2] & 0xFF) << 8) | (d[o + 3] & 0xFF);
+    }
+
+    /** Byte size rounded to the nearest 10 KB, for images only (a size fingerprint of a public-format file). */
+    public static String approxKb(long bytes) {
+        return bytes < 0 ? "unknown" : (Math.round(bytes / 10_000.0) * 10) + "KB";
     }
 
     // ---- body shapes ----

@@ -41,6 +41,7 @@ final class NetworkMapRecorder {
         String respShape = "-";
         boolean respJwt;
         boolean redirect;
+        String failure;
     }
 
     private final Map<Request, Entry> open = new IdentityHashMap<>();
@@ -143,7 +144,7 @@ final class NetworkMapRecorder {
         }
         String size = NetworkMapRedaction.sizeBucket(body.length);
         if (e.contentType.startsWith("image/")) {
-            e.respShape = "image " + size + " px=" + NetworkMapRedaction.pixelSize(body);
+            e.respShape = "image " + size + " ~" + NetworkMapRedaction.approxKb(body.length) + " px=" + NetworkMapRedaction.pixelSize(body);
         } else if (e.contentType.contains("json")) {
             String text = new String(body, java.nio.charset.StandardCharsets.UTF_8);
             e.respShape = NetworkMapRedaction.jsonShape(text) + " (" + size + ")";
@@ -159,6 +160,9 @@ final class NetworkMapRecorder {
         Entry e = open.get(req);
         if (e != null && e.status < 0) {
             e.status = 0;
+            String f = String.valueOf(req.failure());
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("net::(ERR_[A-Z_]{1,40})").matcher(f);
+            e.failure = m.find() ? m.group(1) : "other";
         }
     }
 
@@ -198,7 +202,7 @@ final class NetworkMapRecorder {
             StringBuilder sb = new StringBuilder("NETMAP ").append(e.n).append(" step=").append(e.step).append(' ')
                     .append(e.method).append(' ').append(e.host).append(e.path).append(e.query)
                     .append(" type=").append(e.resourceType)
-                    .append(" status=").append(e.status < 0 ? "none" : String.valueOf(e.status))
+                    .append(" status=").append(e.status < 0 ? "pending" : String.valueOf(e.status)).append(e.failure == null ? "" : " failed=" + e.failure)
                     .append(" ct=").append(e.contentType)
                     .append(" req-headers=").append(e.reqHeaders)
                     .append(" auth-scheme=").append(e.authScheme)
