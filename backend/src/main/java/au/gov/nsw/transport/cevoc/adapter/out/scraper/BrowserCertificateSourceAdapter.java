@@ -28,18 +28,6 @@ public class BrowserCertificateSourceAdapter implements CertificateSourcePort {
         if (html == null) {
             return List.of();
         }
-        try {
-            List<CertificateRef> rows = parser.parseRendered(html);
-            long withPeriod = rows.stream().filter(r -> r.periodFrom() != null).count();
-            long withCertified = rows.stream().filter(r -> r.certifiedDate() != null).count();
-            long withExpiry = rows.stream().filter(r -> r.expiryDate() != null).count();
-            LookupDiagnostic.note("step=certificates-parse; outcome=ok; rows=" + Math.min(rows.size(), 99)
-                    + "; rows-with-period=" + Math.min(withPeriod, 99) + "; rows-with-certified=" + Math.min(withCertified, 99)
-                    + "; rows-with-expiry=" + Math.min(withExpiry, 99));
-            return rows;
-        } catch (ScrapeException e) {
-            LookupDiagnostic.note("step=certificates-parse; outcome=failed; cause=layout-not-recognised");
-            throw e;
-        }
+        return RenderedCertificates.parse(parser, html);
     }
 }

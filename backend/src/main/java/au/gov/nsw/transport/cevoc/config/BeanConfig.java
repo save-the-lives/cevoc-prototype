@@ -8,11 +8,6 @@ import au.gov.nsw.transport.cevoc.adapter.out.stub.StubMediaAdapter;
 import au.gov.nsw.transport.cevoc.adapter.out.stub.StubPenaltyLookupAdapter;
 import au.gov.nsw.transport.cevoc.application.port.out.CacheInvalidationPort;
 import au.gov.nsw.transport.cevoc.application.port.out.SignedLinkPort;
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificateKeyStrategy;
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificatePageParser;
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificateScraperAdapter;
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificateScraperProperties;
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.PoliteHttpFetcher;
 import au.gov.nsw.transport.cevoc.application.port.out.CertificateSourcePort;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
@@ -81,42 +76,14 @@ public class BeanConfig {
         return new AzureCacheInvalidationAdapter();
     }
 
-    // ---- certificate scraper: INERT unless cevoc.scraper.certificates.enabled=true (see docs/ARCHITECTURE.md) ----
+    // ---- certificates: INERT unless cevoc.certificates.providers (ordered) is set, or the legacy
+    // cevoc.scraper.certificates.enabled=true. Providers: search-page (interim), tfnsw-api (later), http-form, browser-link.
+    // See docs/DIRECT-API-ROUTE.md and docs/ARCHITECTURE.md. ----
 
-    @Bean
-    @ConditionalOnProperty(name = "cevoc.scraper.certificates.enabled", havingValue = "true")
-    CertificateSourcePort certificateScraper(
-            @Value("${cevoc.scraper.certificates.approval-reference:}") String approvalReference,
-            @Value("${cevoc.scraper.certificates.page-url:" + CertificateScraperProperties.DEFAULT_PAGE_URL + "}") String pageUrl,
-            @Value("${cevoc.scraper.certificates.user-agent:" + CertificateScraperProperties.DEFAULT_USER_AGENT + "}") String userAgent,
-            @Value("${cevoc.scraper.certificates.min-interval-ms:5000}") long minIntervalMs,
-            @Value("${cevoc.scraper.certificates.connect-timeout-ms:5000}") long connectTimeoutMs,
-            @Value("${cevoc.scraper.certificates.request-timeout-ms:10000}") long requestTimeoutMs,
-            @Value("${cevoc.scraper.certificates.cache-ttl-seconds:300}") long cacheTtlSeconds,
-            @Value("${cevoc.scraper.certificates.key-strategy:VIA_ENFORCEMENT_SITE}") CertificateKeyStrategy keyStrategy,
-            @Value("${cevoc.scraper.certificates.window-margin-minutes:-1}") long windowMarginMinutes) {
-        if (approvalReference.isBlank()) {
-            throw new IllegalStateException("cevoc.scraper.certificates.approval-reference is required: "
-                    + "the source's robots.txt disallows automated access, so record the owner's approval reference first");
-        }
-        CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, userAgent,
-                java.time.Duration.ofMillis(minIntervalMs), java.time.Duration.ofMillis(connectTimeoutMs),
-                java.time.Duration.ofMillis(requestTimeoutMs), java.time.Duration.ofSeconds(cacheTtlSeconds), keyStrategy,
-                windowMarginMinutes < 0 ? null : java.time.Duration.ofMinutes(windowMarginMinutes));
-        return new CertificateScraperAdapter(new PoliteHttpFetcher(props), new CertificatePageParser(), props,
-                java.time.Clock.systemUTC());
-    }
-
-    /**
-     * Browser route for certificates: the evidence scraper (browser=playwright) follows the page's certification link in
-     * its own Chromium session and hands the rendered page over; this source only parses it. Needs the evidence scraper
-     * to be enabled, so it is inert by default. Not created when the HTTP certificate scraper above is enabled.
-     */
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.scraper.evidence.browser:}'.equalsIgnoreCase('playwright') && ${cevoc.scraper.evidence.enabled:false}")
-    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(CertificateSourcePort.class)
-    CertificateSourcePort browserCertificateSource() {
-        return new au.gov.nsw.transport.cevoc.adapter.out.scraper.BrowserCertificateSourceAdapter(new CertificatePageParser());
+            "!('${cevoc.certificates.providers:}'.trim().isEmpty()) || ${cevoc.scraper.certificates.enabled:false}")
+    CertificateSourcePort certificateSource(org.springframework.core.env.Environment env) {
+        return au.gov.nsw.transport.cevoc.adapter.out.scraper.CertificateProviders.create(env);
     }
 }

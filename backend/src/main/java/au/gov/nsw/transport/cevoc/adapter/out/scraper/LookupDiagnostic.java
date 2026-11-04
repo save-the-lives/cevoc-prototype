@@ -88,6 +88,10 @@ public final class LookupDiagnostic {
             sb.append("blocked-401");
         } else if (lower.contains("blocked-429")) {
             sb.append("blocked-429");
+        } else if (lower.contains("captcha")) {
+            sb.append("captcha");
+        } else if (lower.contains("no-search-form")) {
+            sb.append("no-search-form");
         } else if (lower.contains("download started")) {
             sb.append("download-started");
         } else if (lower.contains("execution context was destroyed")) {

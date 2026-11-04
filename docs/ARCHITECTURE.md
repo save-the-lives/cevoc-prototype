@@ -53,6 +53,9 @@ Select with `cevoc.penalty-lookup.adapter`: `manifest` (default; manifest first,
 
 - robots.txt disallows automated access. Production use needs the owner's approval, and this adapter should be replaced by the real certificate API.
 
+## Certificate providers (search page is interim)
+Since 2026-11-04 certificates come through an ordered provider list, `cevoc.certificates.providers` (default empty = none): `search-page` (the public search page in a headless browser; interim, owner-approved despite robots.txt, replaced by `tfnsw-api` by config), `tfnsw-api` (reserved), `http-form` and `browser-link` (legacy; the signed deep link answers 403 and is no longer followed unless `browser-link` is listed). All implement `CertificateSourcePort`, share the fictitious-fixture contract tests and the canonical shape in docs/DIRECT-API-ROUTE.md, and need `cevoc.certificates.approval-reference`. The sections below describing the deep link and the HTTP form describe the legacy providers.
+
 ## Certificates in the lookup response
 `LookupPenaltyService` (application layer) adds a `certificates` list to the lookup result. After the evidence lookup yields an internal camera code, it calls `CertificateSourcePort.findCertificatesCovering(query, offenceAt)` with `locationCode = cameraCode` and a window from `CertificateQuery.aroundOffence` (whole offence day, or offence time +/- `cevoc.scraper.certificates.window-margin-minutes`). The whole list is returned, in page order, with `coversOffence` true on the row(s) whose Period contains the offence date/time.
 - JSON: `certificates: [{description, type, periodText, certifiedDate, expiryDate, coversOffence}]`, dates as `yyyy-MM-dd` strings. The camera code, plate and links are never in the response (`cameraCode` stays `@JsonIgnore`). The existing certificate evidence item is unchanged.

@@ -19,8 +19,26 @@ public final class ScraperEvidenceFactory {
     private ScraperEvidenceFactory() {}
 
     public static PenaltyLookupPort create(Environment env, MediaStoragePort media) {
+        ScraperSettings s = settings(env);
+        boolean live = liveRequested(env, s);
+        RenderedPageSessionFactory sessions = NO_BROWSER;
+        RegistrationProvider registrations = RegistrationProvider.none();
+        if (live) {
+            RenderedPageSessionFactory f = playwright(s, env.getProperty("cevoc.live-check.capture-dir", ""),
+                    env.getProperty("cevoc.scraper.evidence.browser-headless", Boolean.class, true));
+            if (f != null) {
+                sessions = f;
+                registrations = new RequestScopedRegistration();
+            }
+        }
+        // The signed certification deep link answers 403 (observed), so it is used only when explicitly listed as a provider.
+        return new ScraperEvidenceLookupAdapter(s, sessions, new RevenueNswPageParser(), media, Clock.systemUTC(), registrations)
+                .followCertificationLink(CertificateProviders.ids(env).contains(CertificateProviders.BROWSER_LINK));
+    }
+
+    static ScraperSettings settings(Environment env) {
         String p = "cevoc.scraper.evidence.";
-        ScraperSettings s = new ScraperSettings(
+        return new ScraperSettings(
                 env.getProperty(p + "enabled", Boolean.class, false),
                 env.getProperty(p + "base-url", ""),
                 env.getProperty(p + "contact", ""),
@@ -29,18 +47,22 @@ public final class ScraperEvidenceFactory {
                 Duration.ofMillis(env.getProperty(p + "request-timeout-ms", Long.class, ScraperSettings.DEFAULT_REQUEST_TIMEOUT.toMillis())),
                 Duration.ofSeconds(env.getProperty(p + "cache-ttl-seconds", Long.class, ScraperSettings.DEFAULT_CACHE_TTL.toSeconds())),
                 env.getProperty(p + "max-bytes", Long.class, ScraperSettings.DEFAULT_MAX_BYTES));
-        boolean live = liveRequested(env, s);
-        RenderedPageSessionFactory sessions = NO_BROWSER;
-        RegistrationProvider registrations = RegistrationProvider.none();
-        if (live) {
+    }
+
+    /**
+     * A browser session factory for other browser-based sources (the certificates search page). Same switches as the
+     * evidence scraper (browser=playwright, both scraper flags, base URL and contact set): otherwise it refuses to open.
+     */
+    public static RenderedPageSessionFactory sessionsFor(Environment env) {
+        ScraperSettings s = settings(env);
+        if (liveRequested(env, s)) {
             RenderedPageSessionFactory f = playwright(s, env.getProperty("cevoc.live-check.capture-dir", ""),
-                    env.getProperty(p + "browser-headless", Boolean.class, true));
+                    env.getProperty("cevoc.scraper.evidence.browser-headless", Boolean.class, true));
             if (f != null) {
-                sessions = f;
-                registrations = new RequestScopedRegistration();
+                return f;
             }
         }
-        return new ScraperEvidenceLookupAdapter(s, sessions, new RevenueNswPageParser(), media, Clock.systemUTC(), registrations);
+        return NO_BROWSER;
     }
 
     /** True only for browser=playwright AND both scraper flags on (cevoc.scraper.enabled, cevoc.scraper.evidence.enabled) and a usable config. */

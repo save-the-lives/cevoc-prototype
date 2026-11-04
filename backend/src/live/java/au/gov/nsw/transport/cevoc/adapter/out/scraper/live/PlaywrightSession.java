@@ -509,6 +509,160 @@ final class PlaywrightSession implements RenderedPageSession {
         return sameHost(url, URI.create(loginUrl).getHost()) ? "same" : certificateHost(url) ? "transport" : "other";
     }
 
+    // ---- certificates SEARCH page (interim provider search-page; owner-approved 2026-11-04) ----
+
+    private static final java.time.format.DateTimeFormatter SEARCH_FORMAT = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String TEXT_INPUTS = "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=checkbox]):not([type=radio]):not([type=image])";
+    private static final String SEARCH_BUTTON_CSS = "button:has-text(\"Search\"), input[type=\"submit\"][value*=\"search\" i], input[type=\"button\"][value*=\"search\" i], a:has-text(\"Search\")";
+    private static final String RESULT_MESSAGES = ".ui-messages-error, .ui-message-error, .ui-messages-warn, .ui-messages-info, .ui-growl-message, [role=\"alert\"], .alert";
+
+    @Override
+    public Optional<String> searchCertificates(String pageUrl, String locationCode, java.time.LocalDateTime from,
+                                               java.time.LocalDateTime to) throws IOException, InterruptedException {
+        String fromText = SEARCH_FORMAT.format(from);
+        String toText = SEARCH_FORMAT.format(to);
+        redactor.add(locationCode);
+        redactor.add(fromText);
+        redactor.add(toText);
+        return step("certificates", () -> {
+            tag("certificates");
+            java.util.List<String> statuses = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+            java.util.concurrent.atomic.AtomicLong postSeenAt = new java.util.concurrent.atomic.AtomicLong();
+            java.util.function.Consumer<com.microsoft.playwright.Response> listener = resp -> {
+                try {
+                    String type = resp.request().resourceType();
+                    String method = resp.request().method();
+                    if ("document".equals(type) || "xhr".equals(type) || "fetch".equals(type)) {
+                        if (statuses.size() < 10) {
+                            statuses.add(type.substring(0, 1) + ":" + method + ":" + resp.status());
+                        }
+                        if (!"GET".equals(method)) {
+                            postSeenAt.compareAndSet(0, System.nanoTime());
+                        }
+                    }
+                } catch (RuntimeException ignored) {
+                    // diagnostics must never break the flow
+                }
+            };
+            page.onResponse(listener);
+            try {
+                pace();
+                com.microsoft.playwright.Response r = page.navigate(pageUrl,
+                        new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                int status = r == null ? 0 : r.status();
+                note("srch-open-status=" + status + "; srch-open-host=" + hostKind(page.url()));
+                if (status == 401 || status == 403 || status == 429) {
+                    // Refused: structure of the refusal page only, then stop. No second attempt, no other route.
+                    note("srch-refusal-page: " + au.gov.nsw.transport.cevoc.adapter.out.scraper.SearchPageDiagnostic.structureOf(page.content()));
+                    throw new PlaywrightException("blocked-" + status);
+                }
+                settle();
+                String openHtml = snapshot("5-search-form");
+                note("srch-form: " + au.gov.nsw.transport.cevoc.adapter.out.scraper.SearchPageDiagnostic.structureOf(openHtml));
+                if (status >= 400) {
+                    throw new PlaywrightException("search page answered status " + status);
+                }
+                if (au.gov.nsw.transport.cevoc.adapter.out.scraper.SearchPageDiagnostic.hasCaptcha(openHtml)) {
+                    throw new PlaywrightException("captcha present: stopping, not automating past it");
+                }
+                Locator loc = searchField("loc", "location\\s*code", "location code",
+                        "input[id*=\"location\" i], input[name*=\"location\" i]", 0);
+                Locator dFrom = searchField("from", "(time|date)\\s*from|\\bfrom\\b", "from",
+                        "input[id*=\"from\" i], input[name*=\"from\" i], input[id*=\"start\" i]", 1);
+                Locator dTo = searchField("to", "(time|date)\\s*to\\b", null,
+                        "input[id*=\"dateto\" i], input[id*=\"timeto\" i], input[id$=\"to\" i], input[name$=\"to\" i], input[id*=\":to\" i]", 2);
+                if (loc == null || dFrom == null || dTo == null) {
+                    throw new PlaywrightException("no-search-form: fields not found");
+                }
+                boolean locKept = fillSearch(loc, locationCode);
+                boolean fromKept = fillSearch(dFrom, fromText);
+                boolean toKept = fillSearch(dTo, toText);
+                note("srch-kept=" + (locKept ? "yes" : "no") + "/" + (fromKept ? "yes" : "no") + "/" + (toKept ? "yes" : "no")
+                        + "; srch-invalid-before=" + Math.min(page.locator("[aria-invalid=\"true\"], .ui-state-error").count(), 9));
+                Locator button = page.getByRole(AriaRole.BUTTON,
+                        new Page.GetByRoleOptions().setName(Pattern.compile("^\\s*search\\s*$", Pattern.CASE_INSENSITIVE)));
+                String buttonBy = "role";
+                if (button.count() == 0) {
+                    button = page.locator(SEARCH_BUTTON_CSS);
+                    buttonBy = "css";
+                }
+                note("srch-button-by=" + (button.count() == 0 ? "none" : buttonBy) + "; srch-buttons=" + Math.min(button.count(), 9));
+                if (button.count() == 0) {
+                    throw new PlaywrightException("no matching button on the page");
+                }
+                pace();
+                statuses.clear();
+                button.first().click();
+                settle();
+                waitUntil(() -> searchResultReady(postSeenAt));
+                settle();
+                note("srch-calls=" + (statuses.isEmpty() ? "none" : String.join(",", statuses)) + "; srch-after-host=" + hostKind(page.url()));
+                String resultHtml = snapshot("6-search-result");
+                note("srch-result: " + au.gov.nsw.transport.cevoc.adapter.out.scraper.SearchPageDiagnostic.structureOf(resultHtml));
+                return Optional.of(resultHtml);
+            } finally {
+                page.offResponse(listener);
+            }
+        });
+    }
+
+    /** A results table header, an empty-result marker, a visible message, or a post that has had a few seconds to render. */
+    private boolean searchResultReady(java.util.concurrent.atomic.AtomicLong postSeenAt) {
+        if (page.locator("th:has-text(\"Description\"), .ui-datatable-empty-message, .no-results").count() > 0) {
+            return true;
+        }
+        for (Locator m : page.locator(RESULT_MESSAGES).all()) {
+            if (m.isVisible() && !m.innerText().isBlank()) {
+                return true;
+            }
+        }
+        long seen = postSeenAt.get();
+        return seen != 0 && System.nanoTime() - seen > 5_000_000_000L;
+    }
+
+    /**
+     * Finds one of the three search inputs: by label, then by id/name fragment, then by the text of a neighbouring
+     * label, then by position among the visible text inputs. Records which way worked (never a value).
+     */
+    private Locator searchField(String what, String labelRegex, String neighbourText, String css, int ordinal) {
+        Locator byLabel = page.getByLabel(Pattern.compile(labelRegex, Pattern.CASE_INSENSITIVE));
+        if (byLabel.count() == 1 && "input".equals(String.valueOf(byLabel.first().evaluate("e => e.tagName.toLowerCase()")))) {
+            note("srch-" + what + "-by=label");
+            return byLabel.first();
+        }
+        Locator byCss = page.locator(css);
+        if (byCss.count() >= 1) {
+            note("srch-" + what + "-by=css; srch-" + what + "-css-matches=" + Math.min(byCss.count(), 9));
+            return byCss.first();
+        }
+        if (neighbourText != null) {
+            Locator near = page.locator("xpath=//*[self::td or self::th or self::label or self::span][contains(translate(normalize-space(string(.)),"
+                    + "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'" + neighbourText + "')]/following::input[not(@type='hidden')][1]");
+            if (near.count() >= 1) {
+                note("srch-" + what + "-by=neighbour");
+                return near.first();
+            }
+        }
+        Locator visible = page.locator(TEXT_INPUTS);
+        if (visible.count() > ordinal) {
+            note("srch-" + what + "-by=order; srch-text-inputs=" + Math.min(visible.count(), 9));
+            return visible.nth(ordinal);
+        }
+        note("srch-" + what + "-by=none; srch-text-inputs=" + Math.min(visible.count(), 9));
+        return null;
+    }
+
+    /** Types into a search input, blurs it so the page registers the value, and reports whether the value stayed as typed. */
+    private boolean fillSearch(Locator input, String value) {
+        input.fill(value);
+        if (!value.equals(input.inputValue())) {
+            input.clear();
+            input.pressSequentially(value, new Locator.PressSequentiallyOptions().setDelay(60));
+        }
+        input.press("Tab");
+        return value.equals(input.inputValue());
+    }
+
     @Override
     public Optional<ImageBytes> imageBytes(String blobUrl) throws IOException, InterruptedException {
         if (blobUrl == null || !blobUrl.startsWith("blob:")) {

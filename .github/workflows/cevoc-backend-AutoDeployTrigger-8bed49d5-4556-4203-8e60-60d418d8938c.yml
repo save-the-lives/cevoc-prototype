@@ -117,8 +117,18 @@ jobs:
           LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
           CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
+          CERTS_APPROVAL_REF: ${{ vars.CERTS_APPROVAL_REF }}
         run: |
           echo "::add-mask::$LIVE_CHECK_TOKEN"
+          # Certificates (interim search-page provider, owner-approved 2026-11-04): only when the repository VARIABLE
+          # CERTS_APPROVAL_REF is non-empty; its value is the approval reference. Otherwise nothing is passed.
+          CERTS_ARGS=()
+          if [ -n "$CERTS_APPROVAL_REF" ]; then
+            CERTS_ARGS=(CEVOC_CERTIFICATES_PROVIDERS=search-page "CEVOC_CERTIFICATES_APPROVAL_REFERENCE=$CERTS_APPROVAL_REF")
+            echo "::notice::CERTS_APPROVAL_REF is set: the certificates search-page provider is passed to the app (value not shown)."
+          else
+            echo "::notice::CERTS_APPROVAL_REF is not set: no certificate settings are passed."
+          fi
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
@@ -128,7 +138,7 @@ jobs:
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=scraper-evidence CEVOC_SCRAPER_ENABLED=true \
             CEVOC_SCRAPER_EVIDENCE_ENABLED=true CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright \
             CEVOC_SCRAPER_CERTIFICATES_ENABLED=false CEVOC_LIVECHECK_ENABLED=true \
-            "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_LIVECHECK_TOKEN= >/dev/null
+            "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_LIVECHECK_TOKEN= "${CERTS_ARGS[@]}" >/dev/null
 
       - name: Show what is deployed
         run: |

@@ -115,7 +115,9 @@ class ScraperEvidenceTest {
         assertThat(r.evidence()).extracting(EvidenceItem::title).contains("Camera image 700-1-000000001");
         assertThat(storage.keys).hasSize(2).allMatch(k -> k.startsWith("scraped/")
                 && !k.contains("9000000004") && !k.toUpperCase().contains("TST123") && !k.contains("700-1"));
-        assertThat(fake.calls).containsExactly("loginPage", "submitLogin", "submitPlate", "imageBytes", "imageBytes", "imageBytes", "openCertification");
+        assertThat(fake.calls).containsExactly("loginPage", "submitLogin", "submitPlate", "imageBytes", "imageBytes", "imageBytes");
+        // The signed certification deep link answers 403: it is followed only when provider browser-link is listed.
+        assertThat(fake.calls).doesNotContain("openCertification");
         assertThat(fake.closed).isTrue();
         assertThat(r.toString()).doesNotContain(PLATE);
     }

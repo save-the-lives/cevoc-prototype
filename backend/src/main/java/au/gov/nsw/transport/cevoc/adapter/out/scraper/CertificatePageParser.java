@@ -116,24 +116,49 @@ public class CertificatePageParser {
             if (headerRow == null) continue;
             Map<String, Integer> cols = columns(headerRow.select("th"));
             if (!cols.containsKey("description") || !cols.containsKey("period")) continue;
-            List<CertificateRef> out = new ArrayList<>();
-            for (Element row : table.select("tr")) {
-                Elements cells = new Elements(row.children().stream().filter(c -> c.normalName().equals("td")).toList());
-                if (cells.isEmpty() || cells.stream().anyMatch(c -> c.hasAttr("colspan"))) continue; // header/empty-message rows
-                String period = cell(cells, cols.get("period"));
-                LocalDateTime[] window = period(period);
-                out.add(new CertificateRef(
-                        nullIfEmpty(cell(cells, cols.get("description"))),
-                        nullIfEmpty(cell(cells, cols.get("type"))),
-                        nullIfEmpty(period),
-                        window[0], window[1],
-                        dateTime(cell(cells, cols.get("certified")), false),
-                        dateTime(cell(cells, cols.get("expiry")), false),
-                        href(row)));
+            if (table.select("tr").stream().noneMatch(r -> !r.select("td").isEmpty())) {
+                // Scrollable data tables keep the header in one table and the rows in another: take the first body
+                // table after it that has rows with at least as many cells as the header has columns.
+                Element body = bodyTableAfter(doc, table, headerRow.select("th").size());
+                if (body == null) return List.of();
+                return rows(body, cols);
             }
-            return out;
+            return rows(table, cols);
         }
         throw new ScrapeException("Results table not found: page structure changed");
+    }
+
+    private static Element bodyTableAfter(Document doc, Element headerTable, int columns) {
+        boolean after = false;
+        for (Element t : doc.select("table")) {
+            if (t == headerTable) {
+                after = true;
+                continue;
+            }
+            if (after && t.select("tr").stream().anyMatch(r -> r.children().stream().filter(c -> c.normalName().equals("td")).count() >= columns)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+    private List<CertificateRef> rows(Element table, Map<String, Integer> cols) {
+        List<CertificateRef> out = new ArrayList<>();
+        for (Element row : table.select("tr")) {
+            Elements cells = new Elements(row.children().stream().filter(c -> c.normalName().equals("td")).toList());
+            if (cells.isEmpty() || cells.stream().anyMatch(c -> c.hasAttr("colspan"))) continue; // header/empty-message rows
+            String period = cell(cells, cols.get("period"));
+            LocalDateTime[] window = period(period);
+            out.add(new CertificateRef(
+                    nullIfEmpty(cell(cells, cols.get("description"))),
+                    nullIfEmpty(cell(cells, cols.get("type"))),
+                    nullIfEmpty(period),
+                    window[0], window[1],
+                    dateTime(cell(cells, cols.get("certified")), false),
+                    dateTime(cell(cells, cols.get("expiry")), false),
+                    href(row)));
+        }
+        return out;
     }
 
     private static Map<String, Integer> columns(Elements headers) {
@@ -221,7 +246,10 @@ public class CertificatePageParser {
     }
 
     private static String cell(Elements cells, Integer idx) {
-        return idx == null || idx >= cells.size() ? "" : cells.get(idx).text().trim();
+        if (idx == null || idx >= cells.size()) return "";
+        Element c = cells.get(idx).clone();
+        c.select(".ui-column-title").remove(); // responsive tables repeat the column title inside each cell
+        return c.text().trim();
     }
 
     private static String nullIfEmpty(String s) {

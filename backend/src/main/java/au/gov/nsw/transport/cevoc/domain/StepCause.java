@@ -28,6 +28,8 @@ public enum StepCause {
     BLOCKED_401,
     BLOCKED_403,
     BLOCKED_429,
+    CAPTCHA,
+    NO_SEARCH_FORM,
     OTHER,
     // skipped
     NO_PLATE,
@@ -65,6 +67,10 @@ public enum StepCause {
             return BLOCKED_401;
         } else if (m.contains("blocked-429")) {
             return BLOCKED_429;
+        } else if (m.contains("captcha")) {
+            return CAPTCHA;
+        } else if (m.contains("no-search-form")) {
+            return NO_SEARCH_FORM;
         } else if (m.contains("strict mode violation")) {
             return SELECTOR_MATCHES_MANY;
         }

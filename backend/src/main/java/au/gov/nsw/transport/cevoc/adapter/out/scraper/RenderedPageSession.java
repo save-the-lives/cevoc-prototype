@@ -72,6 +72,17 @@ public interface RenderedPageSession extends AutoCloseable {
         return Optional.empty();
     }
 
+    /**
+     * Opens the public certificates SEARCH page ({@code pageUrl}), fills Location code and Date/Time from and to, presses
+     * SEARCH and returns the rendered DOM of the results (a table, or an empty-result page). A refusal (401, 403, 429)
+     * is an IOException whose message contains {@code blocked-<status>}; the attempt stops there and is never retried
+     * another way. Neither the location code nor the dates may be logged or echoed. Default: not supported.
+     */
+    default Optional<String> searchCertificates(String pageUrl, String locationCode, java.time.LocalDateTime from,
+                                                java.time.LocalDateTime to) throws IOException, InterruptedException {
+        return Optional.empty();
+    }
+
     @Override
     void close();
 }

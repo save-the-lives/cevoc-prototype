@@ -98,6 +98,23 @@ class FakeRenderedPageSession implements RenderedPageSession {
         return Optional.ofNullable(certificationHtml);
     }
 
+    /** Rendered results returned by searchCertificates (the search page route); null = nothing usable (empty). */
+    String searchHtml = CertificatePageParserTest.fixture("results-certificates.html");
+    /** When set, searchCertificates throws an IOException with this message (in the style of the browser layer). */
+    String searchFailure;
+    final List<String> searches = new ArrayList<>();
+
+    @Override
+    public Optional<String> searchCertificates(String pageUrl, String locationCode, java.time.LocalDateTime from,
+                                               java.time.LocalDateTime to) throws IOException {
+        calls.add("searchCertificates");
+        searches.add(pageUrl + "|" + locationCode + "|" + from + "|" + to);
+        if (searchFailure != null) {
+            throw new IOException(searchFailure);
+        }
+        return Optional.ofNullable(searchHtml);
+    }
+
     @Override
     public void close() {
         closed = true;

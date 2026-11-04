@@ -68,6 +68,8 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     java.time.Duration loginWait = java.time.Duration.ofSeconds(4);
     java.time.Duration pollInterval = java.time.Duration.ofMillis(250);
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    /** Legacy provider browser-link: follow the page's signed certification link. Off by default (it answers 403). */
+    private volatile boolean followCertificationLink;
 
     public ScraperEvidenceLookupAdapter(ScraperSettings settings, RenderedPageSessionFactory sessions, RevenueNswPageParser parser,
                                         MediaStoragePort storage, Clock clock) {
@@ -82,6 +84,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         this.parser = parser;
         this.storage = storage;
         this.clock = clock;
+    }
+
+    public ScraperEvidenceLookupAdapter followCertificationLink(boolean follow) {
+        this.followCertificationLink = follow;
+        return this;
     }
 
     /** synchronized: one lookup (one browser session) at a time, so no parallel hits on the site. */
@@ -234,7 +241,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         } else {
             trace.skip(LookupStep.CAPTURE_IMAGES, trace.firstFailed() != null ? StepCause.PRIOR_FAILURE : StepCause.NO_IMAGES);
         }
-        followCertification(session, page);
+        if (followCertificationLink) {
+            followCertification(session, page);
+        }
         NoticeDetails notice = page.notice();
         if (!evidence.isEmpty() && notice.enforcementMethod() != EnforcementMethod.CAMERA) {
             notice = new NoticeDetails(notice.offenceDescription(), notice.offenceDate(), notice.offenceTime(), notice.location(),

@@ -102,6 +102,22 @@ A direct client can fetch originals without a browser: take the identifiers from
 - The summary response carries `images.cameraCertification.ref`, an absolute URL on `cevoc.transport.nsw.gov.au`, path `/cevoc/pages/public/certificateDetails.jsf`, with query parameter NAMES `d`, `i`, `m`, `p`, `s` (values not recorded; `m` is the opaque parameter mentioned in section 4a). The page opens it as a normal document navigation.
 - In the map the document request showed no response (still pending when the session closed) in the run that reached it; the certificate result in that run was 0 rows. So the shape of the certificate response is NOT yet observed, and it is an HTML (JSF) page on a TfNSW host, not part of the Revenue NSW JSON service. It falls under the TfNSW approval gate (section 4b), not the Revenue NSW approval.
 
+### Certificates provider list (the cutover seam, built)
+Certificates are the one concern whose provider list exists in code today: `cevoc.certificates.providers` is an ordered, comma-separated list (env `CEVOC_CERTIFICATES_PROVIDERS`), every provider implements `CertificateSourcePort` and returns the canonical shape below, and `CertificateProviders` / `CertificateProviderChain` pick and order them. Nothing listed (the default) means no certificate source and the `certificates` step reports skipped.
+
+| id | what it is | status |
+|---|---|---|
+| `search-page` | the public search page `searchCertificates.jsf` in its own headless-browser session: camera code as Location code, offence day as Date/Time from and to | INTERIM. Approved by the project owner on 2026-11-04 although robots.txt disallows automated access. Replaced by `tfnsw-api` when that exists |
+| `tfnsw-api` | the TfNSW certificate API | reserved; listing it today fails at start-up with "not available yet" |
+| `http-form` | plain HTTP form scraper (older design) | legacy; also what `cevoc.scraper.certificates.enabled=true` selects when no list is given |
+| `browser-link` | follows the signed `certificateDetails.jsf` deep link from the evidence page | legacy and NOT the default: it answers 403 (also in the owner's own browser) |
+
+Cutover is a config change only: `cevoc.certificates.providers=tfnsw-api,search-page` while both exist, then `tfnsw-api` alone. Chain rules: the first provider that answers ends the chain (an empty list is an answer); a provider that fails hands over to the next; a refusal (`blocked-401`, `blocked-403`, `blocked-429`) stops the chain at once and is never retried or worked around. Every provider passes the same fictitious-fixture contract tests (`CertificateSourceContractTest` and its subclasses): same rows in page order, covering rows marked, no results gives an empty list.
+
+Canonical result (what any provider returns, via `CertificateRef`, shown to the page as `CertificateItem`): `description`, `type`, `periodText` (as shown) with parsed `periodFrom`/`periodTo`, `certifiedDate`, `expiryDate` and an optional `documentRef` exactly as given by the source; the page receives `{description, type, periodText, certifiedDate, expiryDate, coversOffence}` with dates as `yyyy-MM-dd`. `coversOffence` is true when the Period window contains the offence date and time. The camera code is the query input (Location code) and is never part of the result.
+
+Every provider that contacts a source needs the owner's approval reference (`cevoc.certificates.approval-reference`, env `CEVOC_CERTIFICATES_APPROVAL_REFERENCE`). The deploy workflow passes the provider and the reference only when the repository variable `CERTS_APPROVAL_REF` is non-empty.
+
 ### Feasibility of a direct (browser-free) route
 Looks feasible for notice details and images, with caveats:
 - No bot protection was seen on the JSON service: no cookies, no CAPTCHA, no CSRF header, no signed query parameters or request signatures; calls are authorised by the JWT-like token in `authorization` plus the `pnnum` header. Cloudflare (JS detection, RUM) sits only in front of the myPenalty web pages, which a direct client would not need to load.

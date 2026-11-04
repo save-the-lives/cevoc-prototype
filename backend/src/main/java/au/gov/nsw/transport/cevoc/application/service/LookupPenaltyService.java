@@ -91,7 +91,8 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             if (!trace.has(LookupStep.CERTIFICATES)) {
                 trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
             }
-            trace.fail(LookupStep.CERTIFICATES, StepCause.SOURCE_FAILED);
+            StepCause cause = StepCause.of(e);
+            trace.fail(LookupStep.CERTIFICATES, cause == StepCause.OTHER ? StepCause.SOURCE_FAILED : cause);
             return r.withCertificates(List.of(), "Certificates unavailable");
         }
     }

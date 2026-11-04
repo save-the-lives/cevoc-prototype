@@ -37,7 +37,8 @@ class BrowserCertificateRouteTest {
                 "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
         ScraperEvidenceLookupAdapter evidence = new ScraperEvidenceLookupAdapter(s, new ScraperEvidenceTest.Sessions(fake),
                 new RevenueNswPageParser(), new ScraperEvidenceTest.FakeStorage(),
-                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC), new RequestScopedRegistration());
+                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC), new RequestScopedRegistration())
+                .followCertificationLink(true);
         return new LookupPenaltyService(evidence, new StubMediaAdapter("/samples"),
                 new BrowserCertificateSourceAdapter(new CertificatePageParser()), null);
     }
