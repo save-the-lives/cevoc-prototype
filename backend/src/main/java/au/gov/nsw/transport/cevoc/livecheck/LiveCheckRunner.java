@@ -38,6 +38,12 @@ public final class LiveCheckRunner {
      */
     public static Outcome run(LookupPenaltyUseCase useCase, PenaltyLookupRequest request, String plate, boolean includeImages,
                               Runnable before, java.util.function.Supplier<String> suffix) {
+        return run(useCase, request, plate, includeImages, before, suffix, null);
+    }
+
+    /** @param probe fetches the public links of the result (null = not checked); see {@link PublicPathCheck} */
+    public static Outcome run(LookupPenaltyUseCase useCase, PenaltyLookupRequest request, String plate, boolean includeImages,
+                              Runnable before, java.util.function.Supplier<String> suffix, PublicPathCheck.Probe probe) {
         LookupTrace.begin(includeImages);
         try {
             return RequestScopedRegistration.with(plate, () -> {
@@ -46,7 +52,7 @@ public final class LiveCheckRunner {
                 var result = useCase.lookup(request);
                 String failure = LookupDiagnostic.take();
                 LookupTrace trace = LookupTrace.current();
-                String summary = LiveCheckSummary.of(result, failure, trace) + suffix.get();
+                String summary = LiveCheckSummary.of(result, failure, trace) + PublicPathCheck.lines(result, probe) + suffix.get();
                 List<Image> images = trace.capturedImages().stream().map(c -> new Image(
                         c.size().width(), c.size().height(), c.size().renderedWidth(), c.size().renderedHeight(),
                         c.size().naturalWidth(), c.size().naturalHeight(), c.size().bytes(), c.size().path().label(),

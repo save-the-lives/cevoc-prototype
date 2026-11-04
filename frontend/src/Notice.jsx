@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import EvidenceItem from './EvidenceItem.jsx';
-import CertificateList from './CertificateList.jsx';
+import { Suspense, lazy, useState } from 'react';
+import { ListSkeleton, PhotoSkeleton } from './Skeleton.jsx';
 import { hasCertificateList } from './certs.js';
-import { HELP_PHONE, certificateAnswer, evidenceState, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
+import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
+
+// Heavier parts load on their own, after the notice details have painted.
+const EvidenceGrid = lazy(() => import('./EvidenceGrid.jsx'));
+const CertificateList = lazy(() => import('./CertificateList.jsx'));
 
 const OPTIONS = [
   ['Pay', 'In full, or ask for a payment plan or more time if money is tight.'],
@@ -57,7 +60,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy }) {
       return (
         <>
           <p className="hint">Zoom in to read plates and signs: pinch or double-tap on a touch screen, scroll wheel or the buttons with a mouse, plus and minus keys on a keyboard.</p>
-          <ul className="grid">{media.map((e) => <EvidenceItem key={e.url} item={e} />)}</ul>
+          <Suspense fallback={<PhotoSkeleton count={media.length} />}><EvidenceGrid items={media} /></Suspense>
           <p className="muted">If someone else was driving, you can nominate them with Revenue NSW (see Your options).</p>
         </>
       );
@@ -88,18 +91,23 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy }) {
   }
 }
 
-export default function Notice({ result, registrationGiven, onPlate, plateBusy, onStartAgain, headingRef }) {
+const READY = { evidence: 'ready', certificates: 'ready' };
+
+/** `sections` says, per part of the page, whether it is still loading ('loading'), arrived ('ready') or failed ('error'). */
+export default function Notice({ result, sections = READY, registrationGiven, onPlate, plateBusy, onStartAgain, headingRef }) {
   const n = result.notice;
-  const camera = n.enforcementMethod === 'CAMERA';
+  const camera = isCamera(result);
+  const evLoading = sections.evidence === 'loading';
+  const certLoading = sections.certificates === 'loading';
   const media = (result.evidence || []).filter((e) => e.kind !== 'CERTIFICATE');
   const oldCerts = (result.evidence || []).filter((e) => e.kind === 'CERTIFICATE');
   const ev = evidenceState(result, registrationGiven);
   const steps = stepsFor(result, ev);
   const status = statusSummary(n);
-  const certAns = certificateAnswer(result);
+  const certAns = certLoading ? { tone: 'neutral', text: 'Checking the camera’s certificates…' } : certificateAnswer(result);
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
   const demo = result.source === 'STUB' || result.source === 'MANIFEST';
-  const evAnswer = ev === 'show' ? `Check the number plate and the vehicle in the ${media.some((m) => m.kind === 'VIDEO') ? 'photos and video' : 'photos'}.`
+  const evAnswer = evLoading ? 'Getting the photos…' : sections.evidence === 'error' ? 'We couldn’t load the photos just now.' : ev === 'show' ? `Check the number plate and the vehicle in the ${media.some((m) => m.kind === 'VIDEO') ? 'photos and video' : 'photos'}.`
     : ev === 'not-applicable' ? undefined : 'We can’t show the photos yet.';
 
   return (
@@ -132,16 +140,22 @@ export default function Notice({ result, registrationGiven, onPlate, plateBusy, 
           </Step>
 
           <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
-            <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} />
+            {evLoading
+              ? <PhotoSkeleton label="Getting the photos. This can take up to half a minute." />
+              : sections.evidence === 'error'
+                ? <p className="notice-box" role="status">We couldn’t get the photos this time. The rest of this page is still correct. Please try again later, or call {HELP_PHONE}.</p>
+                : <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} />}
           </Step>
 
           {camera && (
             <Step n={stepNo('step-camera')} id="step-camera" title="Was the camera working properly?" tone={certAns.tone === 'warn' ? 'warn' : ''} answer={certAns.text}>
-              {hasCertificateList(result)
-                ? <CertificateList certificates={result.certificates} />
-                : oldCerts.length > 0
-                  ? <ul className="grid">{oldCerts.map((e) => <EvidenceItem key={e.url} item={e} />)}</ul>
-                  : <p className="notice-box" role="status">Certificate information is not available to show yet. Everything else on this page is still correct.</p>}
+              {certLoading
+                ? <ListSkeleton label="Checking the camera’s certificates" />
+                : hasCertificateList(result)
+                  ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} /></Suspense>
+                  : oldCerts.length > 0
+                    ? <Suspense fallback={<PhotoSkeleton count={oldCerts.length} />}><EvidenceGrid items={oldCerts} /></Suspense>
+                    : <p className="notice-box" role="status">Certificate information is not available to show yet. Everything else on this page is still correct.</p>}
             </Step>
           )}
 

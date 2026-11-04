@@ -39,6 +39,12 @@ jobs:
           printf %s "$LIVE_CASES" | jq -e 'type=="array" and length>0 and all(.[]; (.notice|type=="string") and (.date|test("^[0-9]{2}/[0-9]{2}/[0-9]{4}$")))' >/dev/null 2>&1 \
             || { echo "::error::LIVE_CASES is not valid. It must be a JSON array of {label, notice, date (DD/MM/YYYY), plate optional}. Contents not shown."; exit 1; }
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          # Public stream probe through the ingress: a notice number with a space is refused by the adapter before any
+          # network call, so this never contacts the source. Prints status, content type, event names and CORS only.
+          probe=$(curl -m 30 -s -N -D hdr.txt -X POST "https://$fqdn/api/penalty-lookups/stream" -H 'Content-Type: application/json' \
+            -H 'Accept: text/event-stream' -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" \
+            -d '{"infringementNumber":"ZZ ZZ","offenceDate":"2026-01-15"}' || true)
+          echo "public stream probe: HTTP $(head -1 hdr.txt | cut -d' ' -f2), type $(grep -i '^content-type' hdr.txt | cut -d' ' -f2 | tr -d '\r;'), cors $(grep -ic '^access-control-allow-origin' hdr.txt), events: $(printf %s "$probe" | grep -o '^event:[a-z]*' | tr '\n' ' ')"
           n=$(printf %s "$LIVE_CASES" | jq 'length')
           echo "Running $n case(s) against the deployed app"
           for i in $(seq 0 $((n-1))); do

@@ -42,7 +42,7 @@ export async function mockLookup({ infringementNumber, offenceDate, registration
   const base = { status: 'FOUND', infringementNumber, summary: 'Prototype data only.', source: 'STUB' };
   switch (infringementNumber) {
     case '9000000004':
-      return { ...base, notice: notice({ offenceDate }), certificates: registration ? CERTS : [], evidence: registration ? [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2')] : [] };
+      return { ...base, notice: notice({ offenceDate }), certificates: registration ? CERTS : [], plateRequired: !registration, evidence: registration ? [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2')] : [] };
     case '9000000005':
       return { ...base, notice: notice({ offenceDate }), evidence: [] };
     case '9000000006':
@@ -67,5 +67,20 @@ export async function mockLookup({ infringementNumber, offenceDate, registration
     default:
       return { ...base, notice: notice({ offenceDate }), certificates: CERTS, evidence: [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2'), VIDEO,
         { kind: 'VIDEO', title: 'Sample video (plain MP4)', url: '/samples/video-1.mp4', posterUrl: '/samples/video-1-poster.jpg' }, CERT] };
+  }
+}
+
+/** Dev stand-in for the stream: the same parts as the backend, spread over a few seconds so the loading states can be seen. */
+export async function mockStream({ infringementNumber, offenceDate, registration }, onEvent, signal) {
+  const result = await mockLookup({ infringementNumber, offenceDate, registration });
+  const wait = (ms) => new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => { clearTimeout(t); reject(Object.assign(new Error('aborted'), { name: 'AbortError' })); }, { once: true });
+  });
+  const { eventsFromResult } = await import('./lookupState.js');
+  const delays = { details: 0, evidence: 1200, certificates: 1200, done: 200 };
+  for (const [name, data] of eventsFromResult(result)) {
+    await wait(delays[name] ?? 0);
+    onEvent(name, data);
   }
 }

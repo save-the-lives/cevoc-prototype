@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { certificateAnswer, classify, evidenceState, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
+import { certificateAnswer, classify, evidenceState, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
 
 const notice = (over) => ({ enforcementMethod: 'CAMERA', noticeStatus: 'PAYABLE', amountOwing: 277, ...over });
 const img = { kind: 'IMAGE', title: 'Sample', url: '/x.jpg' };
@@ -40,9 +40,24 @@ describe('evidenceState', () => {
   it('a certificate alone is not evidence media', () => {
     expect(evidenceState({ notice: notice(), evidence: [{ kind: 'CERTIFICATE', url: '/c.pdf' }] }, false)).toBe('needs-plate');
   });
+  it('asks for the plate when the backend says it is required, even if the notice type is not clear', () => {
+    expect(evidenceState({ notice: notice({ enforcementMethod: 'UNKNOWN' }), evidence: [], plateRequired: true }, false)).toBe('needs-plate');
+    expect(evidenceState({ notice: null, evidence: [], plateRequired: true }, false)).toBe('needs-plate');
+  });
+  it('a plate that was given and not accepted is not a plate-required answer', () => {
+    expect(evidenceState({ notice: notice(), evidence: [], plateRequired: false }, true)).toBe('plate-no-images');
+  });
   it('is not applicable for officer-issued and unknown notices', () => {
     expect(evidenceState({ notice: notice({ enforcementMethod: 'OFFICER_ISSUED' }), evidence: [] }, false)).toBe('not-applicable');
     expect(evidenceState({ notice: notice({ enforcementMethod: 'UNKNOWN' }), evidence: [] }, true)).toBe('not-applicable');
+  });
+});
+
+describe('isCamera', () => {
+  it('treats held-back images as a camera notice', () => {
+    expect(isCamera({ notice: notice({ enforcementMethod: 'UNKNOWN' }), plateRequired: true })).toBe(true);
+    expect(isCamera({ notice: notice({ enforcementMethod: 'UNKNOWN' }) })).toBe(false);
+    expect(stepsFor({ notice: notice({ enforcementMethod: 'UNKNOWN' }), plateRequired: true }, 'needs-plate').map((s) => s.id)).toContain('step-camera');
   });
 });
 

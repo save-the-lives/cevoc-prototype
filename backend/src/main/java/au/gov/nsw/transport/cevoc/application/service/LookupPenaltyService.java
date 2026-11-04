@@ -1,13 +1,17 @@
 package au.gov.nsw.transport.cevoc.application.service;
 
 import au.gov.nsw.transport.cevoc.application.port.in.LookupPenaltyUseCase;
+import au.gov.nsw.transport.cevoc.application.port.in.LookupSink;
 import au.gov.nsw.transport.cevoc.application.port.out.CertificateSourcePort;
+import au.gov.nsw.transport.cevoc.application.port.out.LookupProgress;
 import au.gov.nsw.transport.cevoc.application.port.out.PenaltyLookupPort;
 import au.gov.nsw.transport.cevoc.application.port.out.SignedLinkPort;
 import au.gov.nsw.transport.cevoc.domain.CertificateItem;
 import au.gov.nsw.transport.cevoc.domain.CertificateMatch;
 import au.gov.nsw.transport.cevoc.domain.CertificateQuery;
 import au.gov.nsw.transport.cevoc.domain.EvidenceItem;
+import au.gov.nsw.transport.cevoc.domain.ImageVariant;
+import au.gov.nsw.transport.cevoc.domain.SignedLink;
 import au.gov.nsw.transport.cevoc.domain.LookupStep;
 import au.gov.nsw.transport.cevoc.domain.LookupTrace;
 import au.gov.nsw.transport.cevoc.domain.StepCause;
@@ -19,7 +23,8 @@ import java.util.List;
 
 public class LookupPenaltyService implements LookupPenaltyUseCase {
 
-    static final Duration LINK_VALIDITY = Duration.ofMinutes(5);
+    /** Long enough that a page opened and read for a while can still load the larger sizes when the viewer is opened. */
+    static final Duration LINK_VALIDITY = Duration.ofMinutes(15);
 
     private final PenaltyLookupPort penaltyLookup;
     private final SignedLinkPort signedLinks;
@@ -50,15 +55,85 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             if (r.evidence() == null || r.evidence().isEmpty()) {
                 return r;
             }
-            List<EvidenceItem> linked = r.evidence().stream()
-                    .map(e -> e.withUrl(signedLinks.linkFor(e.url(), LINK_VALIDITY).url()))
-                    .toList();
-            return new PenaltyLookupResult(r.status(), r.infringementNumber(), r.summary(), r.notice(), linked, r.source(),
-                    r.cameraCode(), r.certificates(), r.certificatesNote());
+            return r.withEvidence(link(r.evidence()));
         } catch (RuntimeException e) {
             return new PenaltyLookupResult(PenaltyLookupResult.Status.UNAVAILABLE,
                     request.infringementNumber(), "We could not load this right now. Please try again.",
                     null, List.of(), "ERROR");
+        }
+    }
+
+    /** Replaces object keys by links: the original, and for images the smaller copies when the storage has them. */
+    private List<EvidenceItem> link(List<EvidenceItem> items) {
+        if (items == null) {
+            return List.of();
+        }
+        return items.stream().map(e -> {
+            String key = e.url();
+            EvidenceItem linked = e.withUrl(signedLinks.linkFor(key, LINK_VALIDITY).url());
+            if (e.kind() == EvidenceItem.Kind.IMAGE) {
+                String thumb = signedLinks.linkFor(key, ImageVariant.THUMBNAIL, LINK_VALIDITY).map(SignedLink::url).orElse(null);
+                String medium = signedLinks.linkFor(key, ImageVariant.MEDIUM, LINK_VALIDITY).map(SignedLink::url).orElse(null);
+                linked = linked.withVariants(thumb, medium);
+            }
+            return linked;
+        }).toList();
+    }
+
+    /**
+     * The same lookup in parts over one call: details as soon as the adapter knows them (or at the end for adapters
+     * that cannot say earlier), then evidence, then certificates, then done. One call means one browser session and the
+     * request-scoped registration is used exactly as for {@link #lookup}.
+     */
+    @Override
+    public void lookup(PenaltyLookupRequest request, LookupSink sink) {
+        boolean[] sent = new boolean[2];
+        PenaltyLookupResult raw;
+        try {
+            raw = penaltyLookup.find(request, new LookupProgress() {
+                @Override
+                public void details(PenaltyLookupResult partial) {
+                    if (!sent[0]) {
+                        sent[0] = true;
+                        sink.details(partial.withEvidence(List.of()));
+                    }
+                }
+
+                @Override
+                public void evidence(List<EvidenceItem> items, boolean plateRequired) {
+                    if (sent[0] && !sent[1]) {
+                        sent[1] = true;
+                        sink.evidence(link(items), plateRequired);
+                    }
+                }
+            });
+        } catch (RuntimeException e) {
+            sink.error(StepCause.of(e).token());
+            return;
+        }
+        try {
+            if (!sent[0]) {
+                sent[0] = true;
+                sink.details(raw.withEvidence(List.of()));
+            } else if (raw.status() != PenaltyLookupResult.Status.FOUND) {
+                // Details were already sent as found; the rest of the lookup then failed.
+                LookupTrace.Entry failed = LookupTrace.current().firstFailed();
+                sink.error(failed == null || failed.cause() == null ? StepCause.SOURCE_FAILED.token() : failed.cause().token());
+                return;
+            }
+            if (raw.status() != PenaltyLookupResult.Status.FOUND) {
+                sink.done();
+                return;
+            }
+            if (!sent[1]) {
+                sent[1] = true;
+                sink.evidence(link(raw.evidence()), raw.plateRequired());
+            }
+            PenaltyLookupResult withCerts = withCertificates(raw);
+            sink.certificates(withCerts.certificates());
+            sink.done();
+        } catch (RuntimeException e) {
+            sink.error(StepCause.of(e).token());
         }
     }
 

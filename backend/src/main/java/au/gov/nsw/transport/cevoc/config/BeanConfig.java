@@ -54,10 +54,28 @@ public class BeanConfig {
     // The media adapter beans implement MediaStoragePort and SignedLinkPort (and for stub, CacheInvalidationPort) directly.
     // ---- media: cevoc.media.adapter = stub (default) | azure-blob ----
 
+    // cevoc.media.adapter unset: "memory" when the live evidence scraper is the lookup adapter (it captures real image bytes
+    // that the stub would silently drop), otherwise "stub".
     @Bean
-    @ConditionalOnProperty(name = "cevoc.media.adapter", havingValue = "stub", matchIfMissing = true)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
+            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && '${cevoc.penalty-lookup.adapter:manifest}' != 'scraper-evidence')")
     StubMediaAdapter stubMedia(@Value("${cevoc.media.base-url:/samples}") String baseUrl) {
         return new StubMediaAdapter(baseUrl);
+    }
+
+    /**
+     * Short-lived in-memory storage for captured images (no cloud, no disk): links are /api/media/&lt;token&gt; served by
+     * the media endpoint. Retention and total size are bounded; a restart drops everything.
+     */
+    @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
+            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && '${cevoc.penalty-lookup.adapter:manifest}' == 'scraper-evidence')")
+    au.gov.nsw.transport.cevoc.adapter.out.memory.InMemoryMediaAdapter memoryMedia(
+            @Value("${cevoc.media.public-base-url:}") String publicBaseUrl,
+            @Value("${cevoc.media.memory.retention-minutes:20}") long retentionMinutes,
+            @Value("${cevoc.media.memory.max-megabytes:96}") long maxMegabytes) {
+        return new au.gov.nsw.transport.cevoc.adapter.out.memory.InMemoryMediaAdapter(publicBaseUrl,
+                java.time.Duration.ofMinutes(retentionMinutes), maxMegabytes * 1024 * 1024, java.time.Clock.systemUTC());
     }
 
     @Bean

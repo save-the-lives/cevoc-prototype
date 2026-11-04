@@ -3,7 +3,19 @@ export const isHls = (url) => /\.m3u8(\?|#|$)/i.test(url || '');
 /** Link for "Download original". HLS playlists are not downloadable, so they need an explicit downloadUrl. */
 export function downloadHref(item) {
   if (item.downloadUrl) return item.downloadUrl;
-  return isHls(item.url) ? null : item.url;
+  return isHls(item.url) ? null : withDownloadFlag(item.url);
+}
+
+/** Stored images are served by our own media endpoint: ?dl=1 makes the browser save the original instead of showing it. */
+function withDownloadFlag(url) {
+  return /\/api\/media\/[^?#]*$/.test(url || '') ? `${url}?dl=1` : url;
+}
+
+/** Sizes in the order they are loaded: thumbnail first, then medium, then the original. Missing or repeated ones are dropped. */
+export function stagesFor(item) {
+  const out = [];
+  for (const u of [item.previewUrl, item.mediumUrl, item.url]) if (u && !out.includes(u)) out.push(u);
+  return out;
 }
 
 export function isSmallScreen() {

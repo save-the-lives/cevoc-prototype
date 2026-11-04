@@ -9,4 +9,9 @@ import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult;
  */
 public interface PenaltyLookupPort {
     PenaltyLookupResult find(PenaltyLookupRequest request);
+
+    /** Same lookup, firing {@code progress} callbacks as parts become known. Adapters that cannot just answer at the end. */
+    default PenaltyLookupResult find(PenaltyLookupRequest request, LookupProgress progress) {
+        return find(request);
+    }
 }

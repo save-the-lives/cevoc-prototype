@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -33,8 +34,35 @@ public class LiveCheckController {
 
     private final LookupPenaltyUseCase useCase;
 
-    public LiveCheckController(LookupPenaltyUseCase useCase) {
+    private final int port;
+    private final String origin;
+
+    public LiveCheckController(LookupPenaltyUseCase useCase, @Value("${server.port:8080}") int port,
+                               @Value("${cevoc.cors.allowed-origins:}") String origins) {
         this.useCase = useCase;
+        this.port = port;
+        this.origin = origins.split(",")[0].trim();
+    }
+
+    /**
+     * Fetches a public link of the result from inside this app (relative links go to the local port), sending the web
+     * page's origin, and keeps numbers only: status, content type, byte count and whether the cross-origin header came back.
+     */
+    private PublicPathCheck.Fetched fetch(String url) {
+        try {
+            String target = url.startsWith("/") ? "http://127.0.0.1:" + port + url : url;
+            var request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(target)).timeout(java.time.Duration.ofSeconds(30))
+                    .header("Origin", origin).GET().build();
+            var response = java.net.http.HttpClient.newHttpClient().send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+            String type = response.headers().firstValue("Content-Type").orElse("none");
+            boolean cors = response.headers().firstValue("Access-Control-Allow-Origin").isPresent();
+            return new PublicPathCheck.Fetched(response.statusCode(), type, response.body().length, cors);
+        } catch (java.io.IOException | RuntimeException e) {
+            return new PublicPathCheck.Fetched(0, "none", 0, false);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new PublicPathCheck.Fetched(0, "none", 0, false);
+        }
     }
 
     public record Body(String notice, String offenceDate, String registration, Boolean includeImages, Boolean networkMap) {
@@ -78,7 +106,7 @@ public class LiveCheckController {
         try {
             outcome = LiveCheckRunner.run(useCase, new PenaltyLookupRequest(body.notice(), date), plate, includeImages,
                     wantMap ? NetworkMapHolder::request : () -> { },
-                    wantMap ? () -> String.join("\n", NetworkMapHolder.take()) + "\n" : () -> "");
+                    wantMap ? () -> String.join("\n", NetworkMapHolder.take()) + "\n" : () -> "", this::fetch);
         } finally {
             NetworkMapHolder.take();
         }

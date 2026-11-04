@@ -1,5 +1,6 @@
 package au.gov.nsw.transport.cevoc.adapter.out.scraper;
 
+import au.gov.nsw.transport.cevoc.application.port.out.LookupProgress;
 import au.gov.nsw.transport.cevoc.application.port.out.MediaStoragePort;
 import au.gov.nsw.transport.cevoc.application.port.out.PenaltyLookupPort;
 import au.gov.nsw.transport.cevoc.domain.EnforcementMethod;
@@ -91,9 +92,17 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         return this;
     }
 
-    /** synchronized: one lookup (one browser session) at a time, so no parallel hits on the site. */
     @Override
-    public synchronized PenaltyLookupResult find(PenaltyLookupRequest request) {
+    public PenaltyLookupResult find(PenaltyLookupRequest request) {
+        return find(request, LookupProgress.NONE);
+    }
+
+    /**
+     * synchronized: one lookup (one browser session) at a time, so no parallel hits on the site. {@code progress} is
+     * told when the notice details are known and when the images are stored, while the lookup is still running.
+     */
+    @Override
+    public synchronized PenaltyLookupResult find(PenaltyLookupRequest request, LookupProgress progress) {
         String number = request.infringementNumber();
         CertificateHandoff.clear();
         if (!settings.usable()) {
@@ -119,7 +128,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         RenderedPageSession session = null;
         try {
             session = trace.run(LookupStep.START_BROWSER, () -> sessions.open(base));
-            PenaltyLookupResult out = run(session, key, number, request, plate);
+            PenaltyLookupResult out = run(session, key, number, request, plate, progress);
             // Anything that carried evidence (or needed a plate) is never cached.
             if (plate == null && out.evidence().isEmpty() && (out.status() == Status.FOUND || out.status() == Status.NOT_FOUND)) {
                 remember(key, out);
@@ -151,7 +160,8 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 .findFirst().orElse(LookupStep.START_BROWSER);
     }
 
-    private PenaltyLookupResult run(RenderedPageSession session, String key, String number, PenaltyLookupRequest request, String plate)
+    private PenaltyLookupResult run(RenderedPageSession session, String key, String number, PenaltyLookupRequest request, String plate,
+                                    LookupProgress progress)
             throws IOException, InterruptedException {
         LookupTrace trace = LookupTrace.current();
         // State 1: login page. A notice type that needs extra identity fields is out of scope.
@@ -213,6 +223,13 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
         String summary = "Content from the penalty page.";
+        // The source releases the images only once the registration is given: a plate form on the summary and no plate
+        // means images exist but are held back. Yes/no only; the plate itself is never echoed.
+        boolean plateRequired = page.state() == RevenueNswPageParser.State.SUMMARY && plate == null && page.plateFormPresent();
+        // Notice details are known now (about seven seconds in): let a streaming caller show them while the rest runs.
+        NoticeDetails early = plateRequired ? asCamera(page.notice()) : page.notice();
+        progress.details(new PenaltyLookupResult(Status.FOUND, number, summary, early, List.of(), SOURCE, page.cameraCode(),
+                List.of(), null, plateRequired));
         // State 3: only with a plate and a plate form still on the page.
         LookupDiagnostic.note("plate-given=" + (plate != null ? "yes" : "no") + "; plate-form=" + (page.plateFormPresent() ? "yes" : "no")
                 + "; summary-state=" + page.state());
@@ -238,19 +255,29 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         List<EvidenceItem> evidence = List.of();
         if (page.state() == RevenueNswPageParser.State.IMAGES) {
             evidence = buffer(session, key, page.images());
+            progress.evidence(evidence, false);
         } else {
+            progress.evidence(List.of(), plateRequired);
             trace.skip(LookupStep.CAPTURE_IMAGES, trace.firstFailed() != null ? StepCause.PRIOR_FAILURE : StepCause.NO_IMAGES);
         }
         if (followCertificationLink) {
             followCertification(session, page);
         }
         NoticeDetails notice = page.notice();
-        if (!evidence.isEmpty() && notice.enforcementMethod() != EnforcementMethod.CAMERA) {
-            notice = new NoticeDetails(notice.offenceDescription(), notice.offenceDate(), notice.offenceTime(), notice.location(),
-                    notice.penaltyAmount(), notice.amountOwing(), notice.noticeStatus(), notice.statusMessage(), EnforcementMethod.CAMERA);
+        if (!evidence.isEmpty() || plateRequired) {
+            notice = asCamera(notice);
         }
         // cameraCode is internal (@JsonIgnore): input for the certificate lookup, banner first, then the s= value.
-        return new PenaltyLookupResult(Status.FOUND, number, summary, notice, evidence, SOURCE, page.cameraCode());
+        return new PenaltyLookupResult(Status.FOUND, number, summary, notice, evidence, SOURCE, page.cameraCode(),
+                List.of(), null, plateRequired && evidence.isEmpty());
+    }
+
+    private static NoticeDetails asCamera(NoticeDetails notice) {
+        if (notice == null || notice.enforcementMethod() == EnforcementMethod.CAMERA) {
+            return notice;
+        }
+        return new NoticeDetails(notice.offenceDescription(), notice.offenceDate(), notice.offenceTime(), notice.location(),
+                notice.penaltyAmount(), notice.amountOwing(), notice.noticeStatus(), notice.statusMessage(), EnforcementMethod.CAMERA);
     }
 
     /**
@@ -338,7 +365,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 String objectKey = "scraped/" + key.substring(0, 16) + "/image-" + n + extension(type);
                 storage.store(objectKey, type, new ByteArrayInputStream(data), data.length);
                 trace.image(sizeOf(bytes.get(), type), type, data);
-                items.add(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey));
+                EvidenceItem item = EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey);
+                int[] px = pixelsOf(data);
+                items.add(px == null ? item : item.withSize(px[0], px[1]));
             } catch (IOException | RuntimeException e) {
                 failed++;
                 LOG.debug("evidence image skipped: {}", e.getClass().getSimpleName());

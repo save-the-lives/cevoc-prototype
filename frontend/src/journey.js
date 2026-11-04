@@ -41,7 +41,7 @@ export function classify(result) {
 /**
  * Which evidence message applies.
  *  show            at least one photo or video
- *  needs-plate     camera offence, no images, and no registration number was given: the source releases images only with it
+ *  needs-plate     the backend flagged plateRequired, or a camera offence with no images and no registration number given
  *  plate-no-images camera offence, no images, although a registration number was given (not accepted, or none held)
  *  not-yet         camera offence, nothing to show and we cannot tell why
  *  not-applicable  not a camera notice
@@ -49,6 +49,8 @@ export function classify(result) {
 export function evidenceState(result, registrationGiven) {
   const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE');
   if (media.length > 0) return 'show';
+  // The backend says so directly: the source holds images for this notice but releases them only with the number plate.
+  if (result?.plateRequired === true && !registrationGiven) return 'needs-plate';
   const method = result?.notice?.enforcementMethod;
   if (method === 'OFFICER_ISSUED') return 'not-applicable';
   if (method !== 'CAMERA') return 'not-applicable';
@@ -78,9 +80,14 @@ export function statusSummary(notice) {
   }
 }
 
+/** A camera notice: marked so by the data, or the source is holding camera images back until the plate is given. */
+export function isCamera(result) {
+  return result?.notice?.enforcementMethod === 'CAMERA' || result?.plateRequired === true;
+}
+
 /** Steps shown for a result, in order. */
 export function stepsFor(result, evState) {
-  const camera = result?.notice?.enforcementMethod === 'CAMERA';
+  const camera = isCamera(result);
   const steps = [
     { id: 'step-what', label: 'What happened' },
     { id: 'step-evidence', label: evState === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?' },

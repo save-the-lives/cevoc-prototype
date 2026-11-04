@@ -86,3 +86,13 @@ Output adds structure-only `srch-*` / `srch-http-*` markers to the failure detai
 
 ## Certificates step: known block (observed)
 The certification address (a plain HTML page on a Transport for NSW host) answers 403 to the Azure headless caller, both for a fresh tab in the same browser context and for an in-page fetch, with the session cookies. The app sends the identifying user agent, a Referer of the myPenalty origin and `Accept-Language: en-AU`; it does not impersonate an ordinary browser. The step therefore reports `step=certificates; outcome=failed; cause=blocked-403` (also `blocked-401`, `blocked-429`), plus structure only: status, content type, response header names from a fixed list, and yes/no block-page markers. Needed from TfNSW: allowlisting of the app egress address for this page, or a non-scrape TfNSW source for the certificates (see `docs/ARCHITECTURE.md`, "Browser route for certificates").
+
+
+## Public image path and streaming (summary lines)
+
+Camera images captured by a live lookup are held in memory (`cevoc.media.adapter` unset means `memory` when the lookup adapter is
+`scraper-evidence`, otherwise `stub`) and served from `/api/media/<token>` (original, `?s=medium`, `?s=thumb`). Retention is 20 minutes
+and 96 MB in total; a restart drops them and the page asks again (one replica, so no cross-replica misses). The summary ends with
+`public images`, `public plate flag` and, per image and size, `HTTP status, content type, bytes, cors` (numbers only). The page reads
+`POST /api/penalty-lookups/stream` (Server-Sent Events: details, evidence, certificates, done / error); the JSON endpoint is unchanged.
+When the source holds images back until the registration is given and none was sent, `plateRequired` is true (yes/no, never the plate).

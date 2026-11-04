@@ -325,4 +325,73 @@ class ScraperEvidenceTest {
         FakeRenderedPageSession s = scripted(new FakeRenderedPageSession().loginHtml);
         assertThat(quick(s).find(REQ).status()).isEqualTo(PenaltyLookupResult.Status.NOT_FOUND);
     }
+
+    // ---- plate-required signal, progress callbacks and image sizes ----
+
+    private static class Recorder implements au.gov.nsw.transport.cevoc.application.port.out.LookupProgress {
+        final List<String> events = new ArrayList<>();
+        PenaltyLookupResult details;
+        List<EvidenceItem> evidence;
+        boolean plateRequired;
+
+        @Override
+        public void details(PenaltyLookupResult partial) {
+            events.add("details");
+            details = partial;
+        }
+
+        @Override
+        public void evidence(List<EvidenceItem> items, boolean required) {
+            events.add("evidence");
+            evidence = items;
+            plateRequired = required;
+        }
+    }
+
+    @Test
+    void aCameraNoticeWithoutAPlateSaysThePlateIsRequiredAndNeverEchoesOne() {
+        FakeRenderedPageSession fake = new FakeRenderedPageSession();
+        Recorder rec = new Recorder();
+        PenaltyLookupResult r = adapter(new Sessions(fake), new FakeStorage(), RegistrationProvider.none()).find(REQ, rec);
+        assertThat(r.evidence()).isEmpty();
+        assertThat(r.plateRequired()).isTrue();
+        assertThat(r.notice().enforcementMethod()).isEqualTo(EnforcementMethod.CAMERA);
+        assertThat(rec.events).containsExactly("details", "evidence");
+        assertThat(rec.details.plateRequired()).isTrue();
+        assertThat(rec.details.evidence()).isEmpty();
+        assertThat(rec.plateRequired).isTrue();
+        assertThat(rec.evidence).isEmpty();
+        assertThat(r.toString()).doesNotContain(PLATE);
+    }
+
+    @Test
+    void withAPlateTheImagesComeBackWithTheirPixelSizeAndNoPlateRequiredFlag() {
+        FakeRenderedPageSession fake = new FakeRenderedPageSession();
+        Recorder rec = new Recorder();
+        PenaltyLookupResult r = adapter(new Sessions(fake), new FakeStorage(), req -> Optional.of(PLATE)).find(REQ, rec);
+        assertThat(r.plateRequired()).isFalse();
+        assertThat(rec.details.plateRequired()).isFalse();
+        assertThat(rec.events).containsExactly("details", "evidence");
+        assertThat(rec.plateRequired).isFalse();
+        assertThat(rec.evidence).hasSize(2);
+        EvidenceItem png = r.evidence().stream().filter(e -> e.width() != null).findFirst().orElseThrow();
+        assertThat(png.width()).isEqualTo(8);
+        assertThat(png.height()).isEqualTo(6);
+    }
+
+    @Test
+    void aNotAcceptedPlateIsNotAPlateRequiredAnswer() {
+        FakeRenderedPageSession fake = new FakeRenderedPageSession();
+        PenaltyLookupResult r = adapter(new Sessions(fake), new FakeStorage(), req -> Optional.of("TST999")).find(REQ);
+        assertThat(r.evidence()).isEmpty();
+        assertThat(r.plateRequired()).isFalse();
+    }
+
+    @Test
+    void aCachedNoPlateAnswerStillSaysPlateRequired() {
+        FakeRenderedPageSession fake = new FakeRenderedPageSession();
+        ScraperEvidenceLookupAdapter adapter = adapter(new Sessions(fake), new FakeStorage(), RegistrationProvider.none());
+        adapter.find(REQ);
+        assertThat(adapter.find(REQ).plateRequired()).isTrue();
+    }
 }
