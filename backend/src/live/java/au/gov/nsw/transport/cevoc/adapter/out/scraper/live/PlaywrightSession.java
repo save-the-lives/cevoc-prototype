@@ -257,6 +257,120 @@ final class PlaywrightSession implements RenderedPageSession {
                 note("cert-link=absent");
                 return Optional.<String>empty();
             }
+            Locator first = link.first();
+            String abs = null;
+            try {
+                Object o = first.evaluate("a => a.href");
+                abs = o instanceof String h && h.startsWith("https://") ? h : null;
+            } catch (PlaywrightException e) {
+                abs = null;
+            }
+            note("cert-link-count=" + Math.min(link.count(), 9) + "; cert-href-absolute=" + (abs != null ? "yes" : "no")
+                    + "; cert-href-host=" + (abs == null ? "none" : hostClass(abs)));
+            if (abs != null) {
+                redactor.add(abs); // the link carries a signed value: scrub it from any error text
+                Optional<String> viaGoto = gotoPath(abs);
+                if (viaGoto.isPresent()) {
+                    note("cert-path=goto");
+                    return viaGoto;
+                }
+                Optional<String> viaFetch = fetchPath(abs);
+                if (viaFetch.isPresent()) {
+                    note("cert-path=fetch");
+                    return viaFetch;
+                }
+            }
+            note("cert-path=click");
+            return clickPath();
+        });
+    }
+
+    /** Opens the certification address in a fresh tab of the SAME context (cookies shared). Empty on any failure. */
+    private Optional<String> gotoPath(String url) throws InterruptedException {
+        pace();
+        Page np = context.newPage();
+        try {
+            com.microsoft.playwright.Response r = np.navigate(url,
+                    new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED).setTimeout(45_000));
+            int status = r == null ? 0 : r.status();
+            String ct = r == null ? "" : String.valueOf(r.headers().get("content-type")).toLowerCase(Locale.ROOT);
+            note("cert-goto-status=" + status + "; cert-goto-type=" + (ct.contains("html") ? "html" : ct.isEmpty() ? "none" : "other"));
+            try {
+                np.waitForLoadState(LoadState.NETWORKIDLE, new Page.WaitForLoadStateOptions().setTimeout(10_000));
+            } catch (PlaywrightException ignored) {
+                // carry on with what is rendered
+            }
+            String html = null;
+            for (int i = 0; i < 4 && html == null; i++) {
+                try {
+                    html = np.content();
+                } catch (PlaywrightException e) {
+                    np.waitForTimeout(1500);
+                }
+            }
+            if (html == null || status >= 400 || !ct.contains("html")) {
+                note("cert-goto=unusable");
+                return Optional.empty();
+            }
+            if (capture != null) {
+                capture.save("4-certificates", html);
+            }
+            return Optional.of(html);
+        } catch (PlaywrightException e) {
+            note("cert-goto=failed; cert-goto-cause=" + causeToken(e) + "; cert-nav-aborted-host=" + lastAbortedHost);
+            return Optional.empty();
+        } finally {
+            try {
+                np.close();
+            } catch (PlaywrightException ignored) {
+                // already closed
+            }
+        }
+    }
+
+    /** In-page fetch of the same address with the session's cookies. Empty on any failure (CORS included). */
+    private Optional<String> fetchPath(String url) throws InterruptedException {
+        pace();
+        try {
+            Object o = page.evaluate("""
+                    async u => {
+                      const r = await fetch(u, {credentials: 'include'});
+                      const t = await r.text();
+                      return {status: r.status, type: r.headers.get('content-type') || '', text: t.length > 2000000 ? '' : t};
+                    }
+                    """, url);
+            if (o instanceof Map<?, ?> m && m.get("text") instanceof String t) {
+                Object st = m.get("status");
+                String ct = String.valueOf(m.get("type")).toLowerCase(Locale.ROOT);
+                note("cert-fetch-status=" + st + "; cert-fetch-type=" + (ct.contains("html") ? "html" : ct.isEmpty() ? "none" : "other"));
+                if (st instanceof Number n && n.intValue() < 400 && ct.contains("html") && !t.isBlank()) {
+                    if (capture != null) {
+                        capture.save("4-certificates", t);
+                    }
+                    return Optional.of(t);
+                }
+            }
+            note("cert-fetch=unusable");
+        } catch (PlaywrightException e) {
+            note("cert-fetch=failed; cert-fetch-cause=" + causeToken(e));
+        }
+        return Optional.empty();
+    }
+
+    private String causeToken(PlaywrightException e) {
+        String r = au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic
+                .fromFailure("browser step 'x' failed: " + redactor.clean(e.getMessage()));
+        return r.substring(r.indexOf("cause=") + 6);
+    }
+
+    /** Last resort: click the link and read the tab or page it opens. */
+    private Optional<String> clickPath() throws Exception {
+        {
+            Locator link = page.locator(CERT_LINK_CSS);
+            if (link.count() == 0) {
+                note("cert-link=absent");
+                return Optional.<String>empty();
+            }
             pace();
             java.util.concurrent.atomic.AtomicReference<Page> opened = new java.util.concurrent.atomic.AtomicReference<>();
             java.util.function.Consumer<Page> onOpen = opened::set;
@@ -335,7 +449,7 @@ final class PlaywrightSession implements RenderedPageSession {
                 capture.save("4-certificates", html);
             }
             return Optional.of(html);
-        });
+        }
     }
 
     /** same | transport | other | blank: where the page is, as a token (never the URL). */
