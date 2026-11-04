@@ -231,6 +231,19 @@ final class PlaywrightSession implements RenderedPageSession {
                 return Optional.<ImageBytes>empty();
             }
             byte[] body = found.response().body();
+            if (!looksLikeImage(body)) {
+                // The browser can hand back a text-decoded body for an image response (replacement characters for the file header).
+                // Fetch the same address again with the session's cookies and read the bytes untouched.
+                try {
+                    var again = context.request().get(found.response().url());
+                    if (again.ok()) {
+                        body = again.body();
+                        note("image-body=refetched");
+                    }
+                } catch (PlaywrightException e) {
+                    note("image-body=refetch-failed");
+                }
+            }
             String type = String.valueOf(found.response().headers().get("content-type")).split(";")[0].trim().toLowerCase(Locale.ROOT);
             if (body == null || body.length == 0 || body.length > maxBytes) {
                 note("image-path=response-unusable");
@@ -239,6 +252,16 @@ final class PlaywrightSession implements RenderedPageSession {
             note("image-path=response");
             return Optional.of(new ImageBytes(type, body, sized(dims, CapturePath.RESPONSE)));
         });
+    }
+
+    /** File-signature check only: JPEG, PNG, GIF, WebP/RIFF, BMP or an XML/SVG start. */
+    static boolean looksLikeImage(byte[] b) {
+        if (b == null || b.length < 4) {
+            return false;
+        }
+        int a = b[0] & 0xff, c = b[1] & 0xff;
+        return (a == 0xff && c == 0xd8) || (a == 0x89 && c == 0x50) || (a == 'G' && c == 'I') || (a == 'R' && c == 'I')
+                || (a == 'B' && c == 'M') || a == '<';
     }
 
     private volatile String lastAbortedHost = "none";
