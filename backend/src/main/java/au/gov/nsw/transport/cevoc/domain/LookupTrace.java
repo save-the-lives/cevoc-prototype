@@ -1,5 +1,6 @@
 package au.gov.nsw.transport.cevoc.domain;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -28,8 +29,8 @@ public final class LookupTrace {
     }
 
     @FunctionalInterface
-    public interface Work<T, E extends Exception> {
-        T run() throws E;
+    public interface Work<T> {
+        T run() throws IOException, InterruptedException;
     }
 
     private static final ThreadLocal<LookupTrace> CURRENT = new ThreadLocal<>();
@@ -71,7 +72,7 @@ public final class LookupTrace {
     }
 
     /** Runs the work, records ok with its duration, or failed (cause mapped from the exception) and rethrows. */
-    public <T, E extends Exception> T run(LookupStep step, Work<T, E> work) throws E {
+    public <T> T run(LookupStep step, Work<T> work) throws IOException, InterruptedException {
         long start = System.nanoTime();
         try {
             T out = work.run();
