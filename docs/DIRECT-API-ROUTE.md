@@ -59,7 +59,58 @@ Capture checklist (what the live-run recorder on `feat/netmap` covers; it is not
 Redaction rules: replace with `REDACTED` the notice number, dates/times, registration, names, addresses, amounts, location, camera code, incident number, image refs, every `m=` value, tokens, cookies, `Authorization`/`Cookie`/`Set-Cookie` values, session ids, IPs and personal values in bodies; drop image and PDF bodies (keep type, byte size, pixel size); keep methods, hosts, path structure, header names, field names, JSON types, status codes, content types, sizes, array lengths. Search for the notice, registration and first 8 characters of any token before anything is shared; never commit raw captures to this public repo.
 
 ## Observed calls (redacted)
-Pointer. The real call shapes seen in the Chromium live run are recorded by the netmap work (branch `feat/netmap`) in `docs/OBSERVED-CALLS.md` (or this section), following the checklist in 4a. Not edited here.
+Source: the structure-only network map of the Chromium live run (live-check request flag `networkMap=true`, workflow input `network_map`, code `NetworkMapRedaction`/`NetworkMapRecorder`), 4 live rounds on 2026-11-04 with one real case (two rounds reached the images step, two stalled at the summary call, see Reliability). Only redacted structure is recorded here: no values, no real identifiers. Identifier path segments print as `{id:<mask>#<tag>}` (mask: A upper, a lower, 9 digit; tag: salted hash, equal tags within one run mean the same value, nothing comparable across runs). Host of the JSON service: `api.osr.nsw.gov.au` (approved, see section 4). Not observed: the non-match response (wrong notice/date), a wrong-registration response, response header values, pixel size of the images (the JPEG header was not readable by the first parser; fixed afterwards but not seen on a successful run), and the certificate page response.
+
+### Calls per lookup step
+Base path of the JSON service: `/{prefix}/rest/api/v2/fines`, where `{prefix}` is one constant-looking segment of the shape `AAAAA_AAAAAA_AAA` (16 characters, upper case with underscores, identical in every call and in all runs; presumably a fixed application or tenant name; confirm before hard-coding, do not assume it is public).
+
+| Step | Call (method, path pattern) | Notes |
+|---|---|---|
+| open-login | `GET www.apps09.revenue.nsw.gov.au/customer_service/finesonline` (document, then `/login`); assets; Cloudflare `POST /cdn-cgi/challenge-platform/h/g/jsd/oneshot/...` and `POST /cdn-cgi/rum`; Google Analytics `POST /g/collect` | The page is an Angular app behind Cloudflare. Only the page shell; no notice data. |
+| submit-login | `POST /{prefix}/rest/api/v2/fines/token` | Identify the notice. See below. |
+| read-summary | `GET .../fines`, `GET .../fines/services`, `GET .../fines/notifications` | All with `authorization` + `pnnum` request headers. |
+| give-plate | no API call | Only the form is filled (analytics beacon). |
+| view-images | `POST .../fines/token` (second token), then `GET .../fines/images/{id}?size=thumbnail`, `?size=medium`, `?size=full` | See below. |
+| capture-images | none | Images are already fetched by the page and held as blob URLs; the live check reads them in the page. |
+| certificates | `GET cevoc.transport.nsw.gov.au/cevoc/pages/public/certificateDetails.jsf?d&i&m&p&s` (document) | Different host (TfNSW). The link comes from the summary response. |
+
+### Login (submit-login)
+- `POST .../fines/token`, request headers (names): accept, accept-language, content-type, origin, **pnnum**, referer, sec-ch-ua*, user-agent. No `authorization`, no `cookie`. The notice number travels in the `pnnum` header (value not recorded); the body is JSON `{offenceDate:string(date)}`.
+- Response 200 `application/json`: `{token:string(JWT), credentials:{offenceDate:bool}, timestamp:string(date)}` (under 1 KB). So yes: the login call returns a token, in the BODY field `token` (a JWT-shaped string). `credentials` says which supplied credentials were accepted.
+- Response header names: access-control-allow-headers, access-control-allow-origin, allow, connection, content-type, date, server, transfer-encoding, x-application-context, x-powered-by (a Spring-style service; no Cloudflare headers).
+
+### How the token is carried
+- Every later API call sends it in the request header **`authorization`** (the first word is neither `Bearer` nor `Basic`, so it is either the bare token or a custom scheme; confirm with one more run) together with the header **`pnnum`**. No cookies are sent to the API host.
+- API responses after login include an **`authorization` response header** (rotated or refreshed token). A direct client must read it back and use the newest value.
+- Each call also sends `origin` and `referer` (the myPenalty site); CORS response headers are present. Whether the server checks them for non-browser callers is not known.
+
+### Summary (read-summary)
+- `GET .../fines` 200 json (under 10 KB): `{pnNum:string, notifications:array<n>({message:{code,text}}), offence:{desc,date,time,demerit:{points:number,disclaimer:{code,text,placeholder:array<n>({key,value,resource})}},amount:number,location:{street,suburb}}, payment:{outstanding:{amount:number},transactions:array<n>({date,status:{code,text,message:{code,text}}})}, images:{count:number, identifiers:array<n>(string), cameraCertification:{ref:string(URL), type:string}}, timestamp, seriousOffence:bool}`.
+- `images.identifiers` are the image ids used in the image path; `images.cameraCertification.ref` is an absolute URL to the TfNSW certificate page (see Certificates).
+- `GET .../fines/services` 200 json: an eligibility map, one object per service (`summary`, `payment`, `images`, `review`, `reviewAddInfo`, `court`, `nomination`, `eNomination`, `contact`, `enquiry`, `notifications`, `eo`, ...), each `{eligible:bool, authorisation:{authorisedRoles:array<n>(string)}, resource:{ref:string,type:string}, credentials:{pnNum:bool,offenceDate:bool,...}}`. The `images` entry lists `vehicleRego:bool` among the required credentials, which is how the app knows to ask for the registration.
+- `GET .../fines/notifications` 200 json: `{pnNum, notifications:array<n>({message:{code,text}}), timestamp}`.
+
+### View images (give-plate, view-images)
+- Clicking "View images" first calls `POST .../fines/token` again, with body `{offenceDate:string(date), vehicleRego:string}` and the same headers; the response has the same shape with `credentials:{offenceDate:bool,vehicleRego:bool}` and a NEW token. The registration is checked server-side when this token is issued (the wrong-registration response was not observed).
+- Then image calls: `GET .../fines/images/{id}?size=<thumbnail|medium|full>`, request headers `authorization` and `pnnum` (plus accept, origin, referer, user-agent; no content-type, no cookie), response 200 `image/jpeg` with a `content-disposition` header. The page requested, for the first image id, `medium`, `full` and `thumbnail`, and for the second id `thumbnail` (the image count on the page was 3 in these runs).
+- Sizes seen (rounded to 10 KB): thumbnail about 10 KB, medium about 680 KB, full about 1440 KB. The `size=full` response is a plain JPEG fetched by a plain authorised GET.
+
+### How images are retrieved (full resolution, direct route)
+A direct client can fetch originals without a browser: take the identifiers from the summary, obtain the images token (token call with the registration), then `GET .../images/{id}?size=full` with `authorization` and `pnnum`. Whether `size=full` is the camera's original or a recompressed copy, and its pixel size, still needs one confirmation (pixel size is printed by the map on the next successful run; the magic bytes and JPEG markers are printed when the size cannot be read). The browser route only sees what the page requests (here including `size=full`), so `capturePath` for a direct fetch would be `API_ORIGINAL`.
+
+### Certificates
+- The summary response carries `images.cameraCertification.ref`, an absolute URL on `cevoc.transport.nsw.gov.au`, path `/cevoc/pages/public/certificateDetails.jsf`, with query parameter NAMES `d`, `i`, `m`, `p`, `s` (values not recorded; `m` is the opaque parameter mentioned in section 4a). The page opens it as a normal document navigation.
+- In the map the document request showed no response (still pending when the session closed) in the run that reached it; the certificate result in that run was 0 rows. So the shape of the certificate response is NOT yet observed, and it is an HTML (JSF) page on a TfNSW host, not part of the Revenue NSW JSON service. It falls under the TfNSW approval gate (section 4b), not the Revenue NSW approval.
+
+### Feasibility of a direct (browser-free) route
+Looks feasible for notice details and images, with caveats:
+- No bot protection was seen on the JSON service: no cookies, no CAPTCHA, no CSRF header, no signed query parameters or request signatures; calls are authorised by the JWT-like token in `authorization` plus the `pnnum` header. Cloudflare (JS detection, RUM) sits only in front of the myPenalty web pages, which a direct client would not need to load.
+- Token handling is a short chain: token call (notice + date), then summary calls; a second token call (adds the registration) before image calls; always send the newest `authorization` value (it comes back in a response header). Token lifetime and whether the old token keeps working after rotation were not observed.
+- Unknowns before building: the meaning and stability of the `{prefix}` path segment, the exact `authorization` format, whether the server enforces `origin`/`referer`/User-Agent for non-browser callers, rate limits and terms, the non-match and wrong-registration responses, pixel size and originality of `size=full`.
+- The certificate page is separate (TfNSW host, HTML) and needs its own decision.
+
+### Reliability seen in the live run
+In 2 of 4 runs the `GET .../fines` summary call never completed (the map shows it pending) and the lookup ended at "page not recognised at summary"; the other two runs completed with the same inputs. A direct client needs a timeout and a bounded retry for that call.
 
 ## 4b. TfNSW providers (to be defined)
 Placeholder. TfNSW is the intended source of truth; the following are UNKNOWN and must be settled before any TfNSW provider is built:
