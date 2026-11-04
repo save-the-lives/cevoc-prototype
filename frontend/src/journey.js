@@ -1,0 +1,91 @@
+// Pure helpers for the public journey: what to say, given what the backend returned.
+import { hasCertificateList } from './certs.js';
+
+export const HELP_PHONE = 'Revenue NSW on 1300 138 118';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** 'yyyy-MM-dd' -> '14 Mar 2026' without Date objects (no time zone shifts). */
+export function niceDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  return m && MONTHS[Number(m[2]) - 1] ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : (iso || '');
+}
+
+/** 'HH:mm[:ss]' -> '11:12 am'. */
+export function niceTime(t) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t || '');
+  if (!m) return t || '';
+  const h = Number(m[1]);
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+export function money(n) {
+  if (n === null || n === undefined || n === '') return '';
+  const v = Number(n);
+  if (Number.isNaN(v)) return String(n);
+  return `$${Number.isInteger(v) ? v : v.toFixed(2)}`;
+}
+
+/** What the page can do with a lookup response. */
+export function classify(result) {
+  if (!result) return 'unavailable';
+  switch (result.status) {
+    case 'FOUND': return result.notice ? 'found' : 'unavailable';
+    case 'NOT_FOUND': return 'not-found';
+    case 'LIVE_LOOKUP_OFF':
+    case 'LIVE_LOOKUP_DISABLED': return 'lookup-off';
+    default: return 'unavailable';
+  }
+}
+
+/**
+ * Which evidence message applies.
+ *  show            at least one photo or video
+ *  needs-plate     camera offence, no images, and no registration number was given: the source releases images only with it
+ *  plate-no-images camera offence, no images, although a registration number was given (not accepted, or none held)
+ *  not-yet         camera offence, nothing to show and we cannot tell why
+ *  not-applicable  not a camera notice
+ */
+export function evidenceState(result, registrationGiven) {
+  const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE');
+  if (media.length > 0) return 'show';
+  const method = result?.notice?.enforcementMethod;
+  if (method === 'OFFICER_ISSUED') return 'not-applicable';
+  if (method !== 'CAMERA') return 'not-applicable';
+  return registrationGiven ? 'plate-no-images' : 'needs-plate';
+}
+
+/** The plain-language answer under "Was the camera working properly?". */
+export function certificateAnswer(result) {
+  if (!hasCertificateList(result)) {
+    return { tone: 'neutral', text: 'We can’t show the camera’s certificates for this notice yet.' };
+  }
+  const n = result.certificates.filter((c) => c.coversOffence === true).length;
+  if (n === 0) {
+    return { tone: 'warn', text: 'None of the certificates we found covers the time of the offence. You may want to mention this if you ask for a review.' };
+  }
+  return { tone: 'ok', text: n === 1 ? 'A certificate for this camera was in force at the time of the offence.' : `${n} certificates for this camera were in force at the time of the offence.` };
+}
+
+/** Headline for the notice status box. Only says what the data says. */
+export function statusSummary(notice) {
+  const owing = money(notice.amountOwing);
+  switch (notice.noticeStatus) {
+    case 'PAID': return { tone: 'info', stage: 'Paid', headline: 'This penalty has been paid.', next: 'There is nothing more to pay.' };
+    case 'CAUTION': return { tone: 'info', stage: 'Caution', headline: 'This penalty has been replaced with a caution.', next: 'You no longer need to pay.' };
+    case 'PAYABLE': return { tone: 'warn', stage: 'Payment due', headline: owing ? `${owing} is owing on this notice.` : 'Payment is due on this notice.', next: 'Nothing here changes your notice. Paying, asking for a review, nominating the driver or going to court are all done with Revenue NSW.' };
+    default: return { tone: 'info', stage: 'Notice status', headline: notice.statusMessage || 'Contact Revenue NSW about the current status of this notice.', next: '' };
+  }
+}
+
+/** Steps shown for a result, in order. */
+export function stepsFor(result, evState) {
+  const camera = result?.notice?.enforcementMethod === 'CAMERA';
+  const steps = [
+    { id: 'step-what', label: 'What happened' },
+    { id: 'step-evidence', label: evState === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?' },
+  ];
+  if (camera) steps.push({ id: 'step-camera', label: 'Was the camera working?' });
+  steps.push({ id: 'step-options', label: 'Your options' });
+  return steps;
+}

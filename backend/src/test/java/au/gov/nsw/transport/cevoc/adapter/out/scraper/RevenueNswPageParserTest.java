@@ -56,12 +56,20 @@ class RevenueNswPageParserTest {
         assertThat(p.notice().penaltyAmount()).isEqualByComparingTo("277.00");
         assertThat(p.notice().amountOwing()).isEqualByComparingTo("277.00");
         assertThat(p.notice().noticeStatus()).isEqualTo(NoticeStatus.PAYABLE);
-        assertThat(p.notice().enforcementMethod()).isEqualTo(EnforcementMethod.UNKNOWN);
+        assertThat(p.notice().enforcementMethod()).isEqualTo(EnforcementMethod.CAMERA); // "Camera recorded"
         assertThat(p.plateFormPresent()).isTrue();
         assertThat(p.registrationRowPresent()).isFalse();
         assertThat(p.registrationRequiredShown()).isFalse();
         assertThat(p.images()).isEmpty();
         assertThat(p.cameraCode()).isNull();
+    }
+
+    @Test
+    void offenceTextThatSaysCameraRecordedMapsToCameraAndOtherTextStaysUnknown() {
+        assertThat(RevenueNswPageParser.methodOf("Camera recorded")).isEqualTo(EnforcementMethod.CAMERA);
+        assertThat(RevenueNswPageParser.methodOf("  SAMPLE: camera recorded - sample offence ")).isEqualTo(EnforcementMethod.CAMERA);
+        assertThat(RevenueNswPageParser.methodOf("Park continuously for longer than indicated")).isEqualTo(EnforcementMethod.UNKNOWN);
+        assertThat(RevenueNswPageParser.methodOf(null)).isEqualTo(EnforcementMethod.UNKNOWN);
     }
 
     @Test

@@ -200,8 +200,9 @@ public class RevenueNswPageParser {
             String message = statusMessage(doc);
             NoticeStatus status = message.isEmpty() ? NoticeStatus.OTHER : status(message);
             BigDecimal owing = owing(message, status, penalty);
+            String description = require(doc, L_DESC);
             return new NoticeDetails(
-                    require(doc, L_DESC),
+                    description,
                     date(require(doc, L_DATE)),
                     time(require(doc, L_TIME)),
                     require(doc, L_LOCATION),
@@ -209,10 +210,16 @@ public class RevenueNswPageParser {
                     owing,
                     status,
                     message,
-                    EnforcementMethod.UNKNOWN); // CAMERA only once camera images are actually seen
+                    methodOf(description));
         } catch (IllegalArgumentException | DateTimeParseException e) {
             return null;
         }
+    }
+
+    /** An offence text that says "Camera recorded" is a camera offence; otherwise UNKNOWN (CAMERA is also set once camera images are seen). */
+    static EnforcementMethod methodOf(String offenceDescription) {
+        return offenceDescription != null && offenceDescription.toLowerCase(java.util.Locale.ROOT).contains("camera recorded")
+                ? EnforcementMethod.CAMERA : EnforcementMethod.UNKNOWN;
     }
 
     /**

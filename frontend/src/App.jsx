@@ -1,106 +1,93 @@
-import { useState } from 'react';
-import { lookupPenalty, mockEnabled } from './api.js';
-import EvidenceItem from './EvidenceItem.jsx';
-import CertificateList from './CertificateList.jsx';
-import { hasCertificateList } from './certs.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LookupError, lookupPenalty, mockEnabled } from './api.js';
+import LookupForm from './LookupForm.jsx';
+import Notice from './Notice.jsx';
+import { HELP_PHONE, classify } from './journey.js';
 import './styles.css';
+import './public.css';
 
+const TITLE = 'Check your camera fine evidence';
+
+// The journey is one page with two views: the form, and the notice. The notice number, date and number plate
+// are never put in the address bar, in storage or in a log. The plate is held only while the request is sent.
 export default function App() {
-  const [infringementNumber, setNumber] = useState('');
-  const [offenceDate, setDate] = useState('');
-  const [state, setState] = useState({ phase: 'idle' });
+  const [view, setView] = useState({ name: 'form', outcome: null, misses: 0 });
+  const [busy, setBusy] = useState(false);
+  const [found, setFound] = useState(null); // { result, query, registrationGiven }
+  const headingRef = useRef(null);
+  const firstRender = useRef(true);
 
-  async function onSubmit(e) {
-    e.preventDefault();
-    setState({ phase: 'loading' });
+  useEffect(() => {
+    document.title = view.name === 'notice' ? `What happened | ${TITLE}` : TITLE;
+    if (firstRender.current) { firstRender.current = false; return; }
+    // move focus to the new page heading so keyboard and screen reader users start in the right place
+    if (view.name === 'notice') headingRef.current?.focus({ preventScroll: false });
+    else document.getElementById('hero-h')?.focus({ preventScroll: true });
+  }, [view.name]);
+
+  // the browser Back button returns to the form instead of leaving the site
+  useEffect(() => {
+    const onPop = () => { setFound(null); setView((v) => ({ ...v, name: 'form', outcome: null })); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const run = useCallback(async (query, registration) => {
+    setBusy(true);
+    let outcome;
     try {
-      setState({ phase: 'done', result: await lookupPenalty({ infringementNumber, offenceDate }) });
+      const result = await lookupPenalty({ ...query, registration });
+      outcome = { kind: classify(result), result };
     } catch (err) {
-      setState({ phase: 'error', message: err.message });
+      outcome = { kind: err instanceof LookupError && err.kind === 'invalid' ? 'not-found' : 'unavailable' };
     }
-  }
+    setBusy(false);
+    return outcome;
+  }, []);
+
+  const submit = async (query) => {
+    const registrationGiven = !!query.registration;
+    const out = await run({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration);
+    if (out.kind === 'found') {
+      setFound({ result: out.result, query: { infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, registrationGiven });
+      window.history.pushState({ notice: true }, '');
+      window.scrollTo(0, 0);
+      setView({ name: 'notice', outcome: null, misses: 0 });
+    } else {
+      setView((v) => ({ name: 'form', outcome: out.kind, misses: out.kind === 'not-found' ? v.misses + 1 : v.misses }));
+    }
+  };
+
+  const retryWithPlate = async (registration) => {
+    const out = await run(found.query, registration);
+    if (out.kind === 'found') setFound((f) => ({ ...f, result: out.result, registrationGiven: true }));
+    else setView({ name: 'form', outcome: out.kind, misses: 0 });
+  };
+
+  const startAgain = () => {
+    if (window.history.state?.notice) window.history.back(); else { setFound(null); setView({ name: 'form', outcome: null, misses: 0 }); }
+  };
 
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <main id="main" className="page">
-        <h1>Check your camera fine evidence</h1>
-        <p>Enter the details from your penalty notice. No sign-in needed.</p>
-        <form onSubmit={onSubmit} className="form">
-          <label>Penalty notice number
-            <input value={infringementNumber} onChange={(e) => setNumber(e.target.value)} required autoComplete="off" />
-          </label>
-          <label>Date of offence
-            <input type="date" value={offenceDate} onChange={(e) => setDate(e.target.value)} required />
-          </label>
-          <button className="btn primary" disabled={state.phase === 'loading'}>
-            {state.phase === 'loading' ? 'Checking...' : 'Check'}
-          </button>
-        </form>
-        {mockEnabled && <DevScenarios onPick={(n) => { setNumber(n); setDate((d) => d || '2026-03-14'); }} />}
-
-        {state.phase === 'error' && <p role="alert" className="error">{state.message}</p>}
-        {state.phase === 'done' && <Result result={state.result} />}
+      <div className="masthead"><div className="wrap">NSW Government</div></div>
+      <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement</p></div></header>
+      <main id="main" tabIndex={-1}>
+        {view.name === 'notice' && found
+          ? <Notice result={found.result} registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onStartAgain={startAgain} headingRef={headingRef} />
+          : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit}
+            scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
+      <footer className="site-foot"><div className="wrap foot-in">
+        <span>Need help? Call {HELP_PHONE}</span>
+        <span>Prototype service</span>
+      </div></footer>
     </>
   );
 }
 
-function DevScenarios({ onPick }) {
-  const scenarios = [
-    ['9000000001', 'Speed camera'], ['9000000002', 'Officer caution'],
-    ['9000000003', 'Ticketless camera'], ['9000000009', 'Broken video'],
-  ];
-  return (
-    <p className="dev">Mock data (dev only): {scenarios.map(([n, l]) => (
-      <button key={n} type="button" className="linklike" onClick={() => onPick(n)}>{l}</button>
-    ))}</p>
-  );
-}
-
-function Result({ result }) {
-  const n = result.notice;
-  if (result.status === 'LIVE_LOOKUP_OFF' || result.status === 'LIVE_LOOKUP_DISABLED') {
-    return <section aria-live="polite"><h2>Lookup not available yet</h2><p>{result.summary}</p></section>;
-  }
-  if (result.status !== 'FOUND' || !n) {
-    return <section aria-live="polite"><h2>No match</h2><p>{result.summary}</p></section>;
-  }
-  const evidence = result.evidence || [];
-  const isCamera = n.enforcementMethod === 'CAMERA';
-  const certificates = evidence.filter((e) => e.kind === 'CERTIFICATE');
-  const media = evidence.filter((e) => e.kind !== 'CERTIFICATE');
-  return (
-    <section aria-live="polite" className="result">
-      {(result.source === 'STUB' || result.source === 'MANIFEST') && <p className="banner" role="note"><strong>Prototype data only.</strong> This is not a real notice.</p>}
-      <h2>Notice {result.infringementNumber}</h2>
-      <p className="status"><strong>{n.statusMessage}</strong></p>
-      <dl className="details">
-        <div><dt>Amount owing</dt><dd>${n.amountOwing}</dd></div>
-        <div><dt>Penalty amount</dt><dd>${n.penaltyAmount}</dd></div>
-        <div className="span"><dt>Offence</dt><dd>{n.offenceDescription}</dd></div>
-        <div><dt>Date and time</dt><dd>{n.offenceDate} {n.offenceTime}</dd></div>
-        <div><dt>Location</dt><dd>{n.location}</dd></div>
-      </dl>
-
-      <h3>Evidence</h3>
-      {media.length > 0
-        ? (
-          <>
-            <p className="hint">Zoom in to read plates and signs: pinch or double-tap on a touch screen, scroll wheel or the buttons with a mouse, plus and minus keys on a keyboard.</p>
-            <ul className="grid">{media.map((e) => <EvidenceItem key={e.url} item={e} />)}</ul>
-          </>
-        )
-        : <p>{isCamera ? 'Evidence is not available to show yet.' : 'No camera evidence applies to this notice.'}</p>}
-      {isCamera && hasCertificateList(result) && <CertificateList certificates={result.certificates} />}
-      {isCamera && !hasCertificateList(result) && (
-        <>
-          <h3>Enforcement centre certificate</h3>
-          {certificates.length > 0
-            ? <ul className="grid">{certificates.map((e) => <EvidenceItem key={e.url} item={e} />)}</ul>
-            : <p>Certificate information is not available to show yet.</p>}
-        </>
-      )}
-    </section>
-  );
-}
+const SCENARIOS = [
+  ['9000000001', 'Speed camera'], ['9000000004', 'Plate needed'], ['9000000005', 'Evidence not yet available'],
+  ['9000000002', 'Officer caution'], ['9000000006', 'Not found'], ['9000000007', 'Unavailable'],
+].map(([number, label]) => ({ number, label }));

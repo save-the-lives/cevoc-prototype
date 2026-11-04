@@ -1,6 +1,7 @@
 package au.gov.nsw.transport.cevoc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -77,5 +78,22 @@ class PenaltyLookupControllerTest {
                 .andExpect(jsonPath("$.status").value("FOUND"))
                 .andExpect(jsonPath("$.evidence.length()").value(3))
                 .andExpect(jsonPath("$.evidence[2].kind").value("CERTIFICATE"));
+    }
+
+    @Test
+    void optionalRegistrationIsAcceptedIgnoredByTheManifestAndNeverEchoed() throws Exception {
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"9000000001\",\"offenceDate\":\"2026-09-01\",\"registration\":\"TST 123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FOUND"))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("TST"))));
+    }
+
+    @Test
+    void anUnusableRegistrationIsTreatedAsNotGivenRatherThanRejected() throws Exception {
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"9000000001\",\"offenceDate\":\"2026-09-01\",\"registration\":\"<script>\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FOUND"));
     }
 }
