@@ -21,8 +21,10 @@ function Step({ n, id, title, answer, tone, children }) {
       <div className={`q-n${tone === 'warn' ? ' is-warn' : ''}`} aria-hidden="true">{n}</div>
       <div className="q-body">
         <h2 id={`${id}-h`}>{title}</h2>
-        {answer && <p className="q-answer">{answer}</p>}
-        {children}
+        <div aria-live="polite">
+          {answer && <p className="q-answer">{answer}</p>}
+          {children}
+        </div>
       </div>
     </section>
   );
@@ -91,37 +93,75 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy }) {
   }
 }
 
-const READY = { evidence: 'ready', certificates: 'ready' };
+const READY = { details: 'ready', evidence: 'ready', certificates: 'ready' };
 
-/** `sections` says, per part of the page, whether it is still loading ('loading'), arrived ('ready') or failed ('error'). */
-export default function Notice({ result, sections = READY, registrationGiven, onPlate, plateBusy, onStartAgain, headingRef }) {
-  const n = result.notice;
-  const camera = isCamera(result);
+function Failed({ what, onRetry }) {
+  return (
+    <p className="notice-box" role="status">
+      We couldn’t load {what}. The rest of this page is not affected.{' '}
+      {onRetry && <button type="button" className="linklike" onClick={onRetry}>Try again</button>}
+    </p>
+  );
+}
+
+/**
+ * The whole journey frame is on screen from the moment the lookup starts. `sections` says, per part, whether it is
+ * still loading ('loading'), arrived ('ready') or failed ('error'); `result` is null until the notice details arrive.
+ * Each section announces its own change politely. Options and help need no data, so they are always shown.
+ */
+export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, plateBusy, onRetry, onStartAgain, headingRef }) {
+  const detailsLoading = sections.details === 'loading';
+  const detailsFailed = sections.details === 'error' || (!detailsLoading && !result);
+  const n = result?.notice;
   const evLoading = sections.evidence === 'loading';
   const certLoading = sections.certificates === 'loading';
-  const media = (result.evidence || []).filter((e) => e.kind !== 'CERTIFICATE');
-  const oldCerts = (result.evidence || []).filter((e) => e.kind === 'CERTIFICATE');
-  const ev = evidenceState(result, registrationGiven);
-  const steps = stepsFor(result, ev);
-  const status = statusSummary(n);
-  const certAns = certLoading ? { tone: 'neutral', text: 'Checking the camera’s certificates…' } : certificateAnswer(result);
+  const evFailed = sections.evidence === 'error';
+  const certFailed = sections.certificates === 'error';
+  // Until the notice is known the camera steps are shown as loading; after that they follow the data.
+  const known = !!result && !!n;
+  const camera = !known || isCamera(result);
+  const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE');
+  const oldCerts = (result?.evidence || []).filter((e) => e.kind === 'CERTIFICATE');
+  const ev = known ? evidenceState(result, registrationGiven) : 'show';
+  const steps = known ? stepsFor(result, ev) : [
+    { id: 'step-what', label: 'What happened' }, { id: 'step-evidence', label: 'Was it my vehicle?' },
+    { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
+  ];
+  const status = known ? statusSummary(n) : null;
+  const certAns = certLoading ? { tone: 'neutral', text: 'Checking the camera certificates…' } : certificateAnswer(result || {});
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
-  const demo = result.source === 'STUB' || result.source === 'MANIFEST';
-  const evAnswer = evLoading ? 'Getting the photos…' : sections.evidence === 'error' ? 'We couldn’t load the photos just now.' : ev === 'show' ? `Check the number plate and the vehicle in the ${media.some((m) => m.kind === 'VIDEO') ? 'photos and video' : 'photos'}.`
-    : ev === 'not-applicable' ? undefined : 'We can’t show the photos yet.';
+  const demo = result?.source === 'STUB' || result?.source === 'MANIFEST';
+  const evAnswer = detailsLoading ? 'Fetching the camera photos…' : evLoading ? 'Fetching the camera photos…' : evFailed ? 'We couldn’t load the photos.'
+    : ev === 'show' ? `Check the number plate and the vehicle in the ${media.some((m) => m.kind === 'VIDEO') ? 'photos and video' : 'photos'}.`
+      : ev === 'not-applicable' ? undefined : 'We can’t show the photos yet.';
 
   return (
     <div className="wrap page-body">
       <p className="crumb"><button type="button" className="linklike" onClick={onStartAgain}>← Look up a different notice</button></p>
+      {query && (
+        <p className="query-line">
+          Notice {query.infringementNumber}, offence date {niceDate(query.offenceDate)}.{' '}
+          <button type="button" className="linklike" onClick={onStartAgain}>Edit<span className="sr-only"> the notice number or date</span></button>
+        </p>
+      )}
       {demo && <p className="banner" role="note"><strong>Prototype data only.</strong> This is not a real notice.</p>}
       <h1 ref={headingRef} tabIndex={-1}>What happened</h1>
-      <p className="lede">Penalty notice ({result.infringementNumber})</p>
+      <p className="lede">Penalty notice ({result?.infringementNumber || query?.infringementNumber})</p>
 
-      <section className={`stat is-${status.tone}`} aria-labelledby="stat-h">
-        <h2 id="stat-h">{status.stage}</h2>
-        <p className="stat-lead">{status.headline}</p>
-        {status.next && <p>{status.next}</p>}
-        {n.statusMessage && n.noticeStatus !== 'OTHER' && <p className="muted">{n.statusMessage}</p>}
+      <section className={`stat is-${status?.tone || 'info'}`} aria-labelledby="stat-h" aria-live="polite" aria-busy={detailsLoading || undefined}>
+        {status ? (
+          <>
+            <h2 id="stat-h">{status.stage}</h2>
+            <p className="stat-lead">{status.headline}</p>
+            {status.next && <p>{status.next}</p>}
+            {n.statusMessage && n.noticeStatus !== 'OTHER' && <p className="muted">{n.statusMessage}</p>}
+          </>
+        ) : (
+          <>
+            <h2 id="stat-h">Notice status</h2>
+            {detailsFailed ? <p className="stat-lead">We couldn’t load your notice.</p> : <p className="stat-lead">Looking up your notice…</p>}
+          </>
+        )}
       </section>
 
       <div className="story">
@@ -129,33 +169,42 @@ export default function Notice({ result, sections = READY, registrationGiven, on
           <ol>{steps.map((s) => <li key={s.id}><a href={`#${s.id}`}>{s.label}</a></li>)}</ol>
         </nav>
         <div>
-          <Step n={stepNo('step-what')} id="step-what" title="What happened">
-            <dl className="facts">
-              <div><dt>When</dt><dd><strong>{niceDate(n.offenceDate)}</strong><small>{niceTime(n.offenceTime)}</small></dd></div>
-              <div><dt>Where</dt><dd><strong>{n.location}</strong></dd></div>
-              <div className="span"><dt>Offence</dt><dd><strong>{n.offenceDescription}</strong></dd></div>
-              <div><dt>Penalty</dt><dd><strong>{money(n.penaltyAmount)}</strong></dd></div>
-              <div><dt>Amount owing</dt><dd><strong>{money(n.amountOwing)}</strong></dd></div>
-            </dl>
+          <Step n={stepNo('step-what')} id="step-what" title="What happened" answer={detailsLoading ? 'Looking up your notice…' : undefined}>
+            {detailsLoading
+              ? <ListSkeleton rows={1} label="Looking up your notice. This can take up to half a minute." />
+              : detailsFailed
+                ? <Failed what="your notice" onRetry={onRetry} />
+                : (
+                  <dl className="facts">
+                    <div><dt>When</dt><dd><strong>{niceDate(n.offenceDate)}</strong><small>{niceTime(n.offenceTime)}</small></dd></div>
+                    <div><dt>Where</dt><dd><strong>{n.location}</strong></dd></div>
+                    <div className="span"><dt>Offence</dt><dd><strong>{n.offenceDescription}</strong></dd></div>
+                    <div><dt>Penalty</dt><dd><strong>{money(n.penaltyAmount)}</strong></dd></div>
+                    <div><dt>Amount owing</dt><dd><strong>{money(n.amountOwing)}</strong></dd></div>
+                  </dl>
+                )}
           </Step>
 
           <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
-            {evLoading
-              ? <PhotoSkeleton label="Getting the photos. This can take up to half a minute." />
-              : sections.evidence === 'error'
-                ? <p className="notice-box" role="status">We couldn’t get the photos this time. The rest of this page is still correct. Please try again later, or call {HELP_PHONE}.</p>
+            {detailsLoading || evLoading
+              ? <PhotoSkeleton label="Fetching the camera photos. This can take up to half a minute." />
+              : evFailed || detailsFailed
+                ? <Failed what="the photos" onRetry={onRetry} />
                 : <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} />}
           </Step>
 
           {camera && (
-            <Step n={stepNo('step-camera')} id="step-camera" title="Was the camera working properly?" tone={certAns.tone === 'warn' ? 'warn' : ''} answer={certAns.text}>
-              {certLoading
-                ? <ListSkeleton label="Checking the camera’s certificates" />
-                : hasCertificateList(result)
-                  ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} /></Suspense>
-                  : oldCerts.length > 0
-                    ? <Suspense fallback={<PhotoSkeleton count={oldCerts.length} />}><EvidenceGrid items={oldCerts} /></Suspense>
-                    : <p className="notice-box" role="status">Certificate information is not available to show yet. Everything else on this page is still correct.</p>}
+            <Step n={stepNo('step-camera')} id="step-camera" title="Was the camera working properly?" tone={certAns.tone === 'warn' ? 'warn' : ''}
+              answer={detailsLoading ? 'Checking the camera certificates…' : certFailed || detailsFailed ? 'We couldn’t load the certificates.' : certAns.text}>
+              {detailsLoading || certLoading
+                ? <ListSkeleton label="Checking the camera certificates" />
+                : certFailed || detailsFailed
+                  ? <Failed what="the camera certificates" onRetry={onRetry} />
+                  : hasCertificateList(result)
+                    ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} /></Suspense>
+                    : oldCerts.length > 0
+                      ? <Suspense fallback={<PhotoSkeleton count={oldCerts.length} />}><EvidenceGrid items={oldCerts} /></Suspense>
+                      : <p className="notice-box" role="status">Certificate information is not available to show yet. Everything else on this page is still correct.</p>}
             </Step>
           )}
 

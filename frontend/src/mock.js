@@ -78,7 +78,7 @@ export async function mockStream({ infringementNumber, offenceDate, registration
     signal?.addEventListener('abort', () => { clearTimeout(t); reject(Object.assign(new Error('aborted'), { name: 'AbortError' })); }, { once: true });
   });
   const { eventsFromResult } = await import('./lookupState.js');
-  const delays = { details: 0, evidence: 1200, certificates: 1200, done: 200 };
+  const delays = { details: 1500, evidence: 1200, certificates: 1200, done: 200 };
   for (const [name, data] of eventsFromResult(result)) {
     await wait(delays[name] ?? 0);
     onEvent(name, data);

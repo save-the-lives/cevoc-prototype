@@ -29,9 +29,26 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
     private final Path captureDir;
     private final boolean headless;
     private final EvidenceRateLimiter limiter;
+    private final boolean reuseBrowser;
+
+    /** A started Playwright driver and Chromium, kept for the next lookup on the same thread (Playwright is thread-confined). */
+    private record Holder(Playwright playwright, Browser browser) {}
+
+    private static final int MAX_WARM = 2;
+    private final java.util.Map<Thread, Holder> warm = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** @param captureDir where to save the raw rendered HTML of each step, or blank for none (owner's local check) */
     public PlaywrightSessionFactory(ScraperSettings settings, String captureDir, boolean headless) {
+        this(settings, captureDir, headless, false);
+    }
+
+    /**
+     * @param reuseBrowser keep the Chromium process warm between lookups made on the same thread. Every lookup still gets a
+     *                     brand-new browser context (no cookies, storage or cache carried over, closed at the end), so nothing
+     *                     is shared between people; only the started browser process is.
+     */
+    public PlaywrightSessionFactory(ScraperSettings settings, String captureDir, boolean headless, boolean reuseBrowser) {
+        this.reuseBrowser = reuseBrowser;
         this.settings = settings;
         this.captureDir = captureDir == null || captureDir.isBlank() ? null : Path.of(captureDir);
         this.headless = headless;
@@ -43,9 +60,17 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
         Playwright playwright = null;
         Browser browser = null;
         BrowserContext context = null;
+        boolean owns = true;
         try {
-            playwright = Playwright.create();
-            browser = playwright.chromium().launch(launchOptions(headless));
+            Holder held = reuseBrowser ? warmHolder() : null;
+            owns = held == null;
+            if (held != null) {
+                playwright = held.playwright();
+                browser = held.browser();
+            } else {
+                playwright = Playwright.create();
+                browser = playwright.chromium().launch(launchOptions(headless));
+            }
             context = browser.newContext(new Browser.NewContextOptions()
                     .setUserAgent(settings.userAgent())
                     .setLocale("en-AU")
@@ -56,11 +81,50 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
             context.setDefaultTimeout(step.toMillis());
             context.setDefaultNavigationTimeout(step.toMillis());
             return new PlaywrightSession(playwright, browser, context, baseUrl, settings.maxBytes(), step, limiter,
-                    captureDir == null ? null : new HtmlCapture(captureDir));
+                    captureDir == null ? null : new HtmlCapture(captureDir), owns);
         } catch (RuntimeException e) {
-            closeQuietly(context, browser, playwright);
+            if (!owns) {
+                forgetWarm();
+            }
+            closeQuietly(context, owns ? browser : null, owns ? playwright : null);
             // First line only, no cause: nothing about the target should leak from here.
             throw new IOException("could not start the browser: " + firstLine(e.getMessage()));
+        }
+    }
+
+    /**
+     * The warm browser of this thread, started if needed; null when this thread has none and enough others are held (it then
+     * uses a throw-away browser like before). A browser that has gone away is replaced.
+     */
+    private Holder warmHolder() {
+        Thread t = Thread.currentThread();
+        warm.keySet().removeIf(th -> !th.isAlive());
+        Holder h = warm.get(t);
+        if (h != null && h.browser().isConnected()) {
+            return h;
+        }
+        if (h != null) {
+            forgetWarm();
+        }
+        if (warm.size() >= MAX_WARM) {
+            return null;
+        }
+        Playwright p = Playwright.create();
+        try {
+            Browser b = p.chromium().launch(launchOptions(headless));
+            h = new Holder(p, b);
+            warm.put(t, h);
+            return h;
+        } catch (RuntimeException e) {
+            closeQuietly(null, null, p);
+            throw e;
+        }
+    }
+
+    private void forgetWarm() {
+        Holder h = warm.remove(Thread.currentThread());
+        if (h != null) {
+            closeQuietly(null, h.browser(), h.playwright());
         }
     }
 

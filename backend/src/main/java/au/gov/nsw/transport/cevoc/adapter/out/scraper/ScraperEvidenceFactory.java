@@ -24,8 +24,11 @@ public final class ScraperEvidenceFactory {
         RenderedPageSessionFactory sessions = NO_BROWSER;
         RegistrationProvider registrations = RegistrationProvider.none();
         if (live) {
+            // Warm browser (default on): the Chromium process stays up between lookups on the same thread, each lookup still gets
+            // a fresh context. cevoc.scraper.evidence.browser-warm=false restores a new browser per lookup.
             RenderedPageSessionFactory f = playwright(s, env.getProperty("cevoc.live-check.capture-dir", ""),
-                    env.getProperty("cevoc.scraper.evidence.browser-headless", Boolean.class, true));
+                    env.getProperty("cevoc.scraper.evidence.browser-headless", Boolean.class, true),
+                    env.getProperty("cevoc.scraper.evidence.browser-warm", Boolean.class, true));
             if (f != null) {
                 sessions = f;
                 registrations = new RequestScopedRegistration();
@@ -73,7 +76,16 @@ public final class ScraperEvidenceFactory {
 
     /** Reflection keeps the default build free of any Playwright reference. Null when the profile is not active. */
     static RenderedPageSessionFactory playwright(ScraperSettings s, String captureDir, boolean headless) {
+        return playwright(s, captureDir, headless, false);
+    }
+
+    static RenderedPageSessionFactory playwright(ScraperSettings s, String captureDir, boolean headless, boolean warm) {
         try {
+            if (warm) {
+                return (RenderedPageSessionFactory) Class.forName(LIVE_FACTORY)
+                        .getConstructor(ScraperSettings.class, String.class, boolean.class, boolean.class)
+                        .newInstance(s, captureDir, headless, true);
+            }
             return (RenderedPageSessionFactory) Class.forName(LIVE_FACTORY)
                     .getConstructor(ScraperSettings.class, String.class, boolean.class)
                     .newInstance(s, captureDir, headless);

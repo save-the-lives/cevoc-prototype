@@ -72,8 +72,11 @@ final class PlaywrightSession implements RenderedPageSession {
     private final HtmlCapture capture;
     private final Redactor redactor = new Redactor();
 
+    private final boolean ownsBrowser;
+
     PlaywrightSession(Playwright playwright, Browser browser, BrowserContext context, URI baseUrl, long maxBytes,
-                      Duration stepTimeout, EvidenceRateLimiter limiter, HtmlCapture capture) {
+                      Duration stepTimeout, EvidenceRateLimiter limiter, HtmlCapture capture, boolean ownsBrowser) {
+        this.ownsBrowser = ownsBrowser;
         this.playwright = playwright;
         this.browser = browser;
         this.context = context;
@@ -183,8 +186,8 @@ final class PlaywrightSession implements RenderedPageSession {
             tag("open-login");
             pace();
             page.navigate(loginUrl, new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+            // Ready as soon as both inputs are there; no waiting for the network to go quiet.
             waitUntil(() -> page.locator(PNN).count() > 0 && page.locator(DATE).count() > 0);
-            settle();
             return snapshot("1-login");
         });
     }
@@ -201,7 +204,6 @@ final class PlaywrightSession implements RenderedPageSession {
             markFilled(noticeNumber, offenceDate);
             click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next").setExact(true)),
                     page.locator(NEXT_CSS));
-            settle();
             markAfterClick();
             // Hidden alert templates exist on the login page from the start, so only a VISIBLE alert counts, and the
             // login inputs disappearing (the app moved on) counts too.
@@ -231,20 +233,20 @@ final class PlaywrightSession implements RenderedPageSession {
             tag("view-images");
             click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("View images")),
                     page.locator(VIEW_CSS));
-            settle();
             au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("view-clicked=yes");
             // Thumbnails are blob: images. A visible error with the plate field still present ends the wait early.
             waitUntil(() -> page.locator(BLOB_IMG).count() > 0
                     || (page.locator(PLATE).count() > 0 && visibleAlerts() > 0));
-            // Let the rest of the thumbnails arrive: wait for the count to stop changing (bounded).
+            // Let the rest of the thumbnails arrive: done as soon as the count has been the same for two short looks (bounded).
             int last = -1;
-            for (int i = 0; i < 6; i++) {
+            int same = 0;
+            for (int i = 0; i < 30 && same < 2; i++) {
                 int now = page.locator(BLOB_IMG).count();
-                if (now == last) {
-                    break;
-                }
+                same = now == last ? same + 1 : 0;
                 last = now;
-                page.waitForTimeout(1500);
+                if (same < 2) {
+                    page.waitForTimeout(250);
+                }
             }
             au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.note("blob-imgs-live=" + Math.min(page.locator(BLOB_IMG).count(), 40)
                     + "; alerts-visible=" + visibleAlerts() + "; alert-words=" + alertWords() + "; post-calls=" + String.join(",", postStatuses));
@@ -755,7 +757,8 @@ final class PlaywrightSession implements RenderedPageSession {
             NetworkMapHolder.deposit(netmap.lines());
         }
         redactor.clear();
-        PlaywrightSessionFactory.closeQuietly(context, browser, playwright);
+        // A warm browser outlives the lookup: only this lookup's context (cookies, storage, pages) is closed.
+        PlaywrightSessionFactory.closeQuietly(context, ownsBrowser ? browser : null, ownsBrowser ? playwright : null);
     }
 
     // ---- helpers ----
@@ -898,7 +901,7 @@ final class PlaywrightSession implements RenderedPageSession {
             } catch (PlaywrightException ignored) {
                 // page is mid-navigation; look again
             }
-            page.waitForTimeout(400);
+            page.waitForTimeout(150);
         }
         return false;
     }

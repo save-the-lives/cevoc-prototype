@@ -116,3 +116,4 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .media-frame { position: relative; aspect-ratio: 16 / 10; background: #0e1116; border-radius: 6px; overflow: hidden; }
 .media-frame .media-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .zoom-open { margin-top: 8px; }
+.query-line { margin: 4px 0 8px; color: var(--muted, #50596b); }

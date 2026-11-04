@@ -29,7 +29,7 @@ export default function App() {
 
   // the browser Back button returns to the form instead of leaving the site
   useEffect(() => {
-    const onPop = () => { abortRef.current?.abort(); setBusy(false); setFound(null); setView((v) => ({ ...v, name: 'form', outcome: null })); };
+    const onPop = () => { if (popSkip.current) { popSkip.current = false; return; } abortRef.current?.abort(); setBusy(false); setFound(null); setView((v) => ({ ...v, name: 'form', outcome: null })); };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -42,7 +42,9 @@ export default function App() {
   const cancel = () => { abortRef.current?.abort(); abortRef.current = null; };
   useEffect(() => cancel, []);
 
-  const stream = useCallback(async (query, registration, { onFirst, onFail }) => {
+  const popSkip = useRef(false);
+
+  const stream = useCallback(async (query, registration, onFail) => {
     cancel();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -55,46 +57,50 @@ export default function App() {
       if (name === 'details' && first) {
         first = false;
         const kind = classify(toResult(liveRef.current));
-        if (kind === 'found') onFirst();
-        else onFail(kind);
+        if (kind !== 'found' && kind !== 'unavailable') onFail(kind);
       }
     };
     try {
       await streamLookup({ ...query, registration }, take, controller.signal);
     } catch (err) {
       if (err?.name === 'AbortError' || controller.signal.aborted) return;
-      if (first) { first = false; onFail(err instanceof LookupError && err.kind === 'invalid' ? 'not-found' : 'unavailable'); }
+      if (first && err instanceof LookupError && err.kind === 'invalid') { first = false; onFail('not-found'); }
       else take('error', { cause: 'network' });
     }
-    if (first && !controller.signal.aborted) { first = false; onFail('unavailable'); } // the stream ended without the notice details
+    if (!controller.signal.aborted && !liveRef.current.finished) take('error', { cause: 'stream-interrupted' });
     if (abortRef.current === controller) { abortRef.current = null; setBusy(false); }
   }, []);
 
-  const submit = async (query) => {
-    const plain = { infringementNumber: query.infringementNumber, offenceDate: query.offenceDate };
-    const registrationGiven = !!query.registration;
+  // The result frame opens at once with every section loading; the form is replaced by a one-line summary with an Edit link.
+  const begin = async (plain, registration, { fresh }) => {
     liveRef.current = initialLookup();
     setLive(liveRef.current);
-    await stream(plain, query.registration, {
-      onFirst: () => {
-        setFound({ query: plain, registrationGiven });
-        window.history.pushState({ notice: true }, '');
-        window.scrollTo(0, 0);
-        setView({ name: 'notice', outcome: null, misses: 0 });
-      },
-      onFail: (kind) => setView((v) => ({ name: 'form', outcome: kind, misses: kind === 'not-found' ? v.misses + 1 : v.misses })),
+    setFound({ query: plain, registrationGiven: !!registration });
+    if (fresh) {
+      window.history.pushState({ notice: true }, '');
+      window.scrollTo(0, 0);
+      setView({ name: 'notice', outcome: null, misses: 0 });
+    }
+    await stream(plain, registration, (kind) => {
+      // Not matched / switched off: back to the form with its message, undoing the history entry we added.
+      popSkip.current = !!window.history.state?.notice;
+      if (popSkip.current) window.history.back();
+      setFound(null);
+      setView((v) => ({ name: 'form', outcome: kind, misses: kind === 'not-found' ? v.misses + 1 : v.misses }));
     });
   };
+
+  const submit = (query) => begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true });
+
+  // Re-runs the whole lookup (no number plate is kept, so a plate is asked for again inline if the source needs it).
+  const retry = () => begin(found.query, undefined, { fresh: false });
 
   // The registration is asked for inline on the notice page and sent with a fresh request: it is held only for that call.
   const retryWithPlate = async (registration) => {
     liveRef.current = restartSections(liveRef.current);
     setLive(liveRef.current);
     setFound((f) => ({ ...f, registrationGiven: true }));
-    await stream(found.query, registration, {
-      onFirst: () => {},
-      onFail: (kind) => setView({ name: 'form', outcome: kind, misses: 0 }),
-    });
+    await stream(found.query, registration, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
   };
 
   const startAgain = () => {
@@ -102,15 +108,19 @@ export default function App() {
     if (window.history.state?.notice) window.history.back(); else { setFound(null); setView({ name: 'form', outcome: null, misses: 0 }); }
   };
 
+  const asResult = live ? toResult(live) : null;
+  const foundResult = asResult && classify(asResult) === 'found' ? asResult : null;
+
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
       <div className="masthead"><div className="wrap">NSW Government</div></div>
       <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement</p></div></header>
       <main id="main" tabIndex={-1}>
-        {view.name === 'notice' && found && live?.details
-          ? <Notice result={toResult(live)} sections={{ evidence: live.evidence.state, certificates: live.certificates.state }}
-            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onStartAgain={startAgain} headingRef={headingRef} />
+        {view.name === 'notice' && found
+          ? <Notice result={foundResult} query={found.query}
+            sections={{ details: foundResult ? 'ready' : live?.finished || live?.details ? 'error' : 'loading', evidence: live.evidence.state, certificates: live.certificates.state }}
+            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onStartAgain={startAgain} headingRef={headingRef} />
           : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
