@@ -24,7 +24,7 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 ## Public URLs
 `https://save-the-lives.github.io/cevoc-prototype` is the published prototype. It is built from `prototype/` by `.github/workflows/deploy.yml` and its URL must not change.
 
-See `docs/ARCHITECTURE.md`.
+See `docs/ARCHITECTURE.md` (the standing architecture document) and `docs/decisions/` (one record per architectural decision).
 
 ## Test notice numbers (fictitious, any past offence date)
 

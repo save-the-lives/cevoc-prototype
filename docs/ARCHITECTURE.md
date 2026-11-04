@@ -1,4 +1,37 @@
-# Architecture
+# Architecture (standing document)
+
+This is the one place where anything architectural is captured. It is organised by area. Each area states the current position and points at the decision records in `docs/decisions/` (what was chosen, why, what was ruled out, date, owner approval). Any architectural decision made in voice or text is added here and as a record in `docs/decisions/`. Detailed implementation notes from before this document was reorganised are kept unchanged further down, under "Detailed implementation notes".
+
+Contributor note: this is a public repository. Describe people only as "owner" or "project owner" (and "owner approval" in decision records). Do not name anyone's employer or role, and do not name individuals. Naming organisations as data sources or providers (Revenue NSW, the TfNSW certificates page) is fine and needed.
+
+Status words used below: PROVEN means checked in the code or a run; INFERRED means reasoned but not checked; PROPOSED means designed, awaiting an owner pick, not built.
+
+## Areas and decisions
+
+| Area | Position today | Decision records |
+|---|---|---|
+| Structure | Hexagonal: domain, application (ports), adapters; `ArchitectureTest` enforces direction | 0001 |
+| Cloud and vendors | Cloud-agnostic. Azure is the MVP trial only. AWS is the real target. Vendor specifics live behind adapters and in deploy config only | 0002, 0008 |
+| Providers (sources of data) | Revenue NSW is the interim provider. TfNSW APIs replace it concern by concern, by configuration | 0003 |
+| Browser (Chromium) route | Prototype only, behind its adapter, deleted at cutover | 0004 |
+| Data scope and security | Public data only. No secrets in code, logs or the hand-off log | 0005 |
+| Published URLs | Existing prototype URLs must not change | 0006 |
+| Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item and a per-program configuration | 0007 |
+| Vendor-neutrality drift | Audit of 2026-11-04: no core leak into domain or application cloud-wise; a few leaks listed in record 0008 | 0008 |
+
+## Information types, status and transparency (PROPOSED, record 0007)
+Types: `IMAGES`, `CERTIFICATES`, `VIDEO` (placeholder only; the legacy site has no video, so nothing is built or wired for it). Each type has its own outbound port and its own providers; the domain holds a provider-agnostic section per type carrying a status and a message, and the UI renders only the status and message. Statuses: `AVAILABLE`, `OFF_BY_CHOICE`, `NOT_APPLICABLE` (this program does not have this type), `NOT_YET_AVAILABLE` (by design, planned, such as video today) and `FAILED` (expected but could not be retrieved for a technical reason). The rule: a type is never hidden silently. A by-design message ("Video is not available for this offence") must read differently from a fault message ("We could not load the video just now. This is a fault, not a choice. Try again later").
+
+## Per-program capability configuration (PROPOSED, record 0007)
+Which types a program shows is data, not code: a configuration file keyed by enforcement program and type, with a mode and the message text for the by-design states. Adding a program or a type is a configuration change.
+
+## Contributor and process rules
+- Docs-only changes are raised on their own branch. This document and the records are updated in the same change as the decision.
+- Nothing in this repository may describe the owner or contributors by employer or role.
+
+---
+
+# Detailed implementation notes (kept from before the reorganisation)
 
 Hexagonal. Dependencies point inwards: `adapter` -> `application` -> `domain`. `ArchitectureTest` enforces this.
 
@@ -70,7 +103,7 @@ After the images state, `ScraperEvidenceLookupAdapter` calls `RenderedPageSessio
 ## Scraper adapter (prototype only, off by default)
 `adapter/out/scraper/` can read a Revenue NSW style penalty page and copy its images and videos into storage through `MediaStoragePort`, returning object keys like any other `PenaltyLookupPort`.
 
-**Production use needs the site owner's (Revenue NSW / Service NSW) written approval first. It should be replaced by the real evidence API.** Transport for NSW (Arjan) obtains that approval before it is ever enabled. Until then it must stay off.
+**Production use needs the site owner's (Revenue NSW / Service NSW) written approval first. It should be replaced by the real evidence API.** The project owner obtains that approval before it is ever enabled. Until then it must stay off.
 
 Safeguards:
 - Never the default. `stub` stays the default in code, tests and every shipped config. It runs only if `cevoc.penalty-lookup.adapter=scraper-evidence` AND `cevoc.scraper.evidence.enabled=true` (env `CEVOC_SCRAPER_EVIDENCE_ENABLED`, default `false`). It also needs `cevoc.scraper.evidence.base-url` (https) and `cevoc.scraper.evidence.contact`; with any of these missing it returns `LIVE_LOOKUP_OFF` and makes no network call.
