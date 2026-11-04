@@ -102,6 +102,8 @@ final class PlaywrightSession implements RenderedPageSession {
         if (netmap != null) {
             netmap.attach(context);
         }
+        // Bodies of the source's own image responses, kept as the browser received them (read later, on the session's thread).
+        context.onResponse(this::recordImageResponse);
         this.page = context.newPage();
         this.page.onDownload(this::countDownload);
         context.onPage(p -> p.onDownload(this::countDownload));
@@ -116,6 +118,108 @@ final class PlaywrightSession implements RenderedPageSession {
             } catch (RuntimeException ignored) {
                 // diagnostics must never break the flow
             }
+        });
+    }
+
+    /** One image response seen on the network: its id (from the path, never logged), size word and the response itself. */
+    private record SeenImage(String id, String size, com.microsoft.playwright.Response response) {}
+
+    private static final java.util.regex.Pattern IMAGE_PATH = java.util.regex.Pattern.compile("/images/([A-Za-z0-9_.-]{1,80})(?:[?#].*)?$");
+    private static final java.util.regex.Pattern SIZE_PARAM = java.util.regex.Pattern.compile("[?&]size=([a-z]+)");
+    private final java.util.List<SeenImage> seenImages = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+    private void recordImageResponse(com.microsoft.playwright.Response resp) {
+        try {
+            if (resp.status() != 200 || seenImages.size() >= 60) {
+                return;
+            }
+            String url = resp.url();
+            var path = IMAGE_PATH.matcher(url);
+            if (!path.find()) {
+                return;
+            }
+            var size = SIZE_PARAM.matcher(url);
+            String type = String.valueOf(resp.headers().get("content-type")).toLowerCase(Locale.ROOT);
+            if (type.startsWith("image/")) {
+                seenImages.add(new SeenImage(path.group(1), size.find() ? size.group(1) : "full", resp));
+            }
+        } catch (RuntimeException ignored) {
+            // diagnostics must never break the flow
+        }
+    }
+
+    private int fullCount() {
+        synchronized (seenImages) {
+            return (int) seenImages.stream().filter(i -> "full".equals(i.size())).count();
+        }
+    }
+
+    private SeenImage newestFull(int skip) {
+        synchronized (seenImages) {
+            var fulls = seenImages.stream().filter(i -> "full".equals(i.size())).toList();
+            return fulls.size() > skip ? fulls.get(fulls.size() - 1) : null;
+        }
+    }
+
+    /** Polls until the condition holds or the bound passes (shorter than a step); never throws on timeout. */
+    private boolean waitUpTo(java.time.Duration bound, java.util.function.BooleanSupplier condition) throws InterruptedException {
+        long deadline = System.nanoTime() + bound.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedException();
+            }
+            try {
+                if (condition.getAsBoolean()) {
+                    return true;
+                }
+            } catch (PlaywrightException ignored) {
+                // mid-navigation
+            }
+            page.waitForTimeout(100);
+        }
+        return false;
+    }
+
+    /**
+     * The original: the body of the source's full-size image response, untouched. A thumbnail in the strip is clicked so the
+     * page asks for its full version, and we wait (condition-based, bounded) for that response. No re-encoding anywhere.
+     */
+    @Override
+    public Optional<ImageBytes> originalImage(String ref, String blobUrl) throws IOException, InterruptedException {
+        if (blobUrl == null || !blobUrl.startsWith("blob:")) {
+            return Optional.empty();
+        }
+        return step("image-original", () -> {
+            tag("capture-images");
+            int[] dims = elementDims(blobUrl);
+            SeenImage found = null;
+            boolean thumbnail = dims[2] > 0 && dims[2] < 400;
+            if (thumbnail) {
+                int before = fullCount();
+                try {
+                    page.locator("img[src=\"" + blobUrl.replace("\"", "") + "\"]").first().click(new Locator.ClickOptions().setTimeout(5_000));
+                    if (waitUpTo(java.time.Duration.ofSeconds(8), () -> fullCount() > before)) {
+                        found = newestFull(before);
+                    }
+                } catch (PlaywrightException e) {
+                    note("thumb-click=failed");
+                }
+            } else {
+                // The large image: its full response was seen while the page loaded.
+                found = newestFull(0);
+            }
+            if (found == null) {
+                note("image-path=response-missing");
+                return Optional.<ImageBytes>empty();
+            }
+            byte[] body = found.response().body();
+            String type = String.valueOf(found.response().headers().get("content-type")).split(";")[0].trim().toLowerCase(Locale.ROOT);
+            if (body == null || body.length == 0 || body.length > maxBytes) {
+                note("image-path=response-unusable");
+                return Optional.<ImageBytes>empty();
+            }
+            note("image-path=response");
+            return Optional.of(new ImageBytes(type, body, sized(dims, CapturePath.RESPONSE)));
         });
     }
 

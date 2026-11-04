@@ -394,4 +394,43 @@ class ScraperEvidenceTest {
         adapter.find(REQ);
         assertThat(adapter.find(REQ).plateRequired()).isTrue();
     }
+
+    @Test
+    void theSourcesOwnResponseBytesArePreferredAndStoredUntouched() {
+        byte[] original = FakeRenderedPageSession.png(40, 30);
+        FakeRenderedPageSession fake = new FakeRenderedPageSession() {
+            @Override
+            public Optional<ImageBytes> originalImage(String ref, String blobUrl) {
+                return Optional.of(new ImageBytes("image/jpeg", original, new au.gov.nsw.transport.cevoc.domain.ImageSize(0, 0, 0, 0, 0, 0, 0,
+                        au.gov.nsw.transport.cevoc.domain.CapturePath.RESPONSE)));
+            }
+        };
+        List<byte[]> stored = new ArrayList<>();
+        List<String> keys = new ArrayList<>();
+        MediaStoragePort recording = new MediaStoragePort() {
+            @Override
+            public void store(String objectKey, String contentType, InputStream content, long contentLength) {
+                try {
+                    stored.add(content.readAllBytes());
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+                keys.add(objectKey);
+            }
+
+            @Override
+            public boolean exists(String objectKey) {
+                return keys.contains(objectKey);
+            }
+        };
+        Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
+        ScraperSettings big = new ScraperSettings(true, BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
+                Duration.ofSeconds(1), Duration.ofSeconds(60), 1 << 20);
+        var adapter = new ScraperEvidenceLookupAdapter(big, new Sessions(fake), new RevenueNswPageParser(), recording, clock, req -> Optional.of(PLATE));
+        PenaltyLookupResult r = adapter.find(REQ);
+        assertThat(r.evidence()).hasSize(3); // every frame has its original now, none is skipped for missing bytes
+        assertThat(stored).allSatisfy(b -> assertThat(b).isEqualTo(original));
+        assertThat(keys).allMatch(k -> k.endsWith(".jpg")); // JPEG stays JPEG: the content type decides, no re-encode
+        assertThat(r.evidence()).allSatisfy(e -> assertThat(e.width()).isEqualTo(40));
+    }
 }

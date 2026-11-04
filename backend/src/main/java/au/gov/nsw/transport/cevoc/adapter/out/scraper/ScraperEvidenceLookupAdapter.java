@@ -350,7 +350,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 continue;
             }
             try {
-                Optional<RenderedPageSession.ImageBytes> bytes = session.imageBytes(ref.blobUrl());
+                // The source's own response body first (original bytes, untouched); the rendered-page copy only as a fallback.
+                Optional<RenderedPageSession.ImageBytes> bytes = session.originalImage(ref.ref(), ref.blobUrl());
+                if (bytes.isEmpty()) {
+                    bytes = session.imageBytes(ref.blobUrl());
+                }
                 if (bytes.isEmpty()) {
                     noBytes++;
                     continue;

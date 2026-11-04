@@ -60,6 +60,16 @@ public interface RenderedPageSession extends AutoCloseable {
      */
     String submitPlate(String registration) throws IOException, InterruptedException;
 
+    /**
+     * The image exactly as the source served it: the body and content type of its own network response, untouched (no
+     * re-encoding). For a thumbnail in the strip this makes the page load the full-size version first. {@code ref} is the
+     * image's page reference, {@code blobUrl} the element showing it. Empty when no such response was seen; callers then
+     * fall back to {@link #imageBytes}. Default: not supported.
+     */
+    default Optional<ImageBytes> originalImage(String ref, String blobUrl) throws IOException, InterruptedException {
+        return Optional.empty();
+    }
+
     /** Bytes behind a blob: URL seen in the DOM returned by this same session; empty if unavailable. */
     Optional<ImageBytes> imageBytes(String blobUrl) throws IOException, InterruptedException;
 
