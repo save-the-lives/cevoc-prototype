@@ -82,6 +82,12 @@ public final class LookupDiagnostic {
             sb.append("detached");
         } else if (lower.contains("not enabled")) {
             sb.append("not-enabled");
+        } else if (lower.contains("blocked-403")) {
+            sb.append("blocked-403");
+        } else if (lower.contains("blocked-401")) {
+            sb.append("blocked-401");
+        } else if (lower.contains("blocked-429")) {
+            sb.append("blocked-429");
         } else if (lower.contains("download started")) {
             sb.append("download-started");
         } else if (lower.contains("execution context was destroyed")) {

@@ -123,4 +123,12 @@ class BrowserCertificateRouteTest {
                 .contains("cert-location-field=no");
         assertThat(d).doesNotContain("TEST").doesNotContain("2026").doesNotContain("Camera");
     }
+
+    @Test
+    void refusedAddressesGetAClearCauseToken() {
+        assertThat(LookupDiagnostic.fromFailure("browser step 'certificates' failed: blocked-403"))
+                .isEqualTo("step=certificates; cause=blocked-403");
+        assertThat(LookupDiagnostic.fromFailure("browser step 'certificates' failed: blocked-429"))
+                .isEqualTo("step=certificates; cause=blocked-429");
+    }
 }

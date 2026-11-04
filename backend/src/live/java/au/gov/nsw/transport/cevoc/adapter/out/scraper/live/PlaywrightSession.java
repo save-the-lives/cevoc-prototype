@@ -257,6 +257,7 @@ final class PlaywrightSession implements RenderedPageSession {
                 note("cert-link=absent");
                 return Optional.<String>empty();
             }
+            certStatus = 0;
             Locator first = link.first();
             String abs = null;
             try {
@@ -280,6 +281,10 @@ final class PlaywrightSession implements RenderedPageSession {
                     return viaFetch;
                 }
             }
+            if (certStatus == 401 || certStatus == 403 || certStatus == 429) {
+                // The address answered but refused us: clicking would only repeat the request.
+                throw new PlaywrightException("blocked-" + certStatus);
+            }
             note("cert-path=click");
             return clickPath();
         });
@@ -290,9 +295,18 @@ final class PlaywrightSession implements RenderedPageSession {
         pace();
         Page np = context.newPage();
         try {
-            com.microsoft.playwright.Response r = np.navigate(url,
-                    new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED).setTimeout(45_000));
+            // Ordinary browser courtesy only: where the visitor came from and the language. The identifying
+            // user agent of this application is NOT changed.
+            np.setExtraHTTPHeaders(Map.of("Accept-Language", "en-AU,en;q=0.9"));
+            String from = page.url();
+            String referer = from.startsWith("https://") ? from.substring(0, from.indexOf('/', 8) < 0 ? from.length() : from.indexOf('/', 8)) + "/" : null;
+            Page.NavigateOptions nav = new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED).setTimeout(45_000);
+            if (referer != null) {
+                nav.setReferer(referer);
+            }
+            com.microsoft.playwright.Response r = np.navigate(url, nav);
             int status = r == null ? 0 : r.status();
+            certStatus = status;
             String ct = r == null ? "" : String.valueOf(r.headers().get("content-type")).toLowerCase(Locale.ROOT);
             note("cert-goto-status=" + status + "; cert-goto-type=" + (ct.contains("html") ? "html" : ct.isEmpty() ? "none" : "other"));
             try {
@@ -310,6 +324,12 @@ final class PlaywrightSession implements RenderedPageSession {
             }
             if (html == null || status >= 400 || !ct.contains("html")) {
                 note("cert-goto=unusable");
+                if (r != null && status >= 400) {
+                    note("cert-goto-header-names=" + headerNames(r.headers().keySet()));
+                }
+                if (html != null && status >= 400) {
+                    note("cert-goto-body: " + au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.certPageStructureOf(html));
+                }
                 return Optional.empty();
             }
             if (capture != null) {
@@ -341,6 +361,9 @@ final class PlaywrightSession implements RenderedPageSession {
                     """, url);
             if (o instanceof Map<?, ?> m && m.get("text") instanceof String t) {
                 Object st = m.get("status");
+                if (st instanceof Number sn) {
+                    certStatus = sn.intValue();
+                }
                 String ct = String.valueOf(m.get("type")).toLowerCase(Locale.ROOT);
                 note("cert-fetch-status=" + st + "; cert-fetch-type=" + (ct.contains("html") ? "html" : ct.isEmpty() ? "none" : "other"));
                 if (st instanceof Number n && n.intValue() < 400 && ct.contains("html") && !t.isBlank()) {
@@ -355,6 +378,27 @@ final class PlaywrightSession implements RenderedPageSession {
             note("cert-fetch=failed; cert-fetch-cause=" + causeToken(e));
         }
         return Optional.empty();
+    }
+
+    private volatile int certStatus;
+
+    private static final java.util.Set<String> HEADER_VOCAB = java.util.Set.of("server", "x-cache", "cf-ray", "x-azure-ref", "x-ms-request-id",
+            "via", "set-cookie", "cache-control", "content-type", "content-length", "location", "www-authenticate", "retry-after",
+            "x-served-by", "x-amz-cf-id", "x-request-id", "x-iinfo", "x-frame-options", "strict-transport-security", "content-security-policy");
+
+    /** Response header NAMES from a fixed vocabulary (never values); the rest are only counted. */
+    private static String headerNames(java.util.Set<String> names) {
+        java.util.TreeSet<String> known = new java.util.TreeSet<>();
+        int other = 0;
+        for (String n : names) {
+            String l = n.toLowerCase(Locale.ROOT);
+            if (HEADER_VOCAB.contains(l)) {
+                known.add(l);
+            } else {
+                other++;
+            }
+        }
+        return String.join(",", known) + (other > 0 ? ",other*" + Math.min(other, 99) : "");
     }
 
     private String causeToken(PlaywrightException e) {
