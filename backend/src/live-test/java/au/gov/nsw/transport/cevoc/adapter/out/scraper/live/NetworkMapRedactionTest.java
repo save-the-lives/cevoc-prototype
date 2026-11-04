@@ -24,19 +24,19 @@ class NetworkMapRedactionTest {
                 .isEqualTo("/v1/notices/{n}/images/{n}");
         assertThat(NetworkMapRedaction.path("/api/items/123e4567-e89b-12d3-a456-426614174000/view"))
                 .isEqualTo("/api/items/{uuid}/view");
-        assertThat(NetworkMapRedaction.path("/api/plate/TST123/x")).isEqualTo("/api/plate/{id}/x");
-        assertThat(NetworkMapRedaction.path("/api/notice-9000000004")).isEqualTo("/api/{id}");
-        assertThat(NetworkMapRedaction.path("/static/main.4f3a2b1c.js")).isEqualTo("/static/{id}");
+        assertThat(NetworkMapRedaction.path("/api/plate/TST123/x")).isEqualTo("/api/plate/{id:alnum6}/x");
+        assertThat(NetworkMapRedaction.path("/api/notice-9000000004")).isEqualTo("/api/{id:other17}");
+        assertThat(NetworkMapRedaction.path("/static/main.4f3a2b1c.js")).isEqualTo("/static/{id:other16}");
         assertThat(NetworkMapRedaction.path("/static/main.js")).isEqualTo("/static/main.js");
-        assertThat(NetworkMapRedaction.path("/api/getImages;jsessionid=abc")).isEqualTo("/api/{id}");
-        assertThat(NetworkMapRedaction.path("/api/ABCDEF")).isEqualTo("/api/{id}");
+        assertThat(NetworkMapRedaction.path("/api/getImages;jsessionid=abc")).isEqualTo("/api/{id:other24}");
+        assertThat(NetworkMapRedaction.path("/api/ABCDEF")).isEqualTo("/api/{id:upper6}");
         assertThat(NetworkMapRedaction.path("/")).isEqualTo("/");
     }
 
     @Test
     void jwtInThePathIsNeverEmitted() {
         String out = NetworkMapRedaction.path("/auth/" + JWT + "/refresh");
-        assertThat(out).isEqualTo("/auth/{id}/refresh");
+        assertThat(out).isEqualTo("/auth/{id:other" + JWT.length() + "}/refresh");
         assertClean(out);
         assertClean(NetworkMapRedaction.url("https://api.example.invalid/x/" + JWT + "?token=" + JWT));
     }
@@ -77,7 +77,7 @@ class NetworkMapRedactionTest {
                 + "\"token\":\"" + JWT + "\",\"9000000004\":\"x\",\"TST123\":1}";
         String shape = NetworkMapRedaction.jsonShape(body);
         assertThat(shape).contains("notice:{number:string,plate:string,amount:number,paid:bool,when:string:date,note:null,name:string}");
-        assertThat(shape).contains("images:array<2>[{ref:string,url:string:url{img.example.invalid /a/{n}/full?se&sig}}]");
+        assertThat(shape).contains("images:array<2>({ref:string,url:string:url{img.example.invalid /a/{n}/full?se&sig}})");
         assertThat(shape).contains("token:string:jwt");
         assertThat(shape).contains("?:string").contains("?:number");
         assertClean(shape);

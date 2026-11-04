@@ -195,7 +195,7 @@ final class NetworkMapRecorder {
         List<String> out = new ArrayList<>();
         out.add("NETMAP begin entries=" + entries.size() + (dropped > 0 ? " dropped=" + dropped : ""));
         for (Entry e : entries) {
-            StringBuilder sb = new StringBuilder("NETMAP ").append(e.n).append(" [").append(e.step).append("] ")
+            StringBuilder sb = new StringBuilder("NETMAP ").append(e.n).append(" step=").append(e.step).append(' ')
                     .append(e.method).append(' ').append(e.host).append(e.path).append(e.query)
                     .append(" type=").append(e.resourceType)
                     .append(" status=").append(e.status < 0 ? "none" : String.valueOf(e.status))

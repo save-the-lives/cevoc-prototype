@@ -96,13 +96,30 @@ public final class NetworkMapRedaction {
             stem = s.substring(0, dot);
             ext = s.substring(dot);
             if (!ext.matches("\\.[a-z]{1,5}")) {
-                return "{id}";
+                return idTag(s);
             }
         }
         if (WORD_SEGMENT.matcher(stem).matches() && !isAllUpper(stem) && !looksRandom(stem)) {
             return stem + ext;
         }
-        return "{id}";
+        return idTag(s);
+    }
+
+    /** "{id:class+length}": only the character class and length of an identifier-like segment, never its content. */
+    static String idTag(String s) {
+        String cls;
+        if (s.matches("[A-Z]+")) {
+            cls = "upper";
+        } else if (s.matches("[a-z]+")) {
+            cls = "lower";
+        } else if (s.matches("[0-9a-f]+")) {
+            cls = "hex";
+        } else if (s.matches("[A-Za-z0-9]+")) {
+            cls = "alnum";
+        } else {
+            cls = "other";
+        }
+        return "{id:" + cls + Math.min(s.length(), 99) + "}";
     }
 
     /** Query string reduced to key NAMES only (sorted, whitelisted), as "?a&b", or "" when none. */
@@ -286,7 +303,7 @@ public final class NetworkMapRedaction {
                     break;
                 }
             }
-            return "array<" + n.size() + ">" + (distinct.isEmpty() ? "" : "[" + String.join("|", distinct) + "]");
+            return "array<" + n.size() + ">" + (distinct.isEmpty() ? "" : "(" + String.join("|", distinct) + ")");
         }
         if (n.isObject()) {
             if (n.size() > MAX_KEYS) {
