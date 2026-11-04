@@ -63,6 +63,10 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     private final MediaStoragePort storage;
     private final Clock clock;
     private final RegistrationProvider registrations;
+    /** Bounds for reading the page after submit-login (package-private so tests can shorten them). */
+    java.time.Duration summaryWait = java.time.Duration.ofSeconds(20);
+    java.time.Duration loginWait = java.time.Duration.ofSeconds(4);
+    java.time.Duration pollInterval = java.time.Duration.ofMillis(250);
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
     public ScraperEvidenceLookupAdapter(ScraperSettings settings, RenderedPageSessionFactory sessions, RevenueNswPageParser parser,
@@ -163,6 +167,21 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 () -> session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
         long readStart = System.nanoTime();
         RevenueNswPageParser.Page page = parser.parse(summaryHtml);
+        // The Angular summary can render late (its GET sometimes hangs): keep reading until a recognised state or the bound.
+        if (page.state() == RevenueNswPageParser.State.LOGIN || page.state() == RevenueNswPageParser.State.UNRECOGNISED) {
+            boolean unrecognised = page.state() == RevenueNswPageParser.State.UNRECOGNISED;
+            long deadline = readStart + (unrecognised ? summaryWait : loginWait).toNanos();
+            while (System.nanoTime() < deadline
+                    && (page.state() == RevenueNswPageParser.State.LOGIN || page.state() == RevenueNswPageParser.State.UNRECOGNISED)) {
+                Thread.sleep(pollInterval.toMillis());
+                Optional<String> again = session.currentPage();
+                if (again.isEmpty()) {
+                    break;
+                }
+                summaryHtml = again.get();
+                page = parser.parse(summaryHtml);
+            }
+        }
         trace.ok(LookupStep.READ_SUMMARY, (System.nanoTime() - readStart) / 1_000_000);
         switch (page.state()) {
             case LOGIN -> {
@@ -172,7 +191,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             }
             case UNRECOGNISED -> {
                 LOG.warn("evidence lookup: summary page not recognised");
-                trace.fail(LookupStep.READ_SUMMARY, StepCause.PAGE_NOT_RECOGNISED);
+                // An empty shell after the full wait means the summary never rendered; other content is a settled, unknown page.
+                boolean empty = org.jsoup.Jsoup.parse(summaryHtml).body().text().isBlank();
+                trace.fail(LookupStep.READ_SUMMARY, empty ? StepCause.SUMMARY_TIMEOUT : StepCause.PAGE_NOT_RECOGNISED);
                 LookupDiagnostic.set(LookupDiagnostic.fromUnreadablePage("summary", summaryHtml));
                 return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
             }

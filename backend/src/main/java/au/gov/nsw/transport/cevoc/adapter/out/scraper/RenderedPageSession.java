@@ -47,6 +47,14 @@ public interface RenderedPageSession extends AutoCloseable {
     String submitLogin(String noticeNumber, String offenceDate) throws IOException, InterruptedException;
 
     /**
+     * The rendered DOM as it is right now, without acting on the page. Used to keep reading after
+     * {@link #submitLogin} until the summary has rendered. Empty when the session cannot re-read (default).
+     */
+    default Optional<String> currentPage() throws IOException, InterruptedException {
+        return Optional.empty();
+    }
+
+    /**
      * Fills vehicleNumber on the separate images form, presses "View images" and returns the rendered DOM
      * (state 3 on success; the plate form still present if the registration was not accepted).
      */

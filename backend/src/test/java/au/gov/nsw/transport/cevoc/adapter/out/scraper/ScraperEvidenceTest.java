@@ -268,4 +268,59 @@ class ScraperEvidenceTest {
         assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isEqualTo("manifest");
         assertThat(p.getProperty("cevoc.scraper.evidence.enabled")).isEqualTo("false");
     }
+
+    /** Fake whose reads after submit-login are scripted: submitLogin returns the first, currentPage the rest (last one repeats). */
+    private static FakeRenderedPageSession scripted(String... reads) {
+        FakeRenderedPageSession fake = new FakeRenderedPageSession() {
+            int next = 1;
+
+            @Override
+            public String submitLogin(String noticeNumber, String offenceDate) {
+                super.submitLogin(noticeNumber, offenceDate);
+                return reads[0];
+            }
+
+            @Override
+            public Optional<String> currentPage() {
+                calls.add("currentPage");
+                return Optional.of(reads[Math.min(next++, reads.length - 1)]);
+            }
+        };
+        return fake;
+    }
+
+    private static ScraperEvidenceLookupAdapter quick(FakeRenderedPageSession fake) {
+        Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
+        ScraperEvidenceLookupAdapter a = new ScraperEvidenceLookupAdapter(enabled(), new Sessions(fake), new RevenueNswPageParser(),
+                new FakeStorage(), clock);
+        a.summaryWait = Duration.ofMillis(600);
+        a.loginWait = Duration.ofMillis(200);
+        a.pollInterval = Duration.ofMillis(10);
+        return a;
+    }
+
+    @Test
+    void keepsReadingUntilTheSummaryHasRenderedAfterSubmitLogin() {
+        FakeRenderedPageSession fake = new FakeRenderedPageSession();
+        FakeRenderedPageSession s = scripted("<html><body></body></html>", fake.loginHtml, "<html><body><app-root></app-root></body></html>",
+                fake.summaryHtml);
+        PenaltyLookupResult r = quick(s).find(REQ);
+        assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.FOUND);
+        assertThat(r.notice().location()).isEqualTo("SAMPLE ROAD, SAMPLETOWN");
+        assertThat(s.calls).containsExactly("loginPage", "submitLogin", "currentPage", "currentPage", "currentPage");
+    }
+
+    @Test
+    void anEmptyShellThatNeverRendersEndsAsSummaryTimeoutNotAHang() {
+        FakeRenderedPageSession s = scripted("<html><body></body></html>");
+        PenaltyLookupResult r = quick(s).find(REQ);
+        assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.UNAVAILABLE);
+        assertThat(s.calls).contains("currentPage");
+    }
+
+    @Test
+    void aLoginPageThatStaysIsStillNotMatched() {
+        FakeRenderedPageSession s = scripted(new FakeRenderedPageSession().loginHtml);
+        assertThat(quick(s).find(REQ).status()).isEqualTo(PenaltyLookupResult.Status.NOT_FOUND);
+    }
 }

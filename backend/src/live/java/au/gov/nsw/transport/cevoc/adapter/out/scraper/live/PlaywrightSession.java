@@ -213,6 +213,11 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     @Override
+    public java.util.Optional<String> currentPage() throws IOException, InterruptedException {
+        return step("read-summary", () -> java.util.Optional.of(snapshot("2-after-login")));
+    }
+
+    @Override
     public String submitPlate(String registration) throws IOException, InterruptedException {
         redactor.add(registration);
         return step("submit-plate", () -> {
