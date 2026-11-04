@@ -30,7 +30,7 @@ class LookupStreamingTest {
 
     private static NoticeDetails notice() {
         return new NoticeDetails("Exceed speed limit by 10km/h or less", LocalDate.of(2026, 1, 15), LocalTime.of(11, 12), "SAMPLE ROAD",
-                277, 277, null, "x", EnforcementMethod.CAMERA);
+                java.math.BigDecimal.valueOf(277), java.math.BigDecimal.valueOf(277), null, "x", EnforcementMethod.CAMERA);
     }
 
     static class Recorder implements LookupSink {
