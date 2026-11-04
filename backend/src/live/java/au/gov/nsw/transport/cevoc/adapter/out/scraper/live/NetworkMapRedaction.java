@@ -84,6 +84,9 @@ public final class NetworkMapRedaction {
         if (s.chars().allMatch(Character::isDigit)) {
             return "{n}";
         }
+        if (s.matches("v[0-9]{1,2}")) {
+            return s; // API version segment such as v1
+        }
         // Plain lowercase-initial words (api, notices, images, getImages, view-images) are kept; a trailing file
         // extension of 1-5 letters is allowed for static files. Everything else is an identifier of some kind.
         String stem = s;
