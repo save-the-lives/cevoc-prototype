@@ -24,6 +24,9 @@ public enum StepCause {
     NOT_CONFIGURED,
     SOURCE_FAILED,
     INTERRUPTED,
+    BLOCKED_401,
+    BLOCKED_403,
+    BLOCKED_429,
     OTHER,
     // skipped
     NO_PLATE,
@@ -55,6 +58,12 @@ public enum StepCause {
             return BROWSER_CLOSED;
         } else if (m.contains("failed to launch") || m.contains("browsertype.launch") || m.startsWith("could not start the browser")) {
             return BROWSER_LAUNCH_FAILED;
+        } else if (m.contains("blocked-403")) {
+            return BLOCKED_403;
+        } else if (m.contains("blocked-401")) {
+            return BLOCKED_401;
+        } else if (m.contains("blocked-429")) {
+            return BLOCKED_429;
         } else if (m.contains("strict mode violation")) {
             return SELECTOR_MATCHES_MANY;
         }
