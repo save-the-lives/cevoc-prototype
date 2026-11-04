@@ -40,7 +40,10 @@ Selection and fallback by config (all defaults keep today's behaviour; nothing l
 One shared abstract contract test per port, run against every provider, using only fictitious fixtures (notice 9000000004, plate TST123, camera 7109, incident 6): found with images, found without plate, wrong plate, no match, unsupported notice type, off, unavailable, image size/capturePath populated, trace names within the shared vocabulary, nothing sensitive in logs or trace. The browser route runs it through `FakeRenderedPageSession`; any new provider runs it through a fake of its own transport and canned fictitious responses. No live calls in tests.
 
 ## 4. Owner approval gate
-Any provider that contacts a Transport for NSW or other agency source stays OFF until the owner (Arjan, for Transport for NSW) has confirmed in writing that automated access is permitted by that source's terms of use and any authorisation it requires (robots.txt already disallows automated access to the current site). It is refused at startup without `<provider>.approval-reference`. Credentials, keys or tokens meant for another client (for example a web app's own) must not be copied or reused without that approval. Preferred end state: an officially provided evidence API.
+Status: calling api.osr.nsw.gov.au is APPROVED by the owner (recorded in the project conversation, 2026-11-04). It stays OFF by default until a provider contract is built and passes the shared contract tests. Other sources (any other Transport for NSW or agency source or API) still need their own written owner approval before they run, and every provider refuses to start without its `<provider>.approval-reference`. Credentials, keys or tokens meant for another client (for example a web app's own) must not be copied or reused beyond what the approval covers. Preferred end state: an officially provided evidence API.
+
+## Observed calls (redacted)
+Placeholder. The real call shapes seen in the Chromium live run are recorded by the netmap work (branch `feat/netmap`) in `docs/OBSERVED-CALLS.md` or in this section. Not edited here; this document stays provider-agnostic.
 
 ## 5. When a provider is chosen, capture these
 Short list, owner, own notice, private browser window, nothing committed to this public repo:
