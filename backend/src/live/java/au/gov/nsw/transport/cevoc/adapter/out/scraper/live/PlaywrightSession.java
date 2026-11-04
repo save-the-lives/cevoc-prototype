@@ -140,7 +140,7 @@ final class PlaywrightSession implements RenderedPageSession {
             }
             var size = SIZE_PARAM.matcher(url);
             String type = String.valueOf(resp.headers().get("content-type")).toLowerCase(Locale.ROOT);
-            if (type.startsWith("image/")) {
+            if (type.startsWith("image/") && !type.contains("svg")) { // icons are not evidence photos
                 seenImages.add(new SeenImage(path.group(1), size.find() ? size.group(1) : "full", resp));
             }
         } catch (RuntimeException ignored) {
