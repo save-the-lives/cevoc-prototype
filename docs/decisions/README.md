@@ -10,5 +10,5 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0004 | Chromium route prototype only | Accepted |
 | 0005 | Public data only | Accepted |
 | 0006 | Existing prototype URLs must not change | Accepted |
-| 0007 | Information types, status and per-program switches | PROPOSED |
+| 0007 | Information types, status and per-program switches | PROPOSED (config source and date-ranged versions decided 2026-11-04) |
 | 0008 | Vendor-neutrality drift status | Accepted (audit) |

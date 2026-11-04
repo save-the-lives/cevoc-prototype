@@ -16,14 +16,24 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Browser (Chromium) route | Prototype only, behind its adapter, deleted at cutover | 0004 |
 | Data scope and security | Public data only. No secrets in code, logs or the hand-off log | 0005 |
 | Published URLs | Existing prototype URLs must not change | 0006 |
-| Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item and a per-program configuration | 0007 |
+| Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers | 0007 |
 | Vendor-neutrality drift | Audit of 2026-11-04: no core leak into domain or application cloud-wise; a few leaks listed in record 0008 | 0008 |
 
 ## Information types, status and transparency (PROPOSED, record 0007)
 Types: `IMAGES`, `CERTIFICATES`, `VIDEO` (placeholder only; the legacy site has no video, so nothing is built or wired for it). Each type has its own outbound port and its own providers; the domain holds a provider-agnostic section per type carrying a status and a message, and the UI renders only the status and message. Statuses: `AVAILABLE`, `OFF_BY_CHOICE`, `NOT_APPLICABLE` (this program does not have this type), `NOT_YET_AVAILABLE` (by design, planned, such as video today) and `FAILED` (expected but could not be retrieved for a technical reason). The rule: a type is never hidden silently. A by-design message ("Video is not available for this offence") must read differently from a fault message ("We could not load the video just now. This is a fault, not a choice. Try again later").
 
-## Per-program capability configuration (PROPOSED, record 0007)
-Which types a program shows is data, not code: a configuration file keyed by enforcement program and type, with a mode and the message text for the by-design states. Adding a program or a type is a configuration change.
+## Per-program capability configuration (record 0007; source and versions DECIDED 2026-11-04, not built)
+- Simple on purpose. Each enforcement program decides what is on or off and this rarely changes. The configuration is a plain YAML or JSON file in the repository: no database, no admin screen, no feature-flag service. Git is the version history; changing a switch is edit, review, redeploy. An optional `version` label names each rule set. Every switch change is noted in a decision record.
+- Date-ranged versions. Each program holds a list of versions with a start date and an optional end date (the current one has none). The app picks the version that covers the OFFENCE DATE of the notice. At load time the file is checked and the backend refuses to start on an overlap, a gap, a start after an end, or more than one open-ended version. If no version covers the offence date, each type section shows a plain not-available message (transparency rule, never hidden). A test lists the program and version chosen for sample dates.
+- Program lookup (PROPOSED). A notice must be matched to a program before any switch applies, and the repo has no table for that. Recommended: a small mapping in the same file, tried by offence code (or normalised offence text while no code is exposed), then camera code, then location text, then a default block with a visible message; behind a port so TfNSW APIs can supply the program later.
+
+What the code returns today (as read on 2026-11-04):
+- PROVEN: the penalty page parser returns offence description text, offence date and time, free-text location, amounts, status and a derived enforcement method (`CAMERA`, `OFFICER_ISSUED`, `UNKNOWN`). It returns no offence code or type. It returns the camera code (fictitious 7109) only in the images state, after the registration step.
+- PROVEN: the image banner parser reads an "Offence" text, lane, direction and more, but only the camera code is kept.
+- PROVEN: the certificates page returns description, type, period and dates only; it is queried by camera code as location code and returns no program information.
+- PROVEN: no camera-code-to-program table exists; `EnforcementSiteResolver` (location text to certificate location code) is a stub that is not wired in. No code or fixture mentions bus lane or mobile phone detection.
+- INFERRED: the real penalty page may show an offence code that the fictitious fixtures do not model.
+Open questions on all of this are listed in record 0007.
 
 ## Contributor and process rules
 - Docs-only changes are raised on their own branch. This document and the records are updated in the same change as the decision.
