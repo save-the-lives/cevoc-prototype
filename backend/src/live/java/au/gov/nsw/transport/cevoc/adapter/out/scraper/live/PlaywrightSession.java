@@ -89,6 +89,7 @@ final class PlaywrightSession implements RenderedPageSession {
             boolean topNav = req.isNavigationRequest() && req.frame().parentFrame() == null;
             if (topNav && !sameHost(req.url(), host) && !certificateHost(req.url())) {
                 abortedNavs.incrementAndGet();
+                lastAbortedHost = hostClass(req.url());
                 route.abort();
             } else {
                 route.resume();
@@ -113,6 +114,7 @@ final class PlaywrightSession implements RenderedPageSession {
         });
     }
 
+    private volatile String lastAbortedHost = "none";
     private final java.util.concurrent.atomic.AtomicInteger abortedNavs = new java.util.concurrent.atomic.AtomicInteger();
     private final NetworkMapRecorder netmap;
 
@@ -132,6 +134,16 @@ final class PlaywrightSession implements RenderedPageSession {
             return URI.create(base.getScheme() + "://" + base.getAuthority() + DEFAULT_PATH).toString();
         }
         return base.toString();
+    }
+
+    /** Government host names only (they are not secrets); any other host is reported as "other". */
+    static String hostClass(String url) {
+        try {
+            String h = String.valueOf(URI.create(url).getHost()).toLowerCase(Locale.ROOT);
+            return h.endsWith(".nsw.gov.au") && h.length() <= 60 && h.matches("[a-z0-9.-]+") ? h : "other";
+        } catch (IllegalArgumentException e) {
+            return "other";
+        }
     }
 
     /** The certificates site lives under the Transport for NSW domain; the certification link may lead there. */
@@ -250,9 +262,17 @@ final class PlaywrightSession implements RenderedPageSession {
                     first.click(new Locator.ClickOptions().setTimeout(10_000));
                     note("cert-click=normal");
                 } catch (PlaywrightException e) {
-                    note("cert-click=normal-failed");
-                    first.dispatchEvent("click");
-                    note("cert-click=dispatch");
+                    note("cert-click=normal-failed; cert-nav-aborted-host=" + lastAbortedHost);
+                    try {
+                        first.dispatchEvent("click");
+                        note("cert-click=dispatch");
+                    } catch (PlaywrightException e2) {
+                        note("cert-click=dispatch-failed; cert-nav-aborted-host=" + lastAbortedHost
+                                + "; cert-popup-after-click=" + (opened.get() != null ? "yes" : "no"));
+                        if (opened.get() == null && before.equals(page.url())) {
+                            throw e2;
+                        }
+                    }
                 }
                 waitUntil(() -> opened.get() != null || !before.equals(page.url()));
             } finally {
