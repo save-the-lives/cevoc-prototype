@@ -4,6 +4,10 @@ import au.gov.nsw.transport.cevoc.application.port.out.MediaStoragePort;
 import au.gov.nsw.transport.cevoc.application.port.out.PenaltyLookupPort;
 import au.gov.nsw.transport.cevoc.domain.EnforcementMethod;
 import au.gov.nsw.transport.cevoc.domain.EvidenceItem;
+import au.gov.nsw.transport.cevoc.domain.ImageSize;
+import au.gov.nsw.transport.cevoc.domain.LookupStep;
+import au.gov.nsw.transport.cevoc.domain.LookupTrace;
+import au.gov.nsw.transport.cevoc.domain.StepCause;
 import au.gov.nsw.transport.cevoc.domain.NoticeDetails;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupRequest;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult;
@@ -97,9 +101,13 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         URI base = URI.create(settings.baseUrl());
         if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null) {
             LookupDiagnostic.set("step=config; cause=base-url-not-https");
+            LookupTrace.current().fail(LookupStep.START_BROWSER, StepCause.NOT_CONFIGURED);
             return result(Status.UNAVAILABLE, number, "The lookup source is not configured correctly.");
         }
-        try (RenderedPageSession session = sessions.open(base)) {
+        LookupTrace trace = LookupTrace.current();
+        RenderedPageSession session = null;
+        try {
+            session = trace.run(LookupStep.START_BROWSER, () -> sessions.open(base));
             PenaltyLookupResult out = run(session, key, number, request, plate);
             // Anything that carried evidence (or needed a plate) is never cached.
             if (plate == null && out.evidence().isEmpty() && (out.status() == Status.FOUND || out.status() == Status.NOT_FOUND)) {
@@ -114,35 +122,57 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             // Class name only: messages from a browser layer could echo form values.
             LOG.warn("evidence lookup failed: {}", e.getClass().getSimpleName());
             LookupDiagnostic.set(LookupDiagnostic.fromFailure(e instanceof IOException ? e.getMessage() : "failed: " + e.getClass().getSimpleName()));
+            if (trace.firstFailed() == null) {
+                // A failure outside a timed step (for example while reading a page): name the step it was in.
+                trace.fail(inFlight(trace), StepCause.of(e));
+            }
             return result(Status.UNAVAILABLE, number, "The lookup source is not available right now.");
+        } finally {
+            if (session != null) {
+                session.close();
+            }
         }
+    }
+
+    /** The first step with no recorded outcome yet. */
+    private static LookupStep inFlight(LookupTrace trace) {
+        return trace.entries().stream().filter(e -> e.cause() == StepCause.NOT_APPLICABLE).map(LookupTrace.Entry::step)
+                .findFirst().orElse(LookupStep.START_BROWSER);
     }
 
     private PenaltyLookupResult run(RenderedPageSession session, String key, String number, PenaltyLookupRequest request, String plate)
             throws IOException, InterruptedException {
+        LookupTrace trace = LookupTrace.current();
         // State 1: login page. A notice type that needs extra identity fields is out of scope.
-        String loginHtml = session.loginPage();
+        String loginHtml = trace.run(LookupStep.OPEN_LOGIN, session::loginPage);
         RevenueNswPageParser.Page login = parser.parse(loginHtml);
         if (login.state() != RevenueNswPageParser.State.LOGIN) {
             LOG.warn("evidence lookup: login page not recognised");
+            trace.fail(LookupStep.OPEN_LOGIN, StepCause.PAGE_NOT_RECOGNISED);
             LookupDiagnostic.set(LookupDiagnostic.fromUnreadablePage("login", loginHtml));
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
         if (!login.unexpectedLoginFields().isEmpty()) {
             LOG.warn("evidence lookup: login page asks for extra details");
+            trace.fail(LookupStep.OPEN_LOGIN, StepCause.EXTRA_LOGIN_FIELDS);
             LookupDiagnostic.set("step=login; cause=extra-login-fields");
             return result(Status.UNAVAILABLE, number, "This kind of notice needs details we do not collect.");
         }
         // State 2: summary. Still on the login page means the pair was not matched (OPEN QUESTION: the real wording).
-        String summaryHtml = session.submitLogin(number, request.offenceDate().format(LOGIN_DATE));
+        String summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
+                () -> session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
+        long readStart = System.nanoTime();
         RevenueNswPageParser.Page page = parser.parse(summaryHtml);
+        trace.ok(LookupStep.READ_SUMMARY, (System.nanoTime() - readStart) / 1_000_000);
         switch (page.state()) {
             case LOGIN -> {
+                trace.fail(LookupStep.READ_SUMMARY, StepCause.NOT_MATCHED);
                 LookupDiagnostic.note("after-next " + LookupDiagnostic.structureOf(summaryHtml));
                 return result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
             }
             case UNRECOGNISED -> {
                 LOG.warn("evidence lookup: summary page not recognised");
+                trace.fail(LookupStep.READ_SUMMARY, StepCause.PAGE_NOT_RECOGNISED);
                 LookupDiagnostic.set(LookupDiagnostic.fromUnreadablePage("summary", summaryHtml));
                 return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
             }
@@ -150,6 +180,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         if (page.noticeNumber() != null && !page.noticeNumber().equalsIgnoreCase(number)) {
             LOG.warn("evidence lookup: page shows a different notice number");
+            trace.fail(LookupStep.READ_SUMMARY, StepCause.NOTICE_MISMATCH);
             LookupDiagnostic.set("step=summary; cause=notice-number-mismatch");
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
@@ -158,8 +189,10 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         LookupDiagnostic.note("plate-given=" + (plate != null ? "yes" : "no") + "; plate-form=" + (page.plateFormPresent() ? "yes" : "no")
                 + "; summary-state=" + page.state());
         if (page.state() == RevenueNswPageParser.State.SUMMARY && plate != null && page.plateFormPresent()) {
-            String afterHtml = session.submitPlate(plate);
+            String afterHtml = trace.run(LookupStep.GIVE_PLATE, () -> session.submitPlate(plate));
+            long viewStart = System.nanoTime();
             RevenueNswPageParser.Page after = parser.parse(afterHtml);
+            trace.ok(LookupStep.VIEW_IMAGES, (System.nanoTime() - viewStart) / 1_000_000);
             LookupDiagnostic.note("after-plate-state=" + after.state() + "; " + LookupDiagnostic.structureOf(afterHtml));
             if (after.state() == RevenueNswPageParser.State.IMAGES) {
                 page = after;
@@ -167,11 +200,19 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 // OPEN QUESTION: what the site shows for a wrong plate is unknown. Plate form still there, or
                 // anything that is not the images state, is reported as one generic "not accepted" result.
                 LOG.info("evidence lookup: registration not accepted");
+                trace.fail(LookupStep.VIEW_IMAGES, StepCause.PLATE_NOT_ACCEPTED);
                 summary = "Notice details found. The registration number was not accepted, so no images are shown.";
             }
+        } else if (page.state() != RevenueNswPageParser.State.IMAGES) {
+            trace.skip(LookupStep.GIVE_PLATE, plate == null ? StepCause.NO_PLATE : StepCause.NO_PLATE_FORM);
+            trace.skip(LookupStep.VIEW_IMAGES, plate == null ? StepCause.NO_PLATE : StepCause.NO_PLATE_FORM);
         }
-        List<EvidenceItem> evidence = page.state() == RevenueNswPageParser.State.IMAGES
-                ? buffer(session, key, page.images()) : List.of();
+        List<EvidenceItem> evidence = List.of();
+        if (page.state() == RevenueNswPageParser.State.IMAGES) {
+            evidence = buffer(session, key, page.images());
+        } else {
+            trace.skip(LookupStep.CAPTURE_IMAGES, trace.firstFailed() != null ? StepCause.PRIOR_FAILURE : StepCause.NO_IMAGES);
+        }
         followCertification(session, page);
         NoticeDetails notice = page.notice();
         if (!evidence.isEmpty() && notice.enforcementMethod() != EnforcementMethod.CAMERA) {
@@ -188,18 +229,24 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
      * outcome is recorded as a fixed-vocabulary step (outcome ok|failed|skipped plus a whitelisted cause token).
      */
     private static void followCertification(RenderedPageSession session, RevenueNswPageParser.Page page) throws InterruptedException {
+        LookupTrace trace = LookupTrace.current();
         if (page.state() != RevenueNswPageParser.State.IMAGES) {
             LookupDiagnostic.note(LookupDiagnostic.certStep("skipped", "no-images"));
+            trace.skip(LookupStep.CERTIFICATES, StepCause.NO_IMAGES);
             return;
         }
         if (page.certification() == null) {
             LookupDiagnostic.note(LookupDiagnostic.certStep("skipped", "no-link"));
+            trace.skip(LookupStep.CERTIFICATES, StepCause.NO_CERTIFICATION_LINK);
             return;
         }
+        long start = System.nanoTime();
         try {
             Optional<String> html = session.openCertification();
+            trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
             if (html.isEmpty() || html.get().isBlank()) {
                 LookupDiagnostic.note(LookupDiagnostic.certStep("failed", "no-page"));
+                trace.fail(LookupStep.CERTIFICATES, StepCause.PAGE_NOT_RECOGNISED);
                 return;
             }
             CertificateHandoff.put(html.get());
@@ -209,6 +256,8 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             LOG.warn("certification page failed: {}", e.getClass().getSimpleName());
             String reason = LookupDiagnostic.fromFailure(e instanceof IOException ? e.getMessage() : "failed: " + e.getClass().getSimpleName());
             LookupDiagnostic.note(LookupDiagnostic.certStep("failed", reason.substring(reason.indexOf("cause=") + 6)));
+            trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
+            trace.fail(LookupStep.CERTIFICATES, StepCause.of(e));
         }
     }
 
@@ -228,6 +277,8 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
      */
     private List<EvidenceItem> buffer(RenderedPageSession session, String key, List<RevenueNswPageParser.ImageRef> refs)
             throws InterruptedException {
+        LookupTrace trace = LookupTrace.current();
+        long startNanos = System.nanoTime();
         List<EvidenceItem> items = new ArrayList<>();
         int n = 0;
         int noBytes = 0;
@@ -256,15 +307,46 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 }
                 String objectKey = "scraped/" + key.substring(0, 16) + "/image-" + n + extension(type);
                 storage.store(objectKey, type, new ByteArrayInputStream(data), data.length);
+                trace.image(sizeOf(bytes.get(), type), type, data);
                 items.add(EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey));
             } catch (IOException | RuntimeException e) {
                 failed++;
                 LOG.debug("evidence image skipped: {}", e.getClass().getSimpleName());
             }
         }
+        trace.ok(LookupStep.CAPTURE_IMAGES, (System.nanoTime() - startNanos) / 1_000_000);
+        if (items.isEmpty()) {
+            trace.fail(LookupStep.CAPTURE_IMAGES, refs.isEmpty() ? StepCause.NO_IMAGES : StepCause.NO_IMAGE_BYTES);
+        }
         LookupDiagnostic.note("image-refs=" + refs.size() + "; image-stored=" + items.size() + "; image-no-bytes=" + noBytes
                 + "; image-rejected=" + rejected + "; image-failed=" + failed);
         return items;
+    }
+
+    /** Numbers about a captured image. Pixel size comes from the bytes themselves when the JDK can read the format. */
+    static ImageSize sizeOf(RenderedPageSession.ImageBytes b, String type) {
+        ImageSize size = (b.size() == null ? ImageSize.unknown() : b.size()).withBytes(b.data().length);
+        int[] px = pixelsOf(b.data());
+        return px == null ? size : size.withPixels(px[0], px[1]);
+    }
+
+    /** Width and height from the image header (PNG, JPEG, GIF); null for other formats. Decodes no pixels. */
+    static int[] pixelsOf(byte[] data) {
+        try (javax.imageio.stream.ImageInputStream in = javax.imageio.ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            var readers = javax.imageio.ImageIO.getImageReaders(in);
+            if (!readers.hasNext()) {
+                return null;
+            }
+            var reader = readers.next();
+            try {
+                reader.setInput(in, true, true);
+                return new int[] {reader.getWidth(0), reader.getHeight(0)};
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     private void remember(String key, PenaltyLookupResult out) {

@@ -1,5 +1,6 @@
 package au.gov.nsw.transport.cevoc.adapter.out.scraper;
 
+import au.gov.nsw.transport.cevoc.domain.ImageSize;
 import java.io.IOException;
 import java.util.Optional;
 
@@ -24,8 +25,15 @@ import java.util.Optional;
  */
 public interface RenderedPageSession extends AutoCloseable {
 
-    /** An image's bytes as the browser holds them. */
-    record ImageBytes(String contentType, byte[] data) {}
+    /**
+     * An image's bytes as the browser holds them, plus numbers about them ({@link ImageSize}: how they were
+     * captured, rendered and natural size of the element; zeros when unknown). No page text.
+     */
+    record ImageBytes(String contentType, byte[] data, ImageSize size) {
+        public ImageBytes(String contentType, byte[] data) {
+            this(contentType, data, ImageSize.unknown());
+        }
+    }
 
     /** Opens the login page (state 1) and returns its rendered DOM. */
     String loginPage() throws IOException, InterruptedException;

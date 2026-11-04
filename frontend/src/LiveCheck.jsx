@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { emptyFields, runLiveCheck } from './liveCheck.js';
+import { emptyFields, imageCaption, runLiveCheck } from './liveCheck.js';
 import './styles.css';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
@@ -7,6 +7,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 export default function LiveCheck() {
   const [fields, setFields] = useState(emptyFields());
   const [state, setState] = useState({ phase: 'idle' });
+  const [actualSize, setActualSize] = useState(false);
 
   useEffect(() => {
     const meta = document.createElement('meta');
@@ -26,7 +27,7 @@ export default function LiveCheck() {
     setFields(emptyFields());
     setState({ phase: 'loading' });
     const out = await runLiveCheck(sent, { base: API_BASE });
-    setState(out.ok ? { phase: 'done', rows: out.rows } : { phase: 'error', message: out.error });
+    setState(out.ok ? { phase: 'done', rows: out.rows, images: out.images || [] } : { phase: 'error', message: out.error });
   }
 
   const busy = state.phase === 'loading';
@@ -57,6 +58,22 @@ export default function LiveCheck() {
               <div key={i} className={r.nested ? 'lc-nested' : undefined}><dt>{r.label}</dt><dd>{r.value}</dd></div>
             ))}
           </dl>
+        )}
+        {state.phase === 'done' && state.images.length > 0 && (
+          <section className="lc-images" aria-label="Captured images">
+            <label className="lc-actual">
+              <input type="checkbox" checked={actualSize} onChange={(e) => setActualSize(e.target.checked)} /> Show at actual pixel size
+            </label>
+            {state.images.map((img, i) => (
+              <figure key={i} className="lc-figure">
+                <div className="lc-frame">
+                  <img src={img.src} alt={`Captured image ${i + 1}`} className={actualSize ? 'lc-img-actual' : 'lc-img-fit'}
+                    width={actualSize && img.width > 0 ? img.width : undefined} />
+                </div>
+                <figcaption>Image {i + 1}: {imageCaption(img)}</figcaption>
+              </figure>
+            ))}
+          </section>
         )}
       </div>
     </main>

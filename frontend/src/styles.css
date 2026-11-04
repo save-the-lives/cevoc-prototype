@@ -102,3 +102,10 @@ input { font: inherit; min-height: 44px; padding: 6px 10px; border: 1px solid #5
 .lc-result dt { color: var(--muted); }
 .lc-result dd { margin: 0; font-weight: 600; text-align: right; }
 .lc-nested { margin-left: 16px; }
+.lc-images { margin-top: 16px; display: grid; gap: 12px; }
+.lc-actual { display: flex; gap: 8px; align-items: center; }
+.lc-figure { margin: 0; }
+.lc-frame { overflow: auto; max-height: 70vh; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.lc-img-fit { display: block; max-width: 100%; height: auto; }
+.lc-img-actual { display: block; max-width: none; height: auto; }
+.lc-figure figcaption { color: var(--muted); font-size: 14px; margin-top: 4px; }

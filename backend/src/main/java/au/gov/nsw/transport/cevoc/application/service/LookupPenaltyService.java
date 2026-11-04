@@ -8,6 +8,9 @@ import au.gov.nsw.transport.cevoc.domain.CertificateItem;
 import au.gov.nsw.transport.cevoc.domain.CertificateMatch;
 import au.gov.nsw.transport.cevoc.domain.CertificateQuery;
 import au.gov.nsw.transport.cevoc.domain.EvidenceItem;
+import au.gov.nsw.transport.cevoc.domain.LookupStep;
+import au.gov.nsw.transport.cevoc.domain.LookupTrace;
+import au.gov.nsw.transport.cevoc.domain.StepCause;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupRequest;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult;
 import java.time.Duration;
@@ -64,18 +67,31 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
      * Never fails the lookup: no camera code, no port or a source failure all give an empty list (failure with a note).
      */
     private PenaltyLookupResult withCertificates(PenaltyLookupResult r) {
+        LookupTrace trace = LookupTrace.current();
         if (!r.certificates().isEmpty() || certificates == null || r.cameraCode() == null || r.cameraCode().isBlank()
                 || r.notice() == null || r.notice().offenceDate() == null || r.notice().offenceTime() == null) {
+            if (!trace.has(LookupStep.CERTIFICATES)) {
+                trace.skip(LookupStep.CERTIFICATES, r.cameraCode() == null || r.cameraCode().isBlank() ? StepCause.NO_CAMERA_CODE
+                        : StepCause.NOT_APPLICABLE);
+            }
             return r;
         }
+        long start = System.nanoTime();
         try {
             LocalDateTime offenceAt = r.notice().offenceDate().atTime(r.notice().offenceTime());
             CertificateQuery query = CertificateQuery.aroundOffence(r.cameraCode(), r.notice().offenceDate(),
                     r.notice().offenceTime(), certificateWindowMargin);
             List<CertificateItem> items = certificates.findCertificatesCovering(query, offenceAt).stream()
                     .map(CertificateItem::from).toList();
+            if (!trace.has(LookupStep.CERTIFICATES)) {
+                trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
+            }
             return r.withCertificates(items, items.isEmpty() ? "No certificates found" : null);
         } catch (RuntimeException e) {
+            if (!trace.has(LookupStep.CERTIFICATES)) {
+                trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
+            }
+            trace.fail(LookupStep.CERTIFICATES, StepCause.SOURCE_FAILED);
             return r.withCertificates(List.of(), "Certificates unavailable");
         }
     }

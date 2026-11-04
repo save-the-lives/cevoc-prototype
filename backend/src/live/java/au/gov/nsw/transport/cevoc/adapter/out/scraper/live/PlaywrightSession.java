@@ -3,6 +3,8 @@ package au.gov.nsw.transport.cevoc.adapter.out.scraper.live;
 import au.gov.nsw.transport.cevoc.adapter.out.scraper.EvidenceRateLimiter;
 import au.gov.nsw.transport.cevoc.adapter.out.scraper.Redactor;
 import au.gov.nsw.transport.cevoc.adapter.out.scraper.RenderedPageSession;
+import au.gov.nsw.transport.cevoc.domain.CapturePath;
+import au.gov.nsw.transport.cevoc.domain.ImageSize;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Locator;
@@ -294,12 +296,13 @@ final class PlaywrightSession implements RenderedPageSession {
         return step("image", () -> {
             tag("capture-images");
             // 1) in-page fetch of the blob; 2) draw the loaded img onto a canvas; 3) screenshot the element.
+            int[] dims = elementDims(blobUrl); // rendered w,h and natural w,h of the img element: numbers only
             try {
                 Object o = page.evaluate(FETCH_JS, Arrays.asList(blobUrl, maxBytes));
                 if (o instanceof Map<?, ?> m && m.get("b64") instanceof String b64 && !b64.isEmpty()) {
                     String type = m.get("type") instanceof String t ? t.toLowerCase(Locale.ROOT) : "";
                     note("image-path=fetch");
-                    return Optional.of(new ImageBytes(type, Base64.getDecoder().decode(b64)));
+                    return Optional.of(new ImageBytes(type, Base64.getDecoder().decode(b64), sized(dims, CapturePath.FETCH)));
                 }
                 note("fetch=empty");
             } catch (PlaywrightException e) {
@@ -311,7 +314,8 @@ final class PlaywrightSession implements RenderedPageSession {
                 Object o = img.evaluate(CANVAS_JS);
                 if (o instanceof String d && d.startsWith("data:image/png;base64,")) {
                     note("image-path=canvas");
-                    return Optional.of(new ImageBytes("image/png", Base64.getDecoder().decode(d.substring(d.indexOf(',') + 1))));
+                    return Optional.of(new ImageBytes("image/png", Base64.getDecoder().decode(d.substring(d.indexOf(',') + 1)),
+                            sized(dims, CapturePath.CANVAS)));
                 }
                 note("canvas=empty");
             } catch (PlaywrightException e) {
@@ -321,7 +325,7 @@ final class PlaywrightSession implements RenderedPageSession {
                 byte[] png = img.screenshot();
                 if (png != null && png.length > 0 && png.length <= maxBytes) {
                     note("image-path=shot");
-                    return Optional.of(new ImageBytes("image/png", png));
+                    return Optional.of(new ImageBytes("image/png", png, sized(dims, CapturePath.SCREENSHOT)));
                 }
                 note("shot=empty");
             } catch (PlaywrightException e) {
@@ -329,6 +333,30 @@ final class PlaywrightSession implements RenderedPageSession {
             }
             return Optional.<ImageBytes>empty();
         });
+    }
+
+    private static final String DIMS_JS = "el => [el.clientWidth, el.clientHeight, el.naturalWidth, el.naturalHeight]";
+
+    /** {renderedW, renderedH, naturalW, naturalH} of the img element showing this blob; zeros when unavailable. */
+    private int[] elementDims(String blobUrl) {
+        int[] out = new int[4];
+        try {
+            Object o = page.locator("img[src=\"" + blobUrl.replace("\"", "") + "\"]").first().evaluate(DIMS_JS);
+            if (o instanceof java.util.List<?> l && l.size() == 4) {
+                for (int i = 0; i < 4; i++) {
+                    out[i] = l.get(i) instanceof Number n ? (int) Math.max(0, Math.min(n.longValue(), 100_000)) : 0;
+                }
+            }
+        } catch (PlaywrightException ignored) {
+            // numbers are optional
+        }
+        return out;
+    }
+
+    /** Pixel size defaults to the natural size (fetch, canvas) or the rendered size (screenshot); the adapter refines it from the bytes. */
+    private static ImageSize sized(int[] d, CapturePath path) {
+        boolean shot = path == CapturePath.SCREENSHOT;
+        return new ImageSize(shot ? d[0] : d[2], shot ? d[1] : d[3], d[0], d[1], d[2], d[3], 0, path);
     }
 
     private static void note(String marker) {

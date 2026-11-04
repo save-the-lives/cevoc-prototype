@@ -45,8 +45,20 @@ class FakeRenderedPageSession implements RenderedPageSession {
 
     FakeRenderedPageSession() {
         blobs.put("blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000001", new ImageBytes("image/jpeg", new byte[] {1, 2, 3}));
-        blobs.put("blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000002", new ImageBytes("image/png", new byte[] {4, 5}));
+        blobs.put("blob:https://penalty.example.invalid/00000000-0000-0000-0000-000000000002", new ImageBytes("image/png", png(8, 6),
+                new au.gov.nsw.transport.cevoc.domain.ImageSize(0, 0, 4, 3, 8, 6, 0, au.gov.nsw.transport.cevoc.domain.CapturePath.CANVAS)));
         // 000...003 deliberately has no bytes
+    }
+
+    /** A real, tiny, fictitious PNG of the given pixel size. */
+    static byte[] png(int w, int h) {
+        try {
+            var out = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Override

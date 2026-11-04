@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildRequest, emptyFields, formatSummary, isLiveCheckRoute, parseOffenceDate, runLiveCheck } from './liveCheck.js';
+import { buildRequest, emptyFields, formatSummary, imageCaption, imageSrc, isLiveCheckRoute, parseOffenceDate, parseResponse, runLiveCheck } from './liveCheck.js';
 
 const good = { token: 'tok-fictitious', notice: 'ZZ000111', date: '05/03/2026', registration: 'AB 12CD' };
 
@@ -16,7 +16,7 @@ describe('buildRequest', () => {
   it('builds body with ISO date and null registration when blank', () => {
     const r = buildRequest({ ...good, registration: '  ' });
     expect(r.ok).toBe(true);
-    expect(r.request.body).toEqual({ notice: 'ZZ000111', offenceDate: '2026-03-05', registration: null });
+    expect(r.request.body).toEqual({ notice: 'ZZ000111', offenceDate: '2026-03-05', registration: null, includeImages: true });
   });
   it('rejects bad input without echoing values', () => {
     for (const bad of [{ notice: 'a b' }, { date: '2026-03-05' }, { registration: 'x'.repeat(21) }]) {
@@ -66,6 +66,39 @@ describe('runLiveCheck', () => {
     const f = vi.fn();
     expect((await runLiveCheck({ ...good, date: 'x' }, { fetchImpl: f })).ok).toBe(false);
     expect(f).not.toHaveBeenCalled();
+  });
+});
+
+describe('captured images (owner view)', () => {
+  const img = { width: 8, height: 6, renderedWidth: 4, renderedHeight: 3, naturalWidth: 8, naturalHeight: 6, bytes: 120, path: 'canvas', contentType: 'image/png', data: 'AAEC' };
+
+  it('asks for images in the request body', () => {
+    expect(buildRequest(good).request.body.includeImages).toBe(true);
+  });
+  it('parses the JSON response into rows and displayable images with numbers-only captions', () => {
+    const out = parseResponse(JSON.stringify({ summary: 'images : 1\nstep 1 start-browser : ok 5ms\n', images: [img] }));
+    expect(out.rows.map((r) => r.label)).toEqual(['Images', 'Step 1 start-browser']);
+    expect(out.images).toHaveLength(1);
+    expect(out.images[0].src).toBe('data:image/png;base64,AAEC');
+    expect(imageCaption(img)).toBe('8x6 px, 120 bytes, via canvas; rendered 4x3 px, natural 8x6 px');
+  });
+  it('reports unknown sizes as unknown and drops unsafe images', () => {
+    expect(imageCaption({ ...img, naturalWidth: 0, naturalHeight: 0 })).toContain('natural unknown');
+    expect(imageSrc({ ...img, contentType: 'text/html' })).toBeNull();
+    expect(imageSrc({ ...img, data: 'a"onerror=x' })).toBeNull();
+    expect(parseResponse(JSON.stringify({ summary: 'x : y', images: [{ ...img, contentType: 'text/html' }] })).images).toEqual([]);
+  });
+  it('still reads a plain text response', () => {
+    const out = parseResponse('images             : 0\n');
+    expect(out.images).toEqual([]);
+    expect(out.rows[0].value).toBe('0');
+  });
+  it('runLiveCheck passes images through and sends no-store', async () => {
+    const f = vi.fn().mockResolvedValue({ ok: true, text: async () => JSON.stringify({ summary: 'images : 1\n', images: [img] }) });
+    const out = await runLiveCheck(good, { fetchImpl: f });
+    expect(out.images).toHaveLength(1);
+    expect(f.mock.calls[0][1].cache).toBe('no-store');
+    expect(JSON.parse(f.mock.calls[0][1].body).includeImages).toBe(true);
   });
 });
 

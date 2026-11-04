@@ -27,7 +27,7 @@ export function buildRequest(fields) {
   const offenceDate = parseOffenceDate(fields.date);
   if (!offenceDate) return { ok: false, error: 'Offence date must be a real date as DD/MM/YYYY.' };
   if (registration && registration.length > 20) return { ok: false, error: 'Registration should be 20 characters or fewer.' };
-  return { ok: true, request: { token, body: { notice, offenceDate, registration: registration || null } } };
+  return { ok: true, request: { token, body: { notice, offenceDate, registration: registration || null, includeImages: true } } };
 }
 
 // Backend answers text/plain lines like "images             : 2" and indented "  location: yes".
@@ -44,6 +44,33 @@ export function formatSummary(text) {
     rows.push({ label: label.charAt(0).toUpperCase() + label.slice(1), value, nested });
   }
   return rows;
+}
+
+const px = (w, h) => (w > 0 && h > 0 ? `${w}x${h} px` : 'unknown');
+
+// Captured images arrive only in this owner's response, as base64. Anything that is not a plain image type or base64 is dropped.
+export function imageSrc(img) {
+  if (!img || !/^image\/(png|jpeg|gif|webp)$/.test(img.contentType || '')) return null;
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(img.data || '')) return null;
+  return `data:${img.contentType};base64,${img.data}`;
+}
+
+// Numbers only: captured pixel size, byte count, capture path, then rendered and natural element size.
+export function imageCaption(img) {
+  return `${px(img.width, img.height)}, ${img.bytes} bytes, via ${img.path}; rendered ${px(img.renderedWidth, img.renderedHeight)}, natural ${px(img.naturalWidth, img.naturalHeight)}`;
+}
+
+// Response is JSON {summary, images} when images were requested, otherwise plain summary text.
+export function parseResponse(text) {
+  const raw = String(text || '');
+  if (raw.startsWith('{')) {
+    try {
+      const j = JSON.parse(raw);
+      const images = (Array.isArray(j.images) ? j.images : []).map((img) => ({ ...img, src: imageSrc(img) })).filter((img) => img.src);
+      return { rows: formatSummary(j.summary), images };
+    } catch { /* fall through to plain text */ }
+  }
+  return { rows: formatSummary(raw), images: [] };
 }
 
 export function errorForStatus(status) {
@@ -67,7 +94,7 @@ export async function runLiveCheck(fields, { fetchImpl = fetch, base = '' } = {}
       body: JSON.stringify(built.request.body),
     });
     if (!res.ok) return { ok: false, error: errorForStatus(res.status) };
-    return { ok: true, rows: formatSummary(await res.text()) };
+    return { ok: true, ...parseResponse(await res.text()) };
   } catch {
     return { ok: false, error: 'Could not reach the server.' };
   }

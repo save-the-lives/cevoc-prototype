@@ -1,5 +1,7 @@
 package au.gov.nsw.transport.cevoc.livecheck;
 
+import au.gov.nsw.transport.cevoc.domain.ImageSize;
+import au.gov.nsw.transport.cevoc.domain.LookupTrace;
 import au.gov.nsw.transport.cevoc.domain.NoticeDetails;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult;
 
@@ -17,8 +19,30 @@ public final class LiveCheckSummary {
 
     /** {@code failure} is a fixed-vocabulary reason from LookupDiagnostic (step, cause token, yes/no markers), or null. */
     public static String of(PenaltyLookupResult r, String failure) {
+        return of(r, failure, null);
+    }
+
+    /**
+     * {@code trace} (may be null) adds one line per lookup step, the first failed step and, per captured image,
+     * numbers only: pixel size, byte count, capture path, and the rendered and natural size of the page element.
+     */
+    public static String of(PenaltyLookupResult r, String failure, LookupTrace trace) {
         StringBuilder sb = new StringBuilder();
         sb.append("state reached      : ").append(state(r)).append('\n');
+        if (trace != null) {
+            for (LookupTrace.Entry e : trace.entries()) {
+                sb.append("step ").append(e.step().number()).append(' ').append(e.step().label()).append(" : ")
+                        .append(e.outcome().label()).append(' ').append(e.millis()).append("ms");
+                if (e.cause() != null) {
+                    sb.append(" cause=").append(e.cause().token());
+                }
+                sb.append('\n');
+            }
+            LookupTrace.Entry first = trace.firstFailed();
+            sb.append("first failed step  : ")
+                    .append(first == null ? "none" : first.step().number() + " " + first.step().label() + " (" + first.cause().token() + ")")
+                    .append('\n');
+        }
         if (present(failure)) {
             sb.append("failure detail     : ").append(failure).append('\n');
         }
@@ -41,6 +65,9 @@ public final class LiveCheckSummary {
         }
         int images = r.evidence() == null ? 0 : r.evidence().size();
         sb.append("images             : ").append(images).append('\n');
+        if (trace != null) {
+            appendImageSizes(sb, trace);
+        }
         sb.append("camera code found  : ").append(present(r.cameraCode()) ? "yes" : "no").append('\n');
         sb.append("certificates       : ").append(r.certificates().size());
         if (r.certificates().stream().anyMatch(c -> c.coversOffence())) {
@@ -51,6 +78,26 @@ public final class LiveCheckSummary {
             sb.append("certificates note  : ").append(r.certificatesNote()).append('\n');
         }
         return sb.toString();
+    }
+
+    private static void appendImageSizes(StringBuilder sb, LookupTrace trace) {
+        int i = 0;
+        boolean canvas = false;
+        for (ImageSize z : trace.images()) {
+            i++;
+            canvas |= z.path() == au.gov.nsw.transport.cevoc.domain.CapturePath.CANVAS;
+            sb.append("image ").append(i).append("            : ").append(px(z.width(), z.height())).append(", ")
+                    .append(z.bytes()).append(" bytes, via ").append(z.path().label()).append('\n');
+            sb.append("  rendered size: ").append(px(z.renderedWidth(), z.renderedHeight())).append('\n');
+            sb.append("  natural size: ").append(px(z.naturalWidth(), z.naturalHeight())).append('\n');
+        }
+        if (canvas) {
+            sb.append("image note         : canvas capture may be thumbnail resolution; if natural size is larger than the captured size, the original is larger\n");
+        }
+    }
+
+    private static String px(int w, int h) {
+        return w > 0 && h > 0 ? w + "x" + h + " px" : "unknown";
     }
 
     static String state(PenaltyLookupResult r) {

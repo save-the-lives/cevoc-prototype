@@ -84,4 +84,27 @@ class LiveCheckSummaryTest {
         assertThat(au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic.take())
                 .startsWith("pnn-kept=yes; after-next inputs=1");
     }
+
+    @Test
+    void traceIsPrintedOneLinePerStepAndTheFirstFailureIsNamed() {
+        var t = au.gov.nsw.transport.cevoc.domain.LookupTrace.begin(false);
+        try {
+            t.ok(au.gov.nsw.transport.cevoc.domain.LookupStep.START_BROWSER, 1500);
+            t.ok(au.gov.nsw.transport.cevoc.domain.LookupStep.OPEN_LOGIN, 40);
+            t.ok(au.gov.nsw.transport.cevoc.domain.LookupStep.SUBMIT_LOGIN, 2100);
+            t.ok(au.gov.nsw.transport.cevoc.domain.LookupStep.READ_SUMMARY, 820);
+            t.fail(au.gov.nsw.transport.cevoc.domain.LookupStep.READ_SUMMARY, au.gov.nsw.transport.cevoc.domain.StepCause.PAGE_NOT_RECOGNISED);
+        } finally {
+            au.gov.nsw.transport.cevoc.domain.LookupTrace.end();
+        }
+        PenaltyLookupResult un = new PenaltyLookupResult(Status.UNAVAILABLE, "9000000004", "x", null, List.of(), "S");
+        String s = LiveCheckSummary.of(un, null, t);
+        assertThat(s).contains("step 1 start-browser : ok 1500ms")
+                .contains("step 4 read-summary : failed 820ms cause=page-not-recognised")
+                .contains("step 5 give-plate : skipped 0ms cause=prior-failure")
+                .contains("step 8 certificates : skipped 0ms cause=prior-failure")
+                .contains("first failed step  : 4 read-summary (page-not-recognised)");
+        assertThat(s.lines().filter(l -> l.startsWith("step ")).count()).isEqualTo(8);
+        assertThat(LiveCheckSummary.of(un, null, null)).doesNotContain("step 1");
+    }
 }

@@ -1,14 +1,14 @@
 package au.gov.nsw.transport.cevoc.livecheck;
 
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.LookupDiagnostic;
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.RequestScopedRegistration;
 import au.gov.nsw.transport.cevoc.adapter.out.scraper.live.NetworkMapHolder;
 import au.gov.nsw.transport.cevoc.application.port.in.LookupPenaltyUseCase;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupRequest;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.regex.Pattern;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,7 +37,11 @@ public class LiveCheckController {
         this.useCase = useCase;
     }
 
-    public record Body(String notice, String offenceDate, String registration, Boolean networkMap) {
+    public record Body(String notice, String offenceDate, String registration, Boolean includeImages, Boolean networkMap) {
+        public Body(String notice, String offenceDate, String registration) {
+            this(notice, offenceDate, registration, null, null);
+        }
+
         @Override
         public String toString() {
             return "Body";
@@ -49,40 +53,44 @@ public class LiveCheckController {
         return "ok";
     }
 
-    @PostMapping(value = "/lookup", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> lookup(@RequestBody Body body) {
+    /** Response when the owner's page asks for images: the same redacted summary, plus the captured images. */
+    public record WithImages(String summary, List<LiveCheckRunner.Image> images) {}
+
+    @PostMapping(value = "/lookup")
+    public ResponseEntity<?> lookup(@RequestBody Body body) {
         if (body == null || body.notice() == null || !NOTICE.matcher(body.notice()).matches()) {
-            return ResponseEntity.badRequest().body("notice number not in the expected shape\n");
+            return text(ResponseEntity.badRequest(), "notice number not in the expected shape\n");
         }
         LocalDate date;
         try {
             date = LocalDate.parse(body.offenceDate());
         } catch (DateTimeParseException | NullPointerException e) {
-            return ResponseEntity.badRequest().body("offence date must be YYYY-MM-DD\n");
+            return text(ResponseEntity.badRequest(), "offence date must be YYYY-MM-DD\n");
         }
         String plate = body.registration();
         if (plate != null && !plate.isBlank() && !PLATE.matcher(plate).matches()) {
-            return ResponseEntity.badRequest().body("registration not in the expected shape\n");
+            return text(ResponseEntity.badRequest(), "registration not in the expected shape\n");
         }
-        var request = new PenaltyLookupRequest(body.notice(), date);
+        boolean includeImages = Boolean.TRUE.equals(body.includeImages());
         // Network map: structure-only call map, only when asked for (default off). See NetworkMapRedaction.
         boolean wantMap = Boolean.TRUE.equals(body.networkMap());
-        String summary = RequestScopedRegistration.with(plate, () -> {
-            LookupDiagnostic.clear();
-            if (wantMap) {
-                NetworkMapHolder.request();
-            }
-            try {
-                var result = useCase.lookup(request);
-                String text = LiveCheckSummary.of(result, LookupDiagnostic.take());
-                if (wantMap) {
-                    text = text + String.join("\n", NetworkMapHolder.take()) + "\n";
-                }
-                return text;
-            } finally {
-                NetworkMapHolder.take();
-            }
-        });
-        return ResponseEntity.ok(summary);
+        LiveCheckRunner.Outcome outcome;
+        try {
+            outcome = LiveCheckRunner.run(useCase, new PenaltyLookupRequest(body.notice(), date), plate, includeImages,
+                    wantMap ? NetworkMapHolder::request : () -> { },
+                    wantMap ? () -> String.join("\n", NetworkMapHolder.take()) + "\n" : () -> "");
+        } finally {
+            NetworkMapHolder.take();
+        }
+        if (!includeImages) {
+            // Default (and the GitHub workflow route): text only, never image bytes.
+            return text(ResponseEntity.ok(), outcome.summary());
+        }
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.APPLICATION_JSON)
+                .body(new WithImages(outcome.summary(), outcome.images()));
+    }
+
+    private static ResponseEntity<String> text(ResponseEntity.BodyBuilder b, String body) {
+        return b.cacheControl(CacheControl.noStore()).contentType(MediaType.TEXT_PLAIN).body(body);
     }
 }

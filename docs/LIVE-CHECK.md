@@ -54,7 +54,7 @@ Fictitious values only in the repo: the notice, date and plate are typed or sent
 
 ## Output
 
-Yes/no and counts only: state reached (1 login, 2 summary, 3 images, or failed), which notice fields were found, number of images, whether a camera code was found, and the certificate count. It never prints the notice number, plate, dates, amounts, location or camera code. Backend console output goes to `live-capture/backend.log` (class names of failures only).
+Yes/no and counts only: state reached (1 login, 2 summary, 3 images, or failed), which notice fields were found, number of images, whether a camera code was found, and the certificate count. Each lookup also prints a fixed-vocabulary step trace, one line per step (`step 4 read-summary : ok 820ms`; steps: start-browser, open-login, submit-login, read-summary, give-plate, view-images, capture-images, certificates; outcome ok, failed or skipped, with a whitelisted cause token on failures) and `first failed step`. For each captured image it prints pixel size, byte count and capture path (canvas, fetch or screenshot), plus the rendered and natural size of the page element (canvas capture may be thumbnail resolution; compare the two). Numbers only. The owner page `/live-check` sends `includeImages: true`, which makes the response JSON `{summary, images[]}` with the image bytes (base64) so the page can show them; the default, and the GitHub workflow, stay text-only. Responses carry `Cache-Control: no-store`; the bytes are never logged or stored by this path. It never prints the notice number, plate, dates, amounts, location or camera code. Backend console output goes to `live-capture/backend.log` (class names of failures only).
 
 ## Saved HTML
 
