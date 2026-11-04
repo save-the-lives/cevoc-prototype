@@ -82,6 +82,10 @@ public final class LookupDiagnostic {
             sb.append("detached");
         } else if (lower.contains("not enabled")) {
             sb.append("not-enabled");
+        } else if (lower.contains("download started")) {
+            sb.append("download-started");
+        } else if (lower.contains("execution context was destroyed")) {
+            sb.append("context-destroyed");
         } else if (lower.contains("navigat")) {
             sb.append("navigation");
         } else if (lower.contains("strict mode violation")) {

@@ -100,6 +100,8 @@ final class PlaywrightSession implements RenderedPageSession {
             netmap.attach(context);
         }
         this.page = context.newPage();
+        this.page.onDownload(this::countDownload);
+        context.onPage(p -> p.onDownload(this::countDownload));
         // Diagnostics only: method and HTTP status of script-made POST/PUT calls, never URLs or bodies.
         this.page.onResponse(resp -> {
             try {
@@ -115,6 +117,16 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     private volatile String lastAbortedHost = "none";
+    private final java.util.concurrent.atomic.AtomicInteger downloads = new java.util.concurrent.atomic.AtomicInteger();
+    private volatile String downloadKind = "none";
+
+    /** Diagnostics only: a download started in the browser. Only the file extension class is kept, never the name. */
+    private void countDownload(com.microsoft.playwright.Download d) {
+        downloads.incrementAndGet();
+        String n = String.valueOf(d.suggestedFilename()).toLowerCase(Locale.ROOT);
+        downloadKind = n.endsWith(".pdf") ? "pdf" : n.endsWith(".html") || n.endsWith(".htm") ? "html" : n.endsWith(".jsf") ? "jsf" : "other";
+    }
+
     private final java.util.concurrent.atomic.AtomicInteger abortedNavs = new java.util.concurrent.atomic.AtomicInteger();
     private final NetworkMapRecorder netmap;
 
@@ -269,8 +281,13 @@ final class PlaywrightSession implements RenderedPageSession {
                     } catch (PlaywrightException e2) {
                         note("cert-click=dispatch-failed; cert-nav-aborted-host=" + lastAbortedHost
                                 + "; cert-popup-after-click=" + (opened.get() != null ? "yes" : "no"));
+                        waitUntil(() -> opened.get() != null || !before.equals(page.url()) || downloads.get() > 0);
+                        note("cert-downloads=" + Math.min(downloads.get(), 9) + "; cert-download-kind=" + downloadKind
+                                + "; cert-pages=" + Math.min(context.pages().size(), 9)
+                                + "; cert-popup-late=" + (opened.get() != null ? "yes" : "no")
+                                + "; cert-url-changed-late=" + (before.equals(page.url()) ? "no" : "yes"));
                         if (opened.get() == null && before.equals(page.url())) {
-                            throw e2;
+                            throw downloads.get() > 0 ? new PlaywrightException("download started") : e2;
                         }
                     }
                 }
