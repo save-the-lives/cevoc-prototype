@@ -225,6 +225,7 @@ final class PlaywrightSession implements RenderedPageSession {
     @Override
     public Optional<String> openCertification() throws IOException, InterruptedException {
         return step("certificates", () -> {
+            tag("certificates");
             Locator link = page.locator(CERT_LINK_CSS);
             if (link.count() == 0) {
                 note("cert-link=absent");
@@ -278,6 +279,7 @@ final class PlaywrightSession implements RenderedPageSession {
         }
         // In-page fetch of a blob: URL: no request to the site, so no pacing needed.
         return step("image", () -> {
+            tag("capture-images");
             // 1) in-page fetch of the blob; 2) draw the loaded img onto a canvas; 3) screenshot the element.
             try {
                 Object o = page.evaluate(FETCH_JS, Arrays.asList(blobUrl, maxBytes));
