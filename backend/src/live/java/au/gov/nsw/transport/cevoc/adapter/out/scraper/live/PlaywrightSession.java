@@ -237,18 +237,22 @@ final class PlaywrightSession implements RenderedPageSession {
                 // The browser can hand back a text-decoded body for an image response (replacement characters for the file header).
                 // Fetch the same address again with the session's cookies and read the bytes untouched.
                 try {
-                    var again = context.request().get(found.response().url());
-                    note("image-refetch-status=" + again.status());
-                    if (again.ok()) {
-                        body = again.body();
+                    Object b64 = page.evaluate("async u => { const r = await fetch(u, {credentials: 'include'}); if (!r.ok) return 'status:' + r.status;"
+                            + " const a = new Uint8Array(await r.arrayBuffer()); let s = ''; for (let i = 0; i < a.length; i += 32768)"
+                            + " { s += String.fromCharCode.apply(null, a.subarray(i, i + 32768)); } return btoa(s); }", found.response().url());
+                    String text = String.valueOf(b64);
+                    if (text.startsWith("status:")) {
+                        note("image-refetch-" + text);
+                    } else {
+                        body = java.util.Base64.getDecoder().decode(text);
                         note("image-body=refetched/" + String.format("%02x", body[0] & 0xff) + "/" + body.length);
                     }
-                } catch (PlaywrightException e) {
+                } catch (PlaywrightException | IllegalArgumentException e) {
                     note("image-body=refetch-failed");
                 }
             }
             String type = String.valueOf(found.response().headers().get("content-type")).split(";")[0].trim().toLowerCase(Locale.ROOT);
-            if (body == null || body.length == 0 || body.length > maxBytes) {
+            if (body == null || body.length == 0 || body.length > maxBytes || !looksLikeImage(body)) {
                 note("image-path=response-unusable");
                 return Optional.<ImageBytes>empty();
             }
