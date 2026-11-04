@@ -12,21 +12,14 @@ import java.util.function.Supplier;
  */
 public final class RequestScopedRegistration implements RegistrationProvider {
 
-    private static final ThreadLocal<String> CURRENT = new ThreadLocal<>();
-
     /** Runs {@code action} on this thread with {@code registration} visible to this provider, then forgets it. */
     public static <T> T with(String registration, Supplier<T> action) {
-        CURRENT.set(registration);
-        try {
-            return action.get();
-        } finally {
-            CURRENT.remove();
-        }
+        return au.gov.nsw.transport.cevoc.domain.RegistrationScope.with(registration, action);
     }
 
     @Override
     public Optional<String> registrationFor(PenaltyLookupRequest request) {
-        String v = CURRENT.get();
+        String v = au.gov.nsw.transport.cevoc.domain.RegistrationScope.current();
         return v == null || v.isBlank() ? Optional.empty() : Optional.of(v);
     }
 

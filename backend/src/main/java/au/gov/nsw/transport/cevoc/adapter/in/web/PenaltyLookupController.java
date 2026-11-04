@@ -1,9 +1,9 @@
 package au.gov.nsw.transport.cevoc.adapter.in.web;
 
-import au.gov.nsw.transport.cevoc.adapter.out.scraper.RequestScopedRegistration;
 import au.gov.nsw.transport.cevoc.application.port.in.LookupPenaltyUseCase;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupRequest;
 import au.gov.nsw.transport.cevoc.domain.PenaltyLookupResult;
+import au.gov.nsw.transport.cevoc.domain.RegistrationScope;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -55,7 +55,7 @@ public class PenaltyLookupController {
         }
         // Request-scoped: held in a thread-local for this call only, removed in a finally block, never stored, cached or logged.
         // Only the evidence scraper (off by default, env-gated) ever reads it; the stub and manifest adapters ignore it.
-        return RequestScopedRegistration.with(plate, () -> useCase.lookup(request));
+        return RegistrationScope.with(plate, () -> useCase.lookup(request));
     }
 
     /** Letters and digits only (spaces and dashes dropped), 1 to 8 characters; anything else is treated as not given. */
