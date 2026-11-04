@@ -371,6 +371,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 trace.image(sizeOf(bytes.get(), type), type, data);
                 EvidenceItem item = EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey);
                 int[] px = pixelsOf(data);
+                if (px == null) {
+                    // Why the JDK cannot read this one: first bytes as hex (file signature only) and the decoder's exception class.
+                    LookupDiagnostic.note("image-" + n + "-undecodable: magic=" + HexFormat.of().formatHex(data, 0, Math.min(3, data.length))
+                            + "; type=" + type + "; " + decodeFailure(data));
+                }
                 items.add(px == null ? item : item.withSize(px[0], px[1]));
             } catch (IOException | RuntimeException e) {
                 failed++;
@@ -391,6 +396,15 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         ImageSize size = (b.size() == null ? ImageSize.unknown() : b.size()).withBytes(b.data().length);
         int[] px = pixelsOf(b.data());
         return px == null ? size : size.withPixels(px[0], px[1]);
+    }
+
+    /** Exception class name only (no message) from a full decode attempt, or "decodes". */
+    static String decodeFailure(byte[] data) {
+        try {
+            return javax.imageio.ImageIO.read(new ByteArrayInputStream(data)) == null ? "no-reader" : "decodes";
+        } catch (IOException | RuntimeException e) {
+            return "fail-" + e.getClass().getSimpleName();
+        }
     }
 
     /** Width and height from the image header (PNG, JPEG, GIF); null for other formats. Decodes no pixels. */

@@ -154,10 +154,20 @@ final class PlaywrightSession implements RenderedPageSession {
         }
     }
 
-    private SeenImage newestFull(int skip) {
+    /** Ids (never logged) of the full-size responses already given to an evidence item. */
+    private final java.util.Set<String> claimed = new java.util.HashSet<>();
+
+    /** The newest full-size response after the first {@code skip} ones that no item has taken yet; null when none. */
+    private SeenImage unclaimedFull(int skip, boolean newest) {
         synchronized (seenImages) {
             var fulls = seenImages.stream().filter(i -> "full".equals(i.size())).toList();
-            return fulls.size() > skip ? fulls.get(fulls.size() - 1) : null;
+            var open = new java.util.ArrayList<SeenImage>();
+            for (int i = Math.max(0, skip); i < fulls.size(); i++) {
+                if (!claimed.contains(fulls.get(i).id())) {
+                    open.add(fulls.get(i));
+                }
+            }
+            return open.isEmpty() ? null : newest ? open.get(open.size() - 1) : open.get(0);
         }
     }
 
@@ -198,15 +208,23 @@ final class PlaywrightSession implements RenderedPageSession {
                 int before = fullCount();
                 try {
                     page.locator("img[src=\"" + blobUrl.replace("\"", "") + "\"]").first().click(new Locator.ClickOptions().setTimeout(5_000));
-                    if (waitUpTo(java.time.Duration.ofSeconds(8), () -> fullCount() > before)) {
-                        found = newestFull(before);
-                    }
+                    // The page asks for this frame's full version: wait (bounded) for a response nobody has taken yet. A frame whose
+                    // full file was already loaded by the page is served from the browser cache and sends no new response; then the
+                    // earliest response still unclaimed is the one.
+                    waitUpTo(java.time.Duration.ofSeconds(4), () -> unclaimedFull(before, true) != null);
                 } catch (PlaywrightException e) {
                     note("thumb-click=failed");
                 }
+                found = unclaimedFull(before, true);
+                if (found == null) {
+                    found = unclaimedFull(0, false);
+                }
             } else {
                 // The large image: its full response was seen while the page loaded.
-                found = newestFull(0);
+                found = unclaimedFull(0, false);
+            }
+            if (found != null) {
+                claimed.add(found.id());
             }
             if (found == null) {
                 note("image-path=response-missing");
