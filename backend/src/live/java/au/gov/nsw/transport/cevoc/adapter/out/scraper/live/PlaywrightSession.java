@@ -231,14 +231,17 @@ final class PlaywrightSession implements RenderedPageSession {
                 return Optional.<ImageBytes>empty();
             }
             byte[] body = found.response().body();
+            note("image-body-first=" + (body == null ? "none" : String.format("%02x%02x%02x", body[0] & 0xff, body[1] & 0xff, body[2] & 0xff))
+                    + "/" + (body == null ? 0 : body.length));
             if (!looksLikeImage(body)) {
                 // The browser can hand back a text-decoded body for an image response (replacement characters for the file header).
                 // Fetch the same address again with the session's cookies and read the bytes untouched.
                 try {
                     var again = context.request().get(found.response().url());
+                    note("image-refetch-status=" + again.status());
                     if (again.ok()) {
                         body = again.body();
-                        note("image-body=refetched");
+                        note("image-body=refetched/" + String.format("%02x", body[0] & 0xff) + "/" + body.length);
                     }
                 } catch (PlaywrightException e) {
                     note("image-body=refetch-failed");
