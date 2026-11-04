@@ -72,6 +72,18 @@ public final class LookupDiagnostic {
             sb.append("browser-closed");
         } else if (lower.contains("failed to launch") || lower.contains("browsertype.launch")) {
             sb.append("browser-launch-failed");
+        } else if (lower.contains("not visible")) {
+            sb.append("not-visible");
+        } else if (lower.contains("intercepts pointer")) {
+            sb.append("click-intercepted");
+        } else if (lower.contains("not stable")) {
+            sb.append("not-stable");
+        } else if (lower.contains("not attached") || lower.contains("detached")) {
+            sb.append("detached");
+        } else if (lower.contains("not enabled")) {
+            sb.append("not-enabled");
+        } else if (lower.contains("navigat")) {
+            sb.append("navigation");
         } else if (lower.contains("strict mode violation")) {
             sb.append("selector-matches-many");
         } else {

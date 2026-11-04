@@ -236,27 +236,40 @@ final class PlaywrightSession implements RenderedPageSession {
             java.util.function.Consumer<Page> onOpen = opened::set;
             String before = page.url();
             int abortedBefore = abortedNavs.get();
+            Locator first = link.first();
+            String target = String.valueOf(first.getAttribute("target")).toLowerCase(Locale.ROOT);
+            String href = first.getAttribute("href");
+            note("cert-link-count=" + Math.min(link.count(), 9) + "; cert-link-visible=" + (first.isVisible() ? "yes" : "no")
+                    + "; cert-link-href=" + (href == null || href.isBlank() ? "no" : href.startsWith("#") ? "hash" : href.toLowerCase(Locale.ROOT).startsWith("javascript") ? "js" : "yes")
+                    + "; cert-link-target=" + (target.equals("_blank") ? "blank" : target.equals("null") ? "none" : "other"));
             context.onPage(onOpen);
             try {
-                link.first().click();
+                try {
+                    first.click(new Locator.ClickOptions().setTimeout(10_000));
+                    note("cert-click=normal");
+                } catch (PlaywrightException e) {
+                    note("cert-click=normal-failed");
+                    first.dispatchEvent("click");
+                    note("cert-click=dispatch");
+                }
                 waitUntil(() -> opened.get() != null || !before.equals(page.url()));
             } finally {
                 context.offPage(onOpen);
             }
-            Page target = opened.get() != null ? opened.get() : page;
+            Page dest = opened.get() != null ? opened.get() : page;
             try {
-                target.waitForLoadState(LoadState.DOMCONTENTLOADED, new Page.WaitForLoadStateOptions().setTimeout(stepTimeout.toMillis()));
-                target.waitForLoadState(LoadState.NETWORKIDLE,
+                dest.waitForLoadState(LoadState.DOMCONTENTLOADED, new Page.WaitForLoadStateOptions().setTimeout(stepTimeout.toMillis()));
+                dest.waitForLoadState(LoadState.NETWORKIDLE,
                         new Page.WaitForLoadStateOptions().setTimeout(Math.min(10_000, stepTimeout.toMillis())));
             } catch (PlaywrightException ignored) {
                 // carry on with what is rendered
             }
-            String url = target.url();
+            String url = dest.url();
             note("cert-link=present; cert-popup=" + (opened.get() != null ? "yes" : "no")
                     + "; cert-url-host=" + hostKind(url) + "; cert-nav-aborted=" + Math.min(abortedNavs.get() - abortedBefore, 9)
                     + "; cert-path-jsf=" + (url.toLowerCase(Locale.ROOT).contains(".jsf") ? "yes" : "no")
                     + "; cert-url-changed=" + (before.equals(url) ? "no" : "yes"));
-            String html = target.content();
+            String html = dest.content();
             if (capture != null) {
                 capture.save("4-certificates", html);
             }
