@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import cevoc.adapter.out.demo.DemoPenaltyLookupAdapter;
+import cevoc.adapter.out.demo.DemoRoute;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MvcResult;
 class DemoSwitchOnTest {
 
     @Autowired MockMvc mvc;
-    @Autowired ObjectProvider<DemoPenaltyLookupAdapter> demo;
+    @Autowired ObjectProvider<DemoRoute> demo;
 
     @Test
     void theDemoAdapterIsRegisteredByDefault() {

@@ -4,6 +4,7 @@ import cevoc.adapter.in.web.DemoController;
 import cevoc.adapter.out.demo.DemoCaseFactory;
 import cevoc.adapter.out.demo.DemoCatalog;
 import cevoc.adapter.out.demo.DemoPenaltyLookupAdapter;
+import cevoc.adapter.out.demo.DemoRoute;
 import cevoc.adapter.out.demo.SampleMediaSource;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -26,8 +27,8 @@ public class DemoDataConfig {
     }
 
     @Bean
-    DemoPenaltyLookupAdapter demoPenaltyLookup(DemoCaseFactory factory) {
-        return new DemoPenaltyLookupAdapter(factory);
+    DemoRoute demoRoute(DemoCaseFactory factory) {
+        return new DemoRoute(new DemoPenaltyLookupAdapter(factory));
     }
 
     @Bean

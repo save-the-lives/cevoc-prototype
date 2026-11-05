@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cevoc.adapter.in.web.DemoController;
-import cevoc.adapter.out.demo.DemoPenaltyLookupAdapter;
+import cevoc.adapter.out.demo.DemoRoute;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class DemoSwitchOffTest {
 
     @Autowired MockMvc mvc;
-    @Autowired ObjectProvider<DemoPenaltyLookupAdapter> demo;
+    @Autowired ObjectProvider<DemoRoute> demo;
     @Autowired ObjectProvider<DemoController> controller;
 
     @Test
