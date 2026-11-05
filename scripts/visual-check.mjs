@@ -197,8 +197,12 @@ function pageChecks() {
     return { el: label(el), w: Math.round(r.width), h: Math.round(r.height), inline };
   });
   const imgs = [...document.querySelectorAll('img')].filter(visible).map((el) => ({ el: label(el), alt: el.getAttribute('alt'), loaded: el.complete && el.naturalWidth > 0 }));
+  const se = document.scrollingElement;
+  const main = document.querySelector('main');
   return {
     scrollWidth: document.documentElement.scrollWidth, innerWidth: vw, horizontalScroll: document.documentElement.scrollWidth > vw + 1, overflowing: overflow,
+    scrollingWidth: se.scrollWidth, clientWidth: se.clientWidth, noHorizontalScroll: se.scrollWidth <= se.clientWidth,
+    mainTop: main ? Math.round(main.getBoundingClientRect().top) : null, demoTags: document.querySelectorAll('[data-testid="demo-tag"]').length,
     targetsUnder24: targets.filter((t) => (t.w < 24 || t.h < 24) && !t.inline), targetsUnder44: targets.filter((t) => (t.w < 44 || t.h < 44) && !t.inline).length, targetCount: targets.length,
     imagesWithoutAlt: imgs.filter((i) => i.alt === null || i.alt.trim() === '').map((i) => i.el), imagesNotLoaded: imgs.filter((i) => !i.loaded).map((i) => i.el), imageCount: imgs.length,
   };
@@ -260,6 +264,28 @@ async function main() {
   const report = { generatedFor: 'fictitious data only', axe: !!axeSource, cases: [], mockup: [], blockedExternalRequests: [] };
   let failed = false;
   for (const dir of ['prototype', 'mockup', 'text']) fs.mkdirSync(path.join(OUT, dir), { recursive: true });
+  // Reference for the header check: the lookup form is a real page (no DEMO source, so no Demo data tag). Its main content top
+  // is where every real result page and every demo page must start too: a demo tag that took a row would move it down.
+  const ref = {};
+  for (const vp of Object.keys(VIEWPORTS)) {
+    const ctx = await newContext(browser, vp, app.base, report.blockedExternalRequests);
+    const page = await ctx.newPage();
+    await page.goto(app.base);
+    await page.waitForSelector('#pn', { timeout: 20000 });
+    ref[vp] = await page.evaluate(pageChecks);
+    await ctx.close();
+  }
+  const failures = report.failures = [];
+  const assertPage = (id, vp, checks, demo) => {
+    const bad = [];
+    if (demo && checks.demoTags !== 1) bad.push(`Demo data tag missing or repeated (${checks.demoTags} found)`);
+    if (!demo && checks.demoTags !== 0) bad.push(`Demo data tag shown on a real page (${checks.demoTags} found)`);
+    if (checks.mainTop === null || ref[vp].mainTop === null) bad.push('no main element to measure');
+    else if (Math.abs(checks.mainTop - ref[vp].mainTop) > 1) bad.push(`main content starts at ${checks.mainTop}px, real page at ${ref[vp].mainTop}px (extra row?)`);
+    if (vp === 'mobile' && !checks.noHorizontalScroll) bad.push(`horizontal scroll at 390px (scrollWidth ${checks.scrollingWidth} > clientWidth ${checks.clientWidth})`);
+    for (const b of bad) { failures.push({ id, viewport: vp, problem: b }); console.log(`FAIL ${id}-${vp}: ${b}`); failed = true; }
+    return bad.length === 0;
+  };
 
   try {
     for (const c of CASES.filter((x) => !ONLY || ONLY.includes(x.id) || ONLY.includes(x.id.split('-')[0]))) {
@@ -279,6 +305,7 @@ async function main() {
           const name = `${c.id}-${vp}`;
           const checks = await capture(page, path.join(OUT, 'prototype', `${name}.png`), path.join(OUT, 'text', `prototype-${name}.txt`));
           report.cases.push({ id: c.id, title: c.title, viewport: vp, screenshot: `prototype/${name}.png`, consoleErrors: errors, ...checks });
+          assertPage(c.id, vp, checks, false);
           console.log(`ok  ${name}`);
         } catch (err) {
           failed = true;
@@ -301,6 +328,7 @@ async function main() {
           await hub.waitForSelector('.demo-case', { timeout: 20000 });
           const checks = await capture(hub, path.join(OUT, 'prototype', `demo-hub-${vp}.png`), path.join(OUT, 'text', `prototype-demo-hub-${vp}.txt`));
           report.cases.push({ id: 'demo-hub', title: 'Demo hub', viewport: vp, screenshot: `prototype/demo-hub-${vp}.png`, consoleErrors: hubErrors, ...checks });
+          assertPage('demo-hub', vp, checks, true);
           console.log(`ok  demo-hub-${vp}`);
         } catch (err) {
           failed = true;
@@ -316,10 +344,11 @@ async function main() {
           const id = `demo-${number}`;
           try {
             await page.goto(`${app.base}/?demo=${number}`);
-            await page.waitForSelector('.demo-banner', { timeout: 20000 });
+            await page.waitForSelector('[data-testid="demo-tag"]', { timeout: 20000 });
             await page.waitForFunction(() => !document.querySelector('[aria-busy="true"], .skel'), null, { timeout: 20000 });
             const checks = await capture(page, path.join(OUT, 'prototype', `${id}-${vp}.png`), path.join(OUT, 'text', `prototype-${id}-${vp}.txt`));
             report.cases.push({ id, title: `Demo case ${number}`, viewport: vp, screenshot: `prototype/${id}-${vp}.png`, consoleErrors: errors, ...checks });
+            assertPage(id, vp, checks, true);
             console.log(`ok  ${id}-${vp}`);
             if (DEMO.cases[number].eventsWithPlate) {
               // held-back images: give the plate the case needs (a wrong one for the always-refused case) and capture the answer
@@ -329,6 +358,7 @@ async function main() {
               await page.waitForFunction(() => !document.querySelector('[aria-busy="true"], .skel'), null, { timeout: 20000 });
               const after = await capture(page, path.join(OUT, 'prototype', `${id}-plate-${vp}.png`), path.join(OUT, 'text', `prototype-${id}-plate-${vp}.txt`));
               report.cases.push({ id: `${id}-plate`, title: `Demo case ${number} after the plate`, viewport: vp, screenshot: `prototype/${id}-plate-${vp}.png`, consoleErrors: errors, ...after });
+              assertPage(`${id}-plate`, vp, after, true);
               console.log(`ok  ${id}-plate-${vp}`);
             }
           } catch (err) {
@@ -365,6 +395,7 @@ async function main() {
     mock?.server.close();
   }
   report.blockedExternalRequests = [...new Set(report.blockedExternalRequests)];
+  report.failures = failures;
   fs.writeFileSync(path.join(OUT, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   fs.writeFileSync(path.join(OUT, 'report.md'), summary(report));
   console.log(`\nscreenshots and report: ${OUT}`);
@@ -380,6 +411,7 @@ function summary(report) {
     lines.push(`| ${r.name} | ${r.horizontalScroll ? `YES (${r.scrollWidth} > ${r.innerWidth})` : 'no'} | ${r.targetsUnder24.length} | ${r.targetsUnder44} | ${r.imagesWithoutAlt.length} | ${axe} |`);
   }
   lines.push('', `External requests blocked: ${report.blockedExternalRequests.length ? report.blockedExternalRequests.join(', ') : 'none'}`, '');
+  if (report.failures?.length) lines.push('## Failed checks', '', ...report.failures.map((f) => `- ${f.id} (${f.viewport}): ${f.problem}`), '');
   return lines.join('\n');
 }
 
