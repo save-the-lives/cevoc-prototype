@@ -23,7 +23,8 @@ It asks for each value (the notice, date and registration are typed silently), o
 | `SAVE_HTML` | `yes` saves the raw rendered HTML of each step to `live-capture/` |
 | `LIVE_HEADED` | `1` shows the browser window |
 | `LIVE_MIN_INTERVAL_MS` | pause between site requests (default 5000, minimum 3000) |
-| `LIVE_CERT_APPROVAL_REF` | also run the certificate lookup (needs your approval reference) |
+| `LIVE_CERTS` | `no` skips the certificate lookup; by default it runs through the basint search page (Chromium, prototype only) |
+| `LIVE_CERT_APPROVAL_REF` | overrides the approval reference (default: the owner's 2026-11-04 approval) |
 
 Never put these values in a file, in the repo, or in a command line you keep in shell history. If you pre-set them, use `read -s` or a password manager, not `export NOTICE=...` in a saved script.
 
