@@ -29,6 +29,7 @@ public enum StepCause {
     BLOCKED_403,
     BLOCKED_429,
     CAPTCHA,
+    BAD_SHAPE,
     NO_SEARCH_FORM,
     OTHER,
     // skipped
@@ -37,6 +38,7 @@ public enum StepCause {
     NO_CAMERA_CODE,
     NO_CERTIFICATION_LINK,
     NOT_APPLICABLE,
+    NOT_SUPPORTED,
     PRIOR_FAILURE;
 
     public String token() {

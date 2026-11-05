@@ -43,6 +43,14 @@ public class BeanConfig {
         return cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media);
     }
 
+    // Plain HTTP route to the Revenue NSW JSON service (no browser): never the default. Also needs
+    // cevoc.revenue-nsw-http.enabled=true, base-url, path-prefix, contact and approval-reference; see docs/ARCHITECTURE.md.
+    @Bean
+    @ConditionalOnProperty(name = "cevoc.penalty-lookup.adapter", havingValue = "revenue-nsw-http")
+    PenaltyLookupPort revenueNswHttpLookup(org.springframework.core.env.Environment env, cevoc.application.port.out.MediaStoragePort media) {
+        return cevoc.adapter.out.revenuensw.RevenueNswHttpFactory.create(env, media);
+    }
+
     @Bean
     LookupPenaltyUseCase lookupPenaltyUseCase(PenaltyLookupPort port, SignedLinkPort signedLinks,
             org.springframework.beans.factory.ObjectProvider<CertificateSourcePort> certificates,
@@ -55,10 +63,10 @@ public class BeanConfig {
     // ---- media: cevoc.media.adapter = stub (default) | azure-blob ----
 
     // cevoc.media.adapter unset: "memory" when the live evidence scraper is the lookup adapter (it captures real image bytes
-    // that the stub would silently drop), otherwise "stub".
+    // that the stub would silently drop) or "revenue-nsw-http" (which stores real image bytes too), otherwise "stub".
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && '${cevoc.penalty-lookup.adapter:manifest}' != 'scraper-evidence')")
+            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && '${cevoc.penalty-lookup.adapter:manifest}' != 'scraper-evidence' && '${cevoc.penalty-lookup.adapter:manifest}' != 'revenue-nsw-http')")
     StubMediaAdapter stubMedia(@Value("${cevoc.media.base-url:/samples}") String baseUrl) {
         return new StubMediaAdapter(baseUrl);
     }
@@ -69,7 +77,7 @@ public class BeanConfig {
      */
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && '${cevoc.penalty-lookup.adapter:manifest}' == 'scraper-evidence')")
+            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && ('${cevoc.penalty-lookup.adapter:manifest}' == 'scraper-evidence' || '${cevoc.penalty-lookup.adapter:manifest}' == 'revenue-nsw-http'))")
     cevoc.adapter.out.memory.InMemoryMediaAdapter memoryMedia(
             @Value("${cevoc.media.public-base-url:}") String publicBaseUrl,
             @Value("${cevoc.media.memory.retention-minutes:20}") long retentionMinutes,

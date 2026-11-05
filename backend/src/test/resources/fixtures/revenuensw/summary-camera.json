@@ -1,0 +1,20 @@
+{
+  "pnNum": "9000000004",
+  "notifications": [{"message": {"code": "N-FICT-1", "text": "Fictitious notice: this penalty is payable."}}],
+  "offence": {
+    "desc": "Fictitious offence description",
+    "date": "2026-01-15",
+    "time": "10:20:30",
+    "demerit": {"points": 3, "disclaimer": {"code": "D-FICT-1", "text": "Fictitious disclaimer", "placeholder": []}},
+    "amount": 123.00,
+    "location": {"street": "Example Road", "suburb": "EXAMPLETOWN"}
+  },
+  "payment": {"outstanding": {"amount": 123.00}, "transactions": []},
+  "images": {
+    "count": 2,
+    "identifiers": ["fict-img-1", "fict-img-2"],
+    "cameraCertification": {"ref": "https://certificates.example.invalid/cert/details.jsf?d=x&i=6&m=SIGNEDFICTITIOUS&p=9000000004&s=7109", "type": "CERT"}
+  },
+  "timestamp": "2026-01-15T10:00:00",
+  "seriousOffence": false
+}
