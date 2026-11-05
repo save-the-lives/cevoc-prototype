@@ -312,7 +312,7 @@ final class PlaywrightSession implements RenderedPageSession {
 
     /** Emits the banner-layer structure line for this stage plus the label-carrying responses seen so far. Bounded, never throws. */
     private void probeBannerLayer(String stage) {
-        if (probes >= 4) {
+        if (probes >= 9) {
             return;
         }
         probes++;
@@ -324,10 +324,91 @@ final class PlaywrightSession implements RenderedPageSession {
         }
     }
 
+    private volatile boolean exploring;
+    private boolean explored;
+    private final java.util.List<String> exploreLog = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+    /** Diagnostics only: any request made while the large image is being opened, by shape (no query), status, type and size. */
+    private void logExploreResponse(com.microsoft.playwright.Response resp, String type) {
+        if (!exploring || exploreLog.size() >= 40) {
+            return;
+        }
+        var req = resp.request();
+        exploreLog.add(req.method() + shapeOf(req.url()) + "/" + resp.status() + "/" + (type.contains("/") ? type.split("[/;]", 3)[1] : "none") + "/"
+                + req.resourceType() + "/" + (req.frame().parentFrame() == null ? "main" : "child") + "/" + hostClass(req.url()));
+    }
+
+    /** Closes any extra tab the page opened, probing each first. */
+    private void probePopups(String stage) {
+        for (Page p : new java.util.ArrayList<>(context.pages())) {
+            if (p != page) {
+                try {
+                    note(BannerLayerProbe.probe(p, stage + "-popup"));
+                    p.close();
+                } catch (RuntimeException e) {
+                    note("popup-probe=failed");
+                }
+            }
+        }
+    }
+
+    /**
+     * Diagnostics only, once: does the page show the banner text only after the large image is opened? Does what a visitor does
+     * (move over it, click it, use an enlarge-type control the page offers), probes the structure after each step, records the
+     * requests made meanwhile by shape, and presses Escape afterwards. Never reads any text.
+     */
+    private void exploreOpenedImage() {
+        if (explored) {
+            return;
+        }
+        explored = true;
+        exploring = true;
+        try {
+            Locator big = page.locator("div.selected-image-block img, img.image").first();
+            try {
+                big.hover(new Locator.HoverOptions().setTimeout(3_000));
+                page.waitForTimeout(800);
+                probeBannerLayer("hover");
+            } catch (PlaywrightException e) {
+                note("explore-hover=failed");
+            }
+            try {
+                big.click(new Locator.ClickOptions().setTimeout(3_000));
+                page.waitForTimeout(2_000);
+                note("pages-open=" + Math.min(context.pages().size(), 9));
+                probeBannerLayer("clicked");
+                probePopups("clicked");
+                page.keyboard().press("Escape");
+                page.waitForTimeout(500);
+            } catch (PlaywrightException e) {
+                note("explore-click=failed");
+            }
+            try {
+                Locator ctl = page.locator("button, a, [role=button]").filter(new Locator.FilterOptions()
+                        .setHasText(Pattern.compile("enlarge|zoom|expand|full ?screen|magnif", Pattern.CASE_INSENSITIVE)));
+                note("enlarge-controls=" + Math.min(ctl.count(), 9));
+                if (ctl.count() > 0) {
+                    ctl.first().click(new Locator.ClickOptions().setTimeout(3_000));
+                    page.waitForTimeout(2_000);
+                    probeBannerLayer("control");
+                    probePopups("control");
+                    page.keyboard().press("Escape");
+                    page.waitForTimeout(500);
+                }
+            } catch (PlaywrightException e) {
+                note("explore-control=failed");
+            }
+        } finally {
+            exploring = false;
+            note("explore-requests=" + exploreLog.size() + (exploreLog.isEmpty() ? "" : " [" + String.join(" ; ", exploreLog) + "]"));
+        }
+    }
+
     private void traceNetResponse(com.microsoft.playwright.Response resp) {
         var req = resp.request();
         String type = String.valueOf(resp.headers().get("content-type")).toLowerCase(Locale.ROOT);
         try {
+            logExploreResponse(resp, type);
             scanForBannerLabels(resp, type);
         } catch (RuntimeException ignored) {
             // diagnostics must never break the flow
@@ -537,6 +618,9 @@ final class PlaywrightSession implements RenderedPageSession {
             }
             page.waitForTimeout(1000);
             probeBannerLayer(thumbnail ? "thumb-opened" : "large");
+            if (!thumbnail) {
+                exploreOpenedImage();
+            }
             if (found == null) {
                 note("image-path=response-missing");
                 return Optional.<ImageBytes>empty();

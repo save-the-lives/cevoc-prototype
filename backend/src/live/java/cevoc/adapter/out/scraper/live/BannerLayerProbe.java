@@ -109,7 +109,47 @@ final class BannerLayerProbe {
                   stack = document.elementsFromPoint(cx, cy).slice(0, 6).map(shape);
                 } catch (e) { stack = []; }
               }
+              const CTRL = ['enlarge','zoom','expand','full','download','print','rotate','close','next','prev','back','view','image','photo','detail','info','more','text','caption','overlay','banner','share','open','magnif'];
+              const ctrls = new Map();
+              for (const el of document.querySelectorAll('button,a,[role=button],[role=dialog],[role=img],input,[tabindex]')) {
+                const hay = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '') + ' ' + (el.textContent || '').slice(0, 60)
+                  + ' ' + (el.id || '') + ' ' + cls(el)).toLowerCase();
+                const h = CTRL.filter(w => hay.includes(w));
+                if (!h.length) continue;
+                const k = shape(el) + ':' + h.join('+');
+                ctrls.set(k, (ctrls.get(k) || 0) + 1);
+              }
+              const frames = Array.from(document.querySelectorAll('iframe')).map(f => {
+                const src = f.getAttribute('src') || '';
+                const r = f.getBoundingClientRect();
+                return shape(f) + '|src:' + (!src ? 'none' : src.startsWith('about') ? 'about' : src.startsWith('blob:') ? 'blob' : src.startsWith('data:') ? 'data'
+                  : src.startsWith('http') ? 'http' : 'rel') + '|srcdoc:' + (f.hasAttribute('srcdoc') ? 'y' : 'n') + '|sandbox:' + (f.hasAttribute('sandbox') ? 'y' : 'n')
+                  + '|noscript:' + (f.closest('noscript') ? 'y' : 'n') + '|size:' + Math.round(r.width) + 'x' + Math.round(r.height);
+              });
+              const ovl = Array.from(document.querySelectorAll('[role=dialog],[class*=modal],[class*=lightbox],[class*=overlay],[class*=viewer],[class*=zoom],[class*=popup]'))
+                .slice(0, 8).map(el => shape(el) + '|txt:' + ((el.innerText || '').length === 0 ? '0' : (el.innerText || '').length < 100 ? 'lt100' : 'ge100')
+                  + '|vis:' + (el.getBoundingClientRect().width > 0 ? 'y' : 'n'));
+              const grid = new Set();
+              if (ir) {
+                for (const fx of [0.1, 0.5, 0.9]) for (const fy of [0.1, 0.5, 0.95]) {
+                  try {
+                    const e = document.elementsFromPoint(Math.min(Math.max(ir.left + ir.width * fx, 0), innerWidth - 1), Math.min(Math.max(ir.top + ir.height * fy, 0), innerHeight - 1))[0];
+                    if (e) grid.add(shape(e));
+                  } catch (e2) { /* ignore */ }
+                }
+              }
+              const pseudo = [];
+              if (big) {
+                let anc = big; const scope = [];
+                for (let i = 0; i < 6 && anc; i++, anc = anc.parentElement) { scope.push(anc); for (const c of anc.children) scope.push(c); }
+                for (const el of scope.slice(0, 80)) for (const ps of ['::before', '::after']) {
+                  const c = getComputedStyle(el, ps).content;
+                  if (c && c !== 'none' && c !== 'normal' && c !== '""' && pseudo.length < 4) pseudo.push(shape(el) + ps);
+                }
+              }
               return JSON.stringify({
+                ctrls: Array.from(ctrls.entries()).slice(0, 14).map(e => e[0] + '#' + e[1]), iframes: frames.slice(0, 4), overlays: ovl,
+                grid: Array.from(grid).slice(0, 6), pseudo: pseudo,
                 text: bodyText.length === 0 ? '0' : bodyText.length < 100 ? 'lt100' : bodyText.length < 1000 ? 'lt1k' : 'ge1k',
                 imgs: imgs.length, big: ir ? Math.round(ir.width) + 'x' + Math.round(ir.height) : 'none', stats: stats,
                 names: Array.from(names).sort().join(','), attrs: Array.from(attrHits).sort().join(','),
@@ -136,7 +176,7 @@ final class BannerLayerProbe {
             try {
                 Object r = f.evaluate(JS);
                 String s = String.valueOf(r);
-                sb.append(s.length() > 1600 ? s.substring(0, 1600) : s);
+                sb.append(s.length() > 2600 ? s.substring(0, 2600) : s);
             } catch (PlaywrightException | IllegalStateException e) {
                 sb.append("unreadable");
             }
