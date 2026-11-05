@@ -329,6 +329,21 @@ final class PlaywrightSession implements RenderedPageSession {
         int jpg = countOf(text, "/9j/4AAQ");
         int dataImg = countOf(text, "data:image/");
         boolean rawMagic = looksLikeImage(body) && body[0] != '<';
+        if (type.contains("json") && traceLines.size() < 50) {
+            var names = new java.util.TreeSet<String>();
+            var km = java.util.regex.Pattern.compile("\"([A-Za-z_]{2,40})\"\\s*:").matcher(text);
+            while (km.find() && names.size() < 400) {
+                String k = km.group(1);
+                if (k.toLowerCase(Locale.ROOT).matches(".*(red|speed|limit|lane|yellow|direction|camera|banner|signal|phase|light).*")) {
+                    names.add(k);
+                }
+            }
+            if (!names.isEmpty()) {
+                traceIndex.put(req, traceOrder.incrementAndGet());
+                traceLines.add("#" + traceOrder.get() + "K:" + req.method() + shapeOf(req.url()) + "/" + resp.status() + "/" + body.length
+                        + "B/keys=" + String.join(",", names));
+            }
+        }
         if (png + jpg + dataImg > 0 || rawMagic) {
             traceIndex.put(req, traceOrder.incrementAndGet());
             traceLines.add("#" + traceOrder.get() + "J:" + req.method() + shapeOf(req.url()) + "/" + resp.status() + "/"
@@ -1133,7 +1148,7 @@ final class PlaywrightSession implements RenderedPageSession {
             // 1) in-page fetch of the blob; 2) draw the loaded img onto a canvas; 3) screenshot the element.
             int[] dims = elementDims(blobUrl); // rendered w,h and natural w,h of the img element: numbers only
             try {
-                Object o = page.evaluate(FETCH_JS, Arrays.asList(blobUrl, maxBytes));
+                Object o = page.evaluate(FETCH_JS, Arrays.asList(blobUrl, (double) maxBytes));
                 if (o instanceof Map<?, ?> m && m.get("b64") instanceof String b64 && !b64.isEmpty()) {
                     String type = m.get("type") instanceof String t ? t.toLowerCase(Locale.ROOT) : "";
                     note("image-path=fetch");
