@@ -371,6 +371,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 trace.image(sizeOf(bytes.get(), type), type, data);
                 EvidenceItem item = EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey);
                 int[] px = pixelsOf(data);
+                if (bytes.get().size() != null && bytes.get().size().path() != cevoc.domain.CapturePath.RESPONSE
+                        && px != null && Math.max(px[0], px[1]) < 400) {
+                    // No original body was obtained for this one: what is stored is the small preview, and it is marked as such.
+                    LookupDiagnostic.note("image-" + n + "-thumbnail-only");
+                }
                 if (px == null) {
                     // Why the JDK cannot read this one: first bytes as hex (file signature only) and the decoder's exception class.
                     LookupDiagnostic.note("image-" + n + "-undecodable: magic=" + HexFormat.of().formatHex(data, 0, Math.min(3, data.length))

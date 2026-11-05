@@ -94,6 +94,8 @@ final class PlaywrightSession implements RenderedPageSession {
                 abortedNavs.incrementAndGet();
                 lastAbortedHost = hostClass(req.url());
                 route.abort();
+            } else if (wantsOriginalBody(req)) {
+                captureAndFulfil(route);
             } else {
                 route.resume();
             }
@@ -102,8 +104,6 @@ final class PlaywrightSession implements RenderedPageSession {
         if (netmap != null) {
             netmap.attach(context);
         }
-        // Bodies of the source's own image responses, kept as the browser received them (read later, on the session's thread).
-        context.onResponse(this::recordImageResponse);
         this.page = context.newPage();
         this.page.onDownload(this::countDownload);
         context.onPage(p -> p.onDownload(this::countDownload));
@@ -121,30 +121,66 @@ final class PlaywrightSession implements RenderedPageSession {
         });
     }
 
-    /** One image response seen on the network: its id (from the path, never logged), size word and the response itself. */
-    private record SeenImage(String id, String size, com.microsoft.playwright.Response response) {}
+    /**
+     * One full-size image response taken at network level: its id (from the path, never logged), size word, content type and the
+     * untouched body bytes as the driver received them (not text-decoded).
+     */
+    private record SeenImage(String id, String size, String contentType, byte[] body) {}
 
     private static final java.util.regex.Pattern IMAGE_PATH = java.util.regex.Pattern.compile("/images/([A-Za-z0-9_.-]{1,80})(?:[?#].*)?$");
     private static final java.util.regex.Pattern SIZE_PARAM = java.util.regex.Pattern.compile("[?&]size=([a-z]+)");
     private final java.util.List<SeenImage> seenImages = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
 
-    private void recordImageResponse(com.microsoft.playwright.Response resp) {
+    /** True for the page's own GET of a full-size image from the source (no size word means full). Thumbnails and others pass untouched. */
+    private static boolean wantsOriginalBody(com.microsoft.playwright.Request req) {
+        if (!"GET".equals(req.method()) || req.isNavigationRequest()) {
+            return false;
+        }
+        String url = req.url();
+        if (!IMAGE_PATH.matcher(url).find()) {
+            return false;
+        }
+        var size = SIZE_PARAM.matcher(url);
+        return !size.find() || "full".equals(size.group(1));
+    }
+
+    /**
+     * Sends the page's own request once (same URL, same headers the page set) from the driver, keeps the body bytes as received,
+     * and hands the identical response back to the page so it behaves exactly as before. Nothing is added or forged.
+     */
+    private void captureAndFulfil(com.microsoft.playwright.Route route) {
+        com.microsoft.playwright.APIResponse resp;
         try {
-            if (resp.status() != 200 || seenImages.size() >= 60) {
-                return;
-            }
-            String url = resp.url();
-            var path = IMAGE_PATH.matcher(url);
-            if (!path.find()) {
-                return;
-            }
-            var size = SIZE_PARAM.matcher(url);
+            resp = route.fetch();
+        } catch (PlaywrightException e) {
+            note("image-route-fetch=failed");
+            safeAbort(route);
+            return;
+        }
+        try {
+            byte[] body = resp.body();
+            String url = route.request().url();
             String type = String.valueOf(resp.headers().get("content-type")).toLowerCase(Locale.ROOT);
-            if (type.startsWith("image/") && !type.contains("svg")) { // icons are not evidence photos
-                seenImages.add(new SeenImage(path.group(1), size.find() ? size.group(1) : "full", resp));
+            var path = IMAGE_PATH.matcher(url);
+            if (resp.status() == 200 && path.find() && type.startsWith("image/") && !type.contains("svg") && seenImages.size() < 60
+                    && body != null && body.length <= maxBytes) {
+                seenImages.add(new SeenImage(path.group(1), "full", type, body));
             }
-        } catch (RuntimeException ignored) {
-            // diagnostics must never break the flow
+        } catch (RuntimeException e) {
+            // capture must never break the page
+        }
+        try {
+            route.fulfill(new com.microsoft.playwright.Route.FulfillOptions().setResponse(resp));
+        } catch (PlaywrightException e) {
+            // the page navigated away mid-request
+        }
+    }
+
+    private static void safeAbort(com.microsoft.playwright.Route route) {
+        try {
+            route.abort();
+        } catch (PlaywrightException ignored) {
+            // already handled or page closed
         }
     }
 
@@ -230,29 +266,10 @@ final class PlaywrightSession implements RenderedPageSession {
                 note("image-path=response-missing");
                 return Optional.<ImageBytes>empty();
             }
-            byte[] body = found.response().body();
-            note("image-body-first=" + (body == null ? "none" : String.format("%02x%02x%02x", body[0] & 0xff, body[1] & 0xff, body[2] & 0xff))
-                    + "/" + (body == null ? 0 : body.length));
-            if (!looksLikeImage(body)) {
-                // The browser can hand back a text-decoded body for an image response (replacement characters for the file header).
-                // Fetch the same address again with the session's cookies and read the bytes untouched.
-                try {
-                    Object b64 = page.evaluate("async u => { const r = await fetch(u, {credentials: 'include'}); if (!r.ok) return 'status:' + r.status;"
-                            + " const a = new Uint8Array(await r.arrayBuffer()); let s = ''; for (let i = 0; i < a.length; i += 32768)"
-                            + " { s += String.fromCharCode.apply(null, a.subarray(i, i + 32768)); } return btoa(s); }", found.response().url());
-                    String text = String.valueOf(b64);
-                    if (text.startsWith("status:")) {
-                        note("image-refetch-" + text);
-                    } else {
-                        body = java.util.Base64.getDecoder().decode(text);
-                        note("image-body=refetched/" + String.format("%02x", body[0] & 0xff) + "/" + body.length);
-                    }
-                } catch (PlaywrightException | IllegalArgumentException e) {
-                    note("image-body=refetch-failed");
-                }
-            }
-            String type = String.valueOf(found.response().headers().get("content-type")).split(";")[0].trim().toLowerCase(Locale.ROOT);
-            if (body == null || body.length == 0 || body.length > maxBytes || !looksLikeImage(body)) {
+            byte[] body = found.body();
+            note("image-body-first=" + String.format("%02x%02x%02x", body[0] & 0xff, body[1] & 0xff, body[2] & 0xff) + "/" + body.length);
+            String type = found.contentType().split(";")[0].trim();
+            if (body.length == 0 || body.length > maxBytes || !looksLikeImage(body)) {
                 note("image-path=response-unusable");
                 return Optional.<ImageBytes>empty();
             }
