@@ -2,6 +2,7 @@ package cevoc.adapter.out.scraper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.TreeSet;
@@ -116,6 +117,62 @@ public final class SearchPageDiagnostic {
         } catch (RuntimeException e) {
             return "structure=unreadable";
         }
+    }
+
+    private static final Set<String> SERVER_PRODUCTS = Set.of("nginx", "apache", "microsoft-iis", "cloudflare", "akamaighost",
+            "akamainetworkstorage", "awselb", "amazons3", "cloudfront", "envoy", "openresty", "varnish", "litespeed",
+            "gws", "azure", "microsoft-httpapi", "bigip", "f5", "imperva", "incapsula", "sucuri", "netscaler", "squid");
+
+    /**
+     * Facts about a refused response and the request that drew it, with NO values: header names only (lower-cased,
+     * sorted), the server product token only when it is a known plain product name, the media type without
+     * parameters, size bucket, html yes/no, the client category and yes/no for referer/origin. Never cookies,
+     * tokens, URLs, the user agent string or any body text.
+     */
+    public static String refusalProfile(Map<String, String> responseHeaders, String body, String clientMode,
+                                        String userAgentCategory, boolean sentReferer, boolean sentOrigin) {
+        try {
+            TreeSet<String> names = new TreeSet<>();
+            String server = null;
+            String type = null;
+            if (responseHeaders != null) {
+                for (Map.Entry<String, String> h : responseHeaders.entrySet()) {
+                    String n = h.getKey() == null ? "" : h.getKey().toLowerCase(Locale.ROOT).trim();
+                    if (!n.matches("[a-z0-9\\-]{1,40}")) continue;
+                    names.add(n);
+                    if (n.equals("server")) server = serverProduct(h.getValue());
+                    if (n.equals("content-type")) type = mediaType(h.getValue());
+                }
+            }
+            int len = body == null ? 0 : body.length();
+            boolean html = body != null && (body.toLowerCase(Locale.ROOT).contains("<html") || body.toLowerCase(Locale.ROOT).contains("<body")
+                    || body.toLowerCase(Locale.ROOT).contains("<!doctype html"));
+            return "srch-refusal-profile: header-names=" + (names.isEmpty() ? "none" : String.join(",", names.stream().limit(40).toList()))
+                    + "; server=" + (server == null ? "omitted" : server)
+                    + "; content-type=" + (type == null ? "none" : type)
+                    + "; body-size=" + sizeBucket(len) + "; body-html=" + yn(html)
+                    + "; client=" + (clientMode == null ? "unknown" : token(clientMode))
+                    + "; user-agent=" + (userAgentCategory == null ? "unknown" : token(userAgentCategory))
+                    + "; sent-referer=" + yn(sentReferer) + "; sent-origin=" + yn(sentOrigin);
+        } catch (RuntimeException e) {
+            return "srch-refusal-profile: unreadable";
+        }
+    }
+
+    private static String serverProduct(String value) {
+        if (value == null) return null;
+        String product = value.trim().toLowerCase(Locale.ROOT).split("[/\\s(;]", 2)[0];
+        return SERVER_PRODUCTS.contains(product) ? product : null;
+    }
+
+    private static String mediaType(String value) {
+        if (value == null) return null;
+        String m = value.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+        return m.matches("[a-z0-9.+\\-]{1,30}/[a-z0-9.+\\-]{1,40}") ? m : "other";
+    }
+
+    private static String sizeBucket(int n) {
+        return n < 512 ? "<512B" : n < 2_048 ? "<2KB" : n < 10_240 ? "<10KB" : ">=10KB";
     }
 
     /** True when the page shows a captcha widget: the search must stop there, never be automated past it. */

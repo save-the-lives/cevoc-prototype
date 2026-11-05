@@ -80,8 +80,10 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
             Duration step = stepTimeout(settings);
             context.setDefaultTimeout(step.toMillis());
             context.setDefaultNavigationTimeout(step.toMillis());
-            return new PlaywrightSession(playwright, browser, context, baseUrl, settings.maxBytes(), step, limiter,
+            PlaywrightSession session = new PlaywrightSession(playwright, browser, context, baseUrl, settings.maxBytes(), step, limiter,
                     captureDir == null ? null : new HtmlCapture(captureDir), owns);
+            session.headless(headless);
+            return session;
         } catch (RuntimeException e) {
             if (!owns) {
                 forgetWarm();

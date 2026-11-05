@@ -717,6 +717,25 @@ final class PlaywrightSession implements RenderedPageSession {
         }
     }
 
+    /** Redacted facts about the refusal (header names, size bucket, client category); see SearchPageDiagnostic. */
+    private void refusalProfile(com.microsoft.playwright.Response r, String body) {
+        try {
+            java.util.Map<String, String> headers = r == null ? java.util.Map.of() : r.allHeaders();
+            java.util.Map<String, String> sent = r == null ? java.util.Map.of() : r.request().allHeaders();
+            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(headers, body,
+                    (headless ? "headless-chromium" : "headed-chromium"), "custom-identifying",
+                    sent.containsKey("referer"), sent.containsKey("origin")));
+        } catch (RuntimeException ignored) {
+            // diagnostics must never break the flow
+        }
+    }
+
+    private volatile boolean headless = true;
+
+    void headless(boolean value) {
+        this.headless = value;
+    }
+
     /** same | transport | other | blank: where the page is, as a token (never the URL). */
     private String hostKind(String url) {
         if (url == null || url.isBlank() || "about:blank".equals(url)) {
@@ -770,6 +789,7 @@ final class PlaywrightSession implements RenderedPageSession {
                 if (status == 401 || status == 403 || status == 429) {
                     // Refused: structure of the refusal page only, then stop. No second attempt, no other route.
                     note("srch-refusal-page: " + cevoc.adapter.out.scraper.SearchPageDiagnostic.structureOf(page.content()));
+                    refusalProfile(r, page.content());
                     throw new PlaywrightException("blocked-" + status);
                 }
                 settle();

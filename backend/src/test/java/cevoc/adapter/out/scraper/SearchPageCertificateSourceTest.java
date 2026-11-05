@@ -196,4 +196,21 @@ class SearchPageCertificateSourceTest {
     void aCaptchaWidgetIsRecognised() {
         assertThat(SearchPageDiagnostic.hasCaptcha("<html><body><div class=\"g-recaptcha\"></div></body></html>")).isTrue();
     }
+
+    @Test
+    void theRefusalProfileKeepsNamesAndBucketsOnly() {
+        String d = SearchPageDiagnostic.refusalProfile(
+                java.util.Map.of("Server", "nginx/9.9", "X-Azure-Ref", "fictitious-ref-value", "Content-Type", "text/html; charset=utf-8",
+                        "Set-Cookie", "session=fictitious-secret", "Via", "1.1 fictitious-proxy"),
+                "<html><body>fictitious refusal text</body></html>", "headless-chromium", "custom-identifying", false, true);
+        assertThat(d).contains("header-names=content-type,server,set-cookie,via,x-azure-ref").contains("server=nginx")
+                .contains("content-type=text/html").contains("body-size=<512B").contains("body-html=yes")
+                .contains("client=headless-chromium").contains("user-agent=custom-identifying")
+                .contains("sent-referer=no").contains("sent-origin=yes");
+        assertThat(d).doesNotContain("fictitious").doesNotContain("9.9").doesNotContain("charset").doesNotContain("secret");
+        String odd = SearchPageDiagnostic.refusalProfile(java.util.Map.of("Server", "Acme-Internal/1 (fictitious@example.invalid)"),
+                "x".repeat(3000), "http-client", "browser-default", false, false);
+        assertThat(odd).contains("server=omitted").contains("body-size=<10KB").contains("body-html=no").doesNotContain("Acme").doesNotContain("example");
+        assertThat(SearchPageDiagnostic.refusalProfile(null, null, null, null, false, false)).contains("header-names=none").contains("body-size=<512B");
+    }
 }
