@@ -90,7 +90,7 @@ export default function DemoHub() {
     <>
       <a className="skip" href="#main">Skip to content</a>
       <div className="masthead"><div className="wrap">NSW Government<DemoTag /></div></div>
-      <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement: demo cases</p></div></header>
+      <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement</p></div></header>
       <main id="main" tabIndex={-1}>
         <div className="wrap page-body demo-hub">
           <h1>Demo cases</h1>
