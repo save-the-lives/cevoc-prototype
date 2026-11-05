@@ -17,7 +17,7 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Plain HTTP route (Revenue NSW JSON service) | BUILT 2026-11-05, offline-tested, NOT yet run live (UNTESTED). Selected by `cevoc.penalty-lookup.adapter=revenue-nsw-http`; off unless also enabled; default unchanged | 0010 |
 | Data scope and security | Public data only. No secrets in code, logs or the hand-off log | 0005 |
 | Published URLs | Existing prototype URLs must not change | 0006 |
-| Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers | 0007 |
+| Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers. BUILT 2026-11-05 in the front end config: DEFAULT block, video default on, switch inheritance. Only red light is built now |  0007, 0013, 0014, 0015 |
 | Vendor-neutrality drift | Audit of 2026-11-04: no core leak into domain or application cloud-wise; a few leaks listed in record 0008 | 0008 |
 
 ## Three selectable routes for notice details and images (record 0010)
@@ -53,6 +53,13 @@ What the code returns today (as read on 2026-11-04):
 - PROVEN: no camera-code-to-program table exists; `EnforcementSiteResolver` (location text to certificate location code) is a stub that is not wired in. No code or fixture mentions bus lane or mobile phone detection.
 - INFERRED: the real penalty page may show an offence code that the fictitious fixtures do not model.
 Open questions on all of this are listed in record 0007.
+
+### Owner decisions, locked 2026-11-05 (records 0013 to 0016)
+- Only red light is built now; fixed speed, mobile speed, average speed, phone detection and bus lane follow later (0013).
+- DEFAULT block (0014): a notice whose program is not configured or cannot be matched uses the default block in the same date-ranged file: core evidence per its switches, common notice details, and one plain visible message that program-specific details are not available yet. The page never errors for an unknown program. A program's own switch always wins; a switch it does not set is inherited from the default block (images, certificates, video, evidence pack, messages). Built in `frontend/src/programs.json` and `programs.js` (`resolveSwitches`, `videoView`) and tested with fictitious notices. The backend has no program configuration yet, so there is no backend loader to change.
+- Video (0015): ON in the default block. Returned: played. Not returned: said plainly. Program sets it off or not applicable: not fetched, not rendered, plain message. Never a download, never in the PDF evidence pack. Video port and player kept.
+- Road safety messages (0016, 0012): ONE message by priority, per-program on/off switch, date range applies, none in the PDF pack, plain and informative tone, wording approval by the owner recorded in config, staff visibility of the fired rule deferred. The engine is NOT built.
+- STILL OPEN: bus lane and phone detection camera look, evidence pack design confirmation, date-ranged config design confirmation, next step for certificates returning 403.
 
 ## Contributor and process rules
 - Docs-only changes are raised on their own branch. This document and the records are updated in the same change as the decision.
@@ -186,3 +193,4 @@ Status: the parser, fixtures and the session port are built (see "Three-state my
 - Evidence download and one-file evidence pack: docs/decisions/0011-evidence-pack.md.
 - Road safety message rules (proposal): docs/decisions/0012-road-safety-message-rules.md.
 - Per-program configuration, date-ranged versions, program lookup (design only, awaiting the owner): docs/decisions/0007-information-types-status-and-program-switches.md.
+- Owner decisions locked 2026-11-05 (red light first, default block, video default, road safety message decisions): docs/decisions/0013 to 0016.

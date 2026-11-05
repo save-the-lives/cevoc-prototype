@@ -1,10 +1,10 @@
 {
-  "_comment": "Per-program display configuration (plain JSON in the repo, decision record 0007). Fictitious wording is not used here; the labels are plain English. Versions are date-ranged and chosen by the OFFENCE date. Adding a program is a new block here plus nothing else.",
+  "_comment": "Per-program display configuration (plain JSON in the repo, decision records 0007 and 0013 to 0015). Versions are date-ranged and chosen by the OFFENCE date. The DEFAULT block is used for any notice whose program is not configured or cannot be matched; a program's own switch always wins, and a switch a program does not set is inherited from the default block. Modes: on, off, not_applicable, not_yet.",
   "programs": [
     {
       "id": "RED_LIGHT_SPEED",
       "label": "Red light camera",
-      "match": { "offenceTextContains": ["red light", "red traffic light"], "detailKeysAny": ["timeSinceRed"] },
+      "match": {"offenceTextContains": ["red light", "red traffic light"], "detailKeysAny": ["timeSinceRed"]},
       "versions": [
         {
           "version": "2026-a",
@@ -12,8 +12,7 @@
           "to": null,
           "types": {
             "images": { "mode": "on" },
-            "certificates": { "mode": "on" },
-            "video": { "mode": "not_yet", "message": "Video is not available for this offence yet. The photos above are the evidence we can show." }
+            "certificates": { "mode": "on" }
           },
           "details": [
             { "key": "timeSinceRed", "label": "Seconds after the light turned red", "unit": "seconds", "first": true },
@@ -23,5 +22,24 @@
       ]
     }
   ],
-  "default": { "block": true, "message": "We cannot show extra camera details for this kind of notice yet." }
+  "default": {
+    "id": "DEFAULT",
+    "label": "Other notice",
+    "block": true,
+    "message": "Details specific to this kind of notice are not available yet. The main facts and the evidence we can show are on this page.",
+    "versions": [
+      {
+        "version": "2026-a",
+        "from": "2000-01-01",
+        "to": null,
+        "types": {
+          "images": { "mode": "on" },
+          "certificates": { "mode": "on" },
+          "video": { "mode": "on", "messageNone": "Video is not available yet for this notice." },
+          "evidence_pack": { "mode": "on" },
+          "messages": { "mode": "on" }
+        }
+      }
+    ]
+  }
 }

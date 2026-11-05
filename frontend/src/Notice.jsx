@@ -5,6 +5,7 @@ import { hasCertificateList } from './certs.js';
 import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
 import ProgramDetails from './ProgramDetails.jsx';
+import { videoView } from './programs.js';
 
 // Heavier parts load on their own, after the notice details have painted.
 const EvidenceGrid = lazy(() => import('./EvidenceGrid.jsx'));
@@ -122,9 +123,11 @@ export default function Notice({ result, query, sections = READY, registrationGi
   // Until the notice is known the camera steps are shown as loading; after that they follow the data.
   const known = !!result && !!n;
   const camera = !known || isCamera(result);
-  const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE');
+  // The program's video switch decides whether a video is rendered (and so fetched) at all.
+  const video = known ? videoView(result) : { render: true, message: null };
+  const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE' && (video.render || e.kind !== 'VIDEO'));
   const oldCerts = (result?.evidence || []).filter((e) => e.kind === 'CERTIFICATE');
-  const ev = known ? evidenceState(result, registrationGiven) : 'show';
+  const ev = known ? evidenceState({ ...result, evidence: [...media, ...(result.evidence || []).filter((e) => e.kind === 'CERTIFICATE')] }, registrationGiven) : 'show';
   const steps = known ? stepsFor(result, ev) : [
     { id: 'step-what', label: 'What happened' }, { id: 'step-evidence', label: 'Was it my vehicle?' },
     { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
@@ -194,7 +197,12 @@ export default function Notice({ result, query, sections = READY, registrationGi
               ? <PhotoSkeleton label="Fetching the camera photos. This can take up to half a minute." />
               : evFailed || detailsFailed
                 ? <Failed what="the photos" onRetry={onRetry} />
-                : <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} />}
+                : (
+                  <>
+                    <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} />
+                    {camera && ev !== 'needs-plate' && video.message && <p className="notice-box" role="status" data-testid="video-note">{video.message}</p>}
+                  </>
+                )}
           </Step>
 
           {camera && (

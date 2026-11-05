@@ -73,3 +73,37 @@ export function detailRows(result, cfg = config) {
   ;
   return { state: 'rows', title: program.label, rows, message: null, version: version.version, types: version.types };
 }
+
+const SWITCH_OFF_TEXT = 'Video is not available for this program.';
+
+/** The default block's version for an offence date. It never fails: with no covering version the open (or latest) one is used. */
+export function defaultVersion(offenceDate, cfg = config) {
+  const d = cfg.default || {};
+  const list = d.versions || [];
+  return pickVersion(d, offenceDate) || [...list].sort((a, b) => b.from.localeCompare(a.from))[0] || { types: {} };
+}
+
+/**
+ * The effective switches for a result (images, certificates, video, evidence_pack, messages). A program's own block always wins;
+ * a switch the program does not set is inherited from the default block. An unknown program, or a program with no version for the
+ * offence date, gets the default block's switches. Returns { source: 'program' | 'default', types: { name: { mode, message?, messageNone? } } }.
+ */
+export function resolveSwitches(result, cfg = config) {
+  const date = result?.notice?.offenceDate;
+  const base = defaultVersion(date, cfg).types || {};
+  const version = pickVersion(pickProgram(result, cfg), date);
+  if (!version) return { source: 'default', types: { ...base } };
+  return { source: 'program', types: { ...base, ...(version.types || {}) } };
+}
+
+/**
+ * What to do about video for a result: { render, message }. Video on and returned: render it. Video on and none returned: say so plainly.
+ * Video off, not applicable or not yet (the program's own choice): do not render or fetch it, show the program's message
+ * (or a fixed plain one). Never a download, never in the evidence pack.
+ */
+export function videoView(result, cfg = config) {
+  const sw = resolveSwitches(result, cfg).types.video || { mode: 'on' };
+  if (sw.mode !== 'on') return { render: false, message: sw.message || SWITCH_OFF_TEXT };
+  const returned = (result?.evidence || []).some((e) => e.kind === 'VIDEO');
+  return returned ? { render: true, message: null } : { render: false, message: sw.messageNone || 'Video is not available yet for this notice.' };
+}
