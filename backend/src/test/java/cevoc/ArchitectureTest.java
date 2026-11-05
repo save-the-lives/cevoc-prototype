@@ -51,4 +51,25 @@ class ArchitectureTest {
     static final ArchRule demoAdapterOnlyUsesPortsAndDomain = noClasses().that().resideInAPackage("..adapter.out.demo..")
             .should().dependOnClassesThat().resideInAnyPackage("..adapter.in..", "..adapter.out.scraper..", "..adapter.out.revenuensw..",
                     "..adapter.out.azureblob..", "..adapter.out.memory..", "..adapter.out.stub..", "org.springframework..", "com.microsoft..");
+
+    /** Banner OCR is its own adapter: only it and the wiring may know it, and it uses only ports and domain. */
+    @ArchTest
+    static final ArchRule nothingKnowsTheOcrAdapterExceptItsWiring = noClasses()
+            .that().resideOutsideOfPackages("..adapter.out.ocr..", "..config..")
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.ocr..");
+
+    @ArchTest
+    static final ArchRule ocrAdapterOnlyUsesPortsAndDomain = noClasses().that().resideInAPackage("..adapter.out.ocr..")
+            .should().dependOnClassesThat().resideInAnyPackage("..adapter.in..", "..adapter.out.scraper..", "..adapter.out.revenuensw..",
+                    "..adapter.out.azureblob..", "..adapter.out.memory..", "..adapter.out.stub..", "..adapter.out.demo..", "org.springframework..");
+
+    /** No OCR library may leak elsewhere (the engine is called as a program today; these are the usual Java wrappers). */
+    @ArchTest
+    static final ArchRule onlyOcrAdapterUsesOcrLibraries = noClasses().that().resideOutsideOfPackage("..adapter.out.ocr..")
+            .should().dependOnClassesThat().resideInAnyPackage("net.sourceforge.tess4j..", "org.bytedeco.tesseract..", "org.bytedeco.leptonica..");
+
+    /** The domain and application layers never start programs. */
+    @ArchTest
+    static final ArchRule coreStartsNoProcesses = noClasses().that().resideInAnyPackage("..domain..", "..application..")
+            .should().dependOnClassesThat().haveFullyQualifiedName("java.lang.ProcessBuilder");
 }

@@ -39,8 +39,21 @@ public class BeanConfig {
     // Prototype scraper: never the default. Also needs cevoc.scraper.evidence.enabled=true; see docs/ARCHITECTURE.md.
     @Bean
     @ConditionalOnProperty(name = "cevoc.penalty-lookup.adapter", havingValue = "scraper-evidence")
-    PenaltyLookupPort scraperEvidenceLookup(org.springframework.core.env.Environment env, cevoc.application.port.out.MediaStoragePort media) {
-        return cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media);
+    PenaltyLookupPort scraperEvidenceLookup(org.springframework.core.env.Environment env, cevoc.application.port.out.MediaStoragePort media,
+            org.springframework.beans.factory.ObjectProvider<cevoc.application.port.out.BannerTextReaderPort> bannerReader) {
+        return cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media, bannerReader.getIfAvailable());
+    }
+
+    /**
+     * Reads the camera banner text out of the first evidence image (OCR, server side, Tesseract command line inside the image).
+     * Off unless cevoc.banner-ocr.enabled=true (env CEVOC_BANNER_OCR_ENABLED). Demo data never uses it. See record 0019.
+     */
+    @Bean
+    @ConditionalOnProperty(name = "cevoc.banner-ocr.enabled", havingValue = "true")
+    cevoc.application.port.out.BannerTextReaderPort bannerTextReader(
+            @Value("${cevoc.banner-ocr.command:tesseract}") String command,
+            @Value("${cevoc.banner-ocr.timeout-seconds:30}") long timeoutSeconds) {
+        return new cevoc.adapter.out.ocr.TesseractBannerTextReader(command, java.time.Duration.ofSeconds(timeoutSeconds));
     }
 
     // Plain HTTP route to the Revenue NSW JSON service (no browser): never the default. Also needs

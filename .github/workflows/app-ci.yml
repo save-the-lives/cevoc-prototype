@@ -18,6 +18,9 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
+      # Banner OCR tests call the tesseract program and must run (not skip) here.
+      - name: Install Tesseract OCR
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
       - run: mvn -B test
         working-directory: backend
   # Compiles and unit-tests the opt-in live-browser profile (Playwright classes). Launches no browser, no network to the site.
@@ -32,6 +35,9 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
+      # Banner OCR tests call the tesseract program and must run (not skip) here.
+      - name: Install Tesseract OCR
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
       - run: mvn -B -Plive-browser test
         working-directory: backend
   # Builds the one Docker image (nothing pushed). It must contain Chromium, and Chromium must start (--version)
@@ -59,6 +65,8 @@ jobs:
               echo "$b"; "$b" --version; found=1
             done
             [ "$found" = 1 ]
+            tesseract --version
+            tesseract --list-langs
             id -un'
   frontend:
     runs-on: ubuntu-latest

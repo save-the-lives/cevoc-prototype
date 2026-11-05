@@ -106,7 +106,7 @@ jobs:
             --min-replicas 1 --max-replicas 1 \
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=manifest CEVOC_SCRAPER_ENABLED=false \
             CEVOC_SCRAPER_EVIDENCE_ENABLED=false CEVOC_SCRAPER_CERTIFICATES_ENABLED=false \
-            CEVOC_SCRAPER_EVIDENCE_BROWSER= CEVOC_LIVECHECK_ENABLED=false CEVOC_LIVECHECK_TOKEN= \
+            CEVOC_SCRAPER_EVIDENCE_BROWSER= CEVOC_LIVECHECK_ENABLED=false CEVOC_LIVECHECK_TOKEN= CEVOC_BANNER_OCR_ENABLED=false \
             CEVOC_SCRAPER_EVIDENCE_BASE_URL= CEVOC_SCRAPER_EVIDENCE_CONTACT=
           az containerapp secret remove --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --secret-names live-check-token >/dev/null 2>&1 || true
@@ -132,7 +132,7 @@ jobs:
             --min-replicas 1 --max-replicas 1 \
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=scraper-evidence CEVOC_SCRAPER_ENABLED=true \
             CEVOC_SCRAPER_EVIDENCE_ENABLED=true CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright \
-            CEVOC_SCRAPER_CERTIFICATES_ENABLED=false CEVOC_LIVECHECK_ENABLED=true \
+            CEVOC_SCRAPER_CERTIFICATES_ENABLED=false CEVOC_LIVECHECK_ENABLED=true CEVOC_BANNER_OCR_ENABLED=true \
             "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_LIVECHECK_TOKEN= "${CERTS_ARGS[@]}" >/dev/null
 
       - name: Show what is deployed

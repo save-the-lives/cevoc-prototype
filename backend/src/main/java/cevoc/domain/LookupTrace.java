@@ -95,6 +95,14 @@ public final class LookupTrace {
         put(step, StepOutcome.FAILED, e == null ? 0 : e.millis(), cause);
     }
 
+    /** Adds a whitelisted cause to a step that finished ok (a note, the outcome stays ok). Ignored for any other outcome. */
+    public void note(LookupStep step, StepCause cause) {
+        Entry e = entries.get(step);
+        if (e != null && e.outcome() == StepOutcome.OK) {
+            put(step, StepOutcome.OK, e.millis(), cause);
+        }
+    }
+
     /** Whether a step already has a recorded outcome. */
     public boolean has(LookupStep step) {
         return entries.containsKey(step);

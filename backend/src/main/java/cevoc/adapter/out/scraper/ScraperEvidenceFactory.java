@@ -19,6 +19,12 @@ public final class ScraperEvidenceFactory {
     private ScraperEvidenceFactory() {}
 
     public static PenaltyLookupPort create(Environment env, MediaStoragePort media) {
+        return create(env, media, null);
+    }
+
+    /** {@code bannerReader} null = banner OCR off (the default). */
+    public static PenaltyLookupPort create(Environment env, MediaStoragePort media,
+                                           cevoc.application.port.out.BannerTextReaderPort bannerReader) {
         ScraperSettings s = settings(env);
         boolean live = liveRequested(env, s);
         RenderedPageSessionFactory sessions = NO_BROWSER;
@@ -36,7 +42,8 @@ public final class ScraperEvidenceFactory {
         }
         // The signed certification deep link answers 403 (observed), so it is used only when explicitly listed as a provider.
         return new ScraperEvidenceLookupAdapter(s, sessions, new RevenueNswPageParser(), media, Clock.systemUTC(), registrations)
-                .followCertificationLink(CertificateProviders.ids(env).contains(CertificateProviders.BROWSER_LINK));
+                .followCertificationLink(CertificateProviders.ids(env).contains(CertificateProviders.BROWSER_LINK))
+                .bannerReader(bannerReader);
     }
 
     static ScraperSettings settings(Environment env) {

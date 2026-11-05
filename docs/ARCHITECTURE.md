@@ -78,10 +78,12 @@ Hexagonal. Dependencies point inwards: `adapter` -> `application` -> `domain`. `
       application/port/in/    LookupPenaltyUseCase   (what the outside can ask)
       application/port/out/   PenaltyLookupPort      (how we get content)
                               MediaStoragePort, SignedLinkPort, CacheInvalidationPort (media, cloud-neutral)
+                              BannerTextReaderPort   (text from the top strip of an evidence image, record 0019)
       application/service/    LookupPenaltyService
       adapter/in/web/         REST controller (public, unauthenticated)
       adapter/out/            ManifestPenaltyLookupAdapter (resources/manifest.json), ManifestFirstPenaltyLookupAdapter (manifest, then live if enabled)
       adapter/out/stub/       StubPenaltyLookupAdapter (fictitious data), StubMediaAdapter (sample-file links)
+      adapter/out/ocr/        TesseractBannerTextReader (BannerTextReaderPort): the tesseract program, run inside the container; the only OCR code
       adapter/out/azureblob/  Azure Blob adapter (SAS links); the only place com.azure is allowed (plus config)
       adapter/out/s3/         placeholder only: where the AWS adapter will go
       config/                 BeanConfig: the only place that chooses an adapter

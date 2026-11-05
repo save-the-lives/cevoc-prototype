@@ -22,3 +22,4 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0016 | Road safety messages: owner decisions (one message, switch, none in PDF) | Decided; engine not built |
 | 0017 | Privacy blurring of evidence video and still images | PROPOSED (research only, nothing built) |
 | 0018 | Demo content delivered as a separate bundle on a GitHub Release, fail safe | Built; owner approval of the release and its settings pending |
+| 0019 | Camera banner read from the image pixels by server-side OCR (Tesseract) | LOCKED by owner decision, 2026-11-05; built |

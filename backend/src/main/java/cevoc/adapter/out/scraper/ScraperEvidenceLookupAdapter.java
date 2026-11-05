@@ -1,6 +1,7 @@
 package cevoc.adapter.out.scraper;
 
 import cevoc.application.port.out.LookupProgress;
+import cevoc.application.port.out.BannerTextReaderPort;
 import cevoc.application.port.out.MediaStoragePort;
 import cevoc.application.port.out.PenaltyLookupPort;
 import cevoc.domain.EnforcementMethod;
@@ -71,6 +72,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
     /** Legacy provider browser-link: follow the page's signed certification link. Off by default (it answers 403). */
     private volatile boolean followCertificationLink;
+    /** Reads the banner pixels of the first image. Null (the default) = no OCR. Never set for demo data: it has its own adapter. */
+    private volatile BannerTextReaderPort bannerReader;
+    private final CameraBannerParser bannerParser = new CameraBannerParser();
 
     public ScraperEvidenceLookupAdapter(ScraperSettings settings, RenderedPageSessionFactory sessions, RevenueNswPageParser parser,
                                         MediaStoragePort storage, Clock clock) {
@@ -85,6 +89,12 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         this.parser = parser;
         this.storage = storage;
         this.clock = clock;
+    }
+
+    /** Turns on reading the banner text from the first image's pixels (null turns it off). */
+    public ScraperEvidenceLookupAdapter bannerReader(BannerTextReaderPort reader) {
+        this.bannerReader = reader;
+        return this;
     }
 
     public ScraperEvidenceLookupAdapter followCertificationLink(boolean follow) {
@@ -253,8 +263,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             trace.skip(LookupStep.VIEW_IMAGES, plate == null ? StepCause.NO_PLATE : StepCause.NO_PLATE_FORM);
         }
         List<EvidenceItem> evidence = List.of();
+        Map<String, Object> ocrDetails = new java.util.LinkedHashMap<>();
         if (page.state() == RevenueNswPageParser.State.IMAGES) {
-            evidence = buffer(session, key, page.images());
+            evidence = buffer(session, key, page.images(), ocrDetails);
             progress.evidence(evidence, false);
         } else {
             progress.evidence(List.of(), plateRequired);
@@ -269,7 +280,14 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         // cameraCode is internal (@JsonIgnore): input for the certificate lookup, banner first, then the s= value.
         return new PenaltyLookupResult(Status.FOUND, number, summary, notice, evidence, SOURCE, page.cameraCode(),
-                List.of(), null, plateRequired && evidence.isEmpty(), new java.util.LinkedHashMap<>(page.details()));
+                List.of(), null, plateRequired && evidence.isEmpty(), mergedDetails(page.details(), ocrDetails));
+    }
+
+    /** Banner facts from the page text win; the OCR ones fill what the page did not give. */
+    private static Map<String, Object> mergedDetails(Map<String, Object> fromPage, Map<String, Object> fromOcr) {
+        Map<String, Object> out = new java.util.LinkedHashMap<>(fromPage);
+        fromOcr.forEach(out::putIfAbsent);
+        return out;
     }
 
     private static NoticeDetails asCamera(NoticeDetails notice) {
@@ -332,8 +350,8 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
      * accepted; anything else is skipped so this adapter never fetches from elsewhere. Object keys derive from
      * the notice hash and a counter, never from the plate or the image ref.
      */
-    private List<EvidenceItem> buffer(RenderedPageSession session, String key, List<RevenueNswPageParser.ImageRef> refs)
-            throws InterruptedException {
+    private List<EvidenceItem> buffer(RenderedPageSession session, String key, List<RevenueNswPageParser.ImageRef> refs,
+                                      Map<String, Object> ocrDetails) throws InterruptedException {
         LookupTrace trace = LookupTrace.current();
         long startNanos = System.nanoTime();
         List<EvidenceItem> items = new ArrayList<>();
@@ -341,6 +359,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         int noBytes = 0;
         int rejected = 0;
         int failed = 0;
+        boolean bannerUnreadable = false;
         for (RevenueNswPageParser.ImageRef ref : refs) {
             if (n >= MAX_IMAGES) {
                 break;
@@ -369,6 +388,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 String objectKey = "scraped/" + key.substring(0, 16) + "/image-" + n + extension(type);
                 storage.store(objectKey, type, new ByteArrayInputStream(data), data.length);
                 trace.image(sizeOf(bytes.get(), type), type, data);
+                if (n == 1 && bannerReader != null) {
+                    bannerUnreadable = !readBanner(data, ocrDetails);
+                }
                 EvidenceItem item = EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey);
                 int[] px = pixelsOf(data);
                 if (bytes.get().size() != null && bytes.get().size().path() != cevoc.domain.CapturePath.RESPONSE
@@ -393,12 +415,38 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             }
         }
         trace.ok(LookupStep.CAPTURE_IMAGES, (System.nanoTime() - startNanos) / 1_000_000);
+        if (bannerUnreadable) {
+            trace.note(LookupStep.CAPTURE_IMAGES, StepCause.BANNER_UNREADABLE);
+        }
         if (items.isEmpty()) {
             trace.fail(LookupStep.CAPTURE_IMAGES, refs.isEmpty() ? StepCause.NO_IMAGES : StepCause.NO_IMAGE_BYTES);
         }
         LookupDiagnostic.note("image-refs=" + refs.size() + "; image-stored=" + items.size() + "; image-no-bytes=" + noBytes
                 + "; image-rejected=" + rejected + "; image-failed=" + failed);
         return items;
+    }
+
+    /**
+     * OCR of the first image's banner strip, in memory only. The raw text and the values are never logged or stored: only
+     * counts. Returns false when OCR ran and gave no usable field; never throws and never fails the lookup.
+     */
+    private boolean readBanner(byte[] data, Map<String, Object> ocrDetails) {
+        long start = System.nanoTime();
+        try {
+            BannerTextReaderPort.Reading r = bannerReader.read(data);
+            CameraBannerParser.Banner banner = bannerParser.parseOcr(r.text());
+            Map<String, Object> found = banner.asDetails();
+            ocrDetails.putAll(found);
+            LookupDiagnostic.note("banner-ocr=engine:" + (r.engineFailed() ? "failed" : "ok") + "/image:" + r.imageWidth() + "x" + r.imageHeight()
+                    + "/strip:" + r.stripHeight() + "/lines:" + r.lines() + "/labels:" + banner.fieldCount()
+                    + "/timeSinceRed:" + (found.containsKey("timeSinceRed") ? "yes" : "no")
+                    + "/speedLimit:" + (found.containsKey("speedLimit") ? "yes" : "no")
+                    + "/ms:" + (System.nanoTime() - start) / 1_000_000);
+            return !found.isEmpty();
+        } catch (RuntimeException e) {
+            LookupDiagnostic.note("banner-ocr=engine:failed");
+            return false;
+        }
     }
 
     /** Numbers about a captured image. Pixel size comes from the bytes themselves when the JDK can read the format. */

@@ -1,7 +1,9 @@
 # One image, always with Chromium (-Plive-browser). The live check is switched on only by env settings at deploy time
 # (CEVOC_LIVECHECK_ENABLED, CEVOC_SCRAPER_*), see docs/LIVE-CHECK.md. Scrapers are off unless those are set.
 # Layer order, most stable first, so an app-code change rebuilds only the build step and the last (thin) layer:
-#   1. JDK/Maven base  2. pom.xml -> dependencies + Playwright CLI jars  3. JRE base, Chromium + OS deps  4. app jar
+#   1. JDK/Maven base  2. pom.xml -> dependencies + Playwright CLI jars  3. JRE base, Tesseract (banner OCR), Chromium + OS deps  4. app jar
+# Banner OCR (record 0019) calls the tesseract command line program from the app; English data only. It is used only when
+# CEVOC_BANNER_OCR_ENABLED=true.
 
 FROM maven:3.9-eclipse-temurin-21 AS deps
 WORKDIR /src
@@ -18,6 +20,9 @@ FROM eclipse-temurin:21-jre-jammy AS browser
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     CEVOC_BROWSER_CONTAINER=true
 COPY --from=deps /pw /pw
+# Tesseract OCR (Apache-2.0), English data and no recommended extras: the one engine behind BannerTextReaderPort.
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
 RUN java -cp "/pw/*" com.microsoft.playwright.CLI install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* /pw \
     && useradd --system --no-create-home app && chmod -R a+rX /ms-playwright
