@@ -204,7 +204,7 @@
           "bannerDate" : "2026-03-14",
           "bannerLocation" : "SAMPLE ROAD AND EXAMPLE STREET, SAMPLETOWN",
           "bannerTime" : "11:12:00",
-          "cameraCode" : "DEMO-CAM-1",
+          "cameraCode" : "DEMO-CAM-4",
           "incidentNumber" : "17",
           "offenceText" : "Camera recorded",
           "operator" : "Sample Operator"
@@ -268,7 +268,7 @@
           "bannerDate" : "2026-03-14",
           "bannerLocation" : "TEST AVENUE AND DEMO LANE, EXAMPLEVILLE",
           "bannerTime" : "11:12:00",
-          "cameraCode" : "DEMO-CAM-1",
+          "cameraCode" : "DEMO-CAM-3",
           "incidentNumber" : "18",
           "offenceText" : "Camera recorded",
           "operator" : "Sample Operator"
@@ -804,7 +804,7 @@
           "bannerDate" : "2026-03-14",
           "bannerLocation" : "SAMPLE ROAD AND EXAMPLE STREET, SAMPLETOWN",
           "bannerTime" : "11:12:00",
-          "cameraCode" : "DEMO-CAM-1",
+          "cameraCode" : "DEMO-CAM-5",
           "incidentNumber" : "27",
           "offenceText" : "Camera recorded",
           "operator" : "Sample Operator"
@@ -1478,7 +1478,7 @@
           "bannerDate" : "2026-03-14",
           "bannerLocation" : "SAMPLE ROAD AND EXAMPLE STREET, SAMPLETOWN",
           "bannerTime" : "11:12:00",
-          "cameraCode" : "DEMO-RL-1",
+          "cameraCode" : "DEMO-RL-4",
           "direction" : "Northbound",
           "incidentNumber" : "17",
           "lane" : "Lane 2",
@@ -1547,7 +1547,7 @@
           "bannerDate" : "2026-03-14",
           "bannerLocation" : "TEST AVENUE AND DEMO LANE, EXAMPLEVILLE",
           "bannerTime" : "11:12:00",
-          "cameraCode" : "DEMO-RL-1",
+          "cameraCode" : "DEMO-RL-3",
           "direction" : "Northbound",
           "incidentNumber" : "18",
           "lane" : "Lane 2",
@@ -2207,7 +2207,7 @@
           "bannerDate" : "2026-03-14",
           "bannerLocation" : "SAMPLE ROAD AND EXAMPLE STREET, SAMPLETOWN",
           "bannerTime" : "11:12:00",
-          "cameraCode" : "DEMO-RL-1",
+          "cameraCode" : "DEMO-RL-5",
           "direction" : "Northbound",
           "incidentNumber" : "27",
           "lane" : "Lane 2",
@@ -2637,21 +2637,21 @@
         "plateRequired" : false
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
+          "description" : "Fictitious default block camera certificate (superseded)",
           "type" : "Camera",
           "periodText" : "14/03/2023 - 13/03/2025",
           "certifiedDate" : "2023-03-04",
           "expiryDate" : "2025-03-13",
           "coversOffence" : false
         }, {
-          "description" : "Fictitious red light camera certificate (current)",
+          "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
         }, {
-          "description" : "Fictitious red light camera certificate (next year)",
+          "description" : "Fictitious default block camera certificate (next year)",
           "type" : "Camera",
           "periodText" : "15/03/2027 - 14/03/2029",
           "certifiedDate" : "2027-03-05",
