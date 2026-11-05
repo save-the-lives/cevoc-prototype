@@ -1,4 +1,47 @@
-# Architecture
+# Architecture (standing document)
+
+This is the one place where anything architectural is captured. It is organised by area. Each area states the current position and points at the decision records in `docs/decisions/` (what was chosen, why, what was ruled out, date, owner approval). Any architectural decision made in voice or text is added here and as a record in `docs/decisions/`. Detailed implementation notes from before this document was reorganised are kept unchanged further down, under "Detailed implementation notes".
+
+Contributor note: this is a public repository. Describe people only as "owner" or "project owner" (and "owner approval" in decision records). Do not name anyone's employer or role, and do not name individuals. Naming organisations as data sources or providers (Revenue NSW, the TfNSW certificates page) is fine and needed.
+
+Status words used below: PROVEN means checked in the code or a run; INFERRED means reasoned but not checked; PROPOSED means designed, awaiting an owner pick, not built.
+
+## Areas and decisions
+
+| Area | Position today | Decision records |
+|---|---|---|
+| Structure | Hexagonal: domain, application (ports), adapters; `ArchitectureTest` enforces direction | 0001 |
+| Cloud and vendors | Cloud-agnostic. Azure is the MVP trial only. AWS is the real target. Vendor specifics live behind adapters and in deploy config only | 0002, 0008 |
+| Providers (sources of data) | Revenue NSW is the interim provider. TfNSW APIs replace it concern by concern, by configuration | 0003 |
+| Browser (Chromium) route | Prototype only, behind its adapter, deleted at cutover | 0004 |
+| Data scope and security | Public data only. No secrets in code, logs or the hand-off log | 0005 |
+| Published URLs | Existing prototype URLs must not change | 0006 |
+| Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers | 0007 |
+| Vendor-neutrality drift | Audit of 2026-11-04: no core leak into domain or application cloud-wise; a few leaks listed in record 0008 | 0008 |
+
+## Information types, status and transparency (PROPOSED, record 0007)
+Types: `IMAGES`, `CERTIFICATES`, `VIDEO` (placeholder only; the legacy site has no video, so nothing is built or wired for it). Each type has its own outbound port and its own providers; the domain holds a provider-agnostic section per type carrying a status and a message, and the UI renders only the status and message. Statuses: `AVAILABLE`, `OFF_BY_CHOICE`, `NOT_APPLICABLE` (this program does not have this type), `NOT_YET_AVAILABLE` (by design, planned, such as video today) and `FAILED` (expected but could not be retrieved for a technical reason). The rule: a type is never hidden silently. A by-design message ("Video is not available for this offence") must read differently from a fault message ("We could not load the video just now. This is a fault, not a choice. Try again later").
+
+## Per-program capability configuration (record 0007; source and versions DECIDED 2026-11-04, not built)
+- Simple on purpose. Each enforcement program decides what is on or off and this rarely changes. The configuration is a plain YAML or JSON file in the repository: no database, no admin screen, no feature-flag service. Git is the version history; changing a switch is edit, review, redeploy. An optional `version` label names each rule set. Every switch change is noted in a decision record.
+- Date-ranged versions. Each program holds a list of versions with a start date and an optional end date (the current one has none). The app picks the version that covers the OFFENCE DATE of the notice. At load time the file is checked and the backend refuses to start on an overlap, a gap, a start after an end, or more than one open-ended version. If no version covers the offence date, each type section shows a plain not-available message (transparency rule, never hidden). A test lists the program and version chosen for sample dates.
+- Program lookup (PROPOSED). A notice must be matched to a program before any switch applies, and the repo has no table for that. Recommended: a small mapping in the same file, tried by offence code (or normalised offence text while no code is exposed), then camera code, then location text, then a default block with a visible message; behind a port so TfNSW APIs can supply the program later.
+
+What the code returns today (as read on 2026-11-04):
+- PROVEN: the penalty page parser returns offence description text, offence date and time, free-text location, amounts, status and a derived enforcement method (`CAMERA`, `OFFICER_ISSUED`, `UNKNOWN`). It returns no offence code or type. It returns the camera code (fictitious 7109) only in the images state, after the registration step.
+- PROVEN: the image banner parser reads an "Offence" text, lane, direction and more, but only the camera code is kept.
+- PROVEN: the certificates page returns description, type, period and dates only; it is queried by camera code as location code and returns no program information.
+- PROVEN: no camera-code-to-program table exists; `EnforcementSiteResolver` (location text to certificate location code) is a stub that is not wired in. No code or fixture mentions bus lane or mobile phone detection.
+- INFERRED: the real penalty page may show an offence code that the fictitious fixtures do not model.
+Open questions on all of this are listed in record 0007.
+
+## Contributor and process rules
+- Docs-only changes are raised on their own branch. This document and the records are updated in the same change as the decision.
+- Nothing in this repository may describe the owner or contributors by employer or role.
+
+---
+
+# Detailed implementation notes (kept from before the reorganisation)
 
 Hexagonal. Dependencies point inwards: `adapter` -> `application` -> `domain`. `ArchitectureTest` enforces this.
 
@@ -70,7 +113,7 @@ After the images state, `ScraperEvidenceLookupAdapter` calls `RenderedPageSessio
 ## Scraper adapter (prototype only, off by default)
 `adapter/out/scraper/` can read a Revenue NSW style penalty page and copy its images and videos into storage through `MediaStoragePort`, returning object keys like any other `PenaltyLookupPort`.
 
-**Production use needs the site owner's (Revenue NSW / Service NSW) written approval first. It should be replaced by the real evidence API.** Transport for NSW (Arjan) obtains that approval before it is ever enabled. Until then it must stay off.
+**Production use needs the site owner's (Revenue NSW / Service NSW) written approval first. It should be replaced by the real evidence API.** The project owner obtains that approval before it is ever enabled. Until then it must stay off.
 
 Safeguards:
 - Never the default. `stub` stays the default in code, tests and every shipped config. It runs only if `cevoc.penalty-lookup.adapter=scraper-evidence` AND `cevoc.scraper.evidence.enabled=true` (env `CEVOC_SCRAPER_EVIDENCE_ENABLED`, default `false`). It also needs `cevoc.scraper.evidence.base-url` (https) and `cevoc.scraper.evidence.contact`; with any of these missing it returns `LIVE_LOOKUP_OFF` and makes no network call.
@@ -117,3 +160,10 @@ Status: the parser, fixtures and the session port are built (see "Three-state my
 - How the Revenue NSW / Service NSW page accepts the two inputs, and whether it needs an identity step. Automated pass-through must be confirmed as permitted before building that adapter.
 - The public certificates page (`/cevoc/pages/sdro/searchCertificates.jsf`) blocks automated fetching via robots.txt. Its form structure needs to be captured by a person.
 - Certificates key: RESOLVED, location code plus date range (see the scraper section). Result layout and link exposure are now resolved (see above). Still open: real JSF ids, and whether the penalty page gives a real location code or only a place name.
+
+## Index of decisions added 2026-11-05
+- Flexible details map and the banner field audit: docs/decisions/0009-flexible-details-map.md.
+- Three selectable routes per information type (Chromium, plain HTTP, API providers) and the plain HTTP adapter design: docs/decisions/0010-three-route-providers.md. Configuration choice: `cevoc.providers.<concern>` ordered list as described in docs/DIRECT-API-ROUTE.md; the default does not change until the owner says so.
+- Evidence download and one-file evidence pack: docs/decisions/0011-evidence-pack.md.
+- Road safety message rules (proposal): docs/decisions/0012-road-safety-message-rules.md.
+- Per-program configuration, date-ranged versions, program lookup (design only, awaiting the owner): docs/decisions/0007-information-types-status-and-program-switches.md.

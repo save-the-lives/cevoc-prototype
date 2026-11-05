@@ -56,5 +56,5 @@ Same shape as the Azure one: build and test, then `aws-actions/configure-aws-cre
 ## Open decisions
 - ECS Fargate vs App Runner (availability for new accounts to be checked).
 - CloudFront signed URLs vs S3 pre-signed URLs.
-- Whether the real service sits inside Transport for NSW's own AWS landing zone, which would change networking, identity and approvals. This runbook assumes a standalone account for the MVP.
+- Whether the real service sits inside an agency-managed AWS landing zone, which would change networking, identity and approvals. This runbook assumes a standalone account for the MVP.
 - Keep data fictitious and the prototype-only banner until real sources are connected.
