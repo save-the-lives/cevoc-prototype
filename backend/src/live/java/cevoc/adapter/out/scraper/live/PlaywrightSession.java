@@ -1102,11 +1102,11 @@ final class PlaywrightSession implements RenderedPageSession {
                 return Optional.of(resultHtml);
             } catch (RuntimeException e) {
                 // Redacted: class name plus up to 10 short lowercase words of the message (letters only, so no digits, codes or URLs).
-                String m = redactor.clean(String.valueOf(e.getMessage())).toLowerCase(Locale.ROOT);
+                String m = redactor.clean(String.valueOf(e.getMessage()).replace('\n', ' ')).toLowerCase(Locale.ROOT);
                 note("srch-error=" + e.getClass().getSimpleName() + "/words:" + java.util.Arrays.stream(m.replaceAll("[^a-z ]", " ").trim().split("\\s+"))
-                        .filter(w -> w.length() >= 2 && w.length() <= 14).limit(10).collect(java.util.stream.Collectors.joining("-")));
+                        .filter(w -> w.length() >= 2 && w.length() <= 14).limit(24).collect(java.util.stream.Collectors.joining("-")));
                 StackTraceElement[] st = e.getStackTrace();
-                String where = java.util.Arrays.stream(st).filter(f -> f.getClassName().startsWith("com.microsoft.playwright") || f.getClassName().startsWith("cevoc."))
+                String where = java.util.Arrays.stream(st).filter(f -> f.getClassName().startsWith("cevoc."))
                         .limit(3).map(f -> f.getClassName().substring(f.getClassName().lastIndexOf('.') + 1) + "." + f.getMethodName() + ":" + f.getLineNumber())
                         .collect(java.util.stream.Collectors.joining(">"));
                 note("srch-error-at=" + where + "; srch-error-nlines=" + Math.min(String.valueOf(e.getMessage()).lines().count(), 9));
