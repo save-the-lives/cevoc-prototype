@@ -1,7 +1,9 @@
 package cevoc.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The content we show on our own page. {@code notice} is null unless FOUND. {@code evidence} may be
@@ -13,6 +15,9 @@ import java.util.List;
  * {@code certificatesNote} is an internal status note (for example a degraded lookup) and is not serialised.
  * {@code plateRequired} is true when the source holds camera images for this notice but releases them only once the
  * registration number is given and none was given for this request. It is a yes/no flag: no plate is ever echoed.
+ * {@code details} is the flexible map of every other field a route returned (for example lane, direction, time since red),
+ * keyed by a stable name (decision record 0009). Empty means nothing was returned and it is then not serialised. It is held
+ * in memory for the request only and is never logged; it never holds the registration number.
  */
 public record PenaltyLookupResult(
         Status status,
@@ -24,10 +29,20 @@ public record PenaltyLookupResult(
         @JsonIgnore String cameraCode,
         List<CertificateItem> certificates,
         @JsonIgnore String certificatesNote,
-        boolean plateRequired) {
+        boolean plateRequired,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) Map<String, Object> details) {
 
     public PenaltyLookupResult {
         certificates = certificates == null ? List.of() : List.copyOf(certificates);
+        details = details == null ? Map.of() : Map.copyOf(details);
+    }
+
+    /** Without details (the common case until a route fills the map). */
+    public PenaltyLookupResult(Status status, String infringementNumber, String summary, NoticeDetails notice,
+                               List<EvidenceItem> evidence, String source, String cameraCode,
+                               List<CertificateItem> certificates, String certificatesNote, boolean plateRequired) {
+        this(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates, certificatesNote,
+                plateRequired, Map.of());
     }
 
     public PenaltyLookupResult(Status status, String infringementNumber, String summary, NoticeDetails notice,
@@ -39,12 +54,18 @@ public record PenaltyLookupResult(
     /** A copy with the evidence list replaced (for example linked, or emptied for the early "details" part). */
     public PenaltyLookupResult withEvidence(List<EvidenceItem> items) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, items, source, cameraCode, certificates,
-                certificatesNote, plateRequired);
+                certificatesNote, plateRequired, details);
     }
 
     public PenaltyLookupResult withPlateRequired(boolean required) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates,
-                certificatesNote, required);
+                certificatesNote, required, details);
+    }
+
+    /** A copy carrying the flexible details map (null or empty clears it). */
+    public PenaltyLookupResult withDetails(Map<String, Object> extra) {
+        return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates,
+                certificatesNote, plateRequired, extra);
     }
 
     /** With a camera code but no certificates yet. */
@@ -55,7 +76,7 @@ public record PenaltyLookupResult(
 
     /** Returns a copy carrying the certificate list (covering rows marked) and an internal status note. */
     public PenaltyLookupResult withCertificates(List<CertificateItem> items, String note) {
-        return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, items, note, plateRequired);
+        return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, items, note, plateRequired, details);
     }
 
     /** Without a camera code (all adapters except the evidence scraper). */

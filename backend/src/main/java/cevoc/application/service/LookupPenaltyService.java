@@ -129,6 +129,9 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
                 sent[1] = true;
                 sink.evidence(link(raw.evidence()), raw.plateRequired());
             }
+            if (!raw.details().isEmpty()) {
+                sink.extra(raw.details());
+            }
             PenaltyLookupResult withCerts = withCertificates(raw);
             sink.certificates(withCerts.certificates());
             sink.done();

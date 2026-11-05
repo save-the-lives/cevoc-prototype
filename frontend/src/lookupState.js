@@ -26,6 +26,8 @@ export function applyEvent(state, name, data) {
       return { ...state, details: { ...data } };
     case 'evidence':
       return { ...state, evidence: { state: SECTION.READY, items: data.evidence || [], plateRequired: !!data.plateRequired } };
+    case 'extra':
+      return data && data.details && typeof data.details === 'object' ? { ...state, extra: { ...data.details } } : state;
     case 'certificates':
       return { ...state, certificates: { state: SECTION.READY, items: data.certificates || [] } };
     case 'done':
@@ -50,6 +52,7 @@ export function eventsFromResult(result) {
   }]];
   if (result.status === 'FOUND') {
     events.push(['evidence', { evidence: result.evidence || [], plateRequired: !!result.plateRequired }]);
+    if (result.details && Object.keys(result.details).length) events.push(['extra', { details: result.details }]);
     events.push(['certificates', { certificates: result.certificates || [] }]);
   } else {
     events.push(['evidence', { evidence: [], plateRequired: false }], ['certificates', { certificates: [] }]);
@@ -67,5 +70,6 @@ export function toResult(state) {
     evidence: state.evidence.items,
     certificates: state.certificates.items,
     plateRequired: state.evidence.plateRequired,
+    ...(state.extra ? { details: state.extra } : {}), // flexible details map (record 0009); keys the page does not know are ignored
   };
 }

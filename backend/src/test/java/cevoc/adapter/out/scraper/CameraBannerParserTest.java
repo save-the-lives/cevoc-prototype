@@ -65,4 +65,14 @@ class CameraBannerParserTest {
     void implausiblyLongCodeIsDropped() {
         assertThat(parser.parse("Camera Code: " + "X".repeat(60)).cameraCode()).isNull();
     }
+
+    @Test
+    void detailsMapHoldsEveryFieldExceptTheCameraCodeAndSkipsAbsentOnes() {
+        java.util.Map<String, String> d = parser.parse("Camera Code: TST001 Direction: North Lane: 2 Offence: Red light "
+                + "Time since red: 1.2 sec Yellow light duration: 4.0 sec").asDetails();
+        assertThat(d).containsEntry("direction", "North").containsEntry("lane", "2").containsEntry("offenceText", "Red light")
+                .containsEntry("timeSinceRed", "1.2 sec").containsEntry("yellowLightDuration", "4.0 sec");
+        assertThat(d).doesNotContainKeys("cameraCode", "operator", "speedLimit", "bannerDate");
+        assertThat(parser.parse(null).asDetails()).isEmpty();
+    }
 }

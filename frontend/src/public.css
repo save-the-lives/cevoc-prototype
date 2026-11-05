@@ -118,3 +118,5 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .zoom-open { margin-top: 8px; }
 .query-line { margin: 4px 0 8px; color: var(--muted, #50596b); }
 .media-progress { margin: 6px 0 0; min-height: 1.5em; color: var(--muted, #50596b); font-size: .9rem; }
+.prog-details { margin-top: 18px; }
+.prog-details h3 { margin: 0 0 8px; font-size: 1.05rem; }

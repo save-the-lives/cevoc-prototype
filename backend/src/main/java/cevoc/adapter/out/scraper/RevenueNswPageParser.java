@@ -64,6 +64,8 @@ public class RevenueNswPageParser {
     /**
      * What one rendered page shows. Fields that do not apply to the state are null, false or empty.
      * {@code cameraCode} is the banner's camera code, else the certificate link's s value.
+     * {@code details} holds the other banner fields (lane, direction, time since red and so on), merged across the images'
+     * banners, first value wins; empty outside the images state. Values are never logged.
      */
     public record Page(
             State state,
@@ -76,7 +78,20 @@ public class RevenueNswPageParser {
             List<ImageRef> images,
             boolean downloadImagesPresent,
             String cameraCode,
-            CertificationRef certification) {
+            CertificationRef certification,
+            Map<String, String> details) {
+
+        public Page {
+            details = details == null ? Map.of() : Map.copyOf(details);
+        }
+
+        /** Without banner details (every state except the images state). */
+        public Page(State state, String noticeNumber, NoticeDetails notice, boolean plateFormPresent,
+                    boolean registrationRequiredShown, boolean registrationRowPresent, List<String> unexpectedLoginFields,
+                    List<ImageRef> images, boolean downloadImagesPresent, String cameraCode, CertificationRef certification) {
+            this(state, noticeNumber, notice, plateFormPresent, registrationRequiredShown, registrationRowPresent,
+                    unexpectedLoginFields, images, downloadImagesPresent, cameraCode, certification, Map.of());
+        }
 
         static Page unrecognised() {
             return new Page(State.UNRECOGNISED, null, null, false, false, false, List.of(), List.of(), false, null, null);
@@ -166,7 +181,8 @@ public class RevenueNswPageParser {
         NoticeDetails camera = new NoticeDetails(notice.offenceDescription(), notice.offenceDate(), notice.offenceTime(),
                 notice.location(), notice.penaltyAmount(), notice.amountOwing(), notice.noticeStatus(), notice.statusMessage(),
                 images.isEmpty() ? notice.enforcementMethod() : EnforcementMethod.CAMERA);
-        return new Page(State.IMAGES, heading, camera, false, false, registrationRow, List.of(), images, download, code, cert);
+        return new Page(State.IMAGES, heading, camera, false, false, registrationRow, List.of(), images, download, code, cert,
+                bannerDetails(doc));
     }
 
     /** An input identified by name, id or formcontrolname (the markup was inferred, so all three are accepted). */
@@ -384,6 +400,20 @@ public class RevenueNswPageParser {
             }
         }
         return false;
+    }
+
+    /** The other banner fields (not the camera code), merged over every banner on the page, first value per key wins. */
+    private Map<String, String> bannerDetails(Document doc) {
+        Map<String, String> merged = new LinkedHashMap<>();
+        for (Element banner : doc.select("figcaption, .banner")) {
+            CameraBannerParser.Banner b = bannerParser.parse(banner.wholeText());
+            Map<String, String> one = b.asDetails();
+            if (one.isEmpty()) {
+                one = bannerParser.parse(banner.text()).asDetails();
+            }
+            one.forEach(merged::putIfAbsent);
+        }
+        return merged;
     }
 
     /** Camera code from banner text: banner elements first, else a "Camera Code:" anywhere in the page text. */

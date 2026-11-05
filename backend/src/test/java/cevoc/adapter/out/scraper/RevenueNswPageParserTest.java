@@ -154,4 +154,17 @@ class RevenueNswPageParserTest {
         String bad = "<div><span>Date of offence:</span><span>not a date</span></div><div><span>Penalty Amount:</span><span>$10</span></div>";
         assertThat(parser.parse(bad).state()).isEqualTo(RevenueNswPageParser.State.UNRECOGNISED);
     }
+
+    @Test
+    void imagesStateKeepsTheRedLightBannerFieldsAsDetails() {
+        RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state3-images.html"));
+        assertThat(p.details()).containsEntry("lane", "2").containsEntry("timeSinceRed", "1.2 sec")
+                .containsEntry("yellowLightDuration", "4.0 sec").containsEntry("direction", "North");
+        assertThat(p.details()).doesNotContainKey("cameraCode");
+    }
+
+    @Test
+    void summaryStateHasNoBannerDetails() {
+        assertThat(parser.parse(fixture("fictitious-state2-summary.html")).details()).isEmpty();
+    }
 }

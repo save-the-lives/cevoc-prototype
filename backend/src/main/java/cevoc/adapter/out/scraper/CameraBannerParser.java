@@ -1,6 +1,7 @@
 package cevoc.adapter.out.scraper;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -31,6 +32,32 @@ public class CameraBannerParser {
 
         static Banner empty() {
             return new Banner(null, null, null, null, null, null, null, null, null, null, null, null);
+        }
+
+        /**
+         * Every parsed field except the camera code (which is a typed, internal field) as a stable-keyed map for the
+         * result's flexible details (decision record 0009). Absent fields are left out; values are as read.
+         */
+        public Map<String, String> asDetails() {
+            Map<String, String> out = new LinkedHashMap<>();
+            put(out, "direction", direction);
+            put(out, "operator", operator);
+            put(out, "bannerLocation", location);
+            put(out, "incidentNumber", incidentNumber);
+            put(out, "lane", lane);
+            put(out, "offenceText", offence);
+            put(out, "speedLimit", speedLimit);
+            put(out, "timeSinceRed", timeSinceRed);
+            put(out, "yellowLightDuration", yellowLightDuration);
+            put(out, "bannerDate", date);
+            put(out, "bannerTime", time);
+            return out;
+        }
+
+        private static void put(Map<String, String> out, String key, String value) {
+            if (value != null && !value.isBlank()) {
+                out.put(key, value);
+            }
         }
     }
 

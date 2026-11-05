@@ -18,4 +18,16 @@ class PenaltyLookupResultJsonTest {
         assertThat(json.has("status")).isTrue();
         assertThat(new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, "n", "x", null, List.of(), "TEST").cameraCode()).isNull();
     }
+
+    @Test
+    void detailsTravelInTheJsonWhenPresentAndAreOmittedWhenEmpty() {
+        PenaltyLookupResult base = new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, "9000000099", "x", null, List.of(), "TEST", "TST001");
+        assertThat(new ObjectMapper().valueToTree(base).has("details")).isFalse();
+        PenaltyLookupResult with = base.withDetails(java.util.Map.of("timeSinceRed", "1.2 sec", "lane", "2"));
+        JsonNode json = new ObjectMapper().valueToTree(with);
+        assertThat(json.get("details").get("timeSinceRed").asText()).isEqualTo("1.2 sec");
+        assertThat(json.has("cameraCode")).isFalse();
+        assertThat(with.withEvidence(List.of()).details()).containsEntry("lane", "2");
+        assertThat(with.withPlateRequired(true).details()).containsEntry("lane", "2");
+    }
 }

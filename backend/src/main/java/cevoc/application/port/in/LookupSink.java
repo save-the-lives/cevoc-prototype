@@ -4,6 +4,7 @@ import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.PenaltyLookupResult;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Receives the parts of one lookup in order: details, then (for a found notice) evidence, then certificates, then
@@ -15,6 +16,12 @@ public interface LookupSink {
 
     /** Evidence with links, and whether the source wants the registration number before it shows images. */
     void evidence(List<EvidenceItem> evidence, boolean plateRequired);
+
+    /**
+     * The flexible details map (lane, direction, time since red and so on; decision record 0009). Only called when the
+     * route returned any. Held in memory for the request; never logged. Default: ignored.
+     */
+    default void extra(Map<String, Object> details) {}
 
     void certificates(List<CertificateItem> certificates);
 

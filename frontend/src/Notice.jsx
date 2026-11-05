@@ -4,6 +4,7 @@ import { ExpiredContext } from './expired.js';
 import { hasCertificateList } from './certs.js';
 import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
+import ProgramDetails from './ProgramDetails.jsx';
 
 // Heavier parts load on their own, after the notice details have painted.
 const EvidenceGrid = lazy(() => import('./EvidenceGrid.jsx'));
@@ -185,6 +186,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                     <div><dt>Amount owing</dt><dd><strong>{money(n.amountOwing)}</strong></dd></div>
                   </dl>
                 )}
+            {!detailsLoading && !detailsFailed && !evLoading && <ProgramDetails result={result} />}
           </Step>
 
           <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>

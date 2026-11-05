@@ -269,7 +269,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         }
         // cameraCode is internal (@JsonIgnore): input for the certificate lookup, banner first, then the s= value.
         return new PenaltyLookupResult(Status.FOUND, number, summary, notice, evidence, SOURCE, page.cameraCode(),
-                List.of(), null, plateRequired && evidence.isEmpty());
+                List.of(), null, plateRequired && evidence.isEmpty(), new java.util.LinkedHashMap<String, Object>(page.details()));
     }
 
     private static NoticeDetails asCamera(NoticeDetails notice) {

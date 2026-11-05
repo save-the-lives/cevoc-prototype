@@ -73,6 +73,9 @@ public class PenaltyLookupStreamController {
 
     public record Certificates(List<CertificateItem> certificates) {}
 
+    /** The flexible details map (record 0009); sent only when a route returned any. */
+    public record Extra(java.util.Map<String, Object> details) {}
+
     public record Done(boolean ok) {}
 
     public record Failure(String cause) {}
@@ -119,6 +122,11 @@ public class PenaltyLookupStreamController {
             @Override
             public void evidence(List<EvidenceItem> evidence, boolean plateRequired) {
                 send(emitter, open, "evidence", new Evidence(evidence, plateRequired));
+            }
+
+            @Override
+            public void extra(java.util.Map<String, Object> details) {
+                send(emitter, open, "extra", new Extra(details));
             }
 
             @Override
