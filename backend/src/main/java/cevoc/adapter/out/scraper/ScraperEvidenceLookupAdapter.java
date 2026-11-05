@@ -373,8 +373,13 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 int[] px = pixelsOf(data);
                 if (bytes.get().size() != null && bytes.get().size().path() != cevoc.domain.CapturePath.RESPONSE
                         && px != null && Math.max(px[0], px[1]) < 400) {
-                    // No original body was obtained for this one: what is stored is the small preview, and it is marked as such.
-                    LookupDiagnostic.note("image-" + n + "-thumbnail-only");
+                    if (bytes.get().size().path() == cevoc.domain.CapturePath.FETCH) {
+                        // The page's own object bytes, untouched, and the page never asked for a larger version: the original is small.
+                        LookupDiagnostic.note("image-" + n + "-original-small (page object bytes untouched; no larger version requested)");
+                    } else {
+                        // No original body was obtained for this one: what is stored is the small preview, and it is marked as such.
+                        LookupDiagnostic.note("image-" + n + "-thumbnail-only");
+                    }
                 }
                 if (px == null) {
                     // Why the JDK cannot read this one: first bytes as hex (file signature only) and the decoder's exception class.

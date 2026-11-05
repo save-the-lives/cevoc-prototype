@@ -495,7 +495,8 @@ final class PlaywrightSession implements RenderedPageSession {
                 return Optional.<ImageBytes>empty();
             }
             byte[] body = found.body();
-            note("image-body-first=" + String.format("%02x%02x%02x", body[0] & 0xff, body[1] & 0xff, body[2] & 0xff) + "/" + body.length);
+            note(jpegMeta(body));
+                        note("image-body-first=" + String.format("%02x%02x%02x", body[0] & 0xff, body[1] & 0xff, body[2] & 0xff) + "/" + body.length);
             String type = found.contentType().split(";")[0].trim();
             if (body.length == 0 || body.length > maxBytes || !looksLikeImage(body)) {
                 note("image-path=response-unusable");
@@ -504,6 +505,37 @@ final class PlaywrightSession implements RenderedPageSession {
             note("image-path=response");
             return Optional.of(new ImageBytes(type, body, sized(dims, CapturePath.RESPONSE)));
         });
+    }
+
+    /**
+     * Diagnostics only, no content: the JPEG segment kinds and sizes before the scan data, and whether any banner label word appears as
+     * plain text anywhere in the file (yes/no), to learn if the banner facts travel as metadata or exist only as pixels.
+     */
+    static String jpegMeta(byte[] b) {
+        StringBuilder segs = new StringBuilder();
+        int i = 2;
+        int count = 0;
+        while (b.length > 4 && (b[0] & 0xff) == 0xff && (b[1] & 0xff) == 0xd8 && i + 4 < b.length && count < 14) {
+            if ((b[i] & 0xff) != 0xff) {
+                break;
+            }
+            int marker = b[i + 1] & 0xff;
+            if (marker == 0xda || marker == 0xd9) {
+                break;
+            }
+            int len = ((b[i + 2] & 0xff) << 8) | (b[i + 3] & 0xff);
+            String name = marker == 0xfe ? "COM" : marker >= 0xe0 && marker <= 0xef ? "APP" + (marker - 0xe0) : marker == 0xdb ? "DQT"
+                    : marker == 0xc0 || marker == 0xc2 ? "SOF" : marker == 0xc4 ? "DHT" : String.format("%02x", marker);
+            segs.append(name).append(':').append(len).append(',');
+            i += 2 + len;
+            count++;
+        }
+        String text = new String(b, java.nio.charset.StandardCharsets.ISO_8859_1).toLowerCase(Locale.ROOT);
+        StringBuilder words = new StringBuilder();
+        for (String w : new String[] {"camera", "since red", "speed", "lane", "yellow", "exif", "xmp"}) {
+            words.append(w.replace(' ', '-')).append(':').append(text.contains(w) ? "yes" : "no").append(',');
+        }
+        return "jpeg-meta=" + segs + " text-has=" + words;
     }
 
     /** File-signature check only: JPEG, PNG, GIF, WebP/RIFF, BMP or an XML/SVG start. */
