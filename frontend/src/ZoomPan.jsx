@@ -7,6 +7,7 @@ const TAP_MOVE_PX = 5;
 const KEY_PAN_PX = 60;
 const DOUBLE_TAP_MS = 320;
 const DOUBLE_TAP_ZOOM = 2.5;
+const SWIPE_PX = 50;
 
 /**
  * Zoom and pan for any child (image or video).
@@ -15,9 +16,11 @@ const DOUBLE_TAP_ZOOM = 2.5;
  *  keyboard (viewport focused): + - arrows 0, plus visible buttons
  * `controlsAtRest` marks content with its own native controls (video): a single
  * pointer at 1x is left alone so those controls keep working.
+ * `gallery` ({ count, index, render(i) }) turns the full-screen view into a photo gallery: swipe (only at 1x), arrow keys
+ * or the Previous/Next buttons move between photos; zoomed in, a drag pans instead.
  * `renderTools(view)` adds extra buttons to the toolbar (outside the transform).
  */
-export default function ZoomPan({ label, children, controlsAtRest = false, renderTools, onFullscreenFallback }) {
+export default function ZoomPan({ label, children, controlsAtRest = false, renderTools, onFullscreenFallback, gallery }) {
   const rootRef = useRef(null);
   const viewportRef = useRef(null);
   const [view, setViewState] = useState(IDENTITY);
@@ -30,6 +33,7 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
   const [isFs, setIsFs] = useState(false);
   const [overlay, setOverlay] = useState(false); // full-viewport fallback where the element Fullscreen API does not exist (iOS Safari)
   const returnFocus = useRef(null);
+  const [pos, setPos] = useState(gallery?.index ?? 0); // photo shown in full screen
 
   const commit = useCallback((next, { smooth = false } = {}) => {
     const c = clampView(next, sizeRef.current.w, sizeRef.current.h);
@@ -79,8 +83,12 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
 
   const onPointerDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.target.closest?.('button, a')) return; // overlay buttons (Try again) keep their own clicks
     gesture.current.type = e.pointerType;
-    if (pointers.current.size === 0) gesture.current.moved = false;
+    if (pointers.current.size === 0) {
+      gesture.current.moved = false;
+      gesture.current.start = { x: e.clientX, y: e.clientY, scale: viewRef.current.scale, multi: false };
+    } else if (gesture.current.start) gesture.current.start.multi = true;
     const onVideoAtRest = controlsAtRest && viewRef.current.scale === 1 && pointers.current.size === 0;
     if (onVideoAtRest && e.pointerType !== 'touch') return; // leave native controls alone
     if (onVideoAtRest) {
@@ -125,6 +133,15 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
     const had = pointers.current.delete(e.pointerId);
     if (!had) return;
     if (pointers.current.size === 0) setDragging(false);
+    const st = gesture.current.start;
+    if (nav && e.type === 'pointerup' && e.pointerType !== 'mouse' && st && !st.multi && st.scale === 1 && viewRef.current.scale === 1) {
+      const dx = e.clientX - st.x;
+      if (Math.abs(dx) >= SWIPE_PX && Math.abs(dx) > 1.5 * Math.abs(e.clientY - st.y)) {
+        gesture.current.moved = true; // not a tap
+        go(dx < 0 ? 1 : -1);
+        return;
+      }
+    }
     if (e.type === 'pointerup' && e.pointerType === 'touch' && !controlsAtRest && !gesture.current.moved) {
       const now = e.timeStamp;
       if (now - gesture.current.lastTap < DOUBLE_TAP_MS) {
@@ -158,6 +175,28 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
     e.preventDefault();
   };
 
+  // Gallery: only in full screen, and only with more than one photo.
+  const inFs = isFs || overlay;
+  const nav = inFs && !!gallery && gallery.count > 1;
+  const go = (d) => {
+    const n = pos + d;
+    if (!nav || n < 0 || n >= gallery.count) return;
+    setPos(n);
+    commit(IDENTITY);
+  };
+  // Arrow keys move between photos at 1x (zoomed in, the viewport pans and calls preventDefault first); Tab stays inside the dialog.
+  const onRootKeyDown = (e) => {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (nav && viewRef.current.scale === 1 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !/^(INPUT|SELECT|VIDEO)$/.test(e.target.tagName)) {
+      go(e.key === 'ArrowRight' ? 1 : -1);
+      e.preventDefault();
+    } else if (overlay && e.key === 'Tab') {
+      const f = [...rootRef.current.querySelectorAll('button:not([disabled]), [tabindex="0"], input, select')];
+      const at = f.indexOf(document.activeElement);
+      if (f.length && (at < 0 || (e.shiftKey ? at === 0 : at === f.length - 1))) { f[e.shiftKey ? f.length - 1 : 0].focus(); e.preventDefault(); }
+    }
+  };
+
   // Fullscreen
   useEffect(() => {
     const onChange = () => setIsFs(document.fullscreenElement === rootRef.current);
@@ -169,12 +208,14 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
   const toggleFs = () => {
     if (document.fullscreenElement === rootRef.current) { document.exitFullscreen?.(); return; }
     if (overlay) { closeOverlay(); return; }
+    enter();
     if (document.fullscreenEnabled && rootRef.current?.requestFullscreen) {
       rootRef.current.requestFullscreen().catch(() => (onFullscreenFallback ? onFullscreenFallback() : openOverlay()));
     } else if (onFullscreenFallback) onFullscreenFallback();
     else openOverlay();
   };
   function openOverlay() { returnFocus.current = document.activeElement; setOverlay(true); }
+  const enter = () => setPos(gallery?.index ?? 0);
 
   // The overlay locks page scrolling behind it, closes on Escape and puts focus on its Close button.
   useEffect(() => {
@@ -193,6 +234,7 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
 
   return (
     <div className={`zp${isFs || overlay ? ' zp-fs' : ''}${overlay ? ' zp-overlay' : ''}`} ref={rootRef}
+      onKeyDown={onRootKeyDown}
       role={overlay ? 'dialog' : undefined} aria-modal={overlay || undefined} aria-label={overlay ? label : undefined}>
       <div
         className={`zp-viewport${dragging ? ' is-dragging' : ''}${zoomed ? ' is-zoomed' : ''}`}
@@ -215,10 +257,17 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
           className={`zp-content${animate ? ' animate' : ''}`}
           style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})` }}
         >
-          {children}
+          {nav ? gallery.render(pos) : children}
         </div>
       </div>
       <div className="zp-tools" role="toolbar" aria-label={`${label} controls`}>
+        {nav && (
+          <>
+            <button type="button" onClick={() => go(-1)} aria-disabled={pos === 0} aria-label="Previous photo">&lsaquo;</button>
+            <output className="zp-pos" aria-live="polite" aria-label="Photo position">{pos + 1} / {gallery.count}</output>
+            <button type="button" onClick={() => go(1)} aria-disabled={pos === gallery.count - 1} aria-label="Next photo">&rsaquo;</button>
+          </>
+        )}
         <button type="button" onClick={() => zoomStep(-1)} disabled={view.scale <= 1} aria-label="Zoom out">&minus;</button>
         <output className="zp-level" aria-live="polite" aria-label="Zoom level">{pct}</output>
         <button type="button" onClick={() => zoomStep(1)} disabled={view.scale >= 6} aria-label="Zoom in">+</button>

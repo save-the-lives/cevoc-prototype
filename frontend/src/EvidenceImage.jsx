@@ -2,7 +2,8 @@ import { Component, Suspense, lazy, useContext, useEffect, useMemo, useRef, useS
 import { ExpiredContext } from './expired.js';
 import { QueueContext } from './evidenceLoader.js';
 import { STATE } from './loadQueue.js';
-import { downloadHref, stagesFor } from './media.js';
+import { downloadHref, linkExpired, stagesFor } from './media.js';
+import GalleryPhoto from './GalleryPhoto.jsx';
 
 // The zoom and pan viewer is its own chunk: it is fetched when someone opens a photo (or points at the button).
 const loadViewer = () => import('./ZoomPan.jsx');
@@ -23,16 +24,6 @@ class ViewerBoundary extends Component {
         </p>
       </div>
     );
-  }
-}
-
-/** Distinguishes an expired link (404/410) from other failures: the browser's own image error carries no status. */
-async function linkExpired(url) {
-  try {
-    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-    return res.status === 404 || res.status === 410;
-  } catch {
-    return false;
   }
 }
 
@@ -76,6 +67,10 @@ export default function EvidenceImage({ item }) {
     return q.queue.subscribe(sync);
   }, [q, item.url]);
   const eagerThumb = !q || q.eager.includes(item.url);
+  const photos = q?.photos;
+  const gallery = photos && photos.length > 1
+    ? { count: photos.length, index: Math.max(0, photos.findIndex((p) => p.url === item.url)), render: (i) => <GalleryPhoto key={photos[i].url} item={photos[i]} /> }
+    : undefined;
   const Viewer = useMemo(() => lazy(loadViewer), [viewerTry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -111,7 +106,7 @@ export default function EvidenceImage({ item }) {
     <div className="media-body">
       {open
         ? <ViewerBoundary attempt={viewerTry} onRetry={() => setViewerTry((n) => n + 1)}>
-            <Suspense fallback={<div className="media-frame">{img}</div>}><Viewer label={`${item.title}, image`}>{img}</Viewer></Suspense>
+            <Suspense fallback={<div className="media-frame">{img}</div>}><Viewer label={`${item.title}, image`} gallery={gallery}>{img}</Viewer></Suspense>
           </ViewerBoundary>
         : <div className="media-frame" style={{ aspectRatio: '16 / 10' }}>{img}</div>}
       {!open && (

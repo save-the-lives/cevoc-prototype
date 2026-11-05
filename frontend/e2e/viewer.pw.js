@@ -99,3 +99,68 @@ test('a viewer that fails to load says so and offers Try again', async ({ page }
   await expect(page.getByText('The zoom viewer could not load')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: 'Try again' }).first()).toBeVisible();
 });
+
+// ---- Full-screen gallery: swipe, arrows, buttons, position, focus ----
+async function openGallery(page) {
+  await openFirstPhoto(page);
+  await page.evaluate(() => { Object.defineProperty(document, 'fullscreenEnabled', { value: false, configurable: true }); });
+  await card(page).getByRole('button', { name: 'Full screen' }).tap();
+  await expect(page.locator('.zp-overlay')).toBeVisible();
+}
+const pos = (page) => page.locator('.zp-overlay .zp-pos');
+
+async function swipe(page, dx) {
+  const box = await page.locator('.zp-overlay .zp-viewport').boundingBox();
+  const y = box.y + box.height / 2;
+  const x0 = box.x + box.width / 2 - dx / 2;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y, id: 1 }] });
+  for (let i = 1; i <= 6; i += 1) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + (dx * i) / 6, y, id: 1 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
+test('full screen shows a position indicator and Previous/Next buttons', async ({ page }) => {
+  await openGallery(page);
+  await expect(pos(page)).toHaveText(/^1 \/ \d+$/);
+  await expect(page.getByRole('button', { name: 'Previous photo' })).toHaveAttribute('aria-disabled', 'true');
+  await page.getByRole('button', { name: 'Next photo' }).tap();
+  await expect(pos(page)).toHaveText(/^2 \/ \d+$/);
+  await page.getByRole('button', { name: 'Previous photo' }).tap();
+  await expect(pos(page)).toHaveText(/^1 \/ \d+$/);
+});
+
+test('swiping left and right moves between photos', async ({ page }) => {
+  await openGallery(page);
+  await swipe(page, -160);
+  await expect(pos(page)).toHaveText(/^2 \/ \d+$/);
+  await swipe(page, 160);
+  await expect(pos(page)).toHaveText(/^1 \/ \d+$/);
+});
+
+test('when zoomed in a horizontal drag pans instead of changing photo', async ({ page }) => {
+  await openGallery(page);
+  await page.locator('.zp-overlay').getByRole('button', { name: 'Zoom in', exact: true }).tap();
+  await expect.poll(() => scaleOf(page)).toBeGreaterThan(1);
+  await swipe(page, -160);
+  await expect(pos(page)).toHaveText(/^1 \/ \d+$/);
+});
+
+test('arrow keys move between photos and focus stays inside the dialog', async ({ page }) => {
+  await openGallery(page);
+  await page.keyboard.press('ArrowRight');
+  await expect(pos(page)).toHaveText(/^2 \/ \d+$/);
+  await page.keyboard.press('ArrowLeft');
+  await expect(pos(page)).toHaveText(/^1 \/ \d+$/);
+  for (let i = 0; i < 12; i += 1) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement.closest('.zp-overlay'))).toBe(true);
+  }
+});
+
+test('the photo being reached shows a progress placeholder while it loads', async ({ page }) => {
+  await page.route('**/samples/image-2.jpg', async (route) => { await new Promise((r) => setTimeout(r, 8000)); await route.continue(); });
+  await openGallery(page);
+  await page.getByRole('button', { name: 'Next photo' }).tap();
+  await expect(page.locator('.zp-overlay').getByText('Loading photo')).toBeVisible();
+  await expect(page.locator('.zp-overlay').getByText('Loading photo')).toHaveCount(0, { timeout: 20_000 });
+});

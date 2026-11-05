@@ -118,3 +118,9 @@ input { font: inherit; min-height: 44px; padding: 6px 10px; border: 1px solid #5
 .spin { display: inline-block; width: 1em; height: 1em; border: 2px solid #8a94a3; border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+/* Full-screen photo gallery: progress and error overlays sit over the photo; the error card's buttons stay tappable. */
+.gp { position: absolute; inset: 0; }
+.gp-err { pointer-events: auto; text-align: center; padding: 16px; }
+.zp-tools [aria-disabled="true"] { opacity: .5; cursor: default; }
+.zp-pos { min-width: 3.5em; text-align: center; font-variant-numeric: tabular-nums; }
