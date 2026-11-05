@@ -95,8 +95,10 @@ final class PlaywrightSession implements RenderedPageSession {
                 lastAbortedHost = hostClass(req.url());
                 route.abort();
             } else if (wantsOriginalBody(req)) {
+                countImageRequest(req.url());
                 captureAndFulfil(route);
             } else {
+                countImageRequest(req.url());
                 route.resume();
             }
         });
@@ -130,6 +132,17 @@ final class PlaywrightSession implements RenderedPageSession {
     private static final java.util.regex.Pattern IMAGE_PATH = java.util.regex.Pattern.compile("/images/([A-Za-z0-9_.-]{1,80})(?:[?#].*)?$");
     private static final java.util.regex.Pattern SIZE_PARAM = java.util.regex.Pattern.compile("[?&]size=([a-z]+)");
     private final java.util.List<SeenImage> seenImages = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+    private final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger> imageRequests =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Diagnostics only: how many image requests of each size word the page has made (numbers, never addresses). */
+    private void countImageRequest(String url) {
+        if (IMAGE_PATH.matcher(url).find()) {
+            var size = SIZE_PARAM.matcher(url);
+            imageRequests.computeIfAbsent(size.find() ? size.group(1) : "full", k -> new java.util.concurrent.atomic.AtomicInteger()).incrementAndGet();
+        }
+    }
 
     /** True for the page's own GET of a full-size image from the source (no size word means full). Thumbnails and others pass untouched. */
     private static boolean wantsOriginalBody(com.microsoft.playwright.Request req) {
@@ -255,6 +268,34 @@ final class PlaywrightSession implements RenderedPageSession {
                 if (found == null) {
                     found = unclaimedFull(0, false);
                 }
+                if (found == null) {
+                    // The page may already be showing this frame (a click on the selected frame asks for nothing). Select another
+                    // frame and then this one again, as a person would, and wait once more for the page's own request.
+                    int[] mark = {Integer.MAX_VALUE};
+                    try {
+                        var strip = page.locator("img[src^=\"blob:\"]");
+                        int total = strip.count();
+                        for (int i = 0; i < total; i++) {
+                            String other = String.valueOf(strip.nth(i).getAttribute("src"));
+                            if (!other.equals(blobUrl) && strip.nth(i).evaluate("el => el.naturalWidth").toString().matches("\\d{1,3}")) {
+                                int pre = fullCount();
+                                strip.nth(i).click(new Locator.ClickOptions().setTimeout(5_000));
+                                waitUpTo(java.time.Duration.ofSeconds(3), () -> fullCount() > pre);
+                                break;
+                            }
+                        }
+                        int again = fullCount();
+                        mark[0] = again;
+                        page.locator("img[src=\"" + blobUrl.replace("\"", "") + "\"]").first().click(new Locator.ClickOptions().setTimeout(5_000));
+                        waitUpTo(java.time.Duration.ofSeconds(4), () -> fullCount() > again);
+                        note("image-retry-fulls=" + (fullCount() - again));
+                    } catch (PlaywrightException e) {
+                        note("thumb-retry=failed");
+                    }
+                    found = unclaimedFull(mark[0], true);
+                }
+                note("image-requests=" + imageRequests.entrySet().stream().map(e -> e.getKey() + ":" + e.getValue()).sorted()
+                        .collect(java.util.stream.Collectors.joining(",")) + "; fulls-seen=" + fullCount());
             } else {
                 // The large image: its full response was seen while the page loaded.
                 found = unclaimedFull(0, false);
