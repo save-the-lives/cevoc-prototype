@@ -68,6 +68,7 @@ public final class LiveCheckSummary {
         if (trace != null) {
             appendImageSizes(sb, trace);
         }
+        sb.append("details keys      : ").append(detailKeys(r)).append('\n');
         sb.append("camera code found  : ").append(present(r.cameraCode()) ? "yes" : "no").append('\n');
         sb.append("certificates       : ").append(r.certificates().size());
         if (r.certificates().stream().anyMatch(c -> c.coversOffence())) {
@@ -94,6 +95,15 @@ public final class LiveCheckSummary {
         if (canvas) {
             sb.append("image note         : canvas capture may be thumbnail resolution; if natural size is larger than the captured size, the original is larger\n");
         }
+    }
+
+    /** Names of the keys in the details map, never values; names are cut to a safe vocabulary (letters and digits, 40 characters). */
+    static String detailKeys(PenaltyLookupResult r) {
+        if (r.details() == null || r.details().isEmpty()) {
+            return "(none)";
+        }
+        return r.details().keySet().stream().map(k -> k.replaceAll("[^A-Za-z0-9_.-]", "_")).map(k -> k.length() > 40 ? k.substring(0, 40) : k)
+                .sorted().collect(java.util.stream.Collectors.joining(", "));
     }
 
     private static String px(int w, int h) {

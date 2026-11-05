@@ -36,6 +36,16 @@ class LiveCheckSummaryTest {
     }
 
     @Test
+    void detailsLineListsKeyNamesOnly() {
+        PenaltyLookupResult r = new PenaltyLookupResult(Status.FOUND, "9000000004", "x", notice(), List.of(), "S")
+                .withDetails(java.util.Map.of("timeSinceRed", 1.2, "speedLimit", 60));
+        String s = LiveCheckSummary.of(r);
+        assertThat(s).contains("details keys      : speedLimit, timeSinceRed").doesNotContain("1.2").doesNotContain("60");
+        assertThat(LiveCheckSummary.of(new PenaltyLookupResult(Status.FOUND, "9000000004", "x", notice(), List.of(), "S")))
+                .contains("details keys      : (none)");
+    }
+
+    @Test
     void statesAreNamedForEveryStatus() {
         PenaltyLookupResult off = new PenaltyLookupResult(Status.LIVE_LOOKUP_OFF, "9000000004", "x", null, List.of(), "S");
         PenaltyLookupResult nf = new PenaltyLookupResult(Status.NOT_FOUND, "9000000004", "x", null, List.of(), "S");

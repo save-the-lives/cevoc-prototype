@@ -409,23 +409,63 @@ public class RevenueNswPageParser {
      * the same fallback the camera code already uses. Never throws, never logs the text.
      */
     private Map<String, Object> bannerDetails(Document doc) {
-        for (Element banner : doc.select("figcaption, .banner")) {
+        var elements = doc.select("figcaption, .banner");
+        for (Element banner : elements) {
             Map<String, Object> one = bannerParser.parse(banner.wholeText()).asDetails();
             if (one.isEmpty()) {
                 one = bannerParser.parse(banner.text()).asDetails();
             }
             if (!one.isEmpty()) {
+                LookupDiagnostic.note(bannerDiag("element", elements.size(), banner.text(), one.keySet()));
                 return one;
             }
         }
         String page = doc.text();
         Matcher first = BANNER_START.matcher(page);
         if (!first.find()) {
+            LookupDiagnostic.note(bannerDiag("none", elements.size(), elements.isEmpty() ? "" : elements.first().text(), java.util.Set.of()));
             return Map.of();
         }
         int from = first.start();
         int to = first.find() ? first.start() : page.length();
-        return bannerParser.parse(page.substring(from, to)).asDetails();
+        String segment = page.substring(from, to);
+        Map<String, Object> out = bannerParser.parse(segment).asDetails();
+        LookupDiagnostic.note(bannerDiag("page-text", elements.size(), segment, out.keySet()));
+        return out;
+    }
+
+    private static final Pattern LABEL_SHAPE = Pattern.compile("(?<![A-Za-z])([A-Za-z][A-Za-z ]{1,28}[A-Za-z])\\s*:");
+    private static final java.util.Set<String> KNOWN_LABELS = java.util.Set.of("yellow light duration", "time since red",
+            "incident number", "camera code", "speed limit", "direction", "operator", "location", "offence", "lane", "date", "time");
+
+    /**
+     * Fixed-vocabulary diagnostic: which route read the banner (element | page-text | none), how many banner elements exist, how many
+     * label-shaped fields were found, which recognised label names matched, and the names (letters only, at most 28 characters, at most
+     * six) of labels seen but not recognised. Never any value or banner text.
+     */
+    static String bannerDiag(String route, int elements, String text, java.util.Set<String> keys) {
+        int labelled = 0;
+        java.util.Set<String> recognised = new java.util.TreeSet<>();
+        java.util.Set<String> unknown = new java.util.TreeSet<>();
+        if (text != null) {
+            Matcher m = LABEL_SHAPE.matcher(text);
+            while (m.find()) {
+                String label = m.group(1).trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+                labelled++;
+                for (String known : KNOWN_LABELS) {
+                    if (label.endsWith(known)) {
+                        recognised.add(known.replace(' ', '-'));
+                    }
+                }
+                if (KNOWN_LABELS.stream().noneMatch(label::endsWith) && unknown.size() < 6) {
+                    String[] words = label.split(" ");
+                    String tail = words.length > 2 ? words[words.length - 2] + " " + words[words.length - 1] : label;
+                    unknown.add(tail.replace(' ', '-'));
+                }
+            }
+        }
+        return "banner-diag=route:" + route + "/elements:" + elements + "/labelled:" + labelled + "/recognised:" + String.join(",", recognised)
+                + "/unrecognised:" + String.join(",", unknown) + "/keys:" + String.join(",", keys);
     }
 
     /** Camera code from banner text: banner elements first, else a "Camera Code:" anywhere in the page text. */

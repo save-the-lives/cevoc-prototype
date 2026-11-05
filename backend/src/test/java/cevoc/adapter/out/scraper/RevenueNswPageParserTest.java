@@ -164,6 +164,15 @@ class RevenueNswPageParserTest {
     }
 
     @Test
+    void bannerDiagnosticListsLabelNamesAndKeysButNoValues() {
+        String d = RevenueNswPageParser.bannerDiag("element", 3,
+                "Camera Code: ZZ9999 Direction: Northbound Posted Limit: 60 Time since red: 1.2 sec Lane: 2", java.util.Set.of("timeSinceRed"));
+        assertThat(d).isEqualTo("banner-diag=route:element/elements:3/labelled:5/recognised:camera-code,direction,lane,time-since-red"
+                + "/unrecognised:posted-limit/keys:timeSinceRed");
+        assertThat(d).doesNotContain("ZZ9999").doesNotContain("1.2").doesNotContain("Northbound");
+    }
+
+    @Test
     void bannerTextOutsideBannerElementsIsStillReadFromTheFirstCameraCodeOnward() {
         String html = fixture("fictitious-state3-images.html").replace("<figcaption class=\"banner\">", "<p class=\"cap\">")
                 .replace("</figcaption>", "</p>");

@@ -96,9 +96,11 @@ final class PlaywrightSession implements RenderedPageSession {
                 route.abort();
             } else if (wantsOriginalBody(req)) {
                 countImageRequest(req.url());
+                traceRequest(req);
                 captureAndFulfil(route);
             } else {
                 countImageRequest(req.url());
+                traceRequest(req);
                 route.resume();
             }
         });
@@ -106,6 +108,13 @@ final class PlaywrightSession implements RenderedPageSession {
         if (netmap != null) {
             netmap.attach(context);
         }
+        context.onResponse(resp -> {
+            try {
+                traceNetResponse(resp);
+            } catch (RuntimeException ignored) {
+                // diagnostics must never break the flow
+            }
+        });
         this.page = context.newPage();
         this.page.onDownload(this::countDownload);
         context.onPage(p -> p.onDownload(this::countDownload));
@@ -174,6 +183,7 @@ final class PlaywrightSession implements RenderedPageSession {
             byte[] body = resp.body();
             String url = route.request().url();
             String type = String.valueOf(resp.headers().get("content-type")).toLowerCase(Locale.ROOT);
+            traceResult(route.request(), "R", resp.status(), type, body == null ? -1 : body.length);
             var path = IMAGE_PATH.matcher(url);
             if (resp.status() == 200 && path.find() && type.startsWith("image/") && !type.contains("svg") && seenImages.size() < 60
                     && body != null && body.length <= maxBytes) {
@@ -194,6 +204,120 @@ final class PlaywrightSession implements RenderedPageSession {
         } catch (PlaywrightException e) {
             // the page navigated away mid-request
         }
+    }
+
+
+    // ---- redacted image-request trace (diagnostics only): order, shape, size word, status, type, bytes, header NAMES ----
+
+    private static final java.util.regex.Pattern IDLIKE = java.util.regex.Pattern.compile("[A-Za-z0-9_-]{8,}");
+    private final java.util.concurrent.atomic.AtomicInteger traceOrder = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.Map<String, Integer> traceIds = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<Object, Integer> traceIndex = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
+    private final java.util.Map<String, String> traceHeaderSets = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.List<String> traceLines = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+    private int traceEmitted;
+
+    private static boolean imageish(String url) {
+        try {
+            String path = URI.create(url).getPath();
+            return path != null && path.toLowerCase(Locale.ROOT).contains("image");
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** Path with every id-like segment masked, e.g. /api/images/{id1}; never the id itself. */
+    private String shapeOf(String url) {
+        try {
+            URI u = URI.create(url);
+            String path = u.getPath() == null ? "" : u.getPath();
+            StringBuilder sb = new StringBuilder();
+            for (String seg : path.split("/")) {
+                if (seg.isEmpty()) {
+                    continue;
+                }
+                if (IDLIKE.matcher(seg).matches() && seg.chars().anyMatch(Character::isDigit)) {
+                    Integer n = traceIds.get(seg);
+                    if (n == null) {
+                        n = traceIds.size() + 1;
+                        traceIds.put(seg, n);
+                    }
+                    sb.append("/{id").append(n).append('}');
+                } else {
+                    sb.append('/').append(seg.length() > 24 ? "{long}" : seg.replaceAll("[^A-Za-z0-9_.-]", "_"));
+                }
+            }
+            return sb.toString();
+        } catch (RuntimeException e) {
+            return "?";
+        }
+    }
+
+    private static String sizeOf(String url) {
+        var m = SIZE_PARAM.matcher(url);
+        return m.find() ? m.group(1) : "none";
+    }
+
+    private String headerSet(java.util.Map<String, String> headers) {
+        String names = headers.keySet().stream().map(k -> k.toLowerCase(Locale.ROOT)).sorted().collect(java.util.stream.Collectors.joining("|"));
+        String letter = traceHeaderSets.get(names);
+        if (letter == null) {
+            letter = String.valueOf((char) ('A' + traceHeaderSets.size() % 26));
+            traceHeaderSets.put(names, letter);
+        }
+        return letter;
+    }
+
+    private void traceRequest(com.microsoft.playwright.Request req) {
+        if (traceOrder.get() < 60 && imageish(req.url())) {
+            traceIndex.put(req, traceOrder.incrementAndGet());
+        }
+    }
+
+    private void traceResult(com.microsoft.playwright.Request req, String via, int status, String type, int bytes) {
+        Integer idx = traceIndex.get(req);
+        if (idx == null || traceLines.size() >= 60) {
+            return;
+        }
+        String t = type == null ? "none" : type.startsWith("image/") ? type.substring(6).split(";")[0] : type.split("[/;]")[0];
+        traceLines.add("#" + idx + via + ":" + req.method() + shapeOf(req.url()) + "?size=" + sizeOf(req.url()) + "/" + status + "/" + t
+                + "/" + bytes + "B/hdr" + headerSet(req.headers()) + "/" + req.resourceType());
+    }
+
+    private void traceNetResponse(com.microsoft.playwright.Response resp) {
+        var req = resp.request();
+        String type = String.valueOf(resp.headers().get("content-type")).toLowerCase(Locale.ROOT);
+        if (traceIndex.containsKey(req)) {
+            if (!wantsOriginalBody(req)) {
+                String len = resp.headers().get("content-length");
+                int bytes = -1;
+                try {
+                    bytes = len == null ? -1 : Integer.parseInt(len.trim());
+                } catch (NumberFormatException ignored) {
+                    // unknown length
+                }
+                traceResult(req, "N", resp.status(), type, bytes);
+            }
+        } else if (type.startsWith("image/") && !type.contains("svg") && traceOrder.get() < 60 && !"data".equals(req.resourceType())) {
+            // An image-typed response whose path did not look like an image path: still shown, path shape masked.
+            traceIndex.put(req, traceOrder.incrementAndGet());
+            traceResult(req, "X", resp.status(), type, -1);
+        }
+    }
+
+    /** Emits trace lines not yet emitted, plus the header-name sets, as one fixed-shape marker. */
+    private void emitTrace() {
+        java.util.List<String> fresh;
+        synchronized (traceLines) {
+            fresh = new java.util.ArrayList<>(traceLines.subList(Math.min(traceEmitted, traceLines.size()), traceLines.size()));
+            traceEmitted = traceLines.size();
+        }
+        if (fresh.isEmpty()) {
+            return;
+        }
+        String sets = traceHeaderSets.entrySet().stream().map(e -> "hdr" + e.getValue() + "=" + e.getKey()).sorted()
+                .collect(java.util.stream.Collectors.joining(","));
+        note("img-trace=[" + String.join(" ; ", fresh) + "] " + sets);
     }
 
     private static void safeAbort(com.microsoft.playwright.Route route) {
@@ -307,6 +431,7 @@ final class PlaywrightSession implements RenderedPageSession {
                 // The large image: its full response was seen while the page loaded.
                 found = unclaimedFull(0, false);
             }
+            emitTrace();
             if (found != null) {
                 claimed.add(found.id());
             }
