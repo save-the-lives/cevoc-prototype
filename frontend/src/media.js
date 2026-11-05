@@ -42,3 +42,13 @@ export function pickLevels(levels, { small, poor }) {
   if (small) return { startLevel: best(720), capLevel: -1 };
   return { startLevel: -1, capLevel: -1 };
 }
+
+/** Distinguishes an expired link (404/410) from other failures: the browser's own image error carries no status. */
+export async function linkExpired(url) {
+  try {
+    const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.status === 404 || res.status === 410;
+  } catch {
+    return false;
+  }
+}

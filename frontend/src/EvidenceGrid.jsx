@@ -22,7 +22,7 @@ export default function EvidenceGrid({ items }) {
       if (waiting.size === 0) queue.thumbnailsSettled();
     };
     if (photos.length === 0) queue.thumbnailsSettled();
-    return { queue, thumbDone, eager: photos };
+    return { queue, thumbDone, eager: photos, photos: items.filter((e) => e.kind === 'IMAGE') };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A thumbnail that never settles (a stalled connection) must not hold the queue for ever.

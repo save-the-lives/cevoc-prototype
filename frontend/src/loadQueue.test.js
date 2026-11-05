@@ -18,28 +18,45 @@ const jobs = [
 ];
 
 describe('load queue', () => {
-  it('does nothing until the thumbnails have settled, then loads only the first photo', async () => {
+  it('does nothing until the thumbnails have settled, then starts the first photo (high) with the rest in parallel behind it (low)', async () => {
     const f = fakeLoader();
     const q = createLoadQueue({ jobs, load: f.load });
     expect(f.started).toEqual([]);
     q.thumbnailsSettled();
-    expect(f.started).toEqual(['p1:high']);
-    expect(q.state('p2')).toBe(STATE.IDLE);
+    expect(f.started).toEqual(['p1:high', 'p2:low', 'p3:low']); // nobody waits for the first photo to finish
+    expect(q.state('v1')).toBe(STATE.IDLE); // the limit of 3 is full
   });
 
-  it('everything else waits for the first photo, then runs in order, two at a time', async () => {
+  it('as each load finishes the next one in page order starts', async () => {
     const f = fakeLoader();
     const q = createLoadQueue({ jobs, load: f.load, concurrency: 2 });
     q.thumbnailsSettled();
-    await f.finish('p1');
-    expect(f.started).toEqual(['p1:high', 'p2:low', 'p3:low']);
-    expect(f.inFlight()).toEqual(['p2', 'p3']);
-    expect(q.state('v1')).toBe(STATE.IDLE); // video waits for its turn
+    expect(f.started).toEqual(['p1:high', 'p2:low']);
     await f.finish('p2');
+    expect(f.started.at(-1)).toBe('p3:low');
+    await f.finish('p1');
     expect(f.started.at(-1)).toBe('v1:low');
     await f.finish('p3');
     await f.finish('v1');
     expect(['p1', 'p2', 'p3', 'v1'].map((id) => q.state(id))).toEqual(Array(4).fill(STATE.READY));
+  });
+
+  it('backs off to one at a time after an error or a slow load, and recovers after fast ones', async () => {
+    const f = fakeLoader();
+    let t = 0;
+    const many = Array.from({ length: 12 }, (_, i) => ({ id: `q${i}`, kind: 'image' }));
+    const q = createLoadQueue({ jobs: many, load: f.load, concurrency: 4, now: () => t });
+    q.thumbnailsSettled();
+    expect(f.inFlight()).toEqual(['q0', 'q1', 'q2', 'q3']);
+    await f.finish('q0', false); // error: limit 4 -> 2
+    expect(q.limit).toBe(2);
+    t = 5000; // q1 took 5s: slow, limit 2 -> 1
+    await f.finish('q1');
+    expect(q.limit).toBe(1);
+    await f.finish('q2'); await f.finish('q3'); // slow too (t is far from their start); nothing new starts until in-flight < 1
+    expect(f.inFlight().length).toBeLessThanOrEqual(1);
+    for (let i = 0; i < 4; i += 1) { await f.finish(f.inFlight()[0]); } // t does not move: fast loads
+    expect(q.limit).toBeGreaterThan(1);
   });
 
   it('a failed first photo does not block the rest; the failure is visible and can be retried', async () => {
