@@ -43,13 +43,16 @@ describe('red light details', () => {
       { key: 'speedLimit', label: 'Speed limit', first: false, value: '60 km/h' },
     ]);
   });
-  it('leaves a missing or empty fact out entirely, and ignores keys it does not show', () => {
+  it('marks a missing or empty fact as missing (shown as a plain message), and ignores keys it does not show', () => {
     const v = detailRows(redLight({ details: { timeSinceRed: 2, speedLimit: '', lane: 2, direction: 'North' } }));
-    expect(v.rows.map((r) => r.key)).toEqual(['timeSinceRed']);
+    expect(v.rows.map((r) => r.key)).toEqual(['timeSinceRed', 'speedLimit']);
+    expect(v.rows.map((r) => !!r.missing)).toEqual([false, true]);
   });
-  it('has no rows when nothing was returned', () => {
-    expect(detailRows(redLight({ details: {} })).rows).toEqual([]);
-    expect(detailRows(redLight({ details: undefined })).rows).toEqual([]);
+  it('marks every configured fact missing when nothing was returned', () => {
+    for (const details of [{}, undefined]) {
+      const v = detailRows(redLight({ details }));
+      expect(v.rows.map((r) => r.missing)).toEqual([true, true]);
+    }
   });
   it('matches on a returned time since red when the summary text is different', () => {
     expect(pickProgram({ notice: { offenceDescription: 'Camera recorded' }, details: { timeSinceRed: 1 } }).id).toBe('RED_LIGHT_SPEED');
