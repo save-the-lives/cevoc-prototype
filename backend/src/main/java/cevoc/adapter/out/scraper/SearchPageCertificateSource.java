@@ -26,7 +26,8 @@ import java.util.Optional;
  */
 public class SearchPageCertificateSource implements CertificateSourcePort {
 
-    public static final String DEFAULT_PAGE_URL = "https://cevoc.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf";
+    /** The working basint host (the earlier cevoc.transport host answers 403). Override: cevoc.certificates.search-page.url (env CEVOC_CERTIFICATES_SEARCH_PAGE_URL). */
+    public static final String DEFAULT_PAGE_URL = CertificateScraperProperties.DEFAULT_PAGE_URL;
 
     private record Cached(Instant at, List<CertificateRef> value) {}
 
