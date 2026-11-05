@@ -16,3 +16,4 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0010 | Three selectable routes per information type; plain HTTP adapter design | Accepted direction; plain HTTP adapter built and tested offline, not yet live-tested |
 | 0011 | Evidence download and one-file evidence pack | Design for review |
 | 0012 | Road safety message rules | Proposal, waiting for the owner |
+| 0013 | Privacy blurring of evidence video and still images | PROPOSED (research only, nothing built) |
