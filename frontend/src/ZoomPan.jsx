@@ -18,9 +18,10 @@ const SWIPE_PX = 50;
  * pointer at 1x is left alone so those controls keep working.
  * `gallery` ({ count, index, render(i) }) turns the full-screen view into a photo gallery: swipe (only at 1x), arrow keys
  * or the Previous/Next buttons move between photos; zoomed in, a drag pans instead.
+ * `startFull` opens straight into the full-screen dialog (phones); `onExit` is called when it closes so the caller can return focus.
  * `renderTools(view)` adds extra buttons to the toolbar (outside the transform).
  */
-export default function ZoomPan({ label, children, controlsAtRest = false, renderTools, onFullscreenFallback, gallery }) {
+export default function ZoomPan({ label, children, controlsAtRest = false, renderTools, onFullscreenFallback, gallery, startFull = false, onExit }) {
   const rootRef = useRef(null);
   const viewportRef = useRef(null);
   const [view, setViewState] = useState(IDENTITY);
@@ -31,8 +32,9 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
   const [dragging, setDragging] = useState(false);
   const [animate, setAnimate] = useState(false);
   const [isFs, setIsFs] = useState(false);
-  const [overlay, setOverlay] = useState(false); // full-viewport fallback where the element Fullscreen API does not exist (iOS Safari)
+  const [overlay, setOverlay] = useState(startFull); // full-viewport fallback where the element Fullscreen API does not exist (iOS Safari)
   const returnFocus = useRef(null);
+  const [said, setSaid] = useState(''); // polite announcement of the photo position
   const [pos, setPos] = useState(gallery?.index ?? 0); // photo shown in full screen
 
   const commit = useCallback((next, { smooth = false } = {}) => {
@@ -182,6 +184,7 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
     const n = pos + d;
     if (!nav || n < 0 || n >= gallery.count) return;
     setPos(n);
+    setSaid(`Photo ${n + 1} of ${gallery.count}`);
     commit(IDENTITY);
   };
   // Arrow keys move between photos at 1x (zoomed in, the viewport pans and calls preventDefault first); Tab stays inside the dialog.
@@ -204,7 +207,7 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
   const canFs = typeof document !== 'undefined';
-  const closeOverlay = useCallback(() => { setOverlay(false); returnFocus.current?.focus?.(); }, []);
+  const closeOverlay = useCallback(() => { setOverlay(false); if (onExit) onExit(); else returnFocus.current?.focus?.(); }, [onExit]);
   const toggleFs = () => {
     if (document.fullscreenElement === rootRef.current) { document.exitFullscreen?.(); return; }
     if (overlay) { closeOverlay(); return; }
@@ -217,16 +220,24 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
   function openOverlay() { returnFocus.current = document.activeElement; setOverlay(true); }
   const enter = () => setPos(gallery?.index ?? 0);
 
-  // The overlay locks page scrolling behind it, closes on Escape and puts focus on its Close button.
+  // The overlay is a modal dialog: it locks page scrolling, makes everything outside it inert (siblings of each of its ancestors,
+  // so the dialog itself stays live), closes on Escape and takes focus. Tab is kept inside by onRootKeyDown.
   useEffect(() => {
     if (!overlay) return undefined;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    const made = [];
+    for (let n = rootRef.current; n && n !== document.body && n.parentElement; n = n.parentElement) {
+      for (const s of n.parentElement.children) if (s !== n && !s.inert && !/^(SCRIPT|STYLE)$/.test(s.tagName)) { s.inert = true; made.push(s); }
+    }
     const onKey = (e) => { if (e.key === 'Escape') closeOverlay(); };
     document.addEventListener('keydown', onKey);
-    rootRef.current?.querySelector('.zp-close')?.focus();
-    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); };
+    rootRef.current?.focus();
+    return () => { document.body.style.overflow = prev; document.removeEventListener('keydown', onKey); made.forEach((s) => { s.inert = false; }); };
   }, [overlay, closeOverlay]);
+
+  // Opened inline by a button that then unmounts (desktop "Zoom in"): focus moves to the viewer instead of dropping to the page.
+  useEffect(() => { if (!startFull) viewportRef.current?.focus(); }, [startFull]);
 
   const zoomed = view.scale > 1;
   const pct = `${Math.round(view.scale * 100)}%`;
@@ -235,7 +246,8 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
   return (
     <div className={`zp${isFs || overlay ? ' zp-fs' : ''}${overlay ? ' zp-overlay' : ''}`} ref={rootRef}
       onKeyDown={onRootKeyDown}
-      role={overlay ? 'dialog' : undefined} aria-modal={overlay || undefined} aria-label={overlay ? label : undefined}>
+      role={overlay ? 'dialog' : undefined} aria-modal={overlay || undefined} tabIndex={overlay ? -1 : undefined}
+      aria-label={overlay ? (gallery?.count > 1 ? `Photo viewer, photo ${pos + 1} of ${gallery.count}` : `Photo viewer, ${label}`) : undefined}>
       <div
         className={`zp-viewport${dragging ? ' is-dragging' : ''}${zoomed ? ' is-zoomed' : ''}`}
         ref={viewportRef}
@@ -264,7 +276,8 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
         {nav && (
           <>
             <button type="button" onClick={() => go(-1)} aria-disabled={pos === 0} aria-label="Previous photo">&lsaquo;</button>
-            <output className="zp-pos" aria-live="polite" aria-label="Photo position">{pos + 1} / {gallery.count}</output>
+            <output className="zp-pos" aria-hidden="true">{pos + 1} / {gallery.count}</output>
+            <span className="sr-only" role="status">{said}</span>
             <button type="button" onClick={() => go(1)} aria-disabled={pos === gallery.count - 1} aria-label="Next photo">&rsaquo;</button>
           </>
         )}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import EvidenceItem from './EvidenceItem.jsx';
 import { QueueContext, loadJob } from './evidenceLoader.js';
+import { usePhone } from './phone.js';
 import { createLoadQueue, jobsFor, saveDataOn } from './loadQueue.js';
 
 /** Photos shown before the fold: their thumbnails load eagerly and gate the start of the full-size queue. */
@@ -11,6 +12,7 @@ const EAGER = 3;
  * It owns the loading order: thumbnails, then the first photo in full, then everything else in the background.
  */
 export default function EvidenceGrid({ items }) {
+  const phone = usePhone();
   const key = items.map((e) => e.url).join('|');
   const ctx = useMemo(() => {
     const jobs = jobsFor(items);
@@ -33,6 +35,7 @@ export default function EvidenceGrid({ items }) {
 
   return (
     <QueueContext.Provider value={ctx}>
+      {phone && ctx.photos.length > 0 && <p className="hint">Double tap a photo to see it full screen.</p>}
       <ul className="grid">{items.map((e) => <EvidenceItem key={e.url} item={e} />)}</ul>
     </QueueContext.Provider>
   );

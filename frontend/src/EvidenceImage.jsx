@@ -4,6 +4,7 @@ import { QueueContext } from './evidenceLoader.js';
 import { STATE } from './loadQueue.js';
 import { downloadHref, linkExpired, stagesFor, timedOutLabel } from './media.js';
 import GalleryPhoto from './GalleryPhoto.jsx';
+import { makeDoubleTap, usePhone } from './phone.js';
 
 // The zoom and pan viewer is its own chunk: it is fetched when someone opens a photo (or points at the button).
 const loadViewer = () => import('./ZoomPan.jsx');
@@ -57,6 +58,15 @@ export default function EvidenceImage({ item }) {
   const [broken, setBroken] = useState(false); // the picture on the page could not be loaded
   const [expired, setExpired] = useState(false);
   const [viewerTry, setViewerTry] = useState(0);
+  const phone = usePhone();
+  const [startFull, setStartFull] = useState(false); // phones open straight into the full-screen dialog
+  const expandRef = useRef(null);
+  const refocus = useRef(false);
+  const doubleTap = useMemo(() => makeDoubleTap(), []);
+  const downAt = useRef(null);
+  const openFull = () => { setStartFull(true); setOpen(true); };
+  const exitFull = () => { refocus.current = true; setOpen(false); setStartFull(false); };
+  useEffect(() => { if (!open && refocus.current) { refocus.current = false; expandRef.current?.focus(); } }, [open]);
   const { report } = useContext(ExpiredContext);
   const q = useContext(QueueContext);
   const [full, setFull] = useState(() => q?.queue.state(item.url) ?? STATE.IDLE);
@@ -110,10 +120,25 @@ export default function EvidenceImage({ item }) {
         ? <div className="media-expired" style={{ aspectRatio: '16 / 10' }}>{timedOutLabel(gallery?.index ?? 0, gallery?.count ?? 1)}</div>
         : open
         ? <ViewerBoundary attempt={viewerTry} onRetry={() => setViewerTry((n) => n + 1)}>
-            <Suspense fallback={<div className="media-frame">{img}</div>}><Viewer label={`${item.title}, image`} gallery={gallery}>{img}</Viewer></Suspense>
+            <Suspense fallback={<div className="media-frame">{img}</div>}><Viewer label={`${item.title}, image`} gallery={gallery} startFull={startFull} onExit={startFull ? exitFull : undefined}>{img}</Viewer></Suspense>
           </ViewerBoundary>
-        : <div className="media-frame" style={{ aspectRatio: '16 / 10' }}>{img}</div>}
-      {!open && !timedOut && (
+        : <div className="media-wrap">
+            <div className="media-frame" style={{ aspectRatio: '16 / 10' }}
+              {...(phone ? {
+                onPointerDown: (e) => { loadViewer(); downAt.current = { x: e.clientX, y: e.clientY }; },
+                onPointerUp: (e) => {
+                  const d = downAt.current;
+                  if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) <= 10 && doubleTap(e.clientX, e.clientY, e.timeStamp)) openFull();
+                },
+              } : {})}>{img}</div>
+            {phone && (
+              <button type="button" className="expand-open" ref={expandRef} onClick={openFull} onFocus={loadViewer}
+                aria-label={`Open photo ${(gallery?.index ?? 0) + 1} of ${gallery?.count ?? 1} full screen`}>
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+            )}
+          </div>}
+      {!phone && !open && !timedOut && (
         <button type="button" className="btn zoom-open" onClick={() => setOpen(true)} onPointerEnter={loadViewer} onFocus={loadViewer}>
           Zoom in<span className="sr-only"> on {item.title}</span>
         </button>

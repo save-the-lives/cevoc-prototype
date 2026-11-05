@@ -14,7 +14,7 @@ test('timed-out photos: one message, one reload action, readable placeholders, r
   await expect(page.getByText('These photos expired')).toHaveCount(0);
   await expect(page.locator('.media-expired').first()).toContainText(/^Photo 1 of \d+, timed out$/);
   await expect(page.locator('img.media-img')).toHaveCount(0); // no broken-image boxes
-  await expect(page.locator('button.zoom-open')).toHaveCount(0);
+  await expect(page.locator('button.zoom-open, button.expand-open')).toHaveCount(0);
   await expect(page.locator('#step-evidence .q-answer')).not.toContainText('Check the number plate');
   await expect(page.locator('#step-evidence .q-answer')).toContainText('timed out');
   // The placeholder text is dark on light: at least 4.5:1.
@@ -43,11 +43,8 @@ test('full-screen viewer: timed-out photo uses the single message', async ({ pag
   await page.fill('#pn', '9000000001');
   await page.fill('#od-d', '14'); await page.fill('#od-m', '3'); await page.fill('#od-y', '2026');
   await page.tap('button[type=submit]');
-  await page.locator('button.zoom-open').first().waitFor({ timeout: 15_000 });
-  await page.locator('button.zoom-open').first().tap();
-  await page.locator('.media-card .zp-viewport').first().waitFor({ timeout: 10_000 });
-  await page.evaluate(() => { Object.defineProperty(document, 'fullscreenEnabled', { value: false, configurable: true }); });
-  await page.locator('.media-card').first().getByRole('button', { name: 'Full screen' }).tap();
+  await page.locator('button.expand-open').first().waitFor({ timeout: 15_000 });
+  await page.locator('button.expand-open').first().tap();
   const viewer = page.locator('.gp .media-expired');
   await expect(viewer).toContainText(/Photo 1 of \d+, timed out/, { timeout: 15_000 });
   await expect(viewer).toContainText('Your photos have timed out');
