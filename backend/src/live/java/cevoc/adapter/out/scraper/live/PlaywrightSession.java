@@ -1073,6 +1073,11 @@ final class PlaywrightSession implements RenderedPageSession {
                 String m = redactor.clean(String.valueOf(e.getMessage())).toLowerCase(Locale.ROOT);
                 note("srch-error=" + e.getClass().getSimpleName() + "/words:" + java.util.Arrays.stream(m.replaceAll("[^a-z ]", " ").trim().split("\\s+"))
                         .filter(w -> w.length() >= 2 && w.length() <= 14).limit(10).collect(java.util.stream.Collectors.joining("-")));
+                StackTraceElement[] st = e.getStackTrace();
+                String where = java.util.Arrays.stream(st).filter(f -> f.getClassName().startsWith("com.microsoft.playwright") || f.getClassName().startsWith("cevoc."))
+                        .limit(3).map(f -> f.getClassName().substring(f.getClassName().lastIndexOf('.') + 1) + "." + f.getMethodName() + ":" + f.getLineNumber())
+                        .collect(java.util.stream.Collectors.joining(">"));
+                note("srch-error-at=" + where + "; srch-error-nlines=" + Math.min(String.valueOf(e.getMessage()).lines().count(), 9));
                 throw e;
             } finally {
                 page.offResponse(listener);
