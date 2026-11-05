@@ -39,46 +39,52 @@ class CertificateProvidersTest {
 
     @Test
     void theListIsOrderedTrimmedLowerCasedAndDeduplicated() {
-        assertThat(CertificateProviders.ids(env(" TFNSW-API , search-page,search-page ", null))).containsExactly("tfnsw-api", "search-page");
+        assertThat(CertificateProviders.ids(env(" HTTP , browser,browser ", null))).containsExactly("http", "browser");
     }
 
     @Test
-    void theLegacySwitchStillSelectsTheHttpFormScraperWhenNoListIsGiven() {
-        MockEnvironment e = new MockEnvironment().withProperty("cevoc.scraper.certificates.enabled", "true");
-        assertThat(CertificateProviders.ids(e)).containsExactly("http-form");
-        assertThatThrownBy(() -> CertificateProviders.create(e)).isInstanceOf(IllegalStateException.class).hasMessageContaining("approval-reference");
-        e.setProperty("cevoc.scraper.certificates.approval-reference", "TEST-REF-1");
-        assertThat(CertificateProviders.create(e)).isInstanceOf(CertificateScraperAdapter.class);
+    void retiredNamesAndTheLegacySwitchAreIgnoredAndNeverStopStartUp() {
+        // old provider names are not aliases
+        assertThat(CertificateProviders.ids(env("search-page,search-page-http,tfnsw-api", null))).isEmpty();
+        assertThat(CertificateProviders.create(env("search-page,search-page-http", null))).isNull();
+        // the old flag no longer selects the http-form provider
+        MockEnvironment e = new MockEnvironment().withProperty("cevoc.scraper.certificates.enabled", "true")
+                .withProperty("cevoc.scraper.certificates.approval-reference", "TEST-REF-1");
+        assertThat(CertificateProviders.ids(e)).isEmpty();
+        assertThat(CertificateProviders.create(e)).isNull();
     }
 
     @Test
-    void searchPageNeedsTheApprovalReferenceAndWithoutABrowserItRefusesToOpenOne() {
-        assertThatThrownBy(() -> CertificateProviders.create(env("search-page", null))).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("approval-reference");
-        assertThatThrownBy(() -> CertificateProviders.create(env("search-page", "  "))).isInstanceOf(IllegalStateException.class);
-        CertificateSourcePort p = CertificateProviders.create(env("search-page", "TEST-REF-1"));
-        assertThat(p).isInstanceOf(SearchPageCertificateSource.class);
-        // Browser not switched on (no playwright, no scraper flags): no session can open, so no network call is possible.
-        assertThatThrownBy(() -> p.findCertificates(Q)).isInstanceOf(ScrapeException.class);
+    void httpFormIsOnlyUsedWhenListedAndNeedsNoApprovalReference() {
+        assertThat(CertificateProviders.create(env("http-form", null))).isInstanceOf(CertificateScraperAdapter.class);
     }
 
     @Test
-    void theApiProviderIsReservedAndUnknownIdsFailAtStartUp() {
-        assertThatThrownBy(() -> CertificateProviders.create(env("tfnsw-api,search-page", "TEST-REF-1")))
+    void browserProviderStartsWithoutAnApprovalReferenceAndWithoutABrowserItRefusesToOpenOne() {
+        for (String ref : new String[] {null, "  ", "TEST-REF-1"}) {
+            CertificateSourcePort p = CertificateProviders.create(env("browser", ref));
+            assertThat(p).isInstanceOf(SearchPageCertificateSource.class);
+            // No Chromium build / no URL and contact: no session can open, so no network call is possible.
+            assertThatThrownBy(() -> p.findCertificates(Q)).isInstanceOf(ScrapeException.class);
+        }
+    }
+
+    @Test
+    void theApiProviderIsReservedAndUnknownIdsAreIgnored() {
+        assertThatThrownBy(() -> CertificateProviders.create(env("api,browser", null)))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("not available yet");
-        assertThatThrownBy(() -> CertificateProviders.create(env("nonsense", "TEST-REF-1")))
-                .isInstanceOf(IllegalStateException.class).hasMessageContaining("unknown certificate provider");
+        assertThat(CertificateProviders.create(env("nonsense", null))).isNull();
     }
 
     @Test
-    void severalProvidersFormAChainAndTheBrowserLinkNeedsNoExtraApproval() {
+    void severalProvidersFormAChainAndTheBrowserLinkNeedsNoExtraSetting() {
         assertThat(CertificateProviders.create(env("browser-link", null))).isInstanceOf(BrowserCertificateSourceAdapter.class);
-        assertThat(CertificateProviders.create(env("search-page,browser-link", "TEST-REF-1"))).isInstanceOf(CertificateProviderChain.class);
+        assertThat(CertificateProviders.create(env("browser,browser-link", null))).isInstanceOf(CertificateProviderChain.class);
     }
 
     @Test
     void theCertificationLinkIsFollowedOnlyWhenBrowserLinkIsListed() {
-        assertThat(CertificateProviders.ids(env("search-page", "x"))).doesNotContain(CertificateProviders.BROWSER_LINK);
+        assertThat(CertificateProviders.ids(env("browser", "x"))).doesNotContain(CertificateProviders.BROWSER_LINK);
         assertThat(CertificateProviders.ids(env("browser-link", null))).contains(CertificateProviders.BROWSER_LINK);
     }
 

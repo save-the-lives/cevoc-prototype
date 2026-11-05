@@ -32,8 +32,8 @@ class PlaywrightHelpersTest {
     void stepTimeoutIsGenerousButBounded() {
         ScraperSettings s = ScraperSettings.off();
         assertThat(PlaywrightSessionFactory.stepTimeout(s)).isEqualTo(Duration.ofSeconds(45));
-        ScraperSettings tiny = new ScraperSettings(true, "", "", Duration.ZERO, Duration.ZERO, Duration.ofSeconds(1), Duration.ZERO, 1);
-        ScraperSettings huge = new ScraperSettings(true, "", "", Duration.ZERO, Duration.ZERO, Duration.ofMinutes(10), Duration.ZERO, 1);
+        ScraperSettings tiny = new ScraperSettings("", "", Duration.ZERO, Duration.ZERO, Duration.ofSeconds(1), Duration.ZERO, 1);
+        ScraperSettings huge = new ScraperSettings("", "", Duration.ZERO, Duration.ZERO, Duration.ofMinutes(10), Duration.ZERO, 1);
         assertThat(PlaywrightSessionFactory.stepTimeout(tiny)).isEqualTo(Duration.ofSeconds(30));
         assertThat(PlaywrightSessionFactory.stepTimeout(huge)).isEqualTo(Duration.ofSeconds(90));
     }

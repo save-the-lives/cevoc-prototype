@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildRequest, emptyFields, formatSummary, imageCaption, imageSrc, isLiveCheckRoute, parseOffenceDate, parseResponse, runLiveCheck } from './liveCheck.js';
 
-const good = { token: 'tok-fictitious', notice: 'ZZ000111', date: '05/03/2026', registration: 'AB 12CD' };
+const good = { notice: 'ZZ000111', date: '05/03/2026', registration: 'AB 12CD' };
 
 describe('parseOffenceDate', () => {
   it('converts DD/MM/YYYY to ISO', () => expect(parseOffenceDate('05/03/2026')).toBe('2026-03-05'));
@@ -47,18 +47,19 @@ describe('routing', () => {
 });
 
 describe('runLiveCheck', () => {
-  it('sends the token header, no credentials, and yields rows', async () => {
+  it('sends no token header, no credentials, and yields rows', async () => {
     const f = vi.fn().mockResolvedValue({ ok: true, text: async () => 'images : 1\n' });
     const out = await runLiveCheck(good, { fetchImpl: f, base: 'http://x' });
     expect(out.ok).toBe(true);
     const [url, init] = f.mock.calls[0];
     expect(url).toBe('http://x/live-check/lookup');
-    expect(init.headers['X-Live-Check-Token']).toBe('tok-fictitious');
+    expect(init.headers['X-Live-Check-Token']).toBeUndefined();
     expect(init.credentials).toBe('omit');
   });
-  it('maps 401 and network failure to generic messages', async () => {
+  it('maps a refusal and network failure to generic messages', async () => {
     const a = await runLiveCheck(good, { fetchImpl: async () => ({ ok: false, status: 401, text: async () => good.notice }) });
-    expect(a.error).toMatch(/token/);
+    expect(a.error).not.toMatch(/token/);
+    expect(a.error).not.toContain(good.notice);
     const b = await runLiveCheck(good, { fetchImpl: async () => { throw new Error(good.notice); } });
     expect(b.error).not.toContain(good.notice);
   });
@@ -104,7 +105,7 @@ describe('captured images (owner view)', () => {
 
 describe('cleared fields', () => {
   it('emptyFields gives blanks and a fresh object each time', () => {
-    expect(emptyFields()).toEqual({ token: '', notice: '', date: '', registration: '' });
+    expect(emptyFields()).toEqual({ notice: '', date: '', registration: '' });
     expect(emptyFields()).not.toBe(emptyFields());
   });
 });

@@ -8,7 +8,7 @@ Owner approval: decision given by voice 2026-11-05 (keep all scraped fields as f
 The Revenue NSW page shows program-specific facts (seconds after red, lane, direction, operator, speed limit, yellow duration, incident number). Which of them does the app keep today, and how do we stop losing them?
 
 ## Audit: what happens to each banner field today (PROVEN)
-`CameraBannerParser` reads twelve labelled fields from the banner text. `RevenueNswPageParser` is the only caller, so it is wired into the live route (adapter `scraper-evidence`). It calls the parser only inside `bannerCameraCode` and keeps the camera code alone.
+`CameraBannerParser` reads twelve labelled fields from the banner text. `RevenueNswPageParser` is the only caller, so it is wired into the live route (adapter `browser`, formerly `scraper-evidence`). It calls the parser only inside `bannerCameraCode` and keeps the camera code alone.
 
 | Field | Parsed | Kept in the result | In the API response | Shown on the page |
 |---|---|---|---|---|

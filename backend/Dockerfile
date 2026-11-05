@@ -1,5 +1,5 @@
 # One image, always with Chromium (-Plive-browser). The live check is switched on only by env settings at deploy time
-# (CEVOC_LIVECHECK_ENABLED, CEVOC_SCRAPER_*), see docs/LIVE-CHECK.md. Scrapers are off unless those are set.
+# (CEVOC_LIVECHECK_ENABLED, CEVOC_PENALTY_LOOKUP_ADAPTER=browser and its URL and contact), see docs/LIVE-CHECK.md. Scrapers are off unless the browser adapter is selected.
 # Layer order, most stable first, so an app-code change rebuilds only the build step and the last (thin) layer:
 #   1. JDK/Maven base  2. pom.xml -> dependencies + Playwright CLI jars  3. JRE base, Tesseract (banner OCR), Chromium + OS deps  4. app jar
 # Banner OCR (record 0019) calls the tesseract command line program from the app; English data only. It is used only when

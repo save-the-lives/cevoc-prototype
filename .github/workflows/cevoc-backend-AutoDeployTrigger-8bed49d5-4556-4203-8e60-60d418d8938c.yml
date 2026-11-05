@@ -52,11 +52,10 @@ jobs:
       - name: Check live-check settings
         if: ${{ env.LIVE == 'true' }}
         env:
-          LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
           CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
         run: |
-          echo "::notice::LIVE_CHECK_ENABLED is true: deploying the one image with the live-check settings on (cpu 2, memory 4Gi)."
+          echo "::notice::LIVE_CHECK_ENABLED is true: deploying the one image with the browser adapter selected and live check on (cpu 2, memory 4Gi)."
           case "$CEVOC_BASE_URL" in https://?*) ;; *) echo "::error::Variable CEVOC_BASE_URL must be an https URL."; exit 1;; esac
           [ -n "$LIVE_CONTACT" ] || { echo "::error::Variable LIVE_CONTACT is not set."; exit 1; }
 
@@ -100,40 +99,34 @@ jobs:
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
-          # Also switches the live-check settings off again if an earlier run turned them on (empty value = off / unset).
+          # Also puts the adapter back to the default (empty = stub, nothing contacted) and switches live check, OCR, the
+          # evidence URL and contact and the certificates adapter off again if an earlier live run turned them on (empty value = off / unset).
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 0.5 --memory 1.0Gi \
             --min-replicas 1 --max-replicas 1 \
-            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=manifest CEVOC_SCRAPER_ENABLED=false \
-            CEVOC_SCRAPER_EVIDENCE_ENABLED=false CEVOC_SCRAPER_CERTIFICATES_ENABLED=false \
-            CEVOC_SCRAPER_EVIDENCE_BROWSER= CEVOC_LIVECHECK_ENABLED=false CEVOC_LIVECHECK_TOKEN= CEVOC_BANNER_OCR_ENABLED=false \
-            CEVOC_SCRAPER_EVIDENCE_BASE_URL= CEVOC_SCRAPER_EVIDENCE_CONTACT=
+            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER= CEVOC_LIVECHECK_ENABLED=false CEVOC_BANNER_OCR_ENABLED=false \
+            CEVOC_SCRAPER_EVIDENCE_URL= CEVOC_SCRAPER_EVIDENCE_CONTACT= CEVOC_CERTIFICATES_PROVIDERS=
+          # Clears the secret the retired live-check token used to live in (harmless if it is already gone).
           az containerapp secret remove --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --secret-names live-check-token >/dev/null 2>&1 || true
 
       - name: Deploy live-check image
         if: ${{ env.LIVE == 'true' }}
         env:
-          LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
           CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
         run: |
-          echo "::add-mask::$LIVE_CHECK_TOKEN"
-          # Certificates (PROTOTYPE ONLY: Chromium route, interim until the TfNSW API provider exists). The owner approved this
-          # on 2026-11-04; the fixed reference below is that approval. The app still requires a non-empty reference, the contact,
-          # the rate limit and the honest user agent, and stops on 401/403/429/captcha.
-          CERTS_APPROVAL_REF="owner-approved-2026-11-04"
-          CERTS_ARGS=(CEVOC_CERTIFICATES_PROVIDERS=search-page "CEVOC_CERTIFICATES_APPROVAL_REFERENCE=$CERTS_APPROVAL_REF")
+          # Adapter selection is the only switch: CEVOC_PENALTY_LOOKUP_ADAPTER=browser selects the Chromium route. Certificates
+          # (PROTOTYPE ONLY, interim until the TfNSW API provider exists; owner-approved 2026-11-04) use the same name, browser.
+          # The app still requires the URL and contact, the rate limit and the honest user agent, and stops on 401/403/429/captcha.
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 2 --memory 4Gi \
             --min-replicas 1 --max-replicas 1 \
-            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=scraper-evidence CEVOC_SCRAPER_ENABLED=true \
-            CEVOC_SCRAPER_EVIDENCE_ENABLED=true CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright \
-            CEVOC_SCRAPER_CERTIFICATES_ENABLED=false CEVOC_LIVECHECK_ENABLED=true CEVOC_BANNER_OCR_ENABLED=true \
-            "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_LIVECHECK_TOKEN= "${CERTS_ARGS[@]}" >/dev/null
+            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=browser CEVOC_LIVECHECK_ENABLED=true CEVOC_BANNER_OCR_ENABLED=true \
+            "CEVOC_SCRAPER_EVIDENCE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_CERTIFICATES_PROVIDERS=browser >/dev/null
 
       - name: Show what is deployed
         run: |
@@ -162,11 +155,9 @@ jobs:
           exit 1
 
       # Live mode: do not call /api/penalty-lookups (it would hit the real site). /live-check/ping is harmless:
-      # 401 without the token proves the guard is on, 200 with it proves the token and settings reached the app.
+      # 200 proves live check is switched on and the new settings reached the app (there is no token any more).
       - name: Check the live-check app answers
         if: ${{ env.LIVE == 'true' }}
-        env:
-          LIVE_CHECK_TOKEN: ${{ secrets.LIVE_CHECK_TOKEN }}
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           bad=0
@@ -180,7 +171,7 @@ jobs:
             sleep 5
           done
           curl -m 15 -s -i -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" "https://$fqdn/live-check/ping" | head -12 | tr -d '\r' | while IFS= read -r l; do echo "::error::ping $l"; done || true
-          curl -m 15 -s -i -X OPTIONS -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: x-live-check-token,content-type" "https://$fqdn/live-check/lookup" | head -12 | tr -d '\r' | while IFS= read -r l; do echo "::error::preflight $l"; done || true
+          curl -m 15 -s -i -X OPTIONS -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type" "https://$fqdn/live-check/lookup" | head -12 | tr -d '\r' | while IFS= read -r l; do echo "::error::preflight $l"; done || true
           echo "::error::last answer: HTTP $noauth"
           az containerapp revision list --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "[0].{health:properties.healthState,state:properties.runningState,replicas:properties.replicas}" -o tsv | while IFS= read -r l; do echo "::error::revision $l"; done || true
           az containerapp logs show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --type console --tail 300 --format text 2>&1 | grep -E "guard active|Started |ERROR|Exception|live-check" | cut -c1-300 | head -25 | while IFS= read -r l; do echo "::error::log $l"; done || true

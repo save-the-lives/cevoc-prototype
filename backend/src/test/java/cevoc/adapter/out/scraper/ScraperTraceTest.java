@@ -31,7 +31,7 @@ class ScraperTraceTest {
     }
 
     private static ScraperEvidenceLookupAdapter adapter(FakeRenderedPageSession fake, RegistrationProvider plates) {
-        var settings = new ScraperSettings(true, BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
+        var settings = new ScraperSettings(BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
                 Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
         return new ScraperEvidenceLookupAdapter(settings, new Sessions(fake), new RevenueNswPageParser(), new FakeStorage(),
                 Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC), plates);
@@ -106,7 +106,7 @@ class ScraperTraceTest {
 
     @Test
     void aSessionThatCannotStartFailsStartBrowser() {
-        var settings = new ScraperSettings(true, BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
+        var settings = new ScraperSettings(BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
                 Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
         var a = new ScraperEvidenceLookupAdapter(settings, uri -> {
             throw new java.io.IOException("could not start the browser: Executable doesn't exist at /x");

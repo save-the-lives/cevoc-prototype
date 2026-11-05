@@ -12,6 +12,8 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
+ * NOT SELECTABLE any more (kept as a tiny in-code sample for tests). The adapter called {@code stub} in the setting
+ * cevoc.penalty-lookup.adapter is the manifest-first adapter, see config.LookupAdapterKind.
  * Fictitious data so the customer journey works before real sources are wired in.
  * Scenarios by notice number (all invented):
  *   9000000001  speed camera notice: images, video, certificate

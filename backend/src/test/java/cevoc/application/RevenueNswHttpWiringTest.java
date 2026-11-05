@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 
-/** Adapter selection by configuration. The new route is never the default and, selected but not enabled, makes no call. */
+/** Adapter selection by configuration. The http route is never the default and, selected but not configured, makes no call. */
 class RevenueNswHttpWiringTest {
 
     @Nested
@@ -24,15 +24,15 @@ class RevenueNswHttpWiringTest {
         @Autowired ApplicationContext ctx;
 
         @Test
-        void manifestFirstIsStillTheDefaultAndNoHttpRouteExists() {
+        void theStubDefaultIsUnchangedAndNoHttpRouteExists() {
             assertThat(ctx.getBean(PenaltyLookupPort.class)).isInstanceOf(ManifestFirstPenaltyLookupAdapter.class);
             assertThat(ctx.getBeansOfType(RevenueNswHttpLookupAdapter.class)).isEmpty();
         }
     }
 
     @Nested
-    @SpringBootTest(properties = "cevoc.penalty-lookup.adapter=revenue-nsw-http")
-    class SelectedButNotEnabled {
+    @SpringBootTest(properties = "cevoc.penalty-lookup.adapter=http")
+    class SelectedButNotConfigured {
         @Autowired ApplicationContext ctx;
         @Autowired PenaltyLookupPort port;
 
@@ -46,12 +46,12 @@ class RevenueNswHttpWiringTest {
     }
 
     @Nested
-    @SpringBootTest(properties = "cevoc.penalty-lookup.adapter=scraper-evidence")
-    class ChromiumRouteUnchanged {
+    @SpringBootTest(properties = "cevoc.penalty-lookup.adapter=browser")
+    class BrowserRouteUnchanged {
         @Autowired ApplicationContext ctx;
 
         @Test
-        void chromiumSelectionDoesNotCreateTheHttpRoute() {
+        void browserSelectionDoesNotCreateTheHttpRoute() {
             assertThat(ctx.getBeansOfType(RevenueNswHttpLookupAdapter.class)).isEmpty();
         }
     }

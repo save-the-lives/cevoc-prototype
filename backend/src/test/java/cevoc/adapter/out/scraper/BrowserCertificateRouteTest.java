@@ -33,7 +33,7 @@ class BrowserCertificateRouteTest {
     }
 
     private static LookupPenaltyService service(FakeRenderedPageSession fake) {
-        ScraperSettings s = new ScraperSettings(true, "https://penalty.example.invalid/customer_service/finesonline/",
+        ScraperSettings s = new ScraperSettings("https://penalty.example.invalid/customer_service/finesonline/",
                 "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
         ScraperEvidenceLookupAdapter evidence = new ScraperEvidenceLookupAdapter(s, new ScraperEvidenceTest.Sessions(fake),
                 new RevenueNswPageParser(), new ScraperEvidenceTest.FakeStorage(),

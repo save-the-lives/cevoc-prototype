@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Owner-run local check of the evidence scraper against the real myPenalty site. NOT for CI, NOT for servers.
-# Starts the backend on 127.0.0.1 with the live-browser profile and the scraper flags ON, sends ONE lookup, prints a
+# Starts the backend on 127.0.0.1 with the live-browser profile and the browser adapter selected, sends ONE lookup, prints a
 # REDACTED summary (state, yes/no per field, counts), and stops the backend.
 #
 # Inputs come from the environment or an interactive prompt, never from a file, and are never echoed, logged or committed:
 #   NOTICE            penalty notice number (prompted silently if unset)
 #   OFFENCE_DATE      DD/MM/YYYY or YYYY-MM-DD (prompted silently if unset)
 #   REGISTRATION      vehicle registration, optional (prompted silently; empty = stop at the summary step)
-#   LIVE_BASE_URL     https URL of the site (origin, or the full login URL); prompted if unset
+#   LIVE_BASE_URL     https URL of the site: the full login page URL (an origin alone still works for now); prompted if unset
 #   LIVE_CONTACT      contact shown in the User-Agent so the site owner can reach you; prompted if unset
 #   I_HAVE_APPROVAL   must be "yes" (or you answer the prompt): you have approval to make these automated requests
 # Optional:
@@ -16,7 +16,6 @@
 #   LIVE_MIN_INTERVAL_MS  pause between site requests, default 5000, minimum 3000
 #   LIVE_CHECK_PORT   local port, default 8099
 #   LIVE_CERTS=no     skip the certificate lookup (default: run it through the basint search page, Chromium, prototype only)
-#   LIVE_CERT_APPROVAL_REF  override the approval reference (default: the owner's 2026-11-04 approval)
 # See docs/LIVE-CHECK.md.
 set -euo pipefail
 umask 077
@@ -47,7 +46,7 @@ else
   REG_V="${REGISTRATION:-}"
 fi
 BASE_V="${LIVE_BASE_URL:-}"
-if [ -z "$BASE_V" ] && [ -t 0 ]; then read -r -p "Site base URL (https://...): " BASE_V; fi
+if [ -z "$BASE_V" ] && [ -t 0 ]; then read -r -p "Site login page URL (https://...): " BASE_V; fi
 CONTACT_V="${LIVE_CONTACT:-}"
 if [ -z "$CONTACT_V" ] && [ -t 0 ]; then read -r -p "Your contact (email) for the User-Agent: " CONTACT_V; fi
 APPROVAL_V="${I_HAVE_APPROVAL:-}"
@@ -80,11 +79,8 @@ mkdir -p "$CAPTURE_DIR"; chmod 700 "$CAPTURE_DIR"
 BACKEND_ENV=(
   "SERVER_ADDRESS=127.0.0.1" "SERVER_PORT=$PORT"
   "LOGGING_LEVEL_ROOT=WARN" "LOGGING_LEVEL_AU_GOV_NSW_TRANSPORT_CEVOC=INFO"
-  "CEVOC_PENALTY_LOOKUP_ADAPTER=scraper-evidence"
-  "CEVOC_SCRAPER_ENABLED=true"
-  "CEVOC_SCRAPER_EVIDENCE_ENABLED=true"
-  "CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright"
-  "CEVOC_SCRAPER_EVIDENCE_BASE_URL=$BASE_V"
+  "CEVOC_PENALTY_LOOKUP_ADAPTER=browser"
+  "CEVOC_SCRAPER_EVIDENCE_URL=$BASE_V"
   "CEVOC_SCRAPER_EVIDENCE_CONTACT=$CONTACT_V"
   "CEVOC_SCRAPER_EVIDENCE_MIN_INTERVAL_MS=$MIN_MS"
   "CEVOC_LIVE_CHECK_ENABLED=true"
@@ -94,7 +90,7 @@ BACKEND_ENV=(
 # Certificates: the basint search page driven by Chromium is the default route (owner-approved 2026-11-04, prototype only).
 # The old signed deep link stays off. The polite gap, the honest User-Agent and the stop on 401/403/429/captcha still apply.
 if [ "${LIVE_CERTS:-yes}" != "no" ]; then
-  BACKEND_ENV+=("CEVOC_CERTIFICATES_PROVIDERS=search-page" "CEVOC_CERTIFICATES_APPROVAL_REFERENCE=${LIVE_CERT_APPROVAL_REF:-owner-approved-2026-11-04}")
+  BACKEND_ENV+=("CEVOC_CERTIFICATES_PROVIDERS=browser")
 fi
 
 echo "live-check: starting backend on 127.0.0.1:$PORT (first run downloads dependencies and Chromium; this can take minutes)..."

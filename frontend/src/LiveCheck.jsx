@@ -36,9 +36,6 @@ export default function LiveCheck() {
       <h1>Live check</h1>
       <p className="banner" role="note">Test only: your details are not saved.</p>
       <form className="form lc-form" onSubmit={onSubmit} autoComplete="off">
-        <label>Access token (leave blank if none)
-          <input type="password" value={fields.token} onChange={set('token')} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" />
-        </label>
         <label>Penalty notice number
           <input type="text" value={fields.notice} onChange={set('notice')} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" required />
         </label>

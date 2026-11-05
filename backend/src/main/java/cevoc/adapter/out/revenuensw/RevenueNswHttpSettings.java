@@ -6,13 +6,12 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Settings for the plain HTTP route to the Revenue NSW JSON service. Everything defaults to off. The route does nothing
- * unless {@code enabled} is true and a base URL (https, on the allow-list), the path prefix, a contact and the owner's
+ * Settings for the plain HTTP route to the Revenue NSW JSON service. There is no on/off flag: the route exists only when it
+ * is selected ({@code cevoc.penalty-lookup.adapter=http}), and it does nothing unless a base URL (https, on the allow-list), the path prefix, a contact and the owner's
  * approval reference are all supplied. The path prefix is configuration on purpose (record 0010: meaning and stability
  * not yet confirmed), so no deployment-specific value lives in the code.
  */
 public record RevenueNswHttpSettings(
-        boolean enabled,
         String baseUrl,
         String pathPrefix,
         String contact,
@@ -48,13 +47,13 @@ public record RevenueNswHttpSettings(
 
     /** Fully off. */
     public static RevenueNswHttpSettings off() {
-        return new RevenueNswHttpSettings(false, "", "", "", "", "", "yyyy-MM-dd", DEFAULT_MIN_INTERVAL, DEFAULT_CONNECT_TIMEOUT,
+        return new RevenueNswHttpSettings("", "", "", "", "", "yyyy-MM-dd", DEFAULT_MIN_INTERVAL, DEFAULT_CONNECT_TIMEOUT,
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_MAX_BYTES, 1, DEFAULT_RETRY_BACKOFF, Set.of(DEFAULT_HOST));
     }
 
-    /** True only when explicitly enabled and configured well enough to identify ourselves and to name the approval. */
+    /** True only when configured well enough to identify ourselves and to name the approval. */
     public boolean usable() {
-        return enabled && httpsBase() != null && present(pathPrefix) && PREFIX.matcher(pathPrefix.trim()).matches()
+        return httpsBase() != null && present(pathPrefix) && PREFIX.matcher(pathPrefix.trim()).matches()
                 && present(contact) && present(approvalReference);
     }
 

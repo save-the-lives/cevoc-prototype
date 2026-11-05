@@ -8,7 +8,7 @@ import java.util.Locale;
 
 /**
  * Ordered certificate providers behind the one {@link CertificateSourcePort}: the cutover seam. Config lists them in
- * order of preference (for example {@code tfnsw-api,search-page}); the first provider that ANSWERS ends the chain, an
+ * order of preference (for example {@code api,browser}); the first provider that ANSWERS ends the chain, an
  * empty answer included. A provider that fails hands over to the next one; when all fail the last failure is rethrown.
  * A refusal (message containing blocked-401, blocked-403 or blocked-429) stops the whole chain at once: it is not
  * retried and not worked around by trying another route to the same source.

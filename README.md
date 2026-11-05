@@ -18,8 +18,8 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 |---|---|---|
 | `CEVOC_CORS_ALLOWED_ORIGINS` | published front end | Origins allowed to call `/api` |
 | `AZURE_STORAGE_CONNECTION_STRING` | none | Only with `cevoc.media.adapter=azure-blob` |
-| `CEVOC_SCRAPER_EVIDENCE_ENABLED` | `false` | Prototype Revenue NSW page scraper. Also needs `cevoc.penalty-lookup.adapter=scraper-evidence`, a base URL and a contact. **Production use needs the site owner's approval and should be replaced by the real API.** See `docs/ARCHITECTURE.md` |
-| `CEVOC_SCRAPER_EVIDENCE_BASE_URL`, `CEVOC_SCRAPER_EVIDENCE_CONTACT` | none | Scraper target (https) and the contact put in its User-Agent |
+| `CEVOC_PENALTY_LOOKUP_ADAPTER` | `stub` | The one setting that picks the lookup route: `stub` (default, fictitious data), `browser` (prototype Chromium route to the Revenue NSW page), `http` (plain request route), `api` (reserved). `browser` also needs a URL and a contact. **Production use needs the site owner's approval and should be replaced by the real API.** See `docs/ARCHITECTURE.md` |
+| `CEVOC_SCRAPER_EVIDENCE_URL`, `CEVOC_SCRAPER_EVIDENCE_CONTACT` | none | Browser route target (one fully qualified https login page address) and the contact put in its User-Agent |
 
 ## Public URLs
 `https://save-the-lives.github.io/cevoc-prototype` is the published prototype. It is built from `prototype/` by `.github/workflows/deploy.yml` and its URL must not change.
@@ -36,11 +36,11 @@ Frontend: when the lookup response has a non-empty `certificates` array (`descri
 | 9000000002 | Officer-issued caution: no evidence, no certificate |
 | 9000000003 | Camera-based: one image and certificate |
 | 9000000004 | Red-light camera: two images and certificate, no video |
-| any other number | "Live lookup against the source sites is switched off until approvals are in place." (status LIVE_LOOKUP_DISABLED; only while `CEVOC_SCRAPER_ENABLED` is false, the default) |
+| any other number | "Live lookup against the source sites is switched off until approvals are in place." (status LIVE_LOOKUP_DISABLED; the default `stub` adapter) |
 | starts with X | No match (NOT_FOUND) |
 | X1234 | Not found |
 
 ## Environment variables
 - `CEVOC_CORS_ALLOWED_ORIGINS`: front end origins allowed to call `/api`.
 - `AZURE_STORAGE_CONNECTION_STRING`: only with `cevoc.media.adapter=azure-blob`.
-- `CEVOC_SCRAPER_CERTIFICATES_ENABLED` (default `false`): enables the enforcement-centre certificates page scraper. The source's robots.txt disallows automated access, so production use needs the owner's approval (also set `cevoc.scraper.certificates.approval-reference`) and it should be replaced by the real API. See `docs/ARCHITECTURE.md`.
+- `CEVOC_CERTIFICATES_PROVIDERS` (default empty = no certificate source): the certificates adapter choice, an ordered list using the same names as the lookup adapter (`http`, `browser`, `api`). The source's robots.txt disallows automated access, so production use needs the owner's approval and it should be replaced by the real API. See `docs/ARCHITECTURE.md` and `docs/CONFIG-REFERENCE.md`.

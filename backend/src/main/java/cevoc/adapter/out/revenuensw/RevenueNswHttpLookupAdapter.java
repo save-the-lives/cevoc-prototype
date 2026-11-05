@@ -37,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Plain HTTP route to the Revenue NSW JSON service (provider id {@code revenue-nsw-http}, record 0010): no browser. Off
- * unless selected with {@code cevoc.penalty-lookup.adapter=revenue-nsw-http} AND enabled, configured and given the owner's
+ * Plain HTTP route to the Revenue NSW JSON service (adapter kind {@code http}, record 0010): no browser. Off
+ * unless selected with {@code cevoc.penalty-lookup.adapter=http} AND configured and given the owner's
  * approval reference. Prototype and interim: replaced by the API providers; the whole package can be deleted.
  *
  * <p>Flow, exactly what the public page does for an anonymous visitor who types the notice number and offence date:

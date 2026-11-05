@@ -83,7 +83,7 @@ class RevenueNswHttpLookupAdapterTest {
     }
 
     static RevenueNswHttpSettings settings(int retries, String scheme) {
-        return new RevenueNswHttpSettings(true, "https://api.osr.nsw.gov.au", "TEST_PREFIX_AAAA", "test-contact@example.invalid",
+        return new RevenueNswHttpSettings("https://api.osr.nsw.gov.au", "TEST_PREFIX_AAAA", "test-contact@example.invalid",
                 "test-approval-reference", scheme, "yyyy-MM-dd", Duration.ZERO, Duration.ofSeconds(1), Duration.ofSeconds(1),
                 1024 * 1024, retries, Duration.ZERO, Set.of("api.osr.nsw.gov.au"));
     }

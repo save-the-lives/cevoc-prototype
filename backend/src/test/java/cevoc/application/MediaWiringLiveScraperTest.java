@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /** Which storage fills the media ports, by configuration. The scraper itself stays off (enabled=false by default). */
-@SpringBootTest(properties = "cevoc.penalty-lookup.adapter=scraper-evidence")
+@SpringBootTest(properties = "cevoc.penalty-lookup.adapter=browser")
 class MediaWiringLiveScraperTest {
     @Autowired MediaStoragePort storage;
     @Autowired SignedLinkPort links;
