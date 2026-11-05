@@ -14,8 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** Demo data OFF (CEVOC_DEMO_DATA=false): nothing demo exists and a demo number is an ordinary unknown notice. */
-@SpringBootTest(properties = "cevoc.demo-data=false")
+/** Demo data OFF (CEVOC_DEMO_DATA_ENABLED=false): nothing demo exists and a demo number is an ordinary unknown notice. */
+@SpringBootTest(properties = "cevoc.demo-data.enabled=false")
 @AutoConfigureMockMvc
 class DemoSwitchOffTest {
 

@@ -2,13 +2,15 @@
 
 Everything here is invented: ten-digit notice numbers, places, amounts, plate `TST123`, camera code `7109`, and the sample images. No real notice, person, vehicle or place is used, and by default nothing is fetched from any network (only if an optional demo content bundle URL is configured, see below). Decision records: 0007 (information types and status), 0009 (flexible details map), 0010 (route providers), 0013 to 0016 (red light first, default block, video default on).
 
-## The switch (one setting, ON by default during the prototype)
+## The switch (one setting, OFF by default)
 
 | Setting | Meaning |
 |---|---|
-| `CEVOC_DEMO_DATA` (property `cevoc.demo-data`) | `true` (the default, in `application.properties`): demo adapter, demo hub and demo images exist. Anything else (`false`): none of it exists. |
+| `CEVOC_DEMO_DATA_ENABLED` (property `cevoc.demo-data.enabled`) | Only the lowercase word `true` turns it on: demo adapter, demo hub and demo images exist. Unset, or anything else (`false`, `TRUE`, `1`): none of it exists. The default (in `application.properties`) is off. |
 
-- **To turn it off, set `CEVOC_DEMO_DATA=false` in the Container App environment.** That one line is all. Do this **before any real data or any real audience**.
+The old name `CEVOC_DEMO_DATA` (property `cevoc.demo-data`) is retired, with no fallback and no alias: it is ignored if still present.
+
+- **To turn it on, set `CEVOC_DEMO_DATA_ENABLED=true` in the Container App environment.** That one line is all. Never leave it on **with real data or a real audience**; to turn it off, remove the setting or set it to anything but `true`.
 - It is checked in ONE place, `cevoc.config.DemoDataConfig`. Everything demo is a bean of that class. A test fails if any other main source file reads the setting.
 - **Off:** no demo adapter is registered, a demo number is an ordinary unknown notice (the same answer as any other unknown number), `/api/demo/cases` and `/api/demo/media/...` are unknown paths (404), and the page `/demo-cases` (alias `/test-cases`) behaves like any unknown page (it shows the normal lookup form). Nothing links to it, and no demo banner can appear.
 - **On:** the lookup consults the demo adapter first for a demo number. A demo number is never passed on to a real route. Every page driven by demo data shows the banner "Demo data, not a real notice".
@@ -162,8 +164,8 @@ Optional tuning (properties `cevoc.demo-bundle.timeout-seconds`, default 60, and
 - Switch on, no URL: built-in sample content (the least surprising: an unconfigured deployment behaves as before).
 - Switch on, URL set: the bundle is fetched lazily on the first demo use by plain HTTPS (no credentials, https only, size capped), then verified: archive checksum, bundle version, every file's size and checksum, licence, author and credit on every file, no unlisted file, no unsafe file name. Video is extracted from the archive only when a case asks for it.
 - Any failure: demo content is unavailable. A demo number is passed to the normal route like any other number, `/api/demo/cases` answers `available: false` with an empty list and the hub page says "Demo content is not available right now. Real lookups are not affected.", media paths answer 404, and one warning is logged (the reason, never the URL). The app starts and serves real lookups regardless. After the cool-down the next demo use tries again.
-- Switch off (`CEVOC_DEMO_DATA=false`): nothing demo exists and nothing is fetched, whatever the bundle settings say.
-- **One line to turn demo mode off entirely:** `CEVOC_DEMO_DATA=false` on the Container App.
+- Switch off (the default, `CEVOC_DEMO_DATA_ENABLED` unset or not `true`): nothing demo exists and nothing is fetched, whatever the bundle settings say.
+- **One line to turn demo mode on:** `CEVOC_DEMO_DATA_ENABLED=true` on the Container App. Off is the default.
 
 ## The demo hub
 

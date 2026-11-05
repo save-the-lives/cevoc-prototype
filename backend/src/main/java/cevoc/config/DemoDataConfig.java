@@ -11,21 +11,22 @@ import cevoc.adapter.out.demo.DemoCatalog;
 import cevoc.adapter.out.demo.DemoPenaltyLookupAdapter;
 import cevoc.adapter.out.demo.DemoRoute;
 import cevoc.adapter.out.demo.SampleMediaSource;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.ServerResponse;
 
 /**
- * THE demo data switch. This is the only place that reads it: {@code cevoc.demo-data} (environment variable
- * CEVOC_DEMO_DATA), ON unless set to anything other than true. Everything demo is a bean of this class, so with the switch
+ * THE demo data switch. This is the only place that reads it: {@code cevoc.demo-data.enabled} (environment
+ * variable CEVOC_DEMO_DATA_ENABLED), OFF by default; ON only when the value is exactly the lowercase word true. The old name
+ * CEVOC_DEMO_DATA is retired and ignored. Everything demo is a bean of this class, so with the switch
  * off no demo adapter, hub endpoint or demo media exists and a demo number is an ordinary unknown notice. Other code asks
  * only "is there a demo adapter bean" (see {@link BeanConfig}), never the property. Turn it off before any real data or
- * real audience: set CEVOC_DEMO_DATA=false on the Container App (docs/DEMO-DATA.md).
+ * real audience: leave CEVOC_DEMO_DATA_ENABLED unset (or anything but true) on the Container App (docs/DEMO-DATA.md).
  */
 @Configuration
-@ConditionalOnProperty(name = "cevoc.demo-data", havingValue = "true", matchIfMissing = true)
+@ConditionalOnExpression("'${cevoc.demo-data.enabled:false}' == 'true'")
 public class DemoDataConfig {
 
     /**

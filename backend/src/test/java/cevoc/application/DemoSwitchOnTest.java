@@ -20,8 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-/** Demo data ON (the default, no setting at all): the demo adapter, the hub list and the sample images exist. */
-@SpringBootTest
+/** Demo data ON (CEVOC_DEMO_DATA_ENABLED=true, set explicitly): the demo adapter, the hub list and the sample images exist. */
+@SpringBootTest(properties = "cevoc.demo-data.enabled=true")
 @AutoConfigureMockMvc
 class DemoSwitchOnTest {
 
@@ -29,7 +29,7 @@ class DemoSwitchOnTest {
     @Autowired ObjectProvider<DemoRoute> demo;
 
     @Test
-    void theDemoAdapterIsRegisteredByDefault() {
+    void theDemoAdapterIsRegisteredWhenSwitchedOn() {
         assertThat(demo.getIfAvailable()).isNotNull();
     }
 
