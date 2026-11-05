@@ -2,6 +2,7 @@ package cevoc.config;
 
 import cevoc.adapter.in.web.DemoRoutes;
 import cevoc.adapter.out.demo.DemoCaseFactory;
+import cevoc.adapter.out.demo.DemoCertificateSource;
 import cevoc.adapter.out.demo.DemoContentGate;
 import cevoc.adapter.out.httpbundle.HttpsDemoBundleSource;
 import cevoc.application.port.out.DemoBundleSourcePort;
@@ -47,7 +48,7 @@ public class DemoDataConfig {
 
     @Bean
     DemoRoute demoRoute(DemoCaseFactory factory) {
-        return new DemoRoute(new DemoPenaltyLookupAdapter(factory));
+        return new DemoRoute(new DemoPenaltyLookupAdapter(factory), new DemoCertificateSource());
     }
 
     @Bean

@@ -1,17 +1,11 @@
 package cevoc.adapter.out.demo;
 
 import cevoc.adapter.out.demo.DemoScenario.Shape;
-import cevoc.domain.CertificateItem;
-import cevoc.domain.CertificateMatch;
-import cevoc.domain.CertificateRef;
 import cevoc.domain.EnforcementMethod;
 import cevoc.domain.NoticeDetails;
 import cevoc.domain.NoticeStatus;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +14,7 @@ import java.util.Optional;
 /**
  * The one place that turns a demo notice number into a case. It parses prefix and sequence ({@link DemoNumber}), finds the
  * scenario ({@link DemoScenarios}) and builds, deterministically and without any network call, the text record
- * ({@link #textRecord}) and, through a {@link DemoMediaSource}, the media set ({@link #mediaSet}). Text and media stay
+ * ({@link #textRecord}, which carries the demo camera code; the certificate rows come from {@link DemoCertificateSource}) and, through a {@link DemoMediaSource}, the media set ({@link #mediaSet}). Text and media stay
  * separate so a later step can swap the media source without touching the text. Failure conditions are part of the scenario
  * and are played out by {@link DemoPenaltyLookupAdapter}. All values are fictitious.
  */
@@ -31,7 +25,6 @@ public final class DemoCaseFactory {
     /** The {@code source} value of every demo result; the page uses it to show the demo banner. */
     public static final String SOURCE = "DEMO";
 
-    private static final DateTimeFormatter PERIOD = DateTimeFormatter.ofPattern("dd/MM/uuuu");
     private static final int[] CLASS_BASE = {1, 101, 201, 301};
 
     private final DemoMediaSource media;
@@ -84,7 +77,7 @@ public final class DemoCaseFactory {
     public DemoTextRecord textRecord(DemoScenario s) {
         NoticeDetails notice = new NoticeDetails(offenceText(s), s.offenceDate(), s.offenceTime(), location(s), penalty(s),
                 owing(s), s.noticeStatus(), s.statusMessage(), EnforcementMethod.CAMERA);
-        return new DemoTextRecord(notice, "Demo data only. This is not a real notice.", detailsMap(s), certificates(s));
+        return new DemoTextRecord(notice, "Demo data only. This is not a real notice.", detailsMap(s), DemoCameras.codeFor(s));
     }
 
     private static String offenceText(DemoScenario s) {
@@ -121,7 +114,7 @@ public final class DemoCaseFactory {
             return Map.of();
         }
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("cameraCode", "7109");
+        m.put("cameraCode", DemoCameras.codeFor(s));
         m.put("operator", "Sample Operator");
         m.put("bannerLocation", location(s).length() > 60 ? location(s).substring(0, 60).stripTrailing() : location(s));
         m.put("incidentNumber", String.valueOf(6 + s.sequence() % 90));
@@ -140,30 +133,5 @@ public final class DemoCaseFactory {
             m.put("offenceText", "Camera recorded");
         }
         return m;
-    }
-
-    private static List<CertificateItem> certificates(DemoScenario s) {
-        LocalDate d = s.offenceDate();
-        String what = "Fictitious " + s.program().label().toLowerCase() + " camera certificate";
-        List<CertificateRef> rows = new ArrayList<>();
-        switch (s.certs()) {
-            case COVERING -> {
-                rows.add(row(what + " (superseded)", d.minusYears(3), d.minusYears(1).minusDays(1)));
-                rows.add(row(what + " (current)", d.minusYears(1), d.plusYears(1)));
-                rows.add(row(what + " (next year)", d.plusYears(1).plusDays(1), d.plusYears(3)));
-            }
-            case NOT_COVERING -> {
-                rows.add(row(what + " (expired before the offence)", d.minusYears(3), d.minusDays(40)));
-                rows.add(row(what + " (starts after the offence)", d.plusDays(40), d.plusYears(2)));
-            }
-            case NONE, FAILED -> { }
-        }
-        LocalDateTime at = d.atTime(s.offenceTime());
-        return CertificateMatch.mark(rows, at).stream().map(CertificateItem::from).toList();
-    }
-
-    private static CertificateRef row(String description, LocalDate from, LocalDate to) {
-        return new CertificateRef(description, "Camera", PERIOD.format(from) + " - " + PERIOD.format(to), from.atStartOfDay(),
-                to.atTime(23, 59), from.minusDays(10).atStartOfDay(), to.atStartOfDay(), null);
     }
 }

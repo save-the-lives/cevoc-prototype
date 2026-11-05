@@ -16,7 +16,7 @@ import java.util.Locale;
 
 /**
  * The demo route, a fourth way to answer the same lookup beside the browser route, the plain HTTP route and the future
- * API route. It returns the same canonical result (typed notice, flexible details map, certificates, status and message),
+ * API route. It returns the same canonical result (typed notice, flexible details map, camera code, status and message),
  * reports the same step trace, and fires the same progress callbacks (details first, then evidence), so everything
  * downstream behaves as for a real route. It makes no network call. The notice number alone decides the case; the offence
  * date typed in is not compared (the case carries its own). The registration is read for this one call only and never kept.
@@ -98,15 +98,10 @@ public final class DemoPenaltyLookupAdapter implements PenaltyLookupPort {
             }
         }
         progress.evidence(evidence, plateRequired);
-        if (s.certs() == DemoScenario.Certs.FAILED) {
-            trace.ok(LookupStep.CERTIFICATES, 0);
-            trace.fail(LookupStep.CERTIFICATES, StepCause.SOURCE_FAILED);
-        } else {
-            trace.ok(LookupStep.CERTIFICATES, 0);
-        }
-        // No camera code on the result: the demo supplies its own certificate rows and must never trigger a certificate source.
-        return new PenaltyLookupResult(Status.FOUND, number, summary, text.notice(), evidence, DemoCaseFactory.SOURCE, null,
-                text.certificates(), null, plateRequired, text.details());
+        // The result carries the demo camera code and no certificates: the lookup service then runs step 8 through the certificate
+        // source port, which is the demo certificate source while demo data is on (the same step, trace and failure handling as a real route).
+        return new PenaltyLookupResult(Status.FOUND, number, summary, text.notice(), evidence, DemoCaseFactory.SOURCE, text.cameraCode(),
+                List.of(), null, plateRequired, text.details());
     }
 
     private static String normalise(String raw) {

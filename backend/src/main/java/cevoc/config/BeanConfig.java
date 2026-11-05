@@ -61,7 +61,12 @@ public class BeanConfig {
         cevoc.adapter.out.demo.DemoPenaltyLookupAdapter demoAdapter = route == null ? null : route.adapter();
         PenaltyLookupPort lookup = demoAdapter == null ? port : new cevoc.adapter.out.demo.DemoFirstPenaltyLookupAdapter(demoAdapter, port);
         SignedLinkPort links = demoAdapter == null ? signedLinks : cevoc.adapter.out.demo.DemoSignedLinks.wrapping(signedLinks);
-        return new LookupPenaltyService(lookup, links, certificates.getIfAvailable(),
+        // Certificates: while demo data is on, a demo camera code is answered by the demo certificate source and any other code goes to
+        // the configured provider (or finds nothing when none is configured). Demo off: the configured provider alone, as before.
+        CertificateSourcePort configured = certificates.getIfAvailable();
+        CertificateSourcePort certs = route == null ? configured
+                : new cevoc.adapter.out.demo.DemoFirstCertificateSource(route.certificates(), configured);
+        return new LookupPenaltyService(lookup, links, certs,
                 windowMarginMinutes < 0 ? null : java.time.Duration.ofMinutes(windowMarginMinutes));
     }
 

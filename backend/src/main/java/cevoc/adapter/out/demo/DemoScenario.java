@@ -34,7 +34,11 @@ public final class DemoScenario {
         REJECTS_ALL
     }
 
-    public enum Certs { COVERING, NOT_COVERING, NONE, FAILED }
+    /**
+     * What the demo certificate source finds for the case's camera: three rows of which one covers the offence, a single
+     * covering row, rows of which none covers the offence, no rows, or a simulated source failure.
+     */
+    public enum Certs { COVERING, SINGLE, NOT_COVERING, NONE, FAILED }
 
     public enum Details { FULL, SOME_MISSING, NONE }
 
@@ -249,7 +253,7 @@ public final class DemoScenario {
         m.put(DemoInfo.IMAGES, failed ? DemoStatus.FAILED : plate != Plate.NONE ? DemoStatus.HELD_BACK
                 : images == 0 ? DemoStatus.NOT_RETURNED : images == 1 ? DemoStatus.PARTIAL : DemoStatus.AVAILABLE);
         m.put(DemoInfo.CERTIFICATES, failed ? DemoStatus.FAILED : switch (certs) {
-            case COVERING -> DemoStatus.AVAILABLE;
+            case COVERING, SINGLE -> DemoStatus.AVAILABLE;
             case NOT_COVERING -> DemoStatus.PARTIAL;
             case NONE -> DemoStatus.NOT_RETURNED;
             case FAILED -> DemoStatus.FAILED;

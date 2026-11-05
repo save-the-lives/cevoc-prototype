@@ -109,7 +109,7 @@ public final class DemoArtifacts {
         var port = new DemoPenaltyLookupAdapter(factory);
         var service = new LookupPenaltyService(port, DemoSignedLinks.wrapping((k, v) -> {
             throw new IllegalStateException("not a demo key");
-        }), null, null);
+        }), new DemoCertificateSource(), null);
         PenaltyLookupRequest request = new PenaltyLookupRequest(s.number(), LocalDate.of(2026, 11, 5));
         LookupTrace.begin(false);
         try {

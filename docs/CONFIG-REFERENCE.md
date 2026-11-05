@@ -97,7 +97,7 @@ Exists only when `CEVOC_PENALTY_LOOKUP_ADAPTER=http`. It then does nothing unles
 
 | Env name | Property | Default | What it does | Scope | Status |
 |---|---|---|---|---|---|
-| `CEVOC_DEMO_DATA_ENABLED` | `cevoc.demo-data.enabled` | off | See section 1. | Temporary | in use |
+| `CEVOC_DEMO_DATA_ENABLED` | `cevoc.demo-data.enabled` | off | See section 1. While on, it also puts a sample certificate source in front of the configured certificate providers (`cevoc.certificates.providers`): the 43 demo cases get invented certificate results at step 8, and any other camera code still goes to the configured providers, unchanged. No new setting; the providers `browser`, `http` and `api` are not touched. Off: no sample certificate source exists. | Temporary | in use |
 | `CEVOC_DEMO_BUNDLE_URL` | `cevoc.demo-bundle.url` | empty (built-in sample content, nothing fetched) | Demo content bundle download (https, no credentials). Read only while the demo switch is on. | Temporary | in use |
 | `CEVOC_DEMO_BUNDLE_VERSION`, `CEVOC_DEMO_BUNDLE_SHA256` | `cevoc.demo-bundle.version`, `.sha256` | empty | Both must be set with a URL; any mismatch turns demo content off (the app still starts). | Temporary | in use |
 | `CEVOC_DEMO_BUNDLE_TIMEOUT_SECONDS`, `_RETRY_MINUTES` | `cevoc.demo-bundle.timeout-seconds`, `.retry-minutes` | `60` (min 5), `10` (min 1) | Fetch timeout and cool-down after a failure. | Temporary | in use |

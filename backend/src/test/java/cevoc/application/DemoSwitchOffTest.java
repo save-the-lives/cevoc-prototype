@@ -21,12 +21,19 @@ class DemoSwitchOffTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectProvider<DemoRoute> demo;
+    @Autowired ObjectProvider<cevoc.application.port.out.CertificateSourcePort> certificates;
     @Autowired ObjectProvider<org.springframework.web.servlet.function.RouterFunction<org.springframework.web.servlet.function.ServerResponse>> routes;
 
     @Test
     void noDemoBeanIsRegistered() {
         assertThat(demo.getIfAvailable()).isNull();
         assertThat(routes.getIfAvailable()).isNull();
+    }
+
+    @Test
+    void noCertificateSourceExistsAtAll() {
+        // Demo off: the demo certificate source is not a bean and, with no real provider configured, there is no certificate source.
+        assertThat(certificates.getIfAvailable()).isNull();
     }
 
     @Test

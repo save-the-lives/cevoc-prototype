@@ -47,7 +47,7 @@ final class DemoScenarioChecks {
         var service = new cevoc.application.service.LookupPenaltyService(new DemoPenaltyLookupAdapter(factory),
                 DemoSignedLinks.wrapping((k, v) -> {
                     throw new IllegalStateException("not a demo key");
-                }), null, null);
+                }), new DemoCertificateSource(), null);
         LookupTrace.begin(false);
         try {
             PenaltyLookupRequest request = new PenaltyLookupRequest(number, LocalDate.of(2026, 11, 5));

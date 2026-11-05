@@ -8,7 +8,6 @@ import cevoc.domain.PenaltyLookupResult;
 import cevoc.domain.StepCause;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -74,12 +73,12 @@ class DemoCaseFactoryTest {
         DemoScenario s = factory.scenario("1000000001").orElseThrow();
         DemoTextRecord text = factory.textRecord(s);
         DemoMediaSet media = factory.mediaSet(s);
-        // the text record: notice fields, the flexible details map and certificate rows, no media
+        // the text record: notice fields, the flexible details map and the camera code, no media and no certificate rows
         assertThat(text.notice().offenceDescription()).containsIgnoringCase("red");
         assertThat(text.details()).containsKeys("cameraCode", "direction", "operator", "bannerLocation", "incidentNumber", "lane",
                 "offenceText", "speedLimit", "timeSinceRed", "yellowLightDuration", "bannerDate", "bannerTime");
-        assertThat(text.details().get("cameraCode")).isEqualTo("7109");
-        assertThat(text.certificates()).anyMatch(c -> c.coversOffence());
+        assertThat(text.details().get("cameraCode")).isEqualTo("DEMO-RL-1");
+        assertThat(text.cameraCode()).isEqualTo("DEMO-RL-1");
         // the media set: images and a video, no text fields
         assertThat(media.evidence()).extracting(EvidenceItem::kind)
                 .containsExactly(EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.VIDEO);
@@ -122,6 +121,7 @@ class DemoCaseFactoryTest {
         assertThat(DemoScenarioChecks.run(factory, "1000000204", null).trace.firstFailed().cause()).isEqualTo(StepCause.TIMEOUT);
         assertThat(DemoScenarioChecks.run(factory, "1000000202", null).trace.firstFailed().cause()).isEqualTo(StepCause.NO_IMAGE_BYTES);
         assertThat(DemoScenarioChecks.run(factory, "1000000201", null).trace.firstFailed().step()).isEqualTo(LookupStep.CERTIFICATES);
+        assertThat(DemoScenarioChecks.run(factory, "1000000201", null).trace.firstFailed().cause()).isEqualTo(StepCause.TIMEOUT);
         assertThat(DemoScenarioChecks.run(factory, "1000000205", null).details.status()).isEqualTo(PenaltyLookupResult.Status.NOT_FOUND);
         assertThat(DemoScenarioChecks.run(factory, "1000000204", null).details.status()).isEqualTo(PenaltyLookupResult.Status.UNAVAILABLE);
     }
@@ -133,14 +133,5 @@ class DemoCaseFactoryTest {
         assertThat(DemoScenarioChecks.run(factory, "1000000203", null).events)
                 .containsExactly("details", "evidence", "certificates", "done"); // details map empty: no extra part
         assertThat(DemoScenarioChecks.run(factory, "1000000202", null).events).containsExactly("details", "error");
-    }
-
-    @Test
-    void notesOnCertificatesCoverTheOffenceDateInclusive() {
-        List<cevoc.domain.CertificateItem> certs = factory.textRecord(factory.scenario("1000000001").orElseThrow()).certificates();
-        assertThat(certs).hasSize(3);
-        assertThat(certs.stream().filter(c -> c.coversOffence()).count()).isEqualTo(1);
-        assertThat(factory.textRecord(factory.scenario("1000000102").orElseThrow()).certificates())
-                .isNotEmpty().noneMatch(c -> c.coversOffence());
     }
 }

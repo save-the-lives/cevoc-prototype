@@ -32,7 +32,7 @@ public final class DemoScenarios {
             out.add(s(p, 1).title("Everything returned",
                     "Three images, a certificate covering the offence date, " + (red ? "all red light details, " : "") + "and a video."));
             out.add(s(p, 2).title("Everything returned, evening",
-                    "Same as 0001 for an evening offence at a different place.").time(LocalTime.of(21, 40)));
+                    "Same as 0001 for an evening offence at a different place.").time(LocalTime.of(21, 40)).certs(Certs.SINGLE));
             // ---- partial: something is missing, said plainly
             out.add(s(p, 101).title("No certificate returned", "Images and video are there; the certificate list is empty.")
                     .certs(Certs.NONE));
