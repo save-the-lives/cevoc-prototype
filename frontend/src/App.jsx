@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LookupError, fetchDemoCases, mockEnabled, streamLookup } from './api.js';
-import DemoBanner from './DemoBanner.jsx';
+import DemoTag from './DemoBanner.jsx';
 import { demoCaseParam, findCase } from './demoHub.js';
 import { applyEvent, initialLookup, restartSections, toResult } from './lookupState.js';
 import LookupForm from './LookupForm.jsx';
@@ -136,9 +136,8 @@ export default function App() {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <div className="masthead"><div className="wrap">NSW Government</div></div>
+      <div className="masthead"><div className="wrap">NSW Government{live?.details?.source === 'DEMO' && <DemoTag />}</div></div>
       <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement</p></div></header>
-      {live?.details?.source === 'DEMO' && <DemoBanner />}
       <main id="main" tabIndex={-1}>
         {view.name === 'notice' && found
           ? <Notice result={foundResult} query={found.query}

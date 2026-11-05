@@ -62,7 +62,7 @@ describe.each(allCases(fixture.catalog).map((c) => [c.number, c]))('case %s', (n
     else expect(classify(result)).toBe('found');
   });
 
-  it('carries the demo source so the banner shows', () => expect(live.details.source).toBe('DEMO'));
+  it('carries the demo source so the Demo data tag shows', () => expect(live.details.source).toBe('DEMO'));
 
   it('images, certificates and video follow their declared status', () => {
     if (classify(result) !== 'found') return;

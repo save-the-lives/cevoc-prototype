@@ -1,13 +1,13 @@
 import './demo.css';
 
-/** Shown on every page that is driven by demo data (and on the demo hub itself). */
-export default function DemoBanner({ hub = false }) {
+/**
+ * The 'Demo data' tag at the right-hand end of the NSW Government header. It takes no row of its own, so the demo pages keep the
+ * real page's layout. Real text (not colour alone) with an accessible name that says what it means.
+ */
+export default function DemoTag() {
   return (
-    <div className="demo-banner" role="note" data-testid="demo-banner">
-      <div className="wrap">
-        <strong>Demo data, not a real notice.</strong>{' '}
-        {hub ? 'Every number, place and image on these pages is fictitious.' : 'Everything on this page is fictitious. It appears only while the prototype’s demo data is switched on.'}
-      </div>
-    </div>
+    <span className="demo-tag-head" role="note" data-testid="demo-tag" aria-label="Demo data: this page shows sample information">
+      <span aria-hidden="true">Demo data</span>
+    </span>
   );
 }

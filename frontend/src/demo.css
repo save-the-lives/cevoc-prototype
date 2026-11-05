@@ -1,6 +1,8 @@
 /* Demo banner and demo hub (docs/DEMO-DATA.md). Own design; reuses the colour tokens of styles.css and public.css. */
-.demo-banner { background: #5a2d82; color: #fff; padding: 10px 0; font-size: 1rem; border-bottom: 3px solid #ffd966; }
-.demo-banner .wrap { overflow-wrap: anywhere; }
+/* 'Demo data' tag inside the NSW Government header: no extra row, and the header keeps one fixed line height so nothing shifts. White on #5a2d82 is about 10:1. */
+.masthead .wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px; line-height: 20px; min-height: 20px; }
+.demo-tag-head { margin-left: auto; flex: 0 1 auto; min-width: 0; background: #5a2d82; color: #fff; border: 1px solid #fff; border-radius: 10px; padding: 0 10px; font-size: 12px; line-height: 18px; font-weight: 700; white-space: nowrap; letter-spacing: .02em; }
+@media (max-width: 380px) { .demo-tag-head { font-size: 11px; padding: 0 7px; } }
 .demo-hub { padding-bottom: 48px; overflow-wrap: anywhere; }
 .demo-jump ul { list-style: none; margin: 12px 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .demo-jump a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border: 1px solid var(--navy); border-radius: 22px; color: var(--navy); font-weight: 600; text-decoration: none; background: #fff; }

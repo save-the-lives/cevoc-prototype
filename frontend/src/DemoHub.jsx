@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import App from './App.jsx';
-import DemoBanner from './DemoBanner.jsx';
+import DemoTag from './DemoBanner.jsx';
 import { fetchDemoCases } from './api.js';
 import { INFO_LABELS, demoContentUnavailable, spacedNumber, statusMark } from './demoHub.js';
 import './styles.css';
@@ -89,7 +89,7 @@ export default function DemoHub() {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <DemoBanner hub />
+      <div className="masthead"><div className="wrap">NSW Government<DemoTag /></div></div>
       <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement: demo cases</p></div></header>
       <main id="main" tabIndex={-1}>
         <div className="wrap page-body demo-hub">

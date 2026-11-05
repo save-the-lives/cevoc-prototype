@@ -13,7 +13,7 @@ The old name `CEVOC_DEMO_DATA` (property `cevoc.demo-data`) is retired, with no 
 - **To turn it on, set `CEVOC_DEMO_DATA_ENABLED=true` in the Container App environment.** That one line is all. Never leave it on **with real data or a real audience**; to turn it off, remove the setting or set it to anything but `true`.
 - It is checked in ONE place, `cevoc.config.DemoDataConfig`. Everything demo is a bean of that class. A test fails if any other main source file reads the setting.
 - **Off:** no demo adapter is registered, a demo number is an ordinary unknown notice (the same answer as any other unknown number), `/api/demo/cases` and `/api/demo/media/...` are unknown paths (404), and the page `/demo-cases` (alias `/test-cases`) behaves like any unknown page (it shows the normal lookup form). Nothing links to it, and no demo banner can appear.
-- **On:** the lookup consults the demo adapter first for a demo number. A demo number is never passed on to a real route. Every page driven by demo data shows the banner "Demo data, not a real notice".
+- **On:** the lookup consults the demo adapter first for a demo number. A demo number is never passed on to a real route. Every page driven by demo data shows a small purple "Demo data" tag at the right-hand end of the NSW Government header (no extra row, so the layout matches the real page).
 - The live check and the scraper flags are separate, stay off by default and are not touched by this switch.
 
 ## Where it plugs in (hexagonal)
