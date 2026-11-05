@@ -11,7 +11,7 @@ import java.util.Optional;
  * {@code DEMO-RL-n}, any other demo camera is {@code DEMO-CAM-n}, with n from 1 to 5 (see {@link Certs}).
  * A red light case always has a red light camera; a case whose offence text matches no program has a generic camera.
  */
-final class DemoCameras {
+final class DemoCameras { // invented codes only
 
     static final String RED_LIGHT_PREFIX = "DEMO-RL-";
     static final String GENERIC_PREFIX = "DEMO-CAM-";
