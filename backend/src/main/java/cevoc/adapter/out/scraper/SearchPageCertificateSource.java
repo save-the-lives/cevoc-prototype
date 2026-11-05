@@ -78,7 +78,12 @@ public class SearchPageCertificateSource implements CertificateSourcePort {
             throw new ScrapeException("interrupted");
         } catch (IOException e) {
             String reason = LookupDiagnostic.fromFailure(e.getMessage());
-            LookupDiagnostic.note(LookupDiagnostic.certStep("failed", reason.substring(reason.indexOf("cause=") + 6)));
+            String cause = reason.substring(reason.indexOf("cause=") + 6);
+            LookupDiagnostic.note(LookupDiagnostic.certStep("failed", cause));
+            if (cause.startsWith("ERR_NAME_NOT_RESOLVED") || cause.startsWith("ERR_CONNECTION") || cause.startsWith("ERR_INTERNET")) {
+                // Name or connection failure: add the redacted DNS view of the page host (kinds, counts, timings only).
+                LookupDiagnostic.note("cert-host-dns=" + HostReachability.line(HostReachability.hostOf(pageUrl)).trim().replace(" : ", " "));
+            }
             // The browser layer already scrubbed the message and keeps it to one line (cause words such as blocked-403).
             throw new ScrapeException(e.getMessage() == null ? "failed" : e.getMessage().lines().findFirst().orElse("failed"));
         }

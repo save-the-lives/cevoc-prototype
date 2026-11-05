@@ -1,0 +1,62 @@
+name: Reachability probe (manual, no secrets)
+# Third vantage point for the certificates search page: from a GitHub runner, resolve the page host and a few comparison
+# names (getent and dig), make ONE plain HTTPS request (status code only) and, if the host resolves, one Playwright page
+# load that prints form field NAMES only. Writes the job summary and one annotation per line. No secrets, no variables,
+# no page content. Diagnostic only: a manual runner job is not a production path.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PAGE_HOST: apps.basint.transport.nsw.gov.au
+      PAGE_URL: https://apps.basint.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve and request
+        id: dns
+        run: |
+          set +e
+          out() { echo "$1"; echo "::notice title=probe::$1"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          kind() { # public/private/cgnat/link-local/loopback by address
+            case "$1" in
+              10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|fc*|fd*) echo private;;
+              100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) echo cgnat;;
+              169.254.*|fe80:*) echo link-local;;
+              127.*|::1) echo loopback;;
+              0.*) echo other;;
+              *) echo public;;
+            esac
+          }
+          out "### Runner vantage point"
+          out "resolvers: $(grep -E '^(nameserver)' /etc/resolv.conf | awk '{print $2}' | tr '\n' ' ')"
+          which dig >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq dnsutils >/dev/null; }
+          resolved=no
+          for h in "$PAGE_HOST" transport.nsw.gov.au apps.transport.nsw.gov.au cevoc.transport.nsw.gov.au github.com; do
+            ips=$(getent ahosts "$h" | awk '{print $1}' | sort -u)
+            a=$(dig +short +time=3 +tries=1 A "$h" | grep -cE '^[0-9.]+$')
+            aaaa=$(dig +short +time=3 +tries=1 AAAA "$h" | grep -cE ':')
+            cname=$(dig +short +time=3 +tries=1 CNAME "$h" | grep -c .)
+            status=$(dig +time=3 +tries=1 A "$h" | grep -o 'status: [A-Z]*' | head -1)
+            kinds=""
+            for ip in $ips; do kinds="$kinds $(kind "$ip")"; done
+            kinds=$(echo $kinds | tr ' ' '\n' | sort | uniq -c | awk '{printf "%s:%s,",$2,$1}')
+            if [ -z "$ips" ]; then out "$h : getent=none dig A=$a AAAA=$aaaa CNAME=$cname ($status)"; else out "$h : getent=resolved kinds=${kinds%,} dig A=$a AAAA=$aaaa CNAME=$cname ($status)"; fi
+            [ "$h" = "$PAGE_HOST" ] && [ -n "$ips" ] && resolved=yes
+          done
+          echo "resolved=$resolved" >> "$GITHUB_OUTPUT"
+          for u in "$PAGE_URL" https://cevoc.transport.nsw.gov.au/; do
+            code=$(curl -sS -m 20 -o /dev/null -w '%{http_code} %{content_type}' "$u" 2>/dev/null); rc=$?
+            out "plain HTTPS GET $(echo "$u" | cut -d/ -f3) : status/type=${code:-none} curl_rc=$rc"
+          done
+      - name: Playwright page load (only if the host resolved)
+        if: steps.dns.outputs.resolved == 'yes'
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw" && npm init -y >/dev/null && npm install playwright@1.49.1 >/dev/null 2>&1
+          cp "$GITHUB_WORKSPACE/scripts/reachability-probe.mjs" ./probe.mjs
+          r=$(timeout 90 node probe.mjs "$PAGE_URL" 2>&1 | head -5)
+          echo "$r" | while IFS= read -r l; do echo "::notice title=probe::$l"; echo "$l" >> "$GITHUB_STEP_SUMMARY"; echo "$l"; done

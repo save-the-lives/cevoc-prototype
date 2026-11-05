@@ -36,10 +36,13 @@ public class LiveCheckController {
 
     private final int port;
     private final String origin;
+    private final String certPageUrl;
 
     public LiveCheckController(LookupPenaltyUseCase useCase, @Value("${server.port:8080}") int port,
-                               @Value("${cevoc.cors.allowed-origins:}") String origins) {
+                               @Value("${cevoc.cors.allowed-origins:}") String origins,
+                               @Value("${cevoc.certificates.search-page.url:" + cevoc.adapter.out.scraper.CertificateScraperProperties.DEFAULT_PAGE_URL + "}") String certPageUrl) {
         this.useCase = useCase;
+        this.certPageUrl = certPageUrl;
         this.port = port;
         this.origin = origins.split(",")[0].trim();
     }
@@ -106,7 +109,8 @@ public class LiveCheckController {
         try {
             outcome = LiveCheckRunner.run(useCase, new PenaltyLookupRequest(body.notice(), date), plate, includeImages,
                     wantMap ? NetworkMapHolder::request : () -> { },
-                    wantMap ? () -> String.join("\n", NetworkMapHolder.take()) + "\n" : () -> "", this::fetch);
+                    () -> (wantMap ? String.join("\n", NetworkMapHolder.take()) + "\n" : "")
+                            + cevoc.adapter.out.scraper.HostReachability.report(certPageUrl), this::fetch);
         } finally {
             NetworkMapHolder.take();
         }
