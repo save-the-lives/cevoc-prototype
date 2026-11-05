@@ -147,7 +147,18 @@ final class BannerLayerProbe {
                   if (c && c !== 'none' && c !== 'normal' && c !== '""' && pseudo.length < 4) pseudo.push(shape(el) + ps);
                 }
               }
+              const tree = [];
+              function walkTree(el, depth) {
+                if (tree.length >= 40 || depth > 6) return;
+                const own = Array.from(el.childNodes).filter(n => n.nodeType === 3 && n.nodeValue.trim()).reduce((t, n) => t + n.nodeValue.trim().length, 0);
+                const cs = getComputedStyle(el);
+                tree.push(depth + ':' + shape(el) + '(c' + el.children.length + ',own' + (own === 0 ? '0' : own < 20 ? 'S' : own < 100 ? 'M' : 'L') + ',pos:' + cs.position
+                  + (el.shadowRoot ? ',shadow' : '') + ')');
+                for (const c of el.children) walkTree(c, depth + 1);
+              }
+              for (const m of document.querySelectorAll('modal.zoom-image-modal, .zoom-image-modal')) { walkTree(m, 0); break; }
               return JSON.stringify({
+                tree: tree,
                 ctrls: Array.from(ctrls.entries()).slice(0, 14).map(e => e[0] + '#' + e[1]), iframes: frames.slice(0, 4), overlays: ovl,
                 grid: Array.from(grid).slice(0, 6), pseudo: pseudo,
                 text: bodyText.length === 0 ? '0' : bodyText.length < 100 ? 'lt100' : bodyText.length < 1000 ? 'lt1k' : 'ge1k',
@@ -176,7 +187,7 @@ final class BannerLayerProbe {
             try {
                 Object r = f.evaluate(JS);
                 String s = String.valueOf(r);
-                sb.append(s.length() > 2600 ? s.substring(0, 2600) : s);
+                sb.append(s.length() > 3600 ? s.substring(0, 3600) : s);
             } catch (PlaywrightException | IllegalStateException e) {
                 sb.append("unreadable");
             }

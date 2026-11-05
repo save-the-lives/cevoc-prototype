@@ -312,7 +312,7 @@ final class PlaywrightSession implements RenderedPageSession {
 
     /** Emits the banner-layer structure line for this stage plus the label-carrying responses seen so far. Bounded, never throws. */
     private void probeBannerLayer(String stage) {
-        if (probes >= 9) {
+        if (probes >= 11) {
             return;
         }
         probes++;
@@ -382,6 +382,22 @@ final class PlaywrightSession implements RenderedPageSession {
                 page.waitForTimeout(500);
             } catch (PlaywrightException e) {
                 note("explore-click=failed");
+            }
+            try {
+                // The page's own zoom control (a button whose class names it, with no visible text).
+                Locator zoom = page.locator("button.zoom-button, button[class*=\"zoom\"]");
+                note("zoom-controls=" + Math.min(zoom.count(), 9));
+                if (zoom.count() > 0) {
+                    zoom.first().click(new Locator.ClickOptions().setTimeout(3_000));
+                    page.waitForTimeout(2_500);
+                    note("pages-open-zoom=" + Math.min(context.pages().size(), 9));
+                    probeBannerLayer("zoom");
+                    probePopups("zoom");
+                    page.keyboard().press("Escape");
+                    page.waitForTimeout(500);
+                }
+            } catch (PlaywrightException e) {
+                note("explore-zoom=failed");
             }
             try {
                 Locator ctl = page.locator("button, a, [role=button]").filter(new Locator.FilterOptions()
