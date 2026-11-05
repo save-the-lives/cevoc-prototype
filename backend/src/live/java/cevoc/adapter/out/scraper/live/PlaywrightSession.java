@@ -298,11 +298,51 @@ final class PlaywrightSession implements RenderedPageSession {
                 }
                 traceResult(req, "N", resp.status(), type, bytes);
             }
+        } else if (("xhr".equals(req.resourceType()) || "fetch".equals(req.resourceType())) && !type.startsWith("image/")) {
+            scanForEmbeddedImage(req, resp, type);
         } else if (type.startsWith("image/") && !type.contains("svg") && traceOrder.get() < 60 && !"data".equals(req.resourceType())) {
             // An image-typed response whose path did not look like an image path: still shown, path shape masked.
             traceIndex.put(req, traceOrder.incrementAndGet());
             traceResult(req, "X", resp.status(), type, -1);
         }
+    }
+
+    /**
+     * Counts, never content: whether a script-made response carries an image inside it (base64 PNG or JPEG signature, a data:image
+     * prefix, or raw PNG/JPEG magic at the start). Only responses with a hit get a line.
+     */
+    private void scanForEmbeddedImage(com.microsoft.playwright.Request req, com.microsoft.playwright.Response resp, String type) {
+        if (traceOrder.get() >= 60 || resp.status() >= 400) {
+            return;
+        }
+        byte[] body;
+        try {
+            body = resp.body();
+        } catch (RuntimeException e) {
+            return;
+        }
+        if (body == null || body.length < 64 || body.length > 8_000_000) {
+            return;
+        }
+        String text = new String(body, java.nio.charset.StandardCharsets.ISO_8859_1);
+        int png = countOf(text, "iVBORw0KGgo");
+        int jpg = countOf(text, "/9j/4AAQ");
+        int dataImg = countOf(text, "data:image/");
+        boolean rawMagic = looksLikeImage(body) && body[0] != '<';
+        if (png + jpg + dataImg > 0 || rawMagic) {
+            traceIndex.put(req, traceOrder.incrementAndGet());
+            traceLines.add("#" + traceOrder.get() + "J:" + req.method() + shapeOf(req.url()) + "/" + resp.status() + "/"
+                    + type.split("[/;]", 3)[type.contains("/") ? 1 : 0] + "/" + body.length + "B/png64=" + png + ",jpg64=" + jpg + ",dataimg="
+                    + dataImg + ",raw=" + (rawMagic ? 1 : 0));
+        }
+    }
+
+    private static int countOf(String text, String needle) {
+        int n = 0;
+        for (int i = text.indexOf(needle); i >= 0 && n < 99; i = text.indexOf(needle, i + needle.length())) {
+            n++;
+        }
+        return n;
     }
 
     /** Emits trace lines not yet emitted, plus the header-name sets, as one fixed-shape marker. */
@@ -1096,7 +1136,11 @@ final class PlaywrightSession implements RenderedPageSession {
                 note("fetch=empty");
             } catch (PlaywrightException e) {
                 String m = String.valueOf(e.getMessage()).toLowerCase(Locale.ROOT);
-                note("fetch=failed" + (m.contains("content security policy") ? "-csp" : m.contains("failed to fetch") ? "-typeerror" : "-other"));
+                note("fetch=failed" + (m.contains("content security policy") ? "-csp" : m.contains("failed to fetch") ? "-typeerror" : "-other")
+                        + "/reason:" + (m.contains("revoked") || m.contains("not found") || m.contains("404") ? "gone" : m.contains("context was destroyed") ? "navigated"
+                        : m.contains("timeout") ? "timeout" : m.contains("too large") ? "large" : "unclassified")
+                        + "/msg-words:" + java.util.Arrays.stream(m.replaceAll("[^a-z ]", " ").trim().split("\\s+")).limit(8)
+                        .filter(w -> w.length() <= 14).collect(java.util.stream.Collectors.joining("-")));
             }
             Locator img = page.locator("img[src=\"" + blobUrl.replace("\"", "") + "\"]").first();
             try {
