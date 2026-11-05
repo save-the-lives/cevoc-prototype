@@ -1053,6 +1053,12 @@ final class PlaywrightSession implements RenderedPageSession {
                 String resultHtml = snapshot("6-search-result");
                 note("srch-result: " + cevoc.adapter.out.scraper.SearchPageDiagnostic.structureOf(resultHtml));
                 return Optional.of(resultHtml);
+            } catch (RuntimeException e) {
+                // Redacted: class name plus up to 10 short lowercase words of the message (letters only, so no digits, codes or URLs).
+                String m = redactor.clean(String.valueOf(e.getMessage())).toLowerCase(Locale.ROOT);
+                note("srch-error=" + e.getClass().getSimpleName() + "/words:" + java.util.Arrays.stream(m.replaceAll("[^a-z ]", " ").trim().split("\\s+"))
+                        .filter(w -> w.length() >= 2 && w.length() <= 14).limit(10).collect(java.util.stream.Collectors.joining("-")));
+                throw e;
             } finally {
                 page.offResponse(listener);
             }
