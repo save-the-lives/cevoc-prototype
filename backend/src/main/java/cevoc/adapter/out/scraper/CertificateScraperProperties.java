@@ -17,7 +17,7 @@ public record CertificateScraperProperties(
         Duration windowMargin) {
 
     public static final String DEFAULT_PAGE_URL =
-            "https://apps.basint.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf";
+            "https://cevoc.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf";
     public static final String DEFAULT_USER_AGENT =
             "CEVOC-prototype-certificate-check/0.1 (+https://github.com/save-the-lives/cevoc-prototype; contact: set cevoc.scraper.certificates.user-agent)";
 

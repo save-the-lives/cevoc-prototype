@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PAGE_HOST: apps.basint.transport.nsw.gov.au
-      PAGE_URL: https://apps.basint.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf
+      PAGE_HOST: cevoc.transport.nsw.gov.au
+      PAGE_URL: https://cevoc.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf
     steps:
       - uses: actions/checkout@v4
       - name: Resolve and request
