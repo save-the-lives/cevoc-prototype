@@ -312,7 +312,7 @@ final class PlaywrightSession implements RenderedPageSession {
 
     /** Emits the banner-layer structure line for this stage plus the label-carrying responses seen so far. Bounded, never throws. */
     private void probeBannerLayer(String stage) {
-        if (probes >= 11) {
+        if (probes >= 8) {
             return;
         }
         probes++;

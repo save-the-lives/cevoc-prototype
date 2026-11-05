@@ -157,7 +157,39 @@ final class BannerLayerProbe {
                 for (const c of el.children) walkTree(c, depth + 1);
               }
               for (const m of document.querySelectorAll('modal.zoom-image-modal, .zoom-image-modal')) { walkTree(m, 0); break; }
+              const texts = new Map();
+              const scopeRoots = [];
+              for (const m of document.querySelectorAll('.zoom-image-modal, fine-image')) scopeRoots.push(m);
+              function bucket(n) { return n === 0 ? '0' : n < 10 ? 'XS' : n < 30 ? 'S' : n < 100 ? 'M' : 'L'; }
+              function scanTexts(el, where) {
+                for (const e of el.querySelectorAll('*')) {
+                  let own = '';
+                  for (const n of e.childNodes) if (n.nodeType === 3) own += n.nodeValue + ' ';
+                  own = own.trim();
+                  if (own.length < 3) continue;
+                  const cs = getComputedStyle(e);
+                  const colons = (own.match(/:/g) || []).length;
+                  const digits = (own.match(/[0-9]/g) || []).length;
+                  const key = where + ':' + shape(e) + '|len:' + bucket(own.length) + '|words:' + Math.min(own.split(/\s+/).length, 30) + '|colons:' + Math.min(colons, 9)
+                    + '|digits:' + bucket(digits) + '|pos:' + cs.position;
+                  texts.set(key, (texts.get(key) || 0) + 1);
+                }
+              }
+              scopeRoots.forEach(r => scanTexts(r, 'scope'));
+              for (const e of document.querySelectorAll('body *')) {
+                let own = '';
+                for (const n of e.childNodes) if (n.nodeType === 3) own += n.nodeValue + ' ';
+                own = own.trim();
+                const colons = (own.match(/:/g) || []).length;
+                const cs = getComputedStyle(e);
+                if (own.length >= 3 && (colons >= 2 || cs.position === 'absolute' || cs.position === 'fixed') && e.tagName !== 'SCRIPT' && e.tagName !== 'STYLE') {
+                  const key = 'any:' + shape(e) + '|len:' + bucket(own.length) + '|words:' + Math.min(own.split(/\s+/).length, 30) + '|colons:' + Math.min(colons, 9) + '|pos:' + cs.position;
+                  texts.set(key, (texts.get(key) || 0) + 1);
+                }
+              }
+              const imgAttrs = Array.from(document.images).slice(0, 6).map(im => ['alt', 'title', 'aria-label'].map(n => n + ':' + bucket((im.getAttribute(n) || '').length)).join(','));
               return JSON.stringify({
+                texts: Array.from(texts.entries()).slice(0, 24).map(e => e[0] + '#' + e[1]), imgAttrs: imgAttrs,
                 tree: tree,
                 ctrls: Array.from(ctrls.entries()).slice(0, 14).map(e => e[0] + '#' + e[1]), iframes: frames.slice(0, 4), overlays: ovl,
                 grid: Array.from(grid).slice(0, 6), pseudo: pseudo,
@@ -187,7 +219,7 @@ final class BannerLayerProbe {
             try {
                 Object r = f.evaluate(JS);
                 String s = String.valueOf(r);
-                sb.append(s.length() > 3600 ? s.substring(0, 3600) : s);
+                sb.append(s.length() > 5200 ? s.substring(0, 5200) : s);
             } catch (PlaywrightException | IllegalStateException e) {
                 sb.append("unreadable");
             }
