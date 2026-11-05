@@ -46,3 +46,8 @@ export function allCases(catalog) {
 export function spacedNumber(n) {
   return /^\d{10}$/.test(n || '') ? `${n.slice(0, 6)} ${n.slice(6)}` : String(n || '');
 }
+
+/** True when the backend says demo content could not be loaded (a configured bundle failed its checks): the hub then lists nothing. */
+export function demoContentUnavailable(catalog) {
+  return !!catalog && catalog.available === false;
+}

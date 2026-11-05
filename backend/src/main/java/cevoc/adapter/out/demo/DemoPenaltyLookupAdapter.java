@@ -39,7 +39,7 @@ public final class DemoPenaltyLookupAdapter implements PenaltyLookupPort {
 
     /** True when the number is a built demo number; only then is this route consulted. */
     public boolean handles(String number) {
-        return factory.scenario(number).isPresent();
+        return factory.available() && factory.scenario(number).isPresent();
     }
 
     @Override

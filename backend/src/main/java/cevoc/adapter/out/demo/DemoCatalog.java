@@ -19,7 +19,15 @@ public final class DemoCatalog implements DemoCatalogPort, DemoMediaPort {
     }
 
     @Override
+    public boolean available() {
+        return factory.available();
+    }
+
+    @Override
     public List<Program> programs() {
+        if (!factory.available()) {
+            return List.of();
+        }
         List<Program> out = new ArrayList<>();
         for (DemoProgram p : DemoProgram.values()) {
             List<Group> groups = new ArrayList<>();

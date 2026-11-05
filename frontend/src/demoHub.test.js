@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { allCases, demoCaseParam, findCase, isDemoHubRoute, spacedNumber, statusMark } from './demoHub.js';
+import { allCases, demoCaseParam, demoContentUnavailable, findCase, isDemoHubRoute, spacedNumber, statusMark } from './demoHub.js';
 import { applyEvent, initialLookup, toResult } from './lookupState.js';
 import { certificateAnswer, classify, evidenceState } from './journey.js';
 import { detailRows, videoView } from './programs.js';
@@ -105,4 +105,13 @@ describe.each(allCases(fixture.catalog).map((c) => [c.number, c]))('case %s', (n
       expect(shown).toBe(c.plate ? 'show' : 'plate-no-images');
     });
   }
+});
+
+describe('demo content that failed to load', () => {
+  it('is recognised only when the backend says available is false', () => {
+    expect(demoContentUnavailable({ available: false, notice: 'x', programs: [] })).toBe(true);
+    expect(demoContentUnavailable({ available: true, programs: [] })).toBe(false);
+    expect(demoContentUnavailable({ programs: [] })).toBe(false);
+    expect(demoContentUnavailable(null)).toBe(false);
+  });
 });

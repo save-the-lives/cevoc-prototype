@@ -11,6 +11,11 @@ public interface DemoCatalogPort {
 
     List<Program> programs();
 
+    /** False when demo content could not be loaded (a configured bundle failed its checks): the hub then says so and lists nothing. */
+    default boolean available() {
+        return true;
+    }
+
     /** One program block. {@code built} false means the prefix is reserved and has no cases yet. */
     record Program(String prefix, String id, String label, boolean built, String note, List<Group> groups) {}
 

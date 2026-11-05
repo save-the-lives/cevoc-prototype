@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import App from './App.jsx';
 import DemoBanner from './DemoBanner.jsx';
 import { fetchDemoCases } from './api.js';
-import { INFO_LABELS, spacedNumber, statusMark } from './demoHub.js';
+import { INFO_LABELS, demoContentUnavailable, spacedNumber, statusMark } from './demoHub.js';
 import './styles.css';
 import './public.css';
 import './demo.css';
@@ -94,11 +94,17 @@ export default function DemoHub() {
       <main id="main" tabIndex={-1}>
         <div className="wrap page-body demo-hub">
           <h1>Demo cases</h1>
+          {demoContentUnavailable(catalog) ? (
+            <p className="notice-box" role="status">{catalog.notice} Demo cases cannot be opened until it is back.</p>
+          ) : (
+          <>
           <p className="lede">{catalog.notice} Pick a case to open it in the real result page, or copy its number into the lookup form (any offence date; each case carries its own).</p>
           <nav aria-label="Programs" className="demo-jump">
             <ul>{catalog.programs.map((p) => <li key={p.prefix}><a href={`#program-${p.prefix}`}>{p.label}{p.built ? '' : ' (not built yet)'}</a></li>)}</ul>
           </nav>
           {catalog.programs.map((p) => <ProgramBlock key={p.prefix} p={p} />)}
+          </>
+          )}
         </div>
       </main>
       <footer className="site-foot"><div className="wrap foot-in"><span>Prototype service</span><a href="/">Back to the lookup</a></div></footer>

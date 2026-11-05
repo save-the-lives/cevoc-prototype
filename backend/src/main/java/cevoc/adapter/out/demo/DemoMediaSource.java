@@ -14,5 +14,10 @@ public interface DemoMediaSource {
     /** The bytes of one generated object ({@code demo/<number>/<name>}), or empty when unknown. */
     Optional<Bytes> read(String number, String name);
 
+    /** False when this source cannot supply demo content right now (a configured bundle that failed to load); demo mode is then off. */
+    default boolean available() {
+        return true;
+    }
+
     record Bytes(String contentType, byte[] data) {}
 }

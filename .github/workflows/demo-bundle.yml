@@ -1,0 +1,31 @@
+name: Demo bundle (manual)
+# Builds the demo content bundle and attaches it to a GitHub Release tagged demo-bundle-<version>.
+# Manual only. Does not touch the app's CI or deploy workflows. See docs/DEMO-DATA.md.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build (refuses any file without a recorded licence)
+        run: node scripts/build-demo-bundle.mjs --out dist
+      - name: Attach to the release for this bundle version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          version=$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/demo-media-manifest.json','utf8')).bundleVersion)")
+          tag="demo-bundle-${version}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists. Bump bundleVersion in docs/demo-media-manifest.json; published bundles are not overwritten."
+            exit 1
+          fi
+          gh release create "$tag" dist/*.zip dist/*.sha256 --title "Demo bundle ${version}" \
+            --notes "Fictitious demo content for the CEVOC prototype. Checksum is in the .sha256 file. Not real notices, people or vehicles."
+          cat dist/*.sha256

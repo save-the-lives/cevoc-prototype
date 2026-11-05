@@ -1,6 +1,6 @@
 # Demo data (fictitious notices for the prototype)
 
-Everything here is invented: ten-digit notice numbers, places, amounts, plate `TST123`, camera code `7109`, and the sample images. No real notice, person, vehicle or place is used, and nothing is fetched from any network. Decision records: 0007 (information types and status), 0009 (flexible details map), 0010 (route providers), 0013 to 0016 (red light first, default block, video default on).
+Everything here is invented: ten-digit notice numbers, places, amounts, plate `TST123`, camera code `7109`, and the sample images. No real notice, person, vehicle or place is used, and by default nothing is fetched from any network (only if an optional demo content bundle URL is configured, see below). Decision records: 0007 (information types and status), 0009 (flexible details map), 0010 (route providers), 0013 to 0016 (red light first, default block, video default on).
 
 ## The switch (one setting, ON by default during the prototype)
 
@@ -17,7 +17,7 @@ Everything here is invented: ten-digit notice numbers, places, amounts, plate `T
 ## Where it plugs in (hexagonal)
 
 - The demo route is another adapter behind the same lookup port (`PenaltyLookupPort`), beside the browser route, the plain HTTP route and the future API route. It returns the same canonical result (typed notice, flexible details map, certificates, status and message), the same step trace and the same progress callbacks. Code: `cevoc.adapter.out.demo`. No production adapter, domain class or controller holds demo logic (ArchUnit rule in `ArchitectureTest`).
-- `DemoCaseFactory` is the central place: it parses prefix and sequence (`DemoNumber`), finds the scenario (`DemoScenarios`, the one list) and builds, deterministically, the **text record** (notice fields, the details map with camera code, direction, operator, location, incident number, lane, offence, speed limit, time since red, yellow duration, date and time, and the certificate rows) and, through a `DemoMediaSource`, the **media set** (images, video). They are kept apart like the real flow keeps the details panel and banner text apart from the image list. Today the media source (`SampleMediaSource`) generates simple SVG sample images that say "SAMPLE IMAGE, NOT A REAL PHOTO"; the sample video is the one under `frontend/public/samples`. The next step plugs openly licensed media in behind the same interface.
+- `DemoCaseFactory` is the central place: it parses prefix and sequence (`DemoNumber`), finds the scenario (`DemoScenarios`, the one list) and builds, deterministically, the **text record** (notice fields, the details map with camera code, direction, operator, location, incident number, lane, offence, speed limit, time since red, yellow duration, date and time, and the certificate rows) and, through a `DemoMediaSource`, the **media set** (images, video). They are kept apart like the real flow keeps the details panel and banner text apart from the image list. Today the media source (`SampleMediaSource`) generates simple SVG sample images that say "SAMPLE IMAGE, NOT A REAL PHOTO"; the sample video is the one under `frontend/public/samples`. With a demo content bundle configured (below) the same interface serves the bundle's media instead, and `DemoContentGate` decides which, and whether demo content is available at all.
 - Failure conditions are part of the scenario and are played out by the adapter: timeout, not found, image failure, certificate failure, plate refused.
 - The offence date typed into the form is not compared: each case carries its own date (shown on the page and in the hub).
 
@@ -130,6 +130,40 @@ Reserved, not built yet. The prefix is reserved: the sequence ranges below apply
 <!-- END GENERATED -->
 
 To refresh the table and the visual check fixture after changing `DemoScenarios`: `cd backend && mvn -q test -Dtest=DemoArtifactsTest -Dcevoc.demo.regenerate=true`, then commit both files. The test fails without that when they differ.
+
+## Demo content bundle (separate from the app image)
+
+Decision record: `docs/decisions/0018-demo-bundle-delivery.md`. The media list and licences: `docs/DEMO-MEDIA.md` and `docs/demo-media-manifest.json`. The scenario table above is generated and has no media columns; which media and licence each case uses is in `DEMO-MEDIA.md` ("Which case uses which media"): every case with images uses the image set of the active media source, picked by sequence number, all project-original today.
+
+### GitHub Release limits (record of what was checked)
+
+Not verified from the build sandbox: the GitHub documentation pages could not be fetched (access to `docs.github.com` was not granted), and a search returned titles only. The understanding recorded here, from the owner and from memory of GitHub's "About releases" page, is: each release asset may be up to 2 GiB; there is no stated limit on the number of assets or on total release size; there is no stated download bandwidth cap for normal use. **To check before relying on it:** open https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases and look for the file size and bandwidth wording. Anonymous downloads are subject to GitHub's general abuse and rate limiting, which an occasional app start does not approach. The bundle is designed to stay in the tens of MB (the build script refuses more than 60 MB of content, 3 MB per image, 15 MB per video; the loader refuses more than 100 MB).
+
+### What is in a bundle
+
+One zip: `bundle.json` (bundle version and, for every file, size, SHA-256, licence, licence URL, author, credit, source), `media/` (images, video) and `text/` (banner lines per media file, credits). The two payloads stay separate. Banner text is text, not baked into pictures.
+
+### Build, publish, point the app at it
+
+1. **Build locally (any time):** `node scripts/build-demo-bundle.mjs` writes `dist/cevoc-demo-bundle-<version>.zip` and a `.sha256` file and prints the checksum. It reads `docs/demo-media-manifest.json`, downloads each file from its recorded source (a `repo:` path or an https URL), **refuses any file without a recorded source, author, licence, licence URL and passed privacy check**, checks sizes, and is deterministic (the same inputs give the same checksum).
+2. **Publish:** run the manual workflow "Demo bundle (manual)" (`.github/workflows/demo-bundle.yml`, workflow_dispatch only). It builds the bundle and attaches the zip and the `.sha256` to a release tagged `demo-bundle-<bundleVersion>`. It refuses to overwrite an existing release: bump `bundleVersion` in the manifest for new content. (Not run as part of this change; no release exists yet.)
+3. **Point the app at it** (Container App environment settings, all three together):
+
+| Setting | Meaning |
+|---|---|
+| `CEVOC_DEMO_BUNDLE_URL` | The https URL of the zip, for example the release asset's download URL. Empty or unset: built-in sample content, nothing fetched (the default). |
+| `CEVOC_DEMO_BUNDLE_VERSION` | The expected `bundleVersion` (for example `1`). Must equal the one inside the bundle. |
+| `CEVOC_DEMO_BUNDLE_SHA256` | The expected SHA-256 of the zip, from the `.sha256` file. |
+
+Optional tuning (properties `cevoc.demo-bundle.timeout-seconds`, default 60, and `cevoc.demo-bundle.retry-minutes`, default 10) has no environment setting wired by default.
+
+### Behaviour and fail safe
+
+- Switch on, no URL: built-in sample content (the least surprising: an unconfigured deployment behaves as before).
+- Switch on, URL set: the bundle is fetched lazily on the first demo use by plain HTTPS (no credentials, https only, size capped), then verified: archive checksum, bundle version, every file's size and checksum, licence, author and credit on every file, no unlisted file, no unsafe file name. Video is extracted from the archive only when a case asks for it.
+- Any failure: demo content is unavailable. A demo number is passed to the normal route like any other number, `/api/demo/cases` answers `available: false` with an empty list and the hub page says "Demo content is not available right now. Real lookups are not affected.", media paths answer 404, and one warning is logged (the reason, never the URL). The app starts and serves real lookups regardless. After the cool-down the next demo use tries again.
+- Switch off (`CEVOC_DEMO_DATA=false`): nothing demo exists and nothing is fetched, whatever the bundle settings say.
+- **One line to turn demo mode off entirely:** `CEVOC_DEMO_DATA=false` on the Container App.
 
 ## The demo hub
 

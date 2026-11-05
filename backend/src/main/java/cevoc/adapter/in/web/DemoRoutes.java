@@ -25,12 +25,14 @@ public final class DemoRoutes {
     private DemoRoutes() {}
 
     /** The cases, grouped by program and kind, with the transparency status per information type. */
-    public record Cases(String notice, List<DemoCatalogPort.Program> programs) {}
+    public record Cases(String notice, boolean available, List<DemoCatalogPort.Program> programs) {}
 
     public static RouterFunction<ServerResponse> routes(DemoCatalogPort catalog, DemoMediaPort media) {
         return RouterFunctions.route()
                 .GET("/api/demo/cases", req -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
-                        .body(new Cases("Demo data, not real notices. Every number, place and image here is fictitious.", catalog.programs())))
+                        .body(catalog.available()
+                                ? new Cases("Demo data, not real notices. Every number, place and image here is fictitious.", true, catalog.programs())
+                                : new Cases("Demo content is not available right now. Real lookups are not affected.", false, List.of())))
                 .GET("/api/demo/media/{number}/{name}", req -> {
                     String number = req.pathVariable("number");
                     String name = req.pathVariable("name");

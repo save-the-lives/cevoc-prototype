@@ -45,6 +45,11 @@ public final class DemoCaseFactory {
         }
     }
 
+    /** False while the media source cannot supply demo content: demo numbers are then not handled and the hub says so. */
+    public boolean available() {
+        return media.available();
+    }
+
     public DemoMediaSource mediaSource() {
         return media;
     }
