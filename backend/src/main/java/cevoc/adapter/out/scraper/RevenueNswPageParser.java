@@ -423,7 +423,8 @@ public class RevenueNswPageParser {
         String page = doc.text();
         Matcher first = BANNER_START.matcher(page);
         if (!first.find()) {
-            LookupDiagnostic.note(bannerDiag("none", elements.size(), elements.isEmpty() ? "" : elements.first().text(), java.util.Set.of()));
+            LookupDiagnostic.note(bannerDiag("none", elements.size(), elements.isEmpty() ? "" : elements.first().text(), java.util.Set.of())
+                    + "; " + pageLabelDiag(doc));
             return Map.of();
         }
         int from = first.start();
@@ -432,6 +433,41 @@ public class RevenueNswPageParser {
         Map<String, Object> out = bannerParser.parse(segment).asDetails();
         LookupDiagnostic.note(bannerDiag("page-text", elements.size(), segment, out.keySet()));
         return out;
+    }
+
+    /**
+     * When no banner text is found anywhere: which of the banner label words appear in the page text at all (yes/no), the ancestor
+     * chain of the first blob image (tag and class tokens, letters only), and the names of label elements (an element whose own text
+     * is a short phrase ending in a colon), which are interface vocabulary and carry no values. Never any other page text.
+     */
+    static String pageLabelDiag(Document doc) {
+        String lower = doc.text().toLowerCase(Locale.ROOT);
+        StringBuilder sb = new StringBuilder("page-has=");
+        for (String w : new String[] {"camera code", "time since red", "speed limit", "lane", "yellow light", "direction", "operator"}) {
+            sb.append(w.replace(' ', '-')).append(':').append(lower.contains(w) ? "yes" : "no").append(',');
+        }
+        sb.append("; html-has-banner-word=").append(doc.outerHtml().toLowerCase(Locale.ROOT).contains("time since red") ? "yes" : "no");
+        Element img = doc.selectFirst("img[src^=blob:]");
+        StringBuilder chain = new StringBuilder();
+        int depth = 0;
+        for (Element e = img; e != null && depth < 6; e = e.parent(), depth++) {
+            chain.append(e.tagName());
+            String cls = e.className().replaceAll("[^A-Za-z0-9_ -]", "");
+            for (String c : cls.split("\\s+")) {
+                if (!c.isEmpty() && c.length() <= 24 && !c.matches(".*\\d{3,}.*")) {
+                    chain.append('.').append(c);
+                }
+            }
+            chain.append("(c").append(e.children().size()).append(")>");
+        }
+        java.util.Set<String> labels = new java.util.LinkedHashSet<>();
+        for (Element e : doc.select("*")) {
+            String own = e.ownText().trim();
+            if (own.endsWith(":") && own.length() <= 32 && own.split("\\s+").length <= 4 && own.matches("[A-Za-z /()]+:") && labels.size() < 25) {
+                labels.add(own.substring(0, own.length() - 1).toLowerCase(Locale.ROOT).replace(' ', '-'));
+            }
+        }
+        return sb + "; img-chain=" + chain + "; label-elements=" + String.join(",", labels);
     }
 
     private static final Pattern LABEL_SHAPE = Pattern.compile("(?<![A-Za-z])([A-Za-z][A-Za-z ]{1,28}[A-Za-z])\\s*:");

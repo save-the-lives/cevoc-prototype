@@ -173,6 +173,16 @@ class RevenueNswPageParserTest {
     }
 
     @Test
+    void pageLabelDiagnosticShowsStructureButNoValues() {
+        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(
+                "<div class=\"viewer open\"><span>Lane:</span><b>ZQ77</b><img src=\"blob:https://x.test/abc\"></div><p>Secret Value Here</p>");
+        String d = RevenueNswPageParser.pageLabelDiag(doc);
+        assertThat(d).contains("camera-code:no").contains("lane:yes").contains("img-chain=img(c0)>div.viewer.open(c3)>")
+                .contains("label-elements=lane");
+        assertThat(d).doesNotContain("ZQ77").doesNotContain("Secret");
+    }
+
+    @Test
     void bannerTextOutsideBannerElementsIsStillReadFromTheFirstCameraCodeOnward() {
         String html = fixture("fictitious-state3-images.html").replace("<figcaption class=\"banner\">", "<p class=\"cap\">")
                 .replace("</figcaption>", "</p>");
