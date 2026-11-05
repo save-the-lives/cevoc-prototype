@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" width="960" height="540" role="img" aria-label="Illustration of a car on a road, fictitious">
+<title>Illustration of a car on a road, fictitious</title>
+<rect width="960" height="540" fill="#cfd8dc"/>
+<polygon points="300,540 660,540 560,150 400,150" fill="#455a64"/>
+<rect x="360" y="400" width="240" height="10" fill="#ffffff"/>
+<rect x="380" y="250" width="230" height="110" rx="14" fill="#7a2e5f"/>
+<rect x="410" y="225" width="170" height="45" rx="10" fill="#b0bec5"/>
+<circle cx="430" cy="362" r="24" fill="#212121"/>
+<circle cx="560" cy="362" r="24" fill="#212121"/>
+<rect x="460" y="318" width="70" height="26" fill="#ffffff" stroke="#212121"/>
+<text x="495" y="337" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#212121">TST123</text>
+<rect x="800" y="90" width="40" height="110" rx="8" fill="#212121"/><circle cx="820" cy="120" r="14" fill="#e53935"/><circle cx="820" cy="170" r="14" fill="#424242"/>
+</svg>

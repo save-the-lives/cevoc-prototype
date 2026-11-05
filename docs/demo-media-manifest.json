@@ -1,0 +1,56 @@
+{
+  "bundleVersion": "1",
+  "note": "Fictitious demo media. Every file needs a recorded source, author, licence and licence URL, or the bundle build refuses it (scripts/build-demo-bundle.mjs). Human-readable view: docs/DEMO-MEDIA.md.",
+  "limits": { "imageMaxBytes": 3145728, "videoMaxBytes": 15728640, "totalMaxBytes": 62914560 },
+  "files": [
+    {
+      "path": "media/sample-image-1.svg",
+      "kind": "image",
+      "contentType": "image/svg+xml",
+      "width": 960,
+      "height": 540,
+      "source": "repo:scripts/demo-media/sample-image-1.svg",
+      "sourceUrl": "https://github.com/save-the-lives/cevoc-prototype/blob/main/scripts/demo-media/sample-image-1.svg",
+      "author": "CEVOC prototype project (hand-written SVG)",
+      "licence": "Project-original, no third-party material (owner to confirm the release licence)",
+      "licenceUrl": "https://github.com/save-the-lives/cevoc-prototype",
+      "credit": "CEVOC prototype project",
+      "retrieved": "2026-11-05",
+      "shows": "Flat illustration of a car on a road. Plate text TST123 (fictitious).",
+      "privacy": { "status": "checked", "method": "Synthetic vector drawing, no photograph. Viewed as source text; the only plate is the fictitious TST123." },
+      "banner": ["Camera Code: 7109", "Location: SAMPLE ROAD AND EXAMPLE STREET, SAMPLETOWN", "Direction: Northbound", "Date: 2026-03-14 Time: 08:15:42"]
+    },
+    {
+      "path": "media/sample-image-2.svg",
+      "kind": "image",
+      "contentType": "image/svg+xml",
+      "width": 960,
+      "height": 540,
+      "source": "repo:scripts/demo-media/sample-image-2.svg",
+      "sourceUrl": "https://github.com/save-the-lives/cevoc-prototype/blob/main/scripts/demo-media/sample-image-2.svg",
+      "author": "CEVOC prototype project (hand-written SVG)",
+      "licence": "Project-original, no third-party material (owner to confirm the release licence)",
+      "licenceUrl": "https://github.com/save-the-lives/cevoc-prototype",
+      "credit": "CEVOC prototype project",
+      "retrieved": "2026-11-05",
+      "shows": "Flat illustration of a car at a red traffic light. Plate text TST123 (fictitious).",
+      "privacy": { "status": "checked", "method": "Synthetic vector drawing, no photograph. Viewed as source text; the only plate is the fictitious TST123." },
+      "banner": ["Camera Code: 7109", "Location: TEST AVENUE AND DEMO LANE, EXAMPLEVILLE", "Direction: Northbound", "Date: 2026-03-14 Time: 08:15:44"]
+    },
+    {
+      "path": "media/sample-video-1.mp4",
+      "kind": "video",
+      "contentType": "video/mp4",
+      "source": "repo:frontend/public/samples/video-1.mp4",
+      "sourceUrl": "https://github.com/save-the-lives/cevoc-prototype/blob/main/frontend/public/samples/video-1.mp4",
+      "author": "CEVOC prototype project (generated with ffmpeg testsrc2 and a sine tone)",
+      "licence": "Project-original, no third-party material (owner to confirm the release licence)",
+      "licenceUrl": "https://github.com/save-the-lives/cevoc-prototype",
+      "credit": "CEVOC prototype project",
+      "retrieved": "2026-11-05",
+      "shows": "ffmpeg test pattern with a tone. No road, vehicle or person.",
+      "privacy": { "status": "checked", "method": "Machine-generated test pattern (see frontend/public/samples/ATTRIBUTION.md); no camera footage." },
+      "banner": []
+    }
+  ]
+}
