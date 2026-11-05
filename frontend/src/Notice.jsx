@@ -186,7 +186,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                     <div><dt>Amount owing</dt><dd><strong>{money(n.amountOwing)}</strong></dd></div>
                   </dl>
                 )}
-            {!detailsLoading && !detailsFailed && !evLoading && <ProgramDetails result={result} />}
+            {!detailsLoading && !detailsFailed && !evLoading && !certLoading && <ProgramDetails result={result} />}
           </Step>
 
           <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
