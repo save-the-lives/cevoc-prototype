@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkDate, checkNotice, checkRegistration, cleanRegistration, earliestIso, partsToIso, todayIso } from './lookupValidation.js';
+import { checkDate, checkNotice, checkRegistration, draftFromQuery, cleanRegistration, earliestIso, partsToIso, todayIso } from './lookupValidation.js';
 
 const NOW = new Date(2026, 10, 4); // 4 Nov 2026
 const p = (d, m, y) => ({ d, m, y });
@@ -42,5 +42,16 @@ describe('offence date', () => {
     expect(partsToIso(p('4', '3', '2026'))).toBe('2026-03-04');
     expect(todayIso(NOW)).toBe('2026-11-04');
     expect(earliestIso(NOW)).toBe('2023-11-04');
+  });
+});
+
+describe('draftFromQuery (Edit and Back keep the notice number and date)', () => {
+  it('returns the number and date parts and nothing else', () => {
+    const d = draftFromQuery({ infringementNumber: '9000000001', offenceDate: '2026-03-04', registration: 'ABC123' });
+    expect(d).toEqual({ num: '9000000001', parts: { d: '4', m: '3', y: '2026' } });
+    expect(JSON.stringify(d)).not.toContain('ABC123');
+  });
+  it('is empty with no query', () => {
+    expect(draftFromQuery(null)).toEqual({ num: '', parts: { d: '', m: '', y: '' } });
   });
 });

@@ -4,6 +4,7 @@ import DemoTag from './DemoBanner.jsx';
 import { demoCaseParam, findCase } from './demoHub.js';
 import { applyEvent, initialLookup, restartSections, toResult } from './lookupState.js';
 import LookupForm from './LookupForm.jsx';
+import { draftFromQuery } from './lookupValidation.js';
 import Notice from './Notice.jsx';
 import { HELP_PHONE, classify } from './journey.js';
 import './styles.css';
@@ -17,6 +18,7 @@ export default function App() {
   const [view, setView] = useState({ name: 'form', outcome: null, misses: 0 });
   const [busy, setBusy] = useState(false);
   const [found, setFound] = useState(null); // { query, registrationGiven }
+  const [draft, setDraft] = useState(null); // last notice number and date typed, in memory only, so Edit and Back do not make people retype (never the plate)
   const [live, setLive] = useState(null); // the progressive state of the lookup, see lookupState.js
   const headingRef = useRef(null);
   const firstRender = useRef(true);
@@ -107,7 +109,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const submit = (query) => { plateRef.current = query.registration; return begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true }); };
+  const submit = (query) => { setDraft(draftFromQuery(query)); plateRef.current = query.registration; return begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true }); };
 
   // Re-runs the whole lookup (no number plate is kept, so a plate is asked for again inline if the source needs it).
   const retry = () => { plateRef.current = undefined; return begin(found.query, undefined, { fresh: false }); };
@@ -143,7 +145,7 @@ export default function App() {
           ? <Notice result={foundResult} query={found.query}
             sections={{ details: foundResult ? 'ready' : live?.finished || live?.details ? 'error' : 'loading', evidence: live.evidence.state, certificates: live.certificates.state }}
             registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onRerun={rerun} onStartAgain={startAgain} headingRef={headingRef} />
-          : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit}
+          : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit} draft={draft}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
       <footer className="site-foot"><div className="wrap foot-in">

@@ -3,10 +3,10 @@ import DateField from './DateField.jsx';
 import { checkDate, checkNotice, checkRegistration, cleanNotice, cleanRegistration, isoToParts, partsToIso } from './lookupValidation.js';
 import { HELP_PHONE } from './journey.js';
 
-export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios, onPickDefaultDate }) {
-  const [num, setNum] = useState('');
+export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios, onPickDefaultDate, draft }) {
+  const [num, setNum] = useState(draft?.num || '');
   const [reg, setReg] = useState('');
-  const [parts, setParts] = useState({ d: '', m: '', y: '' });
+  const [parts, setParts] = useState(draft?.parts || { d: '', m: '', y: '' });
   const [fe, setFe] = useState({});
   const [bad, setBad] = useState([]);
   const sumRef = useRef(null);
