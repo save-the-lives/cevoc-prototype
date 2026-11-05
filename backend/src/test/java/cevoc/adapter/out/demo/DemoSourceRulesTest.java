@@ -46,7 +46,7 @@ class DemoSourceRulesTest {
             String path = p.toString().replace('\\', '/');
             String name = p.getFileName().toString();
             boolean allowed = path.contains("/adapter/out/demo/") || name.equals("DemoDataConfig.java") || name.equals("BeanConfig.java")
-                    || name.equals("DemoController.java") || name.startsWith("DemoCatalogPort") || name.startsWith("DemoMediaPort");
+                    || name.equals("DemoRoutes.java") || name.startsWith("DemoCatalogPort") || name.startsWith("DemoMediaPort");
             if (!allowed) {
                 assertThat(Files.readString(p)).as(path).doesNotContain("cevoc.adapter.out.demo").doesNotContain("DemoCaseFactory");
             }

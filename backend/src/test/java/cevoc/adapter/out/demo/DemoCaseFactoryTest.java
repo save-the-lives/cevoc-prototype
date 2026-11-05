@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.LookupStep;
-import cevoc.domain.LookupTrace;
 import cevoc.domain.PenaltyLookupResult;
 import cevoc.domain.StepCause;
 import java.nio.charset.StandardCharsets;
@@ -119,13 +118,7 @@ class DemoCaseFactoryTest {
 
     @Test
     void failuresAreReportedInTheStepTraceLikeARealRoute() {
-        LookupTrace.begin(false);
-        try {
-            DemoScenarioChecks.run(factory, "1000000204", null);
-        } finally {
-            LookupTrace trace = LookupTrace.end();
-            assertThat(trace.firstFailed().step()).isEqualTo(LookupStep.READ_SUMMARY);
-        }
+        assertThat(DemoScenarioChecks.run(factory, "1000000204", null).trace.firstFailed().step()).isEqualTo(LookupStep.READ_SUMMARY);
         assertThat(DemoScenarioChecks.run(factory, "1000000204", null).trace.firstFailed().cause()).isEqualTo(StepCause.TIMEOUT);
         assertThat(DemoScenarioChecks.run(factory, "1000000202", null).trace.firstFailed().cause()).isEqualTo(StepCause.NO_IMAGE_BYTES);
         assertThat(DemoScenarioChecks.run(factory, "1000000201", null).trace.firstFailed().step()).isEqualTo(LookupStep.CERTIFICATES);

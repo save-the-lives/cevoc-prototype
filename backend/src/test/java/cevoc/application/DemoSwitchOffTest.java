@@ -5,7 +5,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import cevoc.adapter.in.web.DemoController;
 import cevoc.adapter.out.demo.DemoRoute;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -22,12 +21,12 @@ class DemoSwitchOffTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectProvider<DemoRoute> demo;
-    @Autowired ObjectProvider<DemoController> controller;
+    @Autowired ObjectProvider<org.springframework.web.servlet.function.RouterFunction<org.springframework.web.servlet.function.ServerResponse>> routes;
 
     @Test
     void noDemoBeanIsRegistered() {
         assertThat(demo.getIfAvailable()).isNull();
-        assertThat(controller.getIfAvailable()).isNull();
+        assertThat(routes.getIfAvailable()).isNull();
     }
 
     @Test

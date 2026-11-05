@@ -1,6 +1,6 @@
 package cevoc.config;
 
-import cevoc.adapter.in.web.DemoController;
+import cevoc.adapter.in.web.DemoRoutes;
 import cevoc.adapter.out.demo.DemoCaseFactory;
 import cevoc.adapter.out.demo.DemoCatalog;
 import cevoc.adapter.out.demo.DemoPenaltyLookupAdapter;
@@ -9,6 +9,8 @@ import cevoc.adapter.out.demo.SampleMediaSource;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.function.RouterFunction;
+import org.springframework.web.servlet.function.ServerResponse;
 
 /**
  * THE demo data switch. This is the only place that reads it: {@code cevoc.demo-data} (environment variable
@@ -37,7 +39,7 @@ public class DemoDataConfig {
     }
 
     @Bean
-    DemoController demoController(DemoCatalog catalog) {
-        return new DemoController(catalog, catalog);
+    RouterFunction<ServerResponse> demoRoutes(DemoCatalog catalog) {
+        return DemoRoutes.routes(catalog, catalog);
     }
 }
