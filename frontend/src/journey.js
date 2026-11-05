@@ -96,3 +96,9 @@ export function stepsFor(result, evState) {
   steps.push({ id: 'step-options', label: 'Your options' });
   return steps;
 }
+
+/** The line under "Was it my vehicle?" once the photos are available. It must not send people to photos they cannot see. */
+export function photosAnswer({ hasVideo, timedOut }) {
+  if (timedOut) return 'Your photos have timed out, so we can’t show them right now.';
+  return `Check the number plate and the vehicle in the ${hasVideo ? 'photos and video' : 'photos'}.`;
+}

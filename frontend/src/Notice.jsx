@@ -1,8 +1,8 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ListSkeleton, PhotoSkeleton } from './Skeleton.jsx';
 import { ExpiredContext } from './expired.js';
 import { hasCertificateList } from './certs.js';
-import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
+import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, photosAnswer, statusSummary, stepsFor } from './journey.js';
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
 import ProgramDetails from './ProgramDetails.jsx';
 import { videoView } from './programs.js';
@@ -59,12 +59,29 @@ function PlateAsk({ onSubmit, busy, again }) {
   );
 }
 
-function EvidenceBody({ result, state, media, onPlate, plateBusy }) {
+/** One message for the whole set of photos. The status region is always on the page so that a screen reader announces the text when it appears. */
+function TimedOut() {
+  const { expired, rerun } = useContext(ExpiredContext);
+  return (
+    <div role="status" data-testid="photos-timed-out">
+      {expired && (
+        <div className="notice-box">
+          <h3>Your photos have timed out</h3>
+          <p>Photo links stop working after a short time, to keep them private. To see them again, reload them: we’ll take you back to the form with your notice number and date filled in. We don’t keep your number plate, so you’ll need to type it again.</p>
+          {rerun && <p><button type="button" className="btn primary" onClick={rerun}>Reload the photos</button></p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
   switch (state) {
     case 'show':
       return (
         <>
-          <p className="hint">Zoom in to read plates and signs: pinch or double-tap on a touch screen, scroll wheel or the buttons with a mouse, plus and minus keys on a keyboard.</p>
+          <TimedOut />
+          {!timedOut && <p className="hint">Zoom in to read plates and signs: pinch or double-tap on a touch screen, scroll wheel or the buttons with a mouse, plus and minus keys on a keyboard.</p>}
           <Suspense fallback={<PhotoSkeleton count={media.length} />}><EvidenceGrid items={media} /></Suspense>
           <p className="muted">If someone else was driving, you can nominate them with Revenue NSW (see Your options).</p>
         </>
@@ -113,12 +130,15 @@ function Failed({ what, onRetry }) {
  * Each section announces its own change politely. Options and help need no data, so they are always shown.
  */
 export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, plateBusy, onRetry, onRerun, onStartAgain, headingRef }) {
+  const [timedOut, setTimedOut] = useState(false); // any photo link has expired
+  const report = useCallback(() => setTimedOut(true), []);
   const detailsLoading = sections.details === 'loading';
   const detailsFailed = sections.details === 'error' || (!detailsLoading && !result);
   const n = result?.notice;
   const evLoading = sections.evidence === 'loading';
   const certLoading = sections.certificates === 'loading';
   const evFailed = sections.evidence === 'error';
+  useEffect(() => { if (evLoading) setTimedOut(false); }, [evLoading]); // fresh links on a retry
   const certFailed = sections.certificates === 'error';
   // Until the notice is known the camera steps are shown as loading; after that they follow the data.
   const known = !!result && !!n;
@@ -135,13 +155,14 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const status = known ? statusSummary(n) : null;
   const certAns = certLoading ? { tone: 'neutral', text: 'Checking the camera certificates…' } : certificateAnswer(result || {});
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
+  const expiredCtx = useMemo(() => ({ rerun: onRerun || null, expired: timedOut, report }), [onRerun, timedOut, report]);
   const demo = result?.source === 'STUB' || result?.source === 'MANIFEST';
   const evAnswer = detailsLoading ? 'Fetching the camera photos…' : evLoading ? 'Fetching the camera photos…' : evFailed ? 'We couldn’t load the photos.'
-    : ev === 'show' ? `Check the number plate and the vehicle in the ${media.some((m) => m.kind === 'VIDEO') ? 'photos and video' : 'photos'}.`
+    : ev === 'show' ? photosAnswer({ hasVideo: media.some((m) => m.kind === 'VIDEO'), timedOut })
       : ev === 'not-applicable' ? undefined : 'We can’t show the photos yet.';
 
   return (
-    <ExpiredContext.Provider value={onRerun || null}>
+    <ExpiredContext.Provider value={expiredCtx}>
     <div className="wrap page-body">
       <p className="crumb"><button type="button" className="linklike" onClick={onStartAgain}>← Look up a different notice</button></p>
       {query && (
@@ -199,7 +220,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                 ? <Failed what="the photos" onRetry={onRetry} />
                 : (
                   <>
-                    <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} />
+                    <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} timedOut={timedOut} />
                     {camera && ev !== 'needs-plate' && video.message && <p className="notice-box" role="status" data-testid="video-note">{video.message}</p>}
                   </>
                 )}

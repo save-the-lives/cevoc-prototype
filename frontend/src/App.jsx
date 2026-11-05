@@ -28,7 +28,7 @@ export default function App() {
     if (firstRender.current) { firstRender.current = false; return; }
     // move focus to the new page heading so keyboard and screen reader users start in the right place
     if (view.name === 'notice') headingRef.current?.focus({ preventScroll: false });
-    else document.getElementById('hero-h')?.focus({ preventScroll: true });
+    else if (!reloadNote) document.getElementById('hero-h')?.focus({ preventScroll: true }); // after a timeout the form puts focus in the plate box
   }, [view.name]);
 
   // the browser Back button returns to the form instead of leaving the site
@@ -47,8 +47,7 @@ export default function App() {
   useEffect(() => cancel, []);
 
   const popSkip = useRef(false);
-  // The number plate is kept only in this tab's memory (never stored, never in the address), so expired photos can be re-fetched in one tap.
-  const plateRef = useRef(undefined);
+  const [reloadNote, setReloadNote] = useState(false); // the form is open because the photo links timed out
 
   const stream = useCallback(async (query, registration, onFail) => {
     cancel();
@@ -109,26 +108,24 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const submit = (query) => { setDraft(draftFromQuery(query)); plateRef.current = query.registration; return begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true }); };
+  const submit = (query) => { setDraft(draftFromQuery(query)); setReloadNote(false); return begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true }); };
 
   // Re-runs the whole lookup (no number plate is kept, so a plate is asked for again inline if the source needs it).
-  const retry = () => { plateRef.current = undefined; return begin(found.query, undefined, { fresh: false }); };
+  const retry = () => begin(found.query, undefined, { fresh: false });
 
-  // The stored photos expired: run the same check again with the same values (plate included, from this tab's memory).
-  const rerun = () => begin(found.query, plateRef.current, { fresh: false });
+  // The photo links timed out: back to the form with the notice number and date filled in. The plate is never kept, so it is asked for again.
+  const rerun = () => { setDraft(draftFromQuery(found.query)); startAgain(); setReloadNote(true); };
 
   // The registration is asked for inline on the notice page and sent with a fresh request: it is held only for that call.
   const retryWithPlate = async (registration) => {
     liveRef.current = restartSections(liveRef.current);
     setLive(liveRef.current);
-    plateRef.current = registration;
     setFound((f) => ({ ...f, registrationGiven: true }));
     await stream(found.query, registration, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
   };
 
   const startAgain = () => {
-    plateRef.current = undefined;
-    cancel(); setBusy(false);
+    cancel(); setBusy(false); setReloadNote(false);
     if (window.history.state?.notice) window.history.back(); else { setFound(null); setView({ name: 'form', outcome: null, misses: 0 }); }
   };
 
@@ -145,7 +142,7 @@ export default function App() {
           ? <Notice result={foundResult} query={found.query}
             sections={{ details: foundResult ? 'ready' : live?.finished || live?.details ? 'error' : 'loading', evidence: live.evidence.state, certificates: live.certificates.state }}
             registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onRerun={rerun} onStartAgain={startAgain} headingRef={headingRef} />
-          : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit} draft={draft}
+          : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit} draft={draft} reloadNote={reloadNote}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
       <footer className="site-foot"><div className="wrap foot-in">

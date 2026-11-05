@@ -2,7 +2,7 @@ import { Component, Suspense, lazy, useContext, useEffect, useMemo, useRef, useS
 import { ExpiredContext } from './expired.js';
 import { QueueContext } from './evidenceLoader.js';
 import { STATE } from './loadQueue.js';
-import { downloadHref, linkExpired, stagesFor } from './media.js';
+import { downloadHref, linkExpired, stagesFor, timedOutLabel } from './media.js';
 import GalleryPhoto from './GalleryPhoto.jsx';
 
 // The zoom and pan viewer is its own chunk: it is fetched when someone opens a photo (or points at the button).
@@ -57,7 +57,7 @@ export default function EvidenceImage({ item }) {
   const [broken, setBroken] = useState(false); // the picture on the page could not be loaded
   const [expired, setExpired] = useState(false);
   const [viewerTry, setViewerTry] = useState(0);
-  const rerun = useContext(ExpiredContext);
+  const { report } = useContext(ExpiredContext);
   const q = useContext(QueueContext);
   const [full, setFull] = useState(() => q?.queue.state(item.url) ?? STATE.IDLE);
   useEffect(() => {
@@ -69,7 +69,7 @@ export default function EvidenceImage({ item }) {
   const eagerThumb = !q || q.eager.includes(item.url);
   const photos = q?.photos;
   const gallery = photos && photos.length > 1
-    ? { count: photos.length, index: Math.max(0, photos.findIndex((p) => p.url === item.url)), render: (i) => <GalleryPhoto key={photos[i].url} item={photos[i]} /> }
+    ? { count: photos.length, index: Math.max(0, photos.findIndex((p) => p.url === item.url)), render: (i) => <GalleryPhoto key={photos[i].url} item={photos[i]} index={i} count={photos.length} /> }
     : undefined;
   const Viewer = useMemo(() => lazy(loadViewer), [viewerTry]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -99,33 +99,32 @@ export default function EvidenceImage({ item }) {
   const img = (
     <img className="media-img" src={src} alt={alt} width={item.width || undefined} height={item.height || undefined}
       loading={open || eagerThumb ? 'eager' : 'lazy'} fetchPriority={eagerThumb ? 'high' : 'auto'} decoding="async" draggable="false"
-      onError={() => { q?.thumbDone(item.url); setBroken(true); linkExpired(src).then((gone) => { if (gone) setExpired(true); }); }} onLoad={() => { setBroken(false); q?.thumbDone(item.url); }} />
+      onError={() => { q?.thumbDone(item.url); setBroken(true); linkExpired(src).then((gone) => { if (gone) { setExpired(true); report(); } }); }} onLoad={() => { setBroken(false); q?.thumbDone(item.url); }} />
   );
+
+  const timedOut = expired && !open;
 
   return (
     <div className="media-body">
-      {open
+      {timedOut
+        ? <div className="media-expired" style={{ aspectRatio: '16 / 10' }}>{timedOutLabel(gallery?.index ?? 0, gallery?.count ?? 1)}</div>
+        : open
         ? <ViewerBoundary attempt={viewerTry} onRetry={() => setViewerTry((n) => n + 1)}>
             <Suspense fallback={<div className="media-frame">{img}</div>}><Viewer label={`${item.title}, image`} gallery={gallery}>{img}</Viewer></Suspense>
           </ViewerBoundary>
         : <div className="media-frame" style={{ aspectRatio: '16 / 10' }}>{img}</div>}
-      {!open && (
+      {!open && !timedOut && (
         <button type="button" className="btn zoom-open" onClick={() => setOpen(true)} onPointerEnter={loadViewer} onFocus={loadViewer}>
           Zoom in<span className="sr-only"> on {item.title}</span>
         </button>
       )}
-      {q && stages.length > 1 && !open && (
+      {q && stages.length > 1 && !open && !timedOut && (
         <p className="media-progress" aria-live="polite">
           {full === STATE.READY ? 'Full size ready' : full === STATE.LOADING ? <><span className="spin" aria-hidden="true" />Loading full size…</> : full === STATE.ERROR ? 'Full size not loaded yet' : 'Full size waiting'}
         </p>
       )}
       <p className="media-status" role="status">
         {open && status === 'loading' && <><span className="spin" aria-hidden="true" />Loading a sharper copy...</>}
-        {expired && (
-          <>
-            These photos expired. {rerun ? <button type="button" className="btn" onClick={rerun}>Run the check again</button> : 'Run the check again.'}
-          </>
-        )}
         {!expired && (broken || (open && status === 'error')) && (
           <>
             {!broken && stages.length > 1 && level > 0 ? 'Showing a lower quality copy. ' : 'This image could not be loaded. '}
@@ -133,7 +132,7 @@ export default function EvidenceImage({ item }) {
           </>
         )}
       </p>
-      {href && <a className="dl" href={href} download>Download original<span className="sr-only"> of {item.title}</span></a>}
+      {href && !timedOut && <a className="dl" href={href} download>Download original<span className="sr-only"> of {item.title}</span></a>}
     </div>
   );
 }

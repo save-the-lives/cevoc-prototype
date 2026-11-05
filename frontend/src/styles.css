@@ -124,3 +124,8 @@ input { font: inherit; min-height: 44px; padding: 6px 10px; border: 1px solid #5
 .gp-err { pointer-events: auto; text-align: center; padding: 16px; }
 .zp-tools [aria-disabled="true"] { opacity: .5; cursor: default; }
 .zp-pos { min-width: 3.5em; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* A photo whose link has timed out: a plain light placeholder with dark text (about 15:1), never a black box. */
+.media-expired { display: grid; place-items: center; text-align: center; padding: 12px; border: 1px dashed #5b6573; border-radius: 6px; background: #eef1f4; color: #1b1f24; font-weight: 600; }
+.media-expired p { margin: 0 0 6px; }
+.gp .media-expired { position: absolute; inset: 0; border: 0; border-radius: 0; }

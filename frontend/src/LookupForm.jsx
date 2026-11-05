@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DateField from './DateField.jsx';
 import { checkDate, checkNotice, checkRegistration, cleanNotice, cleanRegistration, isoToParts, partsToIso } from './lookupValidation.js';
 import { HELP_PHONE } from './journey.js';
 
-export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios, onPickDefaultDate, draft }) {
+export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios, onPickDefaultDate, draft, reloadNote }) {
+  useEffect(() => { if (reloadNote) document.getElementById('rego')?.focus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [num, setNum] = useState(draft?.num || '');
   const [reg, setReg] = useState('');
   const [parts, setParts] = useState(draft?.parts || { d: '', m: '', y: '' });
@@ -73,6 +74,12 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
               <div className="errsum is-info" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="off-h">
                 <h3 id="off-h">This check isn’t available for that notice yet</h3>
                 <p>We’re still building this service, so we can only show some notices at the moment. For any notice you can call {HELP_PHONE}.</p>
+              </div>
+            )}
+            {reloadNote && (
+              <div className="errsum is-info" role="status">
+                <h3>Your photos timed out</h3>
+                <p>Your notice number and offence date are filled in. We don’t keep your number plate, so type it again below, then choose “Show me what happened” to see fresh photos.</p>
               </div>
             )}
             <div className="field">

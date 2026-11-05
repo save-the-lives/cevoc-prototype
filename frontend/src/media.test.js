@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { downloadHref, isHls, pickLevels, stagesFor } from './media.js';
+import { downloadHref, isHls, pickLevels, stagesFor, timedOutLabel } from './media.js';
+import { photosAnswer } from './journey.js';
 
 const levels = [{ height: 1080 }, { height: 720 }, { height: 480 }];
 
@@ -29,5 +30,18 @@ describe('media helpers', () => {
     expect(pickLevels(levels, { small: true, poor: false })).toEqual({ startLevel: 1, capLevel: -1 });
     expect(pickLevels(levels, { small: false, poor: true })).toEqual({ startLevel: 2, capLevel: 2 });
     expect(pickLevels(levels, { small: false, poor: false })).toEqual({ startLevel: -1, capLevel: -1 });
+  });
+});
+
+describe('photos that have timed out (UI-03)', () => {
+  it('names each expired photo for people who cannot see the placeholder', () => {
+    expect(timedOutLabel(1, 3)).toBe('Photo 2 of 3, timed out');
+    expect(timedOutLabel(0, 1)).toBe('Photo timed out');
+  });
+  it('the answer line only sends people to the photos when they can be shown', () => {
+    expect(photosAnswer({ hasVideo: false, timedOut: false })).toBe('Check the number plate and the vehicle in the photos.');
+    expect(photosAnswer({ hasVideo: true, timedOut: false })).toMatch(/photos and video/);
+    expect(photosAnswer({ hasVideo: true, timedOut: true })).toBe('Your photos have timed out, so we can’t show them right now.');
+    expect(photosAnswer({ hasVideo: false, timedOut: true })).not.toMatch(/Check the number plate/);
   });
 });
