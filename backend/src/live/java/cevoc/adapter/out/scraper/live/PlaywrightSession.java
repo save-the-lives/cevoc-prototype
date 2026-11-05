@@ -284,9 +284,54 @@ final class PlaywrightSession implements RenderedPageSession {
                 + "/" + bytes + "B/hdr" + headerSet(req.headers()) + "/" + req.resourceType());
     }
 
+    private final java.util.List<String> labelResponses = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+    private int probes;
+
+    /** Diagnostics only: a text response (JSON, HTML, XML, text) that carries banner label words, described by shape, never content. */
+    private void scanForBannerLabels(com.microsoft.playwright.Response resp, String type) {
+        if (labelResponses.size() >= 12 || resp.status() >= 400 || type.contains("javascript") || type.contains("css")
+                || !(type.contains("json") || type.contains("html") || type.contains("xml") || type.startsWith("text/"))) {
+            return;
+        }
+        byte[] body;
+        try {
+            body = resp.body();
+        } catch (RuntimeException e) {
+            return;
+        }
+        if (body == null || body.length < 8 || body.length > 2_000_000) {
+            return;
+        }
+        String d = BannerLayerProbe.describeBody(new String(body, java.nio.charset.StandardCharsets.UTF_8));
+        if (!d.isEmpty()) {
+            var req = resp.request();
+            labelResponses.add(req.method() + shapeOf(req.url()) + "/" + resp.status() + "/" + type.split("[/;]", 3)[type.contains("/") ? 1 : 0]
+                    + "/" + body.length + "B/" + req.resourceType() + "/" + (req.frame().parentFrame() == null ? "main" : "child") + "/" + d);
+        }
+    }
+
+    /** Emits the banner-layer structure line for this stage plus the label-carrying responses seen so far. Bounded, never throws. */
+    private void probeBannerLayer(String stage) {
+        if (probes >= 4) {
+            return;
+        }
+        probes++;
+        try {
+            note(BannerLayerProbe.probe(page, stage));
+            note("label-responses=" + labelResponses.size() + (labelResponses.isEmpty() ? "" : " [" + String.join(" ; ", labelResponses) + "]"));
+        } catch (RuntimeException e) {
+            note("banner-layer[" + stage + "]=failed");
+        }
+    }
+
     private void traceNetResponse(com.microsoft.playwright.Response resp) {
         var req = resp.request();
         String type = String.valueOf(resp.headers().get("content-type")).toLowerCase(Locale.ROOT);
+        try {
+            scanForBannerLabels(resp, type);
+        } catch (RuntimeException ignored) {
+            // diagnostics must never break the flow
+        }
         if (traceIndex.containsKey(req)) {
             if (!wantsOriginalBody(req)) {
                 String len = resp.headers().get("content-length");
@@ -490,6 +535,8 @@ final class PlaywrightSession implements RenderedPageSession {
             if (found != null) {
                 claimed.add(found.id());
             }
+            page.waitForTimeout(1000);
+            probeBannerLayer(thumbnail ? "thumb-opened" : "large");
             if (found == null) {
                 note("image-path=response-missing");
                 return Optional.<ImageBytes>empty();
@@ -680,6 +727,8 @@ final class PlaywrightSession implements RenderedPageSession {
             cevoc.adapter.out.scraper.LookupDiagnostic.note("blob-imgs-live=" + Math.min(page.locator(BLOB_IMG).count(), 40)
                     + "; alerts-visible=" + visibleAlerts() + "; alert-words=" + alertWords() + "; post-calls=" + String.join(",", postStatuses));
             tag("capture-images");
+            page.waitForTimeout(1500);
+            probeBannerLayer("loaded");
             return snapshot("3-after-plate");
         });
     }
