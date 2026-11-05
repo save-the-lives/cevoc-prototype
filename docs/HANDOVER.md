@@ -9,7 +9,7 @@ For developers taking this code over. It describes the system as it stands, not 
 4. `docs/CONFIG-REFERENCE.md` (every setting: name, default, scope, status).
 5. `docs/DEPLOY-AZURE.md` and `docs/RUNBOOK-AWS.md` (how it is deployed today and the target).
 6. `docs/DEMO-DATA.md` and `docs/LIVE-CHECK.md` only when you touch demo data or the temporary live route.
-7. `docs/UI-AUDIT.md` once it is merged (see Known gaps).
+7. `docs/UI-AUDIT.md` (accessibility and behaviour review; its fixes are pending).
 
 ## What the system does
 A public, no-login web app for motorists. A person enters a penalty notice number and offence date (and, where needed, a vehicle registration) and sees the evidence behind a camera fine: images, video and the camera certificates that cover the offence time, so they can decide whether to go to court. Data comes from a source behind a port. Today that source is either bundled fictitious data (default) or an interim route to Revenue NSW pages; the TfNSW APIs are meant to replace the interim routes by configuration.
@@ -66,5 +66,5 @@ Everything below is scheduled for removal when the TfNSW API providers exist (`a
 - Evidence image 2 is genuinely small at source; this is not a rendering bug.
 - Backend replicas must stay at 1 until a shared media store exists (the in-memory store is per process).
 - The `http` route and the real page field ids for the certificates form are untested against the live services (`INFERRED` in the docs).
-- UI audit is pending: see `docs/UI-AUDIT.md` once it is merged.
+- UI audit is pending: findings in `docs/UI-AUDIT.md`; fixes are not done yet.
 - Azure deploy docs were written before an account was connected and are a checklist; the AWS runbook is untested.
