@@ -1,4 +1,4 @@
-# 0013. Privacy blurring of evidence video and still images (PROPOSED)
+# 0017. Privacy blurring of evidence video and still images (PROPOSED)
 
 Status: PROPOSED. Research done, nothing built. The owner and the legal team pick before any build.
 Date recorded: 2026-11-05

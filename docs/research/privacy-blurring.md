@@ -1,7 +1,7 @@
 # Privacy blurring of evidence video and still images (research paper, design ahead of the source)
 
 Status: RESEARCH and PROPOSAL. Nothing is built. No real video, image, plate or person was used. All values in this paper are fictitious.
-Date: 2026-11-05. Decision record stub: `docs/decisions/0013-privacy-blurring-of-evidence-media.md` (PROPOSED).
+Date: 2026-11-05. Decision record stub: `docs/decisions/0017-privacy-blurring-of-evidence-media.md` (PROPOSED).
 Related: `docs/ARCHITECTURE.md`, records 0001 (hexagonal), 0002 and 0008 (vendor neutrality), 0005 (public data only), 0007 (information types, status, transparency rule), 0011 (evidence pack).
 
 Proof words: PROVEN = read in this repository's docs, or in the cited source on 2026-11-05, or tested. INFERRED = reasoned, from general knowledge or from the sources, not checked. Where a source page did not state a figure, this paper says so rather than filling it in.
