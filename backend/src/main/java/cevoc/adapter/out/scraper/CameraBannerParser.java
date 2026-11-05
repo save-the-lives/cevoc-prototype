@@ -73,7 +73,7 @@ public class CameraBannerParser {
         }
     }
 
-    private static final Pattern NUMBER = Pattern.compile("\\d+(?:[.,]\\d+)?");
+    private static final Pattern NUMBER = Pattern.compile("-?\\d+(?:[.,]\\d+)?");
 
     private static final int MAX_VALUE_LENGTH = 200;
     private static final int MAX_CODE_LENGTH = 40;
