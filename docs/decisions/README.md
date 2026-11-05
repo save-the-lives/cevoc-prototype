@@ -12,3 +12,7 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0006 | Existing prototype URLs must not change | Accepted |
 | 0007 | Information types, status and per-program switches | PROPOSED (config source and date-ranged versions decided 2026-11-04) |
 | 0008 | Vendor-neutrality drift status | Accepted (audit) |
+| 0009 | Every returned field travels as a flexible details map (with the field audit) | Accepted direction; build pending |
+| 0010 | Three selectable routes per information type; plain HTTP adapter design | Accepted direction; adapter designed, not built or live-tested |
+| 0011 | Evidence download and one-file evidence pack | Design for review |
+| 0012 | Road safety message rules | Proposal, waiting for the owner |

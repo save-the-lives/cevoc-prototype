@@ -160,3 +160,10 @@ Status: the parser, fixtures and the session port are built (see "Three-state my
 - How the Revenue NSW / Service NSW page accepts the two inputs, and whether it needs an identity step. Automated pass-through must be confirmed as permitted before building that adapter.
 - The public certificates page (`/cevoc/pages/sdro/searchCertificates.jsf`) blocks automated fetching via robots.txt. Its form structure needs to be captured by a person.
 - Certificates key: RESOLVED, location code plus date range (see the scraper section). Result layout and link exposure are now resolved (see above). Still open: real JSF ids, and whether the penalty page gives a real location code or only a place name.
+
+## Index of decisions added 2026-11-05
+- Flexible details map and the banner field audit: docs/decisions/0009-flexible-details-map.md.
+- Three selectable routes per information type (Chromium, plain HTTP, API providers) and the plain HTTP adapter design: docs/decisions/0010-three-route-providers.md. Configuration choice: `cevoc.providers.<concern>` ordered list as described in docs/DIRECT-API-ROUTE.md; the default does not change until the owner says so.
+- Evidence download and one-file evidence pack: docs/decisions/0011-evidence-pack.md.
+- Road safety message rules (proposal): docs/decisions/0012-road-safety-message-rules.md.
+- Per-program configuration, date-ranged versions, program lookup (design only, awaiting the owner): docs/decisions/0007-information-types-status-and-program-switches.md.

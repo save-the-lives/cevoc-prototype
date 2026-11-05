@@ -100,6 +100,12 @@ Recommendation (PROPOSED): a small mapping in the same configuration file (secti
 4. Default block: if nothing matches, no switch is applied, no type is shown as available on a guess, and each section shows a visible message under its heading (for example "We cannot show this information for this notice yet."). It is a by-design message, logged by count, never silent.
 The mapping returns a program id; the version is then chosen by offence date. The lookup sits behind a port (a program resolver), so the TfNSW APIs can later supply the program directly and the file mapping becomes a fallback or is removed, by configuration, in line with record 0003.
 
+## Addendum 2026-11-05 (design only; the owner has not yet confirmed a build)
+- Fields available for matching today, re-checked on main (PROVEN): offence description text, location text, enforcement method, and (images state only) the camera code. The banner's own "Offence" text, direction, lane and the rest are parsed and discarded today; record 0009 keeps them in the `details` map, after which the banner offence text can be used as a program hint (question 5 above), still only after the registration step.
+- A fourth information type is added to the switch list: `evidence_pack` (record 0011), with its own mode and not-available message, date-ranged like the others. Video stays a placeholder type and is never downloadable.
+- Road safety messages (record 0012) live in the same per-program, date-ranged file as an optional `messages` list. Missing fields mean a rule does not fire.
+- Per-type status values stay: available, off by choice, not applicable, not yet available, failed. The status model and the config loader are NOT to be built until the owner confirms this design in a later entry.
+
 ## Options considered for the configuration source
 | Option | What | Outcome |
 |---|---|---|
