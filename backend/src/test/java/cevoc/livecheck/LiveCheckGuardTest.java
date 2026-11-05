@@ -21,7 +21,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Token guard for /live-check/*, tested in the default build with a stand-in controller (the real one is in the live-browser source set). */
+/**
+ * Guard for /live-check/*, tested in the default build with a stand-in controller (the real one is in the live-browser source set).
+ * There is no token: the endpoints are open while live check is enabled; the guard keeps the one-lookup-at-a-time safeguard.
+ */
 class LiveCheckGuardTest {
 
     @RestController
@@ -33,57 +36,49 @@ class LiveCheckGuardTest {
     }
 
     @Nested
-    @SpringBootTest(properties = {"cevoc.live-check.enabled=true", "cevoc.live-check.token=fictitious-token-123",
-            "cevoc.cors.allowed-origins=https://front.example.test"})
+    @SpringBootTest(properties = {"cevoc.live-check.enabled=true", "cevoc.cors.allowed-origins=https://front.example.test"})
     @AutoConfigureMockMvc
     @Import(Stub.class)
-    class WithToken {
+    class Enabled {
         @Autowired MockMvc mvc;
 
         @Test
-        void missingHeaderIs401() throws Exception {
-            mvc.perform(get("/live-check/ping")).andExpect(status().isUnauthorized());
+        void endpointsAreOpenWhileLiveCheckIsEnabled() throws Exception {
+            mvc.perform(get("/live-check/ping")).andExpect(status().isOk()).andExpect(content().string("ok"));
         }
 
         @Test
-        void wrongTokenIs401() throws Exception {
-            mvc.perform(get("/live-check/ping").header(LiveCheckGuard.HEADER, "nope")).andExpect(status().isUnauthorized());
+        void aTokenHeaderIsIgnored() throws Exception {
+            mvc.perform(get("/live-check/ping").header("X-Live-Check-Token", "anything")).andExpect(status().isOk());
         }
 
         @Test
-        void rightTokenPasses() throws Exception {
-            mvc.perform(get("/live-check/ping").header(LiveCheckGuard.HEADER, "fictitious-token-123"))
-                    .andExpect(status().isOk()).andExpect(content().string("ok"));
-        }
-
-        @Test
-        void preflightFromFrontendOriginAllowedWithoutToken() throws Exception {
+        void preflightFromFrontendOriginAllowed() throws Exception {
             mvc.perform(options("/live-check/lookup")
                             .header("Origin", "https://front.example.test")
                             .header("Access-Control-Request-Method", "POST")
-                            .header("Access-Control-Request-Headers", "Content-Type,X-Live-Check-Token"))
+                            .header("Access-Control-Request-Headers", "Content-Type"))
                     .andExpect(status().isOk())
                     .andExpect(header().string("Access-Control-Allow-Origin", "https://front.example.test"));
         }
     }
 
     @Nested
-    @SpringBootTest(properties = {"cevoc.live-check.enabled=true"})
+    @SpringBootTest
     @AutoConfigureMockMvc
     @Import(Stub.class)
-    class EnabledWithoutToken {
-        @Autowired MockMvc mvc;
+    class NotEnabled {
+        @Autowired org.springframework.context.ApplicationContext ctx;
 
         @Test
-        void endpointsAreOpenForThePocWhenNoTokenIsConfigured() throws Exception {
-            mvc.perform(get("/live-check/ping")).andExpect(status().isOk());
-            mvc.perform(get("/live-check/ping").header(LiveCheckGuard.HEADER, "anything")).andExpect(status().isOk());
+        void noGuardExistsByDefault() {
+            assertTrue(ctx.getBeansOfType(LiveCheckGuardConfig.class).isEmpty());
         }
     }
 
     @Test
     void onlyOneLookupAtATime() throws Exception {
-        var guard = new LiveCheckGuard("fictitious-token-123");
+        var guard = new LiveCheckGuard();
         var first = lookup();
         var second = lookup();
         assertTrue(guard.preHandle(first, new MockHttpServletResponse(), new Object()));
@@ -95,16 +90,14 @@ class LiveCheckGuardTest {
     }
 
     @Test
-    void blankTokenMeansOpenForThePoc() throws Exception {
-        var guard = new LiveCheckGuard("  ");
+    void otherRequestsPassStraightThrough() throws Exception {
+        var guard = new LiveCheckGuard();
         var res = new MockHttpServletResponse();
-        assertTrue(guard.preHandle(lookup(), res, new Object()));
+        assertTrue(guard.preHandle(new MockHttpServletRequest("GET", "/live-check/ping"), res, new Object()));
         assertEquals(200, res.getStatus());
     }
 
     private static MockHttpServletRequest lookup() {
-        var r = new MockHttpServletRequest("POST", "/live-check/lookup");
-        r.addHeader(LiveCheckGuard.HEADER, "fictitious-token-123");
-        return r;
+        return new MockHttpServletRequest("POST", "/live-check/lookup");
     }
 }

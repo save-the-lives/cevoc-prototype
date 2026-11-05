@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * Scrapes the enforcement-centre certificates JSF page. INERT BY DEFAULT: BeanConfig only creates it when
- * cevoc.scraper.certificates.enabled=true. The page's robots.txt disallows automated access, so production
+ * the certificates provider list (cevoc.certificates.providers) names http-form. The page's robots.txt disallows automated access, so production
  * use needs the owner's written approval, and this should be replaced by the real certificate API.
  *
  * <p>Calls are serialised (synchronized) and rate limited by the fetcher; results (including empty ones)

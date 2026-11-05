@@ -42,8 +42,8 @@ import org.slf4j.LoggerFactory;
  * only a rendered DOM is useful): login page, then notice summary, then (with a registration) the images page.
  * Images are blob: URLs inside the session, so their bytes are read from the same session and copied into
  * storage through MediaStoragePort; links are then made by SignedLinkPort as usual.
- * Does nothing at all (no browser, no network) unless cevoc.scraper.evidence.enabled=true, a base URL and a
- * contact are set, and cevoc.penalty-lookup.adapter=scraper-evidence.
+ * Does nothing at all (no browser, no network) unless cevoc.penalty-lookup.adapter=browser is selected and a URL and a
+ * contact are set (cevoc.scraper.evidence.url, cevoc.scraper.evidence.contact).
  *
  * The registration is transient: held in a local variable for one request, passed to the session, then dropped.
  * It is never logged (log lines below carry no request values), cached, stored, or part of a cache or storage key.
@@ -128,9 +128,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         if (cached != null && cached.expiresAt().isAfter(clock.instant())) {
             return cached.result();
         }
-        URI base = URI.create(settings.baseUrl());
+        URI base = URI.create(settings.url());
         if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null) {
-            LookupDiagnostic.set("step=config; cause=base-url-not-https");
+            LookupDiagnostic.set("step=config; cause=url-not-https");
             LookupTrace.current().fail(LookupStep.START_BROWSER, StepCause.NOT_CONFIGURED);
             return result(Status.UNAVAILABLE, number, "The lookup source is not configured correctly.");
         }

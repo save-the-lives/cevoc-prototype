@@ -15,35 +15,39 @@ import org.springframework.mock.env.MockEnvironment;
 class LiveBrowserWiringTest {
 
     private static final String BASE = "https://penalty.example.invalid/customer_service/finesonline/";
-    private static final ScraperSettings ON = new ScraperSettings(true, BASE, "test-contact@example.invalid",
+    private static final ScraperSettings ON = new ScraperSettings(BASE, "test-contact@example.invalid",
             Duration.ZERO, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
     private static final PenaltyLookupRequest REQ = new PenaltyLookupRequest("9000000004", LocalDate.of(2026, 1, 15));
 
-    private static MockEnvironment env(String browser, String scraper, String evidence) {
-        MockEnvironment e = new MockEnvironment();
-        if (browser != null) e.setProperty("cevoc.scraper.evidence.browser", browser);
-        if (scraper != null) e.setProperty("cevoc.scraper.enabled", scraper);
-        if (evidence != null) e.setProperty("cevoc.scraper.evidence.enabled", evidence);
-        return e;
+    @Test
+    void liveBrowserIsOffUnlessUrlAndContactAreSet() {
+        assertThat(ScraperEvidenceFactory.liveRequested(ON)).isTrue();
+        assertThat(ScraperEvidenceFactory.liveRequested(ScraperSettings.off())).isFalse();
+        assertThat(ScraperEvidenceFactory.liveRequested(new ScraperSettings(BASE, "", Duration.ZERO, Duration.ZERO,
+                Duration.ofSeconds(1), Duration.ZERO, 1))).isFalse();
+        assertThat(ScraperEvidenceFactory.liveRequested(new ScraperSettings("", "test-contact@example.invalid", Duration.ZERO,
+                Duration.ZERO, Duration.ofSeconds(1), Duration.ZERO, 1))).isFalse();
     }
 
     @Test
-    void liveBrowserIsOffUnlessEverythingIsSwitchedOn() {
-        assertThat(ScraperEvidenceFactory.liveRequested(env("playwright", "true", "true"), ON)).isTrue();
-        assertThat(ScraperEvidenceFactory.liveRequested(env("Playwright", "true", "true"), ON)).isTrue();
-        assertThat(ScraperEvidenceFactory.liveRequested(env(null, "true", "true"), ON)).isFalse();
-        assertThat(ScraperEvidenceFactory.liveRequested(env("none", "true", "true"), ON)).isFalse();
-        assertThat(ScraperEvidenceFactory.liveRequested(env("playwright", null, "true"), ON)).isFalse();
-        assertThat(ScraperEvidenceFactory.liveRequested(env("playwright", "false", "true"), ON)).isFalse();
-        assertThat(ScraperEvidenceFactory.liveRequested(env("playwright", "true", "true"), ScraperSettings.off())).isFalse();
+    void settingsReadTheOneFullyQualifiedUrlAndIgnoreTheRetiredBaseUrlName() {
+        MockEnvironment e = new MockEnvironment().withProperty("cevoc.scraper.evidence.url", BASE)
+                .withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid");
+        assertThat(ScraperEvidenceFactory.settings(e).url()).isEqualTo(BASE);
+        assertThat(ScraperEvidenceFactory.settings(e).usable()).isTrue();
+        MockEnvironment old = new MockEnvironment().withProperty("cevoc.scraper.evidence.base-url", BASE)
+                .withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid")
+                .withProperty("cevoc.scraper.evidence.enabled", "true").withProperty("cevoc.scraper.enabled", "true")
+                .withProperty("cevoc.scraper.evidence.browser", "playwright");
+        assertThat(ScraperEvidenceFactory.settings(old).usable()).isFalse();
     }
 
     @Test
     void defaultBuildFallsBackToTheFailingFactory() {
         assumeThat(classPresent(ScraperEvidenceFactory.LIVE_FACTORY)).isFalse();
         assertThat(ScraperEvidenceFactory.playwright(ON, "", true)).isNull();
-        MockEnvironment e = env("playwright", "true", "true");
-        e.setProperty("cevoc.scraper.evidence.base-url", BASE);
+        MockEnvironment e = new MockEnvironment();
+        e.setProperty("cevoc.scraper.evidence.url", BASE);
         e.setProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid");
         PenaltyLookupResult r = ScraperEvidenceFactory.create(e, null).find(REQ);
         assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.UNAVAILABLE);

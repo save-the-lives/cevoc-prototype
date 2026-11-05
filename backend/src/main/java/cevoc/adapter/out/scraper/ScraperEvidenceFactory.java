@@ -26,7 +26,7 @@ public final class ScraperEvidenceFactory {
     public static PenaltyLookupPort create(Environment env, MediaStoragePort media,
                                            cevoc.application.port.out.BannerTextReaderPort bannerReader) {
         ScraperSettings s = settings(env);
-        boolean live = liveRequested(env, s);
+        boolean live = liveRequested(s);
         RenderedPageSessionFactory sessions = NO_BROWSER;
         RegistrationProvider registrations = RegistrationProvider.none();
         if (live) {
@@ -49,8 +49,7 @@ public final class ScraperEvidenceFactory {
     static ScraperSettings settings(Environment env) {
         String p = "cevoc.scraper.evidence.";
         return new ScraperSettings(
-                env.getProperty(p + "enabled", Boolean.class, false),
-                env.getProperty(p + "base-url", ""),
+                env.getProperty(p + "url", ""),
                 env.getProperty(p + "contact", ""),
                 Duration.ofMillis(env.getProperty(p + "min-interval-ms", Long.class, ScraperSettings.DEFAULT_MIN_INTERVAL.toMillis())),
                 Duration.ofMillis(env.getProperty(p + "connect-timeout-ms", Long.class, ScraperSettings.DEFAULT_CONNECT_TIMEOUT.toMillis())),
@@ -60,12 +59,12 @@ public final class ScraperEvidenceFactory {
     }
 
     /**
-     * A browser session factory for other browser-based sources (the certificates search page). Same switches as the
-     * evidence scraper (browser=playwright, both scraper flags, base URL and contact set): otherwise it refuses to open.
+     * A browser session factory for other browser-based sources (the certificates search page). Same conditions as the
+     * evidence route (Chromium build present, URL and contact set): otherwise it refuses to open.
      */
     public static RenderedPageSessionFactory sessionsFor(Environment env) {
         ScraperSettings s = settings(env);
-        if (liveRequested(env, s)) {
+        if (liveRequested(s)) {
             RenderedPageSessionFactory f = playwright(s, env.getProperty("cevoc.live-check.capture-dir", ""),
                     env.getProperty("cevoc.scraper.evidence.browser-headless", Boolean.class, true));
             if (f != null) {
@@ -75,10 +74,9 @@ public final class ScraperEvidenceFactory {
         return NO_BROWSER;
     }
 
-    /** True only for browser=playwright AND both scraper flags on (cevoc.scraper.enabled, cevoc.scraper.evidence.enabled) and a usable config. */
-    static boolean liveRequested(Environment env, ScraperSettings s) {
-        return "playwright".equalsIgnoreCase(env.getProperty("cevoc.scraper.evidence.browser", "").trim())
-                && env.getProperty("cevoc.scraper.enabled", Boolean.class, false) && s.usable();
+    /** True only for a usable config (URL and contact). Being selected at all is decided by the adapter setting, in BeanConfig. */
+    static boolean liveRequested(ScraperSettings s) {
+        return s.usable();
     }
 
     /** Reflection keeps the default build free of any Playwright reference. Null when the profile is not active. */
@@ -97,8 +95,8 @@ public final class ScraperEvidenceFactory {
                     .getConstructor(ScraperSettings.class, String.class, boolean.class)
                     .newInstance(s, captureDir, headless);
         } catch (ReflectiveOperationException | LinkageError e) {
-            LOG.warn("cevoc.scraper.evidence.browser=playwright but the live-browser build profile is not active; "
-                    + "the evidence scraper stays unavailable");
+            LOG.warn("The browser adapter is selected but the live-browser build profile is not active; "
+                    + "the evidence route stays unavailable");
             return null;
         }
     }

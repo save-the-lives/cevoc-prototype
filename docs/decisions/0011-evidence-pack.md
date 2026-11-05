@@ -28,7 +28,7 @@ Owner approval: the owner's rules were given by voice on 2026-11-05; the recomme
 - Mobile and accessibility checks to run when built: tap targets, keyboard use, screen-reader announcements for progress and errors, the PDF opened in a screen reader, and a narrow-width layout.
 
 ## Dependencies and order
-Needs a certificate source (today's `search-page` route, not yet proven to return a row on the live site) and the red light page (0009). The design report can proceed now; the build follows the certificates live test and the red light page.
+Needs a certificate source (today's `browser` certificates route, earlier `search-page`, not yet proven to return a row on the live site) and the red light page (0009). The design report can proceed now; the build follows the certificates live test and the red light page.
 
 ## Secondary ideas (proposals only, not built)
 What happens next (the four options already on the page, with dates when known); a notice timeline (offence, notice, due date); a one-line why-it-matters note beside each kind of evidence; a help and contact block (the page already carries a help phone number); a print stylesheet; mobile and accessibility audit. Each is a display mapping, none needs new data.

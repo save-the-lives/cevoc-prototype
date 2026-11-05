@@ -40,7 +40,7 @@ class ScraperEvidenceTest {
     private static final PenaltyLookupRequest REQ = new PenaltyLookupRequest("9000000004", LocalDate.of(2026, 1, 15));
 
     private static ScraperSettings enabled() {
-        return new ScraperSettings(true, BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
+        return new ScraperSettings(BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
                 Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
     }
 
@@ -229,12 +229,11 @@ class ScraperEvidenceTest {
     }
 
     @Test
-    void doesNothingWhenNotEnabledOrNotConfigured() {
+    void doesNothingWhenNotConfigured() {
         Sessions sessions = new Sessions(new FakeRenderedPageSession());
         for (ScraperSettings s : List.of(ScraperSettings.off(),
-                new ScraperSettings(false, BASE, "c@example.invalid", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1),
-                new ScraperSettings(true, BASE, "", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1),
-                new ScraperSettings(true, "", "c@example.invalid", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1))) {
+                new ScraperSettings(BASE, "", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1),
+                new ScraperSettings("", "c@example.invalid", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1))) {
             PenaltyLookupResult r = new ScraperEvidenceLookupAdapter(s, sessions, new RevenueNswPageParser(),
                     new FakeStorage(), Clock.systemUTC()).find(REQ);
             assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
@@ -262,13 +261,16 @@ class ScraperEvidenceTest {
     }
 
     @Test
-    void shippedConfigKeepsManifestAsDefaultAndScraperOff() throws IOException {
+    void shippedConfigKeepsStubAsDefaultAndHasNoScraperFlags() throws IOException {
         Properties p = new Properties();
         try (InputStream in = Files.newInputStream(Path.of("src/main/resources/application.properties"))) {
             p.load(in);
         }
-        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isEqualTo("manifest");
-        assertThat(p.getProperty("cevoc.scraper.evidence.enabled")).isEqualTo("false");
+        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isEqualTo("stub");
+        for (String retired : new String[] {"cevoc.scraper.enabled", "cevoc.scraper.evidence.enabled", "cevoc.scraper.evidence.browser",
+                "cevoc.scraper.certificates.enabled", "cevoc.revenue-nsw-http.enabled", "cevoc.live-check.token"}) {
+            assertThat(p.getProperty(retired)).as(retired).isNull();
+        }
     }
 
     /** Fake whose reads after submit-login are scripted: submitLogin returns the first, currentPage the rest (last one repeats). */
@@ -424,7 +426,7 @@ class ScraperEvidenceTest {
             }
         };
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
-        ScraperSettings big = new ScraperSettings(true, BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
+        ScraperSettings big = new ScraperSettings(BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
                 Duration.ofSeconds(1), Duration.ofSeconds(60), 1 << 20);
         var adapter = new ScraperEvidenceLookupAdapter(big, new Sessions(fake), new RevenueNswPageParser(), recording, clock, req -> Optional.of(PLATE));
         PenaltyLookupResult r = adapter.find(REQ);

@@ -33,7 +33,7 @@ class ScraperBannerOcrTest {
     }
 
     private static ScraperEvidenceLookupAdapter adapter(BannerTextReaderPort reader) {
-        var settings = new ScraperSettings(true, BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
+        var settings = new ScraperSettings(BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
                 Duration.ofSeconds(1), Duration.ofSeconds(60), 1_000_000);
         // The real page has no banner text (it is in the picture's pixels): take the fixture's text banner out.
         FakeRenderedPageSession fake = new FakeRenderedPageSession();
@@ -97,7 +97,7 @@ class ScraperBannerOcrTest {
 
     @Test
     void textFromThePageWinsOverOcr() {
-        var settings = new ScraperSettings(true, BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
+        var settings = new ScraperSettings(BASE, "test-contact@example.invalid", Duration.ZERO, Duration.ofSeconds(1),
                 Duration.ofSeconds(1), Duration.ofSeconds(60), 1_000_000);
         PenaltyLookupResult r = new ScraperEvidenceLookupAdapter(settings, new Sessions(new FakeRenderedPageSession()),
                 new RevenueNswPageParser(), new FakeStorage(), Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC),

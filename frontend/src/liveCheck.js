@@ -6,7 +6,7 @@ export function isLiveCheckRoute(loc) {
   return path === LIVE_CHECK_PATH || loc.hash === `#${LIVE_CHECK_PATH}` || loc.hash === `#${LIVE_CHECK_PATH}/`;
 }
 
-export const emptyFields = () => ({ token: '', notice: '', date: '', registration: '' });
+export const emptyFields = () => ({ notice: '', date: '', registration: '' });
 
 // DD/MM/YYYY -> YYYY-MM-DD, or null if not a real calendar date.
 export function parseOffenceDate(input) {
@@ -18,16 +18,15 @@ export function parseOffenceDate(input) {
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
-// Returns { ok:true, request:{token, body} } or { ok:false, error } (error text never contains the values).
+// Returns { ok:true, request:{body} } or { ok:false, error } (error text never contains the values).
 export function buildRequest(fields) {
-  const token = (fields.token || '').trim();
   const notice = (fields.notice || '').trim();
   const registration = (fields.registration || '').trim();
   if (!/^[A-Za-z0-9]{4,20}$/.test(notice)) return { ok: false, error: 'Penalty notice number should be 4 to 20 letters or digits.' };
   const offenceDate = parseOffenceDate(fields.date);
   if (!offenceDate) return { ok: false, error: 'Offence date must be a real date as DD/MM/YYYY.' };
   if (registration && registration.length > 20) return { ok: false, error: 'Registration should be 20 characters or fewer.' };
-  return { ok: true, request: { token, body: { notice, offenceDate, registration: registration || null, includeImages: true } } };
+  return { ok: true, request: { body: { notice, offenceDate, registration: registration || null, includeImages: true } } };
 }
 
 // Backend answers text/plain lines like "images             : 2" and indented "  location: yes".
@@ -74,8 +73,7 @@ export function parseResponse(text) {
 }
 
 export function errorForStatus(status) {
-  if (status === 401 || status === 403) return 'The access token was not accepted.';
-  if (status === 400) return 'The server did not accept those details. Check the notice number, date and registration.';
+    if (status === 400) return 'The server did not accept those details. Check the notice number, date and registration.';
   if (status === 404) return 'The live check is not switched on at that server.';
   if (status === 429) return 'Too many tries. Wait a bit and try again.';
   return 'The check failed on the server. See the backend console.';
@@ -90,7 +88,7 @@ export async function runLiveCheck(fields, { fetchImpl = fetch, base = '' } = {}
       method: 'POST',
       cache: 'no-store',
       credentials: 'omit',
-      headers: built.request.token ? { 'Content-Type': 'application/json', 'X-Live-Check-Token': built.request.token } : { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(built.request.body),
     });
     if (!res.ok) return { ok: false, error: errorForStatus(res.status) };

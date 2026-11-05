@@ -16,7 +16,7 @@ import org.springframework.core.env.Environment;
 public final class RevenueNswHttpFactory {
 
     /** The value of {@code cevoc.penalty-lookup.adapter} that selects this route. */
-    public static final String ADAPTER = "revenue-nsw-http";
+    public static final String ADAPTER = "http";
     private static final Logger LOG = LoggerFactory.getLogger(RevenueNswHttpFactory.class);
 
     private RevenueNswHttpFactory() {}
@@ -24,7 +24,7 @@ public final class RevenueNswHttpFactory {
     public static PenaltyLookupPort create(Environment env, MediaStoragePort media) {
         RevenueNswHttpSettings s = settings(env);
         if (!s.usable()) {
-            LOG.warn("cevoc.penalty-lookup.adapter=revenue-nsw-http but it is not enabled and fully configured; lookups report it as switched off");
+            LOG.warn("cevoc.penalty-lookup.adapter=http but it is not fully configured; lookups report it as switched off");
         }
         return new RevenueNswHttpLookupAdapter(s, new JdkHttpTransport(s.connectTimeout()), media, new RequestScopedRegistration());
     }
@@ -35,7 +35,6 @@ public final class RevenueNswHttpFactory {
         Set<String> allowed = Arrays.stream(hosts.split(",")).map(h -> h.trim().toLowerCase(Locale.ROOT)).filter(h -> !h.isEmpty())
                 .collect(Collectors.toSet());
         return new RevenueNswHttpSettings(
-                env.getProperty(p + "enabled", Boolean.class, false),
                 env.getProperty(p + "base-url", ""),
                 env.getProperty(p + "path-prefix", ""),
                 env.getProperty(p + "contact", ""),
