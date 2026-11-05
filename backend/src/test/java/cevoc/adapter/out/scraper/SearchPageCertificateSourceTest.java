@@ -213,4 +213,17 @@ class SearchPageCertificateSourceTest {
         assertThat(odd).contains("server=omitted").contains("body-size=<10KB").contains("body-html=no").doesNotContain("Acme").doesNotContain("example");
         assertThat(SearchPageDiagnostic.refusalProfile(null, null, null, null, false, false)).contains("header-names=none").contains("body-size=<512B");
     }
+
+    @Test
+    void theImageRefusalProfileAndFailureMarkerStayRedacted() {
+        String d = SearchPageDiagnostic.refusalProfile("image-refusal-profile", "revenue-nsw-api",
+                java.util.Map.of("x-fictitious-edge", "fictitious-value", "content-type", "text/plain; charset=x"), 3898, false,
+                "headless-chromium-route-fetch", "custom-identifying", true, false);
+        assertThat(d).startsWith("image-refusal-profile: host=revenue-nsw-api").contains("header-names=content-type,x-fictitious-edge")
+                .contains("body-size=<10KB").contains("body-html=no").contains("sent-referer=yes").contains("sent-origin=no")
+                .doesNotContain("fictitious-value").doesNotContain("charset");
+        String bad = SearchPageDiagnostic.refusalProfileUnavailable("srch-refusal-profile",
+                new IllegalStateException("fictitious message with detail"));
+        assertThat(bad).isEqualTo("srch-refusal-profile: unavailable; error-class=IllegalStateException");
+    }
 }

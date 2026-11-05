@@ -182,6 +182,9 @@ final class PlaywrightSession implements RenderedPageSession {
                 // Numbers and a type class only: why this full-size response was not kept.
                 note("image-full-skipped=status:" + resp.status() + "/type:" + (type.startsWith("image/") ? type.substring(6) : type.isEmpty() ? "none"
                         : type.split("[/;]")[0]) + "/bytes:" + (body == null ? -1 : body.length) + "/kept:" + seenImages.size());
+                if (resp.status() >= 400) {
+                    imageRefusalProfile(route, resp, body);
+                }
             }
         } catch (RuntimeException e) {
             // capture must never break the page
@@ -719,14 +722,63 @@ final class PlaywrightSession implements RenderedPageSession {
 
     /** Redacted facts about the refusal (header names, size bucket, client category); see SearchPageDiagnostic. */
     private void refusalProfile(com.microsoft.playwright.Response r, String body) {
+        String label = "srch-refusal-profile";
         try {
-            java.util.Map<String, String> headers = r == null ? java.util.Map.of() : r.allHeaders();
-            java.util.Map<String, String> sent = r == null ? java.util.Map.of() : r.request().allHeaders();
-            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(headers, body,
+            java.util.Map<String, String> headers = java.util.Map.of();
+            java.util.Map<String, String> sent = java.util.Map.of();
+            if (r != null) {
+                try {
+                    headers = r.allHeaders();
+                } catch (RuntimeException e) {
+                    headers = r.headers();
+                }
+                try {
+                    sent = r.request().allHeaders();
+                } catch (RuntimeException e) {
+                    sent = r.request().headers();
+                }
+            }
+            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(label, "same", headers,
+                    body == null ? 0 : body.length(), body != null && body.toLowerCase(Locale.ROOT).contains("<html"),
                     (headless ? "headless-chromium" : "headed-chromium"), "custom-identifying",
-                    sent.containsKey("referer"), sent.containsKey("origin")));
-        } catch (RuntimeException ignored) {
-            // diagnostics must never break the flow
+                    containsKeyIgnoreCase(sent, "referer"), containsKeyIgnoreCase(sent, "origin")));
+        } catch (RuntimeException e) {
+            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfileUnavailable(label, e));
+        }
+    }
+
+    private static boolean containsKeyIgnoreCase(java.util.Map<String, String> m, String key) {
+        return m.keySet().stream().anyMatch(k -> k != null && k.equalsIgnoreCase(key));
+    }
+
+    /** same | revenue-nsw-api | other: host category of a request URL (never the URL). */
+    private String requestHostCategory(String url) {
+        try {
+            String host = URI.create(url).getHost();
+            if (host == null) return "other";
+            if (sameHost(url, URI.create(loginUrl).getHost())) return "same";
+            return host.toLowerCase(Locale.ROOT).endsWith("osr.nsw.gov.au") ? "revenue-nsw-api" : "other";
+        } catch (RuntimeException e) {
+            return "other";
+        }
+    }
+
+    private volatile boolean imageRefusalNoted;
+
+    /** Once per session: header names, size bucket and host category of a refused image request. */
+    private void imageRefusalProfile(com.microsoft.playwright.Route route, com.microsoft.playwright.APIResponse resp, byte[] body) {
+        String label = "image-refusal-profile";
+        if (imageRefusalNoted) return;
+        imageRefusalNoted = true;
+        try {
+            java.util.Map<String, String> sent = route.request().headers();
+            String text = body == null ? "" : new String(body, 0, Math.min(body.length, 4096), java.nio.charset.StandardCharsets.ISO_8859_1).toLowerCase(Locale.ROOT);
+            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(label, requestHostCategory(route.request().url()),
+                    resp.headers(), body == null ? 0 : body.length, text.contains("<html") || text.contains("<body"),
+                    (headless ? "headless-chromium" : "headed-chromium") + "-route-fetch", "custom-identifying",
+                    containsKeyIgnoreCase(sent, "referer"), containsKeyIgnoreCase(sent, "origin")));
+        } catch (RuntimeException e) {
+            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfileUnavailable(label, e));
         }
     }
 

@@ -131,6 +131,26 @@ public final class SearchPageDiagnostic {
      */
     public static String refusalProfile(Map<String, String> responseHeaders, String body, String clientMode,
                                         String userAgentCategory, boolean sentReferer, boolean sentOrigin) {
+        return refusalProfile("srch-refusal-profile", "n/a", responseHeaders, body == null ? 0 : body.length(), looksHtml(body),
+                clientMode, userAgentCategory, sentReferer, sentOrigin);
+    }
+
+    /** Failure marker: the exception CLASS name only, never its message. */
+    public static String refusalProfileUnavailable(String label, Throwable t) {
+        String n = t == null ? "none" : t.getClass().getSimpleName();
+        return label + ": unavailable; error-class=" + (n.matches("[A-Za-z0-9_]{1,60}") ? n : "other");
+    }
+
+    private static boolean looksHtml(String body) {
+        if (body == null) return false;
+        String b = body.toLowerCase(Locale.ROOT);
+        return b.contains("<html") || b.contains("<body") || b.contains("<!doctype html");
+    }
+
+    /** As above, from a size and an html flag (for a body held as bytes), with a host category (same|revenue-nsw-api|other). */
+    public static String refusalProfile(String label, String hostCategory, Map<String, String> responseHeaders, int bodyLength,
+                                        boolean bodyHtml, String clientMode, String userAgentCategory,
+                                        boolean sentReferer, boolean sentOrigin) {
         try {
             TreeSet<String> names = new TreeSet<>();
             String server = null;
@@ -144,18 +164,15 @@ public final class SearchPageDiagnostic {
                     if (n.equals("content-type")) type = mediaType(h.getValue());
                 }
             }
-            int len = body == null ? 0 : body.length();
-            boolean html = body != null && (body.toLowerCase(Locale.ROOT).contains("<html") || body.toLowerCase(Locale.ROOT).contains("<body")
-                    || body.toLowerCase(Locale.ROOT).contains("<!doctype html"));
-            return "srch-refusal-profile: header-names=" + (names.isEmpty() ? "none" : String.join(",", names.stream().limit(40).toList()))
+            return label + ": host=" + (hostCategory == null ? "unknown" : token(hostCategory)) + "; header-names=" + (names.isEmpty() ? "none" : String.join(",", names.stream().limit(40).toList()))
                     + "; server=" + (server == null ? "omitted" : server)
                     + "; content-type=" + (type == null ? "none" : type)
-                    + "; body-size=" + sizeBucket(len) + "; body-html=" + yn(html)
+                    + "; body-size=" + sizeBucket(bodyLength) + "; body-html=" + yn(bodyHtml)
                     + "; client=" + (clientMode == null ? "unknown" : token(clientMode))
                     + "; user-agent=" + (userAgentCategory == null ? "unknown" : token(userAgentCategory))
                     + "; sent-referer=" + yn(sentReferer) + "; sent-origin=" + yn(sentOrigin);
         } catch (RuntimeException e) {
-            return "srch-refusal-profile: unreadable";
+            return label + ": unreadable";
         }
     }
 
