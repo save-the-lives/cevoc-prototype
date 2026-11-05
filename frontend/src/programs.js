@@ -52,7 +52,7 @@ export function pickVersion(program, offenceDate) {
 /**
  * Rows to show for a result. Always returns a plain object: { state, title, rows, message }.
  * state: 'rows' (a program and version matched), 'no-version' (program known, no version covers the date), 'default' (no program).
- * A detail the notice did not return is a row with value null and the configured missing message: never hidden.
+ * A detail the notice did not return is simply not a row (nothing is shown for it); a number gets its configured unit.
  */
 export function detailRows(result, cfg = config) {
   const program = pickProgram(result, cfg);
@@ -62,10 +62,13 @@ export function detailRows(result, cfg = config) {
     return { state: 'no-version', title: program.label, rows: [], message: 'We do not have display rules for an offence on this date, so these details are not shown.' };
   }
   const details = result?.details || {};
-  const rows = version.details.map((d) => {
-    const raw = details[d.key];
-    const has = raw !== undefined && raw !== null && String(raw).trim() !== '';
-    return { key: d.key, label: d.label, first: !!d.first, value: has ? String(raw) : null, missing: has ? null : version.missingMessage };
-  });
+  const rows = version.details
+    .map((d) => {
+      const raw = details[d.key];
+      if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+      const value = d.unit && typeof raw === 'number' ? `${raw} ${d.unit}` : String(raw);
+      return { key: d.key, label: d.label, first: !!d.first, value };
+    })
+    .filter(Boolean);
   return { state: 'rows', title: program.label, rows, message: null, version: version.version, types: version.types };
 }

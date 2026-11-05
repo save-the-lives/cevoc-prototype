@@ -64,8 +64,8 @@ public class RevenueNswPageParser {
     /**
      * What one rendered page shows. Fields that do not apply to the state are null, false or empty.
      * {@code cameraCode} is the banner's camera code, else the certificate link's s value.
-     * {@code details} holds the other banner fields (lane, direction, time since red and so on), merged across the images'
-     * banners, first value wins; empty outside the images state. Values are never logged.
+     * {@code details} holds the typed banner facts the page shows (time since red in seconds, speed limit in km/h) from the first
+     * image's banner; empty outside the images state. Values are never logged.
      */
     public record Page(
             State state,
@@ -79,7 +79,7 @@ public class RevenueNswPageParser {
             boolean downloadImagesPresent,
             String cameraCode,
             CertificationRef certification,
-            Map<String, String> details) {
+            Map<String, Object> details) {
 
         public Page {
             details = details == null ? Map.of() : Map.copyOf(details);
@@ -110,6 +110,7 @@ public class RevenueNswPageParser {
 
     private static final Pattern HEADING = Pattern.compile("Penalty Notice Number\\s*[-–:]\\s*([A-Za-z0-9]{4,20})");
     private static final Pattern REF = Pattern.compile("(?<![\\d-])\\d{1,4}-\\d{1,3}-\\d{4,12}(?![\\d-])");
+    private static final Pattern BANNER_START = Pattern.compile("Camera\\s+Code\\s*:", Pattern.CASE_INSENSITIVE);
     private static final Pattern BANNER_CODE = Pattern.compile("Camera Code\\s*:\\s*([A-Za-z0-9-]{1,20})", Pattern.CASE_INSENSITIVE);
     private static final Pattern MONEY_IN_TEXT = Pattern.compile("\\$\\s?([0-9][0-9,]*(?:\\.[0-9]{2})?)");
     private static final Pattern STATUS_LINE = Pattern.compile(
@@ -402,18 +403,29 @@ public class RevenueNswPageParser {
         return false;
     }
 
-    /** The other banner fields (not the camera code), merged over every banner on the page, first value per key wins. */
-    private Map<String, String> bannerDetails(Document doc) {
-        Map<String, String> merged = new LinkedHashMap<>();
+    /**
+     * The typed banner facts the page shows (time since red, speed limit) from the FIRST image's banner. Banner elements are tried
+     * first; if none yields a fact (the real markup is not known), the text from the first "Camera Code" to the next one is read,
+     * the same fallback the camera code already uses. Never throws, never logs the text.
+     */
+    private Map<String, Object> bannerDetails(Document doc) {
         for (Element banner : doc.select("figcaption, .banner")) {
-            CameraBannerParser.Banner b = bannerParser.parse(banner.wholeText());
-            Map<String, String> one = b.asDetails();
+            Map<String, Object> one = bannerParser.parse(banner.wholeText()).asDetails();
             if (one.isEmpty()) {
                 one = bannerParser.parse(banner.text()).asDetails();
             }
-            one.forEach(merged::putIfAbsent);
+            if (!one.isEmpty()) {
+                return one;
+            }
         }
-        return merged;
+        String page = doc.text();
+        Matcher first = BANNER_START.matcher(page);
+        if (!first.find()) {
+            return Map.of();
+        }
+        int from = first.start();
+        int to = first.find() ? first.start() : page.length();
+        return bannerParser.parse(page.substring(from, to)).asDetails();
     }
 
     /** Camera code from banner text: banner elements first, else a "Camera Code:" anywhere in the page text. */

@@ -156,11 +156,21 @@ class RevenueNswPageParserTest {
     }
 
     @Test
-    void imagesStateKeepsTheRedLightBannerFieldsAsDetails() {
+    void imagesStateKeepsTheTypedBannerFactsOfTheFirstImage() {
         RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state3-images.html"));
-        assertThat(p.details()).containsEntry("lane", "2").containsEntry("timeSinceRed", "1.2 sec")
-                .containsEntry("yellowLightDuration", "4.0 sec").containsEntry("direction", "North");
-        assertThat(p.details()).doesNotContainKey("cameraCode");
+        assertThat(p.details()).containsOnlyKeys("timeSinceRed", "speedLimit");
+        assertThat(p.details().get("timeSinceRed")).isEqualTo(1.2);
+        assertThat(p.details().get("speedLimit")).isEqualTo(60);
+    }
+
+    @Test
+    void bannerTextOutsideBannerElementsIsStillReadFromTheFirstCameraCodeOnward() {
+        String html = fixture("fictitious-state3-images.html").replace("<figcaption class=\"banner\">", "<p class=\"cap\">")
+                .replace("</figcaption>", "</p>");
+        assertThat(html).doesNotContain("figcaption");
+        java.util.Map<String, Object> d = parser.parse(html).details();
+        assertThat(d.get("timeSinceRed")).isEqualTo(1.2);
+        assertThat(d.get("speedLimit")).isEqualTo(60);
     }
 
     @Test

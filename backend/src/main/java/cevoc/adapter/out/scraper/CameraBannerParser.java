@@ -34,32 +34,46 @@ public class CameraBannerParser {
             return new Banner(null, null, null, null, null, null, null, null, null, null, null, null);
         }
 
+        /** Seconds the light had been red, from text like "1.2 sec"; null when absent or not a plausible number. */
+        public Double timeSinceRedSeconds() {
+            Double v = firstNumber(timeSinceRed);
+            return v != null && v >= 0 && v <= 60 ? v : null;
+        }
+
+        /** Speed limit in km/h, from text like "60" or "60 km/h"; null when absent or not plausible. */
+        public Integer speedLimitKmh() {
+            Double v = firstNumber(speedLimit);
+            return v != null && v >= 10 && v <= 130 ? Integer.valueOf((int) Math.round(v)) : null;
+        }
+
         /**
-         * Every parsed field except the camera code (which is a typed, internal field) as a stable-keyed map for the
-         * result's flexible details (decision record 0009). Absent fields are left out; values are as read.
+         * The typed facts the page shows (decision record 0009), as a stable-keyed map: {@code timeSinceRed} in seconds and
+         * {@code speedLimit} in km/h, both numbers. Each is left out on its own when absent or unreadable. Other banner fields are
+         * parsed but not carried until the page shows them.
          */
-        public Map<String, String> asDetails() {
-            Map<String, String> out = new LinkedHashMap<>();
-            put(out, "direction", direction);
-            put(out, "operator", operator);
-            put(out, "bannerLocation", location);
-            put(out, "incidentNumber", incidentNumber);
-            put(out, "lane", lane);
-            put(out, "offenceText", offence);
-            put(out, "speedLimit", speedLimit);
-            put(out, "timeSinceRed", timeSinceRed);
-            put(out, "yellowLightDuration", yellowLightDuration);
-            put(out, "bannerDate", date);
-            put(out, "bannerTime", time);
+        public Map<String, Object> asDetails() {
+            Map<String, Object> out = new LinkedHashMap<>();
+            Double red = timeSinceRedSeconds();
+            if (red != null) {
+                out.put("timeSinceRed", red);
+            }
+            Integer limit = speedLimitKmh();
+            if (limit != null) {
+                out.put("speedLimit", limit);
+            }
             return out;
         }
 
-        private static void put(Map<String, String> out, String key, String value) {
-            if (value != null && !value.isBlank()) {
-                out.put(key, value);
+        private static Double firstNumber(String text) {
+            if (text == null) {
+                return null;
             }
+            Matcher m = NUMBER.matcher(text);
+            return m.find() ? Double.valueOf(m.group().replace(',', '.')) : null;
         }
     }
+
+    private static final Pattern NUMBER = Pattern.compile("\\d+(?:[.,]\\d+)?");
 
     private static final int MAX_VALUE_LENGTH = 200;
     private static final int MAX_CODE_LENGTH = 40;
@@ -71,8 +85,7 @@ public class CameraBannerParser {
     };
 
     private static final Pattern LABEL_ALT = Pattern.compile(
-            "(?<![A-Za-z])(Yellow light duration|Time since red|Incident Number|Camera Code|Speed Limit|Direction|Operator|Location|Offence|Lane|Date|Time)\\s*:",
-            Pattern.CASE_INSENSITIVE);
+            "(?<![A-Za-z])(" + String.join("|", LABELS).replace(" ", "\\s+") + ")\\s*:", Pattern.CASE_INSENSITIVE);
 
     public Banner parse(String text) {
         if (text == null || text.isBlank()) {
@@ -87,7 +100,7 @@ public class CameraBannerParser {
             if (currentLabel != null) {
                 found.putIfAbsent(currentLabel, clean(normalised.substring(valueStart, m.start())));
             }
-            currentLabel = m.group(1).toLowerCase(Locale.ROOT);
+            currentLabel = m.group(1).replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
             valueStart = m.end();
         }
         if (currentLabel != null) {

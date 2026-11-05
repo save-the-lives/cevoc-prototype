@@ -67,12 +67,34 @@ class CameraBannerParserTest {
     }
 
     @Test
-    void detailsMapHoldsEveryFieldExceptTheCameraCodeAndSkipsAbsentOnes() {
-        java.util.Map<String, String> d = parser.parse("Camera Code: TST001 Direction: North Lane: 2 Offence: Red light "
-                + "Time since red: 1.2 sec Yellow light duration: 4.0 sec").asDetails();
-        assertThat(d).containsEntry("direction", "North").containsEntry("lane", "2").containsEntry("offenceText", "Red light")
-                .containsEntry("timeSinceRed", "1.2 sec").containsEntry("yellowLightDuration", "4.0 sec");
-        assertThat(d).doesNotContainKeys("cameraCode", "operator", "speedLimit", "bannerDate");
+    void detailsCarryOnlyTheTwoTypedFactsThePageShows() {
+        java.util.Map<String, Object> d = parser.parse("Camera Code: TST001 Direction: North Lane: 2 Offence: Red light "
+                + "Speed Limit: 60 km/h Time since red: 1.2 sec Yellow light duration: 4.0 sec").asDetails();
+        assertThat(d).containsOnlyKeys("timeSinceRed", "speedLimit");
+        assertThat(d.get("timeSinceRed")).isEqualTo(1.2);
+        assertThat(d.get("speedLimit")).isEqualTo(60);
         assertThat(parser.parse(null).asDetails()).isEmpty();
+    }
+
+    @Test
+    void aMissingFieldDoesNotAffectTheOther() {
+        assertThat(parser.parse("Lane: 2 Time since red: 0.8 seconds").asDetails()).containsOnlyKeys("timeSinceRed");
+        assertThat(parser.parse("Camera Code: TST001 Speed Limit: 80").asDetails()).containsOnlyKeys("speedLimit");
+        assertThat(parser.parse("Time since red: Speed Limit: 50").asDetails()).containsOnlyKeys("speedLimit");
+    }
+
+    @Test
+    void toleratesExtraSpacesDifferentOrderAndUnexpectedLabels() {
+        java.util.Map<String, Object> d = parser.parse("  Speed   Limit :   70 km/h   Weather: Fine   TIME   SINCE   RED :  2,5  s  "
+                + "Camera Code: TST009 Mystery Field: 12").asDetails();
+        assertThat(d.get("speedLimit")).isEqualTo(70);
+        assertThat(d.get("timeSinceRed")).isEqualTo(2.5);
+    }
+
+    @Test
+    void unreadableOrImplausibleValuesAreLeftOutNotGuessed() {
+        assertThat(parser.parse("Time since red: n/a Speed Limit: fast").asDetails()).isEmpty();
+        assertThat(parser.parse("Time since red: 9999 sec Speed Limit: 5000").asDetails()).isEmpty();
+        assertThat(parser.parse("Time since red: -1 Speed Limit: 0").asDetails()).isEmpty();
     }
 }

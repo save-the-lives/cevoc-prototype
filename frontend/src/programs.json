@@ -16,15 +16,9 @@
             "video": { "mode": "not_yet", "message": "Video is not available for this offence yet. The photos above are the evidence we can show." }
           },
           "details": [
-            { "key": "timeSinceRed", "label": "Seconds after the light turned red", "first": true },
-            { "key": "lane", "label": "Lane" },
-            { "key": "direction", "label": "Direction of travel" },
-            { "key": "speedLimit", "label": "Speed limit" },
-            { "key": "yellowLightDuration", "label": "Yellow light lasted" },
-            { "key": "bannerLocation", "label": "Location on the photo" },
-            { "key": "incidentNumber", "label": "Incident number" }
-          ],
-          "missingMessage": "The source did not return this for your notice."
+            { "key": "timeSinceRed", "label": "Seconds after the light turned red", "unit": "seconds", "first": true },
+            { "key": "speedLimit", "label": "Speed limit", "unit": "km/h" }
+          ]
         }
       ]
     }

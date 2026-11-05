@@ -6,7 +6,7 @@ import { applyEvent, eventsFromResult, initialLookup, toResult } from './lookupS
 // FICTITIOUS values only.
 const redLight = (over = {}) => ({
   notice: { offenceDescription: 'Proceed through red traffic light', offenceDate: '2026-01-15', enforcementMethod: 'CAMERA' },
-  details: { timeSinceRed: '1.2 sec', lane: '2', direction: 'North', speedLimit: '60', yellowLightDuration: '4.0 sec' },
+  details: { timeSinceRed: 1.2, speedLimit: 60 },
   ...over,
 });
 
@@ -35,20 +35,24 @@ describe('picking the version by offence date', () => {
 });
 
 describe('red light details', () => {
-  it('shows what the notice returned, time since red first', () => {
+  it('shows the two mockup facts with units, time since red first', () => {
     const v = detailRows(redLight());
     expect(v.state).toBe('rows');
-    expect(v.rows[0]).toMatchObject({ key: 'timeSinceRed', value: '1.2 sec', first: true });
-    expect(v.rows.find((r) => r.key === 'lane').value).toBe('2');
+    expect(v.rows).toEqual([
+      { key: 'timeSinceRed', label: 'Seconds after the light turned red', first: true, value: '1.2 seconds' },
+      { key: 'speedLimit', label: 'Speed limit', first: false, value: '60 km/h' },
+    ]);
   });
-  it('names a missing field instead of hiding it', () => {
-    const v = detailRows(redLight({ details: { timeSinceRed: '2.0 sec' } }));
-    const lane = v.rows.find((r) => r.key === 'lane');
-    expect(lane.value).toBeNull();
-    expect(lane.missing).toMatch(/did not return/);
+  it('leaves a missing or empty fact out entirely, and ignores keys it does not show', () => {
+    const v = detailRows(redLight({ details: { timeSinceRed: 2, speedLimit: '', lane: 2, direction: 'North' } }));
+    expect(v.rows.map((r) => r.key)).toEqual(['timeSinceRed']);
   });
-  it('matches on the banner offence text when the summary text is different', () => {
-    expect(pickProgram({ notice: { offenceDescription: 'Camera recorded' }, details: { offenceText: 'Red light' } }).id).toBe('RED_LIGHT_SPEED');
+  it('has no rows when nothing was returned', () => {
+    expect(detailRows(redLight({ details: {} })).rows).toEqual([]);
+    expect(detailRows(redLight({ details: undefined })).rows).toEqual([]);
+  });
+  it('matches on a returned time since red when the summary text is different', () => {
+    expect(pickProgram({ notice: { offenceDescription: 'Camera recorded' }, details: { timeSinceRed: 1 } }).id).toBe('RED_LIGHT_SPEED');
   });
   it('says so plainly when no version covers the offence date', () => {
     const v = detailRows(redLight({ notice: { offenceDescription: 'red light', offenceDate: '1990-01-01' } }));
