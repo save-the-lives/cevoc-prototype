@@ -178,6 +178,10 @@ final class PlaywrightSession implements RenderedPageSession {
             if (resp.status() == 200 && path.find() && type.startsWith("image/") && !type.contains("svg") && seenImages.size() < 60
                     && body != null && body.length <= maxBytes) {
                 seenImages.add(new SeenImage(path.group(1), "full", type, body));
+            } else {
+                // Numbers and a type class only: why this full-size response was not kept.
+                note("image-full-skipped=status:" + resp.status() + "/type:" + (type.startsWith("image/") ? type.substring(6) : type.isEmpty() ? "none"
+                        : type.split("[/;]")[0]) + "/bytes:" + (body == null ? -1 : body.length) + "/kept:" + seenImages.size());
             }
         } catch (RuntimeException e) {
             // capture must never break the page
