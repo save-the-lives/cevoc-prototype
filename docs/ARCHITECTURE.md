@@ -15,6 +15,7 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Providers (sources of data) | Revenue NSW is the interim provider. TfNSW APIs replace it concern by concern, by configuration | 0003 |
 | Browser (Chromium) route | Prototype only, behind its adapter, deleted at cutover | 0004 |
 | Plain HTTP route (Revenue NSW JSON service) | BUILT 2026-11-05, offline-tested, NOT yet run live (UNTESTED). Selected by `cevoc.penalty-lookup.adapter=revenue-nsw-http`; off unless also enabled; default unchanged | 0010 |
+| Demo data (fictitious notices) | BUILT 2026-11-05. ON by default (`CEVOC_DEMO_DATA`, one switch in `DemoDataConfig`); a demo adapter behind the same lookup port, `DemoCaseFactory`, demo hub at `/demo-cases`. Off: nothing demo exists. See docs/DEMO-DATA.md | 0007, 0009, 0010, 0013 to 0016 |
 | Data scope and security | Public data only. No secrets in code, logs or the hand-off log | 0005 |
 | Published URLs | Existing prototype URLs must not change | 0006 |
 | Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers. BUILT 2026-11-05 in the front end config: DEFAULT block, video default on, switch inheritance. Only red light is built now |  0007, 0013, 0014, 0015 |

@@ -8,7 +8,11 @@
 // `npm ci`: every request that is not to 127.0.0.1 is blocked and listed in the report.
 //
 //   cd frontend && npm ci && cd ..           (once; add `cd prototype && npm ci` for the mockup)
-//   node scripts/visual-check.mjs [--out DIR] [--skip-mockup] [--no-build] [--only case,case]
+//   node scripts/visual-check.mjs [--out DIR] [--skip-mockup] [--no-build] [--no-demo] [--only case,case]
+//
+// Demo data (docs/DEMO-DATA.md): the demo hub (/demo-cases) and EVERY listed demo case are captured too, mobile and desktop. The
+// list, the stream events of each case and the sample images come from scripts/visual-check-demo-cases.json, which a backend test
+// generates from the same scenario list the backend serves, so nothing is listed twice. `--only demo` runs just those.
 //
 // Output goes to DIR (default: visual-check-output/ in the repository root, which is git-ignored).
 import http from 'node:http';
@@ -24,6 +28,10 @@ const flag = (n) => argv.includes(`--${n}`);
 const opt = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
 const OUT = path.resolve(opt('out', process.env.VISUAL_OUT || path.join(ROOT, 'visual-check-output')));
 const ONLY = opt('only', '') ? opt('only', '').split(',') : null;
+
+// The demo hub list, the stream events of every demo case and its sample images (generated from the backend's scenario list).
+const DEMO_FIXTURE = path.join(ROOT, 'scripts', 'visual-check-demo-cases.json');
+const DEMO = flag('no-demo') || !fs.existsSync(DEMO_FIXTURE) ? null : JSON.parse(fs.readFileSync(DEMO_FIXTURE, 'utf8'));
 
 const requireFrontend = createRequire(path.join(ROOT, 'frontend', 'package.json'));
 const requirePrototype = createRequire(path.join(ROOT, 'prototype', 'package.json'));
@@ -111,6 +119,17 @@ function serve(staticDir, withApi) {
       req.on('end', () => handleApi(url.pathname, raw, res));
       return;
     }
+    if (withApi && DEMO && req.method === 'GET' && url.pathname === '/api/demo/cases') {
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(DEMO.catalog)); return;
+    }
+    if (withApi && DEMO) {
+      const dm = /^\/api\/demo\/media\/(\d{10})\/([a-z0-9.-]+)$/.exec(url.pathname);
+      if (dm) {
+        const svg = DEMO.cases[dm[1]]?.media?.[dm[2]];
+        if (svg) { res.writeHead(200, { 'Content-Type': TYPES['.svg'] }); res.end(svg); } else res.writeHead(404).end();
+        return;
+      }
+    }
     if (withApi) {
       const m = /^\/samples\/photo-(\d)\.svg$/.exec(url.pathname);
       if (m) { res.writeHead(200, { 'Content-Type': TYPES['.svg'] }); res.end(photoSvg(Number(m[1]))); return; }
@@ -128,6 +147,16 @@ function serve(staticDir, withApi) {
 function handleApi(pathname, raw, res) {
   let body = {};
   try { body = JSON.parse(raw || '{}'); } catch { /* handled below */ }
+  const demoCase = DEMO?.cases?.[body.infringementNumber];
+  if (demoCase && pathname.endsWith('/stream')) {
+    // The events the backend's demo adapter produces for this case (with the plate the case needs, when one was given).
+    const events = body.registration && demoCase.eventsWithPlate ? demoCase.eventsWithPlate : demoCase.events;
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+    res.write(': open\n\n');
+    for (const [name, data] of events) res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`);
+    res.end();
+    return;
+  }
   const c = CASES.find((x) => x.number === body.infringementNumber);
   if (!c) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ status: 'NOT_FOUND', infringementNumber: body.infringementNumber, summary: 'No match.', evidence: [], certificates: [], source: 'STUB' })); return; }
   const r = c.result;
@@ -257,6 +286,58 @@ async function main() {
           report.cases.push({ id: c.id, viewport: vp, error: err.message.split('\n')[0] });
         }
         await ctx.close();
+      }
+    }
+    if (DEMO && (!ONLY || ONLY.includes('demo'))) {
+      const numbers = Object.keys(DEMO.cases);
+      for (const vp of Object.keys(VIEWPORTS)) {
+        // the hub, then every listed case opened the way the hub's link opens it
+        const hubCtx = await newContext(browser, vp, app.base, report.blockedExternalRequests);
+        const hub = await hubCtx.newPage();
+        const hubErrors = [];
+        hub.on('pageerror', (e) => hubErrors.push(e.message));
+        try {
+          await hub.goto(`${app.base}/demo-cases`);
+          await hub.waitForSelector('.demo-case', { timeout: 20000 });
+          const checks = await capture(hub, path.join(OUT, 'prototype', `demo-hub-${vp}.png`), path.join(OUT, 'text', `prototype-demo-hub-${vp}.txt`));
+          report.cases.push({ id: 'demo-hub', title: 'Demo hub', viewport: vp, screenshot: `prototype/demo-hub-${vp}.png`, consoleErrors: hubErrors, ...checks });
+          console.log(`ok  demo-hub-${vp}`);
+        } catch (err) {
+          failed = true;
+          console.log(`FAIL demo-hub-${vp}: ${err.message.split('\n')[0]}`);
+          report.cases.push({ id: 'demo-hub', viewport: vp, error: err.message.split('\n')[0] });
+        }
+        await hubCtx.close();
+        for (const number of numbers) {
+          const ctx = await newContext(browser, vp, app.base, report.blockedExternalRequests);
+          const page = await ctx.newPage();
+          const errors = [];
+          page.on('pageerror', (e) => errors.push(e.message));
+          const id = `demo-${number}`;
+          try {
+            await page.goto(`${app.base}/?demo=${number}`);
+            await page.waitForSelector('.demo-banner', { timeout: 20000 });
+            await page.waitForFunction(() => !document.querySelector('[aria-busy="true"], .skel'), null, { timeout: 20000 });
+            const checks = await capture(page, path.join(OUT, 'prototype', `${id}-${vp}.png`), path.join(OUT, 'text', `prototype-${id}-${vp}.txt`));
+            report.cases.push({ id, title: `Demo case ${number}`, viewport: vp, screenshot: `prototype/${id}-${vp}.png`, consoleErrors: errors, ...checks });
+            console.log(`ok  ${id}-${vp}`);
+            if (DEMO.cases[number].eventsWithPlate) {
+              // held-back images: give the plate the case needs (a wrong one for the always-refused case) and capture the answer
+              const plate = DEMO.catalog.programs.flatMap((p) => p.groups.flatMap((g) => g.cases)).find((x) => x.number === number)?.plate || 'WRONG1';
+              await page.fill('#rego2', plate);
+              await page.click('.plate-ask button[type=submit]');
+              await page.waitForFunction(() => !document.querySelector('[aria-busy="true"], .skel'), null, { timeout: 20000 });
+              const after = await capture(page, path.join(OUT, 'prototype', `${id}-plate-${vp}.png`), path.join(OUT, 'text', `prototype-${id}-plate-${vp}.txt`));
+              report.cases.push({ id: `${id}-plate`, title: `Demo case ${number} after the plate`, viewport: vp, screenshot: `prototype/${id}-plate-${vp}.png`, consoleErrors: errors, ...after });
+              console.log(`ok  ${id}-plate-${vp}`);
+            }
+          } catch (err) {
+            failed = true;
+            console.log(`FAIL ${id}-${vp}: ${err.message.split('\n')[0]}`);
+            report.cases.push({ id, viewport: vp, error: err.message.split('\n')[0] });
+          }
+          await ctx.close();
+        }
       }
     }
     if (mock) {
