@@ -76,7 +76,7 @@ public class ManifestPenaltyLookupAdapter implements PenaltyLookupPort {
                     e.path("title").asText(), e.path("objectKey").asText()));
         }
         return new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, number,
-                "Prototype data only.", notice, evidence, SOURCE)
+                "Demonstration data only.", notice, evidence, SOURCE)
                 .withCertificates(certificates(entry, notice.offenceDate().atTime(notice.offenceTime())), null);
     }
 

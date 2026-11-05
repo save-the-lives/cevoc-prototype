@@ -107,7 +107,7 @@ export default function DemoHub() {
           )}
         </div>
       </main>
-      <footer className="site-foot"><div className="wrap foot-in"><span>Prototype service</span><a href="/">Back to the lookup</a></div></footer>
+      <footer className="site-foot"><div className="wrap foot-in"><span>Interim service</span><a href="/">Back to the lookup</a></div></footer>
     </>
   );
 }

@@ -1,6 +1,6 @@
 # Sample media attribution
 
-Everything in this folder is fictitious and generated for the CEVOC prototype. No real notices, plates, people or places.
+Everything in this folder is fictitious and generated for the CEVOC project. No real notices, plates, people or places.
 
 - `image-1.jpg`, `image-2.jpg`: copied from the repo-owned generated images in `prototype/public/assets/media`. `*-preview.jpg` are downscaled copies.
 - `video-1.mp4`, `video-1-poster.jpg`, `hls/`: generated with ffmpeg (`testsrc2` pattern and a sine tone). The HLS set has 1080p, 720p and 480p renditions.

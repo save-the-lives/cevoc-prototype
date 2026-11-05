@@ -15,7 +15,7 @@
 #   LIVE_HEADED=1     show the browser window
 #   LIVE_MIN_INTERVAL_MS  pause between site requests, default 5000, minimum 3000
 #   LIVE_CHECK_PORT   local port, default 8099
-#   LIVE_CERTS=no     skip the certificate lookup (default: run it through the basint search page, Chromium, prototype only)
+#   LIVE_CERTS=no     skip the certificate lookup (default: run it through the basint search page, Chromium, temporary: delete at cutover)
 # See docs/LIVE-CHECK.md.
 set -euo pipefail
 umask 077
@@ -87,7 +87,7 @@ BACKEND_ENV=(
 )
 [ "${LIVE_HEADED:-}" = "1" ] && BACKEND_ENV+=("CEVOC_SCRAPER_EVIDENCE_BROWSER_HEADLESS=false")
 [ "$SAVE_V" = "yes" ] && BACKEND_ENV+=("CEVOC_LIVE_CHECK_CAPTURE_DIR=$CAPTURE_DIR")
-# Certificates: the basint search page driven by Chromium is the default route (owner-approved 2026-11-04, prototype only).
+# Certificates: the basint search page driven by Chromium is the default route (owner-approved 2026-11-04, temporary: delete at cutover).
 # The old signed deep link stays off. The polite gap, the honest User-Agent and the stop on 401/403/429/captcha still apply.
 if [ "${LIVE_CERTS:-yes}" != "no" ]; then
   BACKEND_ENV+=("CEVOC_CERTIFICATES_PROVIDERS=browser")

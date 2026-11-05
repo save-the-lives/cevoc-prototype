@@ -8,7 +8,7 @@ Claims are marked **PROVEN** (read straight from the code or workflow text named
 
 Every property can be set from an environment variable: upper case, dots and dashes become underscores (`cevoc.demo-data.enabled` is `CEVOC_DEMO_DATA_ENABLED`). INFERRED (standard Spring Boot relaxed binding; the deploy workflow and live-check script rely on it every run). Spring Boot also accepts the dash-less form, which is why both `CEVOC_LIVECHECK_ENABLED` (deploy workflow) and `CEVOC_LIVE_CHECK_ENABLED` (`scripts/live-check.sh`) reach `cevoc.live-check.enabled`. A name that does not map to a property read by the code does nothing.
 
-Scope: **Prototype** = goes away or is replaced before production; **Production** = stays; **Both** = needed in either.
+Scope: **Temporary** = goes away or is replaced at cutover (delete at cutover); **Production** = stays; **Both** = needed in either.
 Status: **in use**, **legacy** (still selectable when listed, being replaced), **REMOVED** (read by nothing; no fallback, no alias; safe to delete in the portal).
 
 **Two standing rules (record 0020).** (1) Every lookup route is an adapter behind the same port, chosen by ONE adapter-selection setting; there are no per-route on/off switches. (2) Any external address is ONE fully qualified URL setting, not a base plus pieces built in code; the only exception is where the code must add its own request parameters (form post or query values), kept minimal. Section 8a lists the places that do not follow rule 2 yet.
@@ -21,7 +21,7 @@ Status: **in use**, **legacy** (still selectable when listed, being replaced), *
 | `CEVOC_BANNER_OCR_ENABLED` | `cevoc.banner-ocr.enabled` | `false` | Reads the camera banner text from the first evidence image (Tesseract command line). Bean exists only when `true`. Never used by demo data. PROVEN (`BeanConfig`). | Both | in use |
 | `CEVOC_BANNER_OCR_COMMAND` | `cevoc.banner-ocr.command` | `tesseract` | Command to run. PROVEN. | Both | in use |
 | `CEVOC_BANNER_OCR_TIMEOUT_SECONDS` | `cevoc.banner-ocr.timeout-seconds` | `30` | Per-image time limit. PROVEN. | Both | in use |
-| `CEVOC_DEMO_DATA_ENABLED` | `cevoc.demo-data.enabled` | off | Demo adapter, demo hub and demo images exist only when the value is exactly the lowercase word `true`. See section 7. | Prototype | in use |
+| `CEVOC_DEMO_DATA_ENABLED` | `cevoc.demo-data.enabled` | off | Demo adapter, demo hub and demo images exist only when the value is exactly the lowercase word `true`. See section 7. | Temporary | in use |
 | `CEVOC_SCRAPER_ENABLED` | `cevoc.scraper.enabled` | n/a | **REMOVED (record 0020).** Read by nothing. Selecting the adapter replaces it. | n/a | REMOVED |
 | `CEVOC_SCRAPER_EVIDENCE_ENABLED` | `cevoc.scraper.evidence.enabled` | n/a | **REMOVED.** Read by nothing. | n/a | REMOVED |
 | `CEVOC_SCRAPER_EVIDENCE_BROWSER` | `cevoc.scraper.evidence.browser` | n/a | **REMOVED.** Chromium is simply the `browser` adapter. | n/a | REMOVED |
@@ -33,25 +33,25 @@ Off by default simply because it is not selected. Needs the site owner's approva
 
 | Env name | Property | Default | What it does | Scope | Status |
 |---|---|---|---|---|---|
-| `CEVOC_SCRAPER_EVIDENCE_URL` | `cevoc.scraper.evidence.url` | empty | The one fully qualified https address of the site's login page. For now a value with no path (host only) is still completed with the built-in login path, so a GitHub variable that holds only the origin keeps working; give the full address and that completion can be deleted. The retired name `CEVOC_SCRAPER_EVIDENCE_BASE_URL` is read by nothing (no alias; a test proves it). | Prototype | in use (new) |
+| `CEVOC_SCRAPER_EVIDENCE_URL` | `cevoc.scraper.evidence.url` | empty | The one fully qualified https address of the site's login page. For now a value with no path (host only) is still completed with the built-in login path, so a GitHub variable that holds only the origin keeps working; give the full address and that completion can be deleted. The retired name `CEVOC_SCRAPER_EVIDENCE_BASE_URL` is read by nothing (no alias; a test proves it). | Temporary | in use (new) |
 | `CEVOC_SCRAPER_EVIDENCE_BASE_URL` | `cevoc.scraper.evidence.base-url` | n/a | **REMOVED.** Replaced by `CEVOC_SCRAPER_EVIDENCE_URL`. | n/a | REMOVED |
-| `CEVOC_SCRAPER_EVIDENCE_CONTACT` | `cevoc.scraper.evidence.contact` | empty | Contact put in the User-Agent. Kept: it is not redundant (the identifying User-Agent of every scraper route and of the `http` certificates provider is built from it, and no other setting carries it). | Prototype | in use |
-| `CEVOC_SCRAPER_EVIDENCE_MIN_INTERVAL_MS` | `cevoc.scraper.evidence.min-interval-ms` | `5000` | Minimum gap between requests. | Prototype | in use |
-| `CEVOC_SCRAPER_EVIDENCE_CONNECT_TIMEOUT_MS` | `cevoc.scraper.evidence.connect-timeout-ms` | `5000` | Connect timeout. | Prototype | in use |
-| `CEVOC_SCRAPER_EVIDENCE_REQUEST_TIMEOUT_MS` | `cevoc.scraper.evidence.request-timeout-ms` | `15000` | Request timeout. | Prototype | in use |
-| `CEVOC_SCRAPER_EVIDENCE_CACHE_TTL_SECONDS` | `cevoc.scraper.evidence.cache-ttl-seconds` | `120` | Result cache time. | Prototype | in use |
-| `CEVOC_SCRAPER_EVIDENCE_MAX_BYTES` | `cevoc.scraper.evidence.max-bytes` | 25 MiB | Size cap per download. | Prototype | in use |
-| `CEVOC_SCRAPER_EVIDENCE_BROWSER_HEADLESS` | `cevoc.scraper.evidence.browser-headless` | `true` | `false` shows the browser (local checks only). | Prototype | in use |
-| `CEVOC_SCRAPER_EVIDENCE_BROWSER_WARM` | `cevoc.scraper.evidence.browser-warm` | `true` | Keep Chromium up between lookups. | Prototype | in use |
-| `CEVOC_BROWSER_CONTAINER` | read with `System.getenv` | `true` in the image (`backend/Dockerfile`) | Tells the Playwright factory it runs in the container, so Chromium launches without its own sandbox. PROVEN (`PlaywrightSessionFactory`). Do not change. | Prototype | in use |
+| `CEVOC_SCRAPER_EVIDENCE_CONTACT` | `cevoc.scraper.evidence.contact` | empty | Contact put in the User-Agent. Kept: it is not redundant (the identifying User-Agent of every scraper route and of the `http` certificates provider is built from it, and no other setting carries it). | Temporary | in use |
+| `CEVOC_SCRAPER_EVIDENCE_MIN_INTERVAL_MS` | `cevoc.scraper.evidence.min-interval-ms` | `5000` | Minimum gap between requests. | Temporary | in use |
+| `CEVOC_SCRAPER_EVIDENCE_CONNECT_TIMEOUT_MS` | `cevoc.scraper.evidence.connect-timeout-ms` | `5000` | Connect timeout. | Temporary | in use |
+| `CEVOC_SCRAPER_EVIDENCE_REQUEST_TIMEOUT_MS` | `cevoc.scraper.evidence.request-timeout-ms` | `15000` | Request timeout. | Temporary | in use |
+| `CEVOC_SCRAPER_EVIDENCE_CACHE_TTL_SECONDS` | `cevoc.scraper.evidence.cache-ttl-seconds` | `120` | Result cache time. | Temporary | in use |
+| `CEVOC_SCRAPER_EVIDENCE_MAX_BYTES` | `cevoc.scraper.evidence.max-bytes` | 25 MiB | Size cap per download. | Temporary | in use |
+| `CEVOC_SCRAPER_EVIDENCE_BROWSER_HEADLESS` | `cevoc.scraper.evidence.browser-headless` | `true` | `false` shows the browser (local checks only). | Temporary | in use |
+| `CEVOC_SCRAPER_EVIDENCE_BROWSER_WARM` | `cevoc.scraper.evidence.browser-warm` | `true` | Keep Chromium up between lookups. | Temporary | in use |
+| `CEVOC_BROWSER_CONTAINER` | read with `System.getenv` | `true` in the image (`backend/Dockerfile`) | Tells the Playwright factory it runs in the container, so Chromium launches without its own sandbox. PROVEN (`PlaywrightSessionFactory`). Do not change. | Temporary | in use |
 
 ## 3. Live check (owner-run)
 
 | Env name | Property | Default | What it does | Scope | Status |
 |---|---|---|---|---|---|
-| `CEVOC_LIVECHECK_ENABLED` (script uses `CEVOC_LIVE_CHECK_ENABLED`) | `cevoc.live-check.enabled` | `false` | Registers the `/live-check/**` guard, and the controller in the live-browser build. While it is `true` the endpoints are OPEN (no token); `LiveCheckGuard` keeps the one-lookup-at-a-time safeguard (a second concurrent lookup gets 429). When it is not `true` neither exists and `/live-check/**` answers 404. PROVEN (`LiveCheckGuardTest`). | Prototype | in use |
+| `CEVOC_LIVECHECK_ENABLED` (script uses `CEVOC_LIVE_CHECK_ENABLED`) | `cevoc.live-check.enabled` | `false` | Registers the `/live-check/**` guard, and the controller in the live-browser build. While it is `true` the endpoints are OPEN (no token); `LiveCheckGuard` keeps the one-lookup-at-a-time safeguard (a second concurrent lookup gets 429). When it is not `true` neither exists and `/live-check/**` answers 404. PROVEN (`LiveCheckGuardTest`). | Temporary | in use |
 | `CEVOC_LIVECHECK_TOKEN` | `cevoc.live-check.token` | n/a | **REMOVED.** The token guard is gone; the header `X-Live-Check-Token` is ignored. The stale "404 when no token" wording is corrected in the Javadoc and in `docs/LIVE-CHECK.md`. | n/a | REMOVED |
-| `CEVOC_LIVE_CHECK_CAPTURE_DIR` | `cevoc.live-check.capture-dir` | empty | Local folder for saved pages during an owner check. Set by `scripts/live-check.sh` only. | Prototype | in use |
+| `CEVOC_LIVE_CHECK_CAPTURE_DIR` | `cevoc.live-check.capture-dir` | empty | Local folder for saved pages during an owner check. Set by `scripts/live-check.sh` only. | Temporary | in use |
 
 ## 4. Certificates (the certificates adapter choice)
 
@@ -59,14 +59,14 @@ No certificate source unless `cevoc.certificates.providers` is non-empty. It use
 
 | Env name | Property | Default | What it does | Scope | Status |
 |---|---|---|---|---|---|
-| `CEVOC_CERTIFICATES_PROVIDERS` | `cevoc.certificates.providers` | empty (off) | Ordered list of: `browser` (certificates search page in headless Chromium; formerly `search-page`), `http` (same page with plain requests; formerly `search-page-http`), `api` (reserved; listing it stops start-up with "not available yet"; formerly `tfnsw-api`), and the legacy `http-form` and `browser-link`. A name not in this list, including the three retired names, is ignored with a warning and never stops start-up. | Prototype (browser providers); `api` is the production target | in use |
-| `CEVOC_CERTIFICATES_APPROVAL_REFERENCE` | `cevoc.certificates.approval-reference` | empty | **Optional recorded note.** No provider requires it any more; when present it is only noted in the log at start-up. The deploy workflow no longer sets it. | Prototype | in use (optional) |
-| `CEVOC_CERTIFICATES_SEARCH_PAGE_URL` | `cevoc.certificates.search-page.url` | the basint host search page (`SearchPageCertificateSource.DEFAULT_PAGE_URL`) | Page used by the `browser` and `http` providers. Already one full URL. PROVEN. | Prototype | in use |
-| `CEVOC_CERTIFICATES_CACHE_TTL_SECONDS` | `cevoc.certificates.cache-ttl-seconds` | `300` | Cache time for those two providers. PROVEN. | Prototype | in use |
+| `CEVOC_CERTIFICATES_PROVIDERS` | `cevoc.certificates.providers` | empty (off) | Ordered list of: `browser` (certificates search page in headless Chromium; formerly `search-page`), `http` (same page with plain requests; formerly `search-page-http`), `api` (reserved; listing it stops start-up with "not available yet"; formerly `tfnsw-api`), and the legacy `http-form` and `browser-link`. A name not in this list, including the three retired names, is ignored with a warning and never stops start-up. | Temporary (browser providers); `api` is the production target | in use |
+| `CEVOC_CERTIFICATES_APPROVAL_REFERENCE` | `cevoc.certificates.approval-reference` | empty | **Optional recorded note.** No provider requires it any more; when present it is only noted in the log at start-up. The deploy workflow no longer sets it. | Temporary | in use (optional) |
+| `CEVOC_CERTIFICATES_SEARCH_PAGE_URL` | `cevoc.certificates.search-page.url` | the basint host search page (`SearchPageCertificateSource.DEFAULT_PAGE_URL`) | Page used by the `browser` and `http` providers. Already one full URL. PROVEN. | Temporary | in use |
+| `CEVOC_CERTIFICATES_CACHE_TTL_SECONDS` | `cevoc.certificates.cache-ttl-seconds` | `300` | Cache time for those two providers. PROVEN. | Temporary | in use |
 | `CEVOC_SCRAPER_CERTIFICATES_ENABLED` | `cevoc.scraper.certificates.enabled` | n/a | **REMOVED** (including its legacy fallback that selected `http-form` when the list was empty). List `http-form` in the providers if it is ever wanted. | n/a | REMOVED |
 | `CEVOC_SCRAPER_CERTIFICATES_APPROVAL_REFERENCE` | `cevoc.scraper.certificates.approval-reference` | n/a | **REMOVED** (was a deprecated fallback). | n/a | REMOVED |
-| `CEVOC_SCRAPER_CERTIFICATES_*` (`PAGE_URL`, `USER_AGENT`, `MIN_INTERVAL_MS`, `CONNECT_TIMEOUT_MS`, `REQUEST_TIMEOUT_MS`, `CACHE_TTL_SECONDS`, `KEY_STRATEGY`) | `cevoc.scraper.certificates.<key>` | 5000 / 5000 / 10000 ms, 300 s, `VIA_ENFORCEMENT_SITE` | Tuning for the legacy `http-form` provider only. PROVEN. | Prototype | legacy |
-| `CEVOC_SCRAPER_CERTIFICATES_WINDOW_MARGIN_MINUTES` | `cevoc.scraper.certificates.window-margin-minutes` | unset (`-1`: whole offence day) | Offence time plus or minus N minutes. Read by `BeanConfig` for the lookup service as well as by `http-form`, so it is not legacy-only. PROVEN. | Prototype | in use |
+| `CEVOC_SCRAPER_CERTIFICATES_*` (`PAGE_URL`, `USER_AGENT`, `MIN_INTERVAL_MS`, `CONNECT_TIMEOUT_MS`, `REQUEST_TIMEOUT_MS`, `CACHE_TTL_SECONDS`, `KEY_STRATEGY`) | `cevoc.scraper.certificates.<key>` | 5000 / 5000 / 10000 ms, 300 s, `VIA_ENFORCEMENT_SITE` | Tuning for the legacy `http-form` provider only. PROVEN. | Temporary | legacy |
+| `CEVOC_SCRAPER_CERTIFICATES_WINDOW_MARGIN_MINUTES` | `cevoc.scraper.certificates.window-margin-minutes` | unset (`-1`: whole offence day) | Offence time plus or minus N minutes. Read by `BeanConfig` for the lookup service as well as by `http-form`, so it is not legacy-only. PROVEN. | Temporary | in use |
 
 The `browser` certificates provider opens its own Chromium session and, like the evidence route, needs the live-browser build plus `CEVOC_SCRAPER_EVIDENCE_URL` and `CEVOC_SCRAPER_EVIDENCE_CONTACT`; the `http` provider needs the contact.
 
@@ -87,9 +87,9 @@ Exists only when `CEVOC_PENALTY_LOOKUP_ADAPTER=http`. It then does nothing unles
 | Env name | Property | Default | What it does | Scope | Status |
 |---|---|---|---|---|---|
 | `CEVOC_MEDIA_ADAPTER` | `cevoc.media.adapter` | unset | `stub`, `memory` or `azure-blob`. Unset means `memory` when the lookup adapter is `browser` or `http`, else `stub`. PROVEN (`BeanConfig`). | Both | in use |
-| `CEVOC_MEDIA_BASE_URL` | `cevoc.media.base-url` | `/samples` | Sample files location for the stub adapter. | Prototype | in use |
-| `CEVOC_MEDIA_PUBLIC_BASE_URL` | `cevoc.media.public-base-url` | empty (relative links) | Prefix for `/api/media/<token>` links from the memory adapter. | Prototype | in use |
-| `CEVOC_MEDIA_MEMORY_RETENTION_MINUTES`, `_MAX_MEGABYTES` | `cevoc.media.memory.retention-minutes`, `.max-megabytes` | `20`, `96` | Memory adapter limits; a restart drops everything. | Prototype | in use |
+| `CEVOC_MEDIA_BASE_URL` | `cevoc.media.base-url` | `/samples` | Sample files location for the stub adapter. | Temporary | in use |
+| `CEVOC_MEDIA_PUBLIC_BASE_URL` | `cevoc.media.public-base-url` | empty (relative links) | Prefix for `/api/media/<token>` links from the memory adapter. | Temporary | in use |
+| `CEVOC_MEDIA_MEMORY_RETENTION_MINUTES`, `_MAX_MEGABYTES` | `cevoc.media.memory.retention-minutes`, `.max-megabytes` | `20`, `96` | Memory adapter limits; a restart drops everything. | Temporary | in use |
 | `AZURE_STORAGE_CONNECTION_STRING` (referenced as `cevoc.media.azure.connection-string`; no `CEVOC_` prefix) | `cevoc.media.azure.connection-string` | none (no default; the bean fails to start without it) | `azure-blob` only. Secret: never write the value here. Its `application.properties` line is commented out, so the property is set in the portal as `CEVOC_MEDIA_AZURE_CONNECTION_STRING` or by uncommenting the line (INFERRED). | Production | in use |
 | `CEVOC_MEDIA_AZURE_CONTAINER` | `cevoc.media.azure.container` | `evidence` | Blob container name. | Production | in use |
 
@@ -97,10 +97,10 @@ Exists only when `CEVOC_PENALTY_LOOKUP_ADAPTER=http`. It then does nothing unles
 
 | Env name | Property | Default | What it does | Scope | Status |
 |---|---|---|---|---|---|
-| `CEVOC_DEMO_DATA_ENABLED` | `cevoc.demo-data.enabled` | off | See section 1. | Prototype | in use |
-| `CEVOC_DEMO_BUNDLE_URL` | `cevoc.demo-bundle.url` | empty (built-in sample content, nothing fetched) | Demo content bundle download (https, no credentials). Read only while the demo switch is on. | Prototype | in use |
-| `CEVOC_DEMO_BUNDLE_VERSION`, `CEVOC_DEMO_BUNDLE_SHA256` | `cevoc.demo-bundle.version`, `.sha256` | empty | Both must be set with a URL; any mismatch turns demo content off (the app still starts). | Prototype | in use |
-| `CEVOC_DEMO_BUNDLE_TIMEOUT_SECONDS`, `_RETRY_MINUTES` | `cevoc.demo-bundle.timeout-seconds`, `.retry-minutes` | `60` (min 5), `10` (min 1) | Fetch timeout and cool-down after a failure. | Prototype | in use |
+| `CEVOC_DEMO_DATA_ENABLED` | `cevoc.demo-data.enabled` | off | See section 1. | Temporary | in use |
+| `CEVOC_DEMO_BUNDLE_URL` | `cevoc.demo-bundle.url` | empty (built-in sample content, nothing fetched) | Demo content bundle download (https, no credentials). Read only while the demo switch is on. | Temporary | in use |
+| `CEVOC_DEMO_BUNDLE_VERSION`, `CEVOC_DEMO_BUNDLE_SHA256` | `cevoc.demo-bundle.version`, `.sha256` | empty | Both must be set with a URL; any mismatch turns demo content off (the app still starts). | Temporary | in use |
+| `CEVOC_DEMO_BUNDLE_TIMEOUT_SECONDS`, `_RETRY_MINUTES` | `cevoc.demo-bundle.timeout-seconds`, `.retry-minutes` | `60` (min 5), `10` (min 1) | Fetch timeout and cool-down after a failure. | Temporary | in use |
 | `CEVOC_DEMO_DATA` | `cevoc.demo-data` | n/a | **RETIRED 2026-11-05.** Read by nothing. Safe to delete in the portal. | n/a | dead |
 
 ## 8. Web and front end

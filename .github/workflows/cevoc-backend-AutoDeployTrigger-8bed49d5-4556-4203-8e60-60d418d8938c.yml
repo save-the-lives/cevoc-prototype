@@ -117,7 +117,7 @@ jobs:
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
         run: |
           # Adapter selection is the only switch: CEVOC_PENALTY_LOOKUP_ADAPTER=browser selects the Chromium route. Certificates
-          # (PROTOTYPE ONLY, interim until the TfNSW API provider exists; owner-approved 2026-11-04) use the same name, browser.
+          # (TEMPORARY, interim until the TfNSW API provider exists; owner-approved 2026-11-04) use the same name, browser.
           # The app still requires the URL and contact, the rate limit and the honest user agent, and stops on 401/403/429/captcha.
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \

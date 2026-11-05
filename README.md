@@ -6,8 +6,8 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 |---|---|
 | `frontend/` | Customer-facing React app (public, no login) |
 | `backend/` | Spring Boot API, hexagonal (ports and adapters) |
-| `prototype/` | The original clickable prototype (demo hub, public site, staff workspace). Still published to GitHub Pages at the same URL |
-| `docs/` | Architecture notes |
+| `prototype/` | The original clickable mockup (demo hub, public site, staff workspace). Still published to GitHub Pages at the same URL |
+| `docs/` | Architecture notes; start with `docs/HANDOVER.md` |
 
 ## Run
     cd backend && mvn spring-boot:run     # http://127.0.0.1:8080
@@ -18,11 +18,11 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 |---|---|---|
 | `CEVOC_CORS_ALLOWED_ORIGINS` | published front end | Origins allowed to call `/api` |
 | `AZURE_STORAGE_CONNECTION_STRING` | none | Only with `cevoc.media.adapter=azure-blob` |
-| `CEVOC_PENALTY_LOOKUP_ADAPTER` | `stub` | The one setting that picks the lookup route: `stub` (default, fictitious data), `browser` (prototype Chromium route to the Revenue NSW page), `http` (plain request route), `api` (reserved). `browser` also needs a URL and a contact. **Production use needs the site owner's approval and should be replaced by the real API.** See `docs/ARCHITECTURE.md` |
+| `CEVOC_PENALTY_LOOKUP_ADAPTER` | `stub` | The one setting that picks the lookup route: `stub` (default, fictitious data), `browser` (temporary Chromium route to the Revenue NSW page), `http` (plain request route), `api` (reserved). `browser` also needs a URL and a contact. **Production use needs the site owner's approval and should be replaced by the real API.** See `docs/ARCHITECTURE.md` |
 | `CEVOC_SCRAPER_EVIDENCE_URL`, `CEVOC_SCRAPER_EVIDENCE_CONTACT` | none | Browser route target (one fully qualified https login page address) and the contact put in its User-Agent |
 
 ## Public URLs
-`https://save-the-lives.github.io/cevoc-prototype` is the published prototype. It is built from `prototype/` by `.github/workflows/deploy.yml` and its URL must not change.
+`https://save-the-lives.github.io/cevoc-prototype` is the published original mockup. It is built from `prototype/` by `.github/workflows/deploy.yml` and its URL must not change.
 
 See `docs/ARCHITECTURE.md` (the standing architecture document) and `docs/decisions/` (one record per architectural decision).
 

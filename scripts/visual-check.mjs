@@ -160,7 +160,7 @@ function handleApi(pathname, raw, res) {
   const c = CASES.find((x) => x.number === body.infringementNumber);
   if (!c) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ status: 'NOT_FOUND', infringementNumber: body.infringementNumber, summary: 'No match.', evidence: [], certificates: [], source: 'STUB' })); return; }
   const r = c.result;
-  const details = { status: 'FOUND', infringementNumber: c.number, summary: 'Prototype data only.', notice: r.notice, source: 'STUB' };
+  const details = { status: 'FOUND', infringementNumber: c.number, summary: 'Demonstration data only.', notice: r.notice, source: 'STUB' };
   if (pathname.endsWith('/stream')) {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
     const send = (name, data) => res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`);

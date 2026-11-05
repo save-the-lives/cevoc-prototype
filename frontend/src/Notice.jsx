@@ -150,7 +150,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
           <button type="button" className="linklike" onClick={onStartAgain}>Edit<span className="sr-only"> the notice number or date</span></button>
         </p>
       )}
-      {demo && <p className="banner" role="note"><strong>Prototype data only.</strong> This is not a real notice.</p>}
+      {demo && <p className="banner" role="note"><strong>Demonstration data only.</strong> This is not a real notice.</p>}
       <h1 ref={headingRef} tabIndex={-1}>What happened</h1>
       <p className="lede">Penalty notice ({result?.infringementNumber || query?.infringementNumber})</p>
 

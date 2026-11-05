@@ -1,7 +1,7 @@
 # Deploying the app to Azure (Australia East)
 
 Untested: written before any Azure account was connected. Treat as a checklist.
-Only `backend/` and `frontend/` deploy. The prototype stays on GitHub Pages.
+Only `backend/` and `frontend/` deploy. The original mockup (`prototype/`) stays on GitHub Pages.
 
 Shape: Static Web Apps serves the React site and proxies `/api` to a Container Apps backend (linked backend), so the front end needs no API URL and no CORS setup.
 
@@ -30,7 +30,7 @@ Actions > "App deploy to Azure" > Run workflow. CI (`app-ci.yml`) runs the backe
 ## Open decisions
 - Automatic deploy on every merge to `main`, or manual only (manual for now).
 - Static Web Apps region: the service resolves to a nearby region; confirm data residency needs. The Container Apps backend is in Australia East.
-- Keep data fictitious and the "prototype only" banner on until real sources are connected.
+- Keep data fictitious and the demonstration banner on until real sources are connected.
 
 ## Backend auto-deploy (cevoc-backend, resource group `cevoc`)
 `.github/workflows/cevoc-backend-AutoDeployTrigger-*.yml` deploys `backend/` on push to `main`.
