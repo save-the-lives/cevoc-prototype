@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LookupError, mockEnabled, streamLookup } from './api.js';
+import { LookupError, fetchDemoCases, mockEnabled, streamLookup } from './api.js';
+import DemoBanner from './DemoBanner.jsx';
+import { demoCaseParam, findCase } from './demoHub.js';
 import { applyEvent, initialLookup, restartSections, toResult } from './lookupState.js';
 import LookupForm from './LookupForm.jsx';
 import Notice from './Notice.jsx';
@@ -92,6 +94,19 @@ export default function App() {
     });
   };
 
+  // A link from the demo hub (?demo=<number>): the number leaves the address bar at once, and only a number the backend lists as a
+  // demo case is looked up (with demo data off the list does not exist, so nothing happens and the normal form shows).
+  useEffect(() => {
+    const number = demoCaseParam(window.location.search);
+    if (!number) return;
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+    fetchDemoCases().then((catalog) => {
+      const c = findCase(catalog, number);
+      if (c) begin({ infringementNumber: c.number, offenceDate: c.offenceDate }, undefined, { fresh: true });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const submit = (query) => { plateRef.current = query.registration; return begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true }); };
 
   // Re-runs the whole lookup (no number plate is kept, so a plate is asked for again inline if the source needs it).
@@ -123,6 +138,7 @@ export default function App() {
       <a className="skip" href="#main">Skip to content</a>
       <div className="masthead"><div className="wrap">NSW Government</div></div>
       <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement</p></div></header>
+      {live?.details?.source === 'DEMO' && <DemoBanner />}
       <main id="main" tabIndex={-1}>
         {view.name === 'notice' && found
           ? <Notice result={foundResult} query={found.query}

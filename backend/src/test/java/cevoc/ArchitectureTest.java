@@ -40,4 +40,15 @@ class ArchitectureTest {
     static final ArchRule onlyAzureAdapterUsesAzureSdk = noClasses()
             .that().resideOutsideOfPackages("..adapter.out.azureblob..", "..config..")
             .should().dependOnClassesThat().resideInAPackage("com.azure..");
+
+    /** Demo data is its own adapter: only the demo adapter itself, the one config that switches it, and the wiring may know it. */
+    @ArchTest
+    static final ArchRule nothingKnowsTheDemoAdapterExceptItsWiring = noClasses()
+            .that().resideOutsideOfPackages("..adapter.out.demo..", "..config..")
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.demo..");
+
+    @ArchTest
+    static final ArchRule demoAdapterOnlyUsesPortsAndDomain = noClasses().that().resideInAPackage("..adapter.out.demo..")
+            .should().dependOnClassesThat().resideInAnyPackage("..adapter.in..", "..adapter.out.scraper..", "..adapter.out.revenuensw..",
+                    "..adapter.out.azureblob..", "..adapter.out.memory..", "..adapter.out.stub..", "org.springframework..", "com.microsoft..");
 }

@@ -54,8 +54,15 @@ public class BeanConfig {
     @Bean
     LookupPenaltyUseCase lookupPenaltyUseCase(PenaltyLookupPort port, SignedLinkPort signedLinks,
             org.springframework.beans.factory.ObjectProvider<CertificateSourcePort> certificates,
+            org.springframework.beans.factory.ObjectProvider<cevoc.adapter.out.demo.DemoRoute> demo,
             @Value("${cevoc.scraper.certificates.window-margin-minutes:-1}") long windowMarginMinutes) {
-        return new LookupPenaltyService(port, signedLinks, certificates.getIfAvailable(),
+        // Demo data (DemoDataConfig is the one place that switches it): a demo adapter bean exists only while it is on. It is
+        // consulted first for demo numbers and gives the links for demo media; everything else is untouched.
+        cevoc.adapter.out.demo.DemoRoute route = demo.getIfAvailable();
+        cevoc.adapter.out.demo.DemoPenaltyLookupAdapter demoAdapter = route == null ? null : route.adapter();
+        PenaltyLookupPort lookup = demoAdapter == null ? port : new cevoc.adapter.out.demo.DemoFirstPenaltyLookupAdapter(demoAdapter, port);
+        SignedLinkPort links = demoAdapter == null ? signedLinks : cevoc.adapter.out.demo.DemoSignedLinks.wrapping(signedLinks);
+        return new LookupPenaltyService(lookup, links, certificates.getIfAvailable(),
                 windowMarginMinutes < 0 ? null : java.time.Duration.ofMinutes(windowMarginMinutes));
     }
 

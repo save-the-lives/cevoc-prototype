@@ -22,6 +22,9 @@ Options: `--out DIR` (or `VISUAL_OUT`), `--skip-mockup`, `--no-build` (reuse the
 
 Every request outside 127.0.0.1 is blocked, so it works offline. Notice numbers 9000000101 and up exist only in this script.
 
+## Demo hub and demo cases
+Unless `--no-demo` is given, it also screenshots the demo hub (`/demo-cases`) and every listed demo case (opened the way the hub link opens it, plus a second shot after the plate for the cases that hold images back), mobile and desktop, with the same checks. The list, stream events and sample images come from `scripts/visual-check-demo-cases.json`, generated from the backend's scenario list (see `docs/DEMO-DATA.md`); `--only demo` runs just these.
+
 ## In CI
 `.github/workflows/visual-check.yml` runs it on `workflow_dispatch` and on pull requests that touch `frontend/` or the script, and uploads the output folder as the `visual-check` artifact. It is separate from App CI and does not gate it.
 

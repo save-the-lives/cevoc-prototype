@@ -106,3 +106,18 @@ export async function streamLookup({ infringementNumber, offenceDate, registrati
   }
   if (!settled) onEvent('error', { cause: 'stream-interrupted' });
 }
+
+/**
+ * The demo hub's list of cases (docs/DEMO-DATA.md). The backend serves it only while demo data is switched on; any other
+ * answer (404, network, not JSON) means "not available" and gives null, so the page behaves like any unknown page.
+ */
+export async function fetchDemoCases() {
+  try {
+    const res = await fetch(`${API_BASE}/api/demo/cases`, { headers: { Accept: 'application/json' } });
+    if (!res.ok || !/json/i.test(res.headers.get('Content-Type') || '')) return null;
+    const body = await res.json();
+    return body && Array.isArray(body.programs) ? body : null;
+  } catch {
+    return null;
+  }
+}
