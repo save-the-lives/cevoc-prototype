@@ -54,7 +54,7 @@ What must not leak besides the main picture (checklist, INFERRED, all to be test
 - Intermediate files and temp files on disk, error logs containing frames, crash dumps.
 - Caches (CDN, browser) holding an earlier clean version if a video was released and then re-processed.
 
-Irreversibility of the blur (INFERRED, widely discussed in the research literature on mosaic and blur reversal, not read for this paper): light pixelation or a mild Gaussian blur with known parameters can sometimes be partly reversed or leave enough to identify. Use a solid opaque fill or a very heavy blur over a padded region, applied to the decoded pixels before encoding. Test with a deblurring attempt in the proof of concept.
+Irreversibility of the blur (INFERRED, widely discussed in the research literature on mosaic and blur reversal, not read for this paper): light pixelation or a mild Gaussian blur with known parameters can sometimes be partly reversed or leave enough to identify. Use a solid opaque fill or a very heavy blur over a padded region, applied to the decoded pixels before encoding. Test with a deblurring attempt in the spike.
 
 ## 4. Options compared
 
@@ -79,7 +79,7 @@ Recommended: YuNet as primary at a low threshold, run on upscaled crops/tiles fo
 |---|---|---|---|
 | **Ultralytics YOLO** (v5/v8/11 and later, including plate models built on them) | AGPL-3.0, or a paid Enterprise Licence for proprietary or SaaS use. The vendor states hosting it behind an API does not avoid AGPL (PROVEN, [ultralytics.com/license](https://ultralytics.com/license)). | Fast and accurate (INFERRED). Fine-tuned weights fall under AGPL by default (PROVEN, same page). | Excluded by default. Include only if the owner buys the enterprise licence; legal decision. |
 | **YOLOX** (Megvii) | Apache-2.0 (PROVEN, [repo](https://github.com/Megvii-BaseDetection/YOLOX)). Nano 25.8 mAP, Tiny 32.8 mAP at 416 input; ONNX and OpenVINO demos (PROVEN). | Needs training or fine-tuning on plate data we may use. | Good fit, licence-safe. |
-| **FastALPR / open-image-models / fast-plate-ocr** | FastALPR repository MIT (PROVEN, [repo](https://github.com/ankandrew/fast-alpr)). Licences of the default detector and OCR models are not stated on that page (PROVEN: unknown). ONNX Runtime, CPU, CUDA, OpenVINO (PROVEN). | No speed or accuracy figures on the page. Trained for what plate styles is unknown (INFERRED: probably not tuned to Australian plates). | Good candidate for a proof of concept; confirm model licences first. |
+| **FastALPR / open-image-models / fast-plate-ocr** | FastALPR repository MIT (PROVEN, [repo](https://github.com/ankandrew/fast-alpr)). Licences of the default detector and OCR models are not stated on that page (PROVEN: unknown). ONNX Runtime, CPU, CUDA, OpenVINO (PROVEN). | No speed or accuracy figures on the page. Trained for what plate styles is unknown (INFERRED: probably not tuned to Australian plates). | Good candidate for a spike; confirm model licences first. |
 | **OpenALPR** | Dual: AGPL open source and proprietary (PROVEN, [Wikipedia](https://en.wikipedia.org/wiki/OpenALPR)); last stable release shown is 2.5.103 from March 2018 (PROVEN, same page) | Old, stale | Not recommended. |
 | **Train our own plate detector** on licensed or synthetic plates | Our choice | Many plates are small, angled, dirty, IR-saturated at night (INFERRED). Data licensing is the hard part. Candidate backbone: YOLOX (Apache). | Likely the real answer for production; plan a data source with legal. |
 | **Text-detection style cloud APIs** | Commercial | Plates as text may be found by general text detection (INFERRED) | Optional cross-check adapter. |
@@ -110,7 +110,7 @@ Design rules for the region track (all INFERRED, to test):
 | **GStreamer** | LGPL (INFERRED) | Powerful pipelines, steeper learning curve. Not preferred. |
 | **Hardware encoders** (NVENC, VAAPI) | Driver/vendor | NVENC is a dedicated encoder, independent of CUDA cores, supports H.264, HEVC and AV1 (PROVEN, [NVIDIA guide](https://docs.nvidia.com/video-technologies/video-codec-sdk/13.0/nvenc-video-encoder-api-prog-guide/index.html)). VAAPI for Intel/AMD (INFERRED). |
 
-Recommendation: an out-of-process worker (container) running FFmpeg built to the LGPL configuration where possible plus a hardware encoder where available, driven by the Java adapter; JavaCV in-process is an acceptable alternative adapter for the proof of concept. Both sit behind the same port, so the choice is reversible (record 0001).
+Recommendation: an out-of-process worker (container) running FFmpeg built to the LGPL configuration where possible plus a hardware encoder where available, driven by the Java adapter; JavaCV in-process is an acceptable alternative adapter for the spike. Both sit behind the same port, so the choice is reversible (record 0001).
 
 ### 4.5 Managed cloud services (for example AWS Rekognition)
 
@@ -130,7 +130,7 @@ Question: how do we know whether upstream has already blurred?
 | Region track delivered by upstream (their track, our renderer) | Reuses detection, enables our own merge | Quality unknown; version and format coupling |
 | Content-based verification (run our detectors on the output; any detection above the threshold means not yet blurred) | Checks the thing that matters, the pixels. Independent of upstream's tooling. | Cost of one detection pass; can miss what our detector cannot see; its threshold trades false alarms for recall |
 
-Recommended combination (INFERRED design, to prove in the PoC):
+Recommended combination (INFERRED design, to prove in the spike):
 
 1. **Content verification is mandatory for every video**, upstream flag or not. It is the only gate that can release a video.
 2. A signed manifest, when present and valid, is a hint. It selects the "verify only" route and is compared with the content result. A valid signed claim plus a failed content check raises an alert to the upstream owner and the video is treated as not blurred for that region. An invalid or absent signature does not block the pipeline; it just means the full route.
@@ -201,7 +201,7 @@ Re-encode only segments containing regions; copy the others. Facts: stream copy 
 - The segment length equals the source keyframe spacing (libx264 defaults to one keyframe in 250 frames, PROVEN, FFmpeg Seeking wiki). If the source has one keyframe every 10 s, a region anywhere in those 10 s forces a 10 s re-encode. If it has only one keyframe in the whole clip, nothing can be copied.
 - Re-encoded segments must match the copied ones (codec, profile, level, resolution, frame rate, SPS/PPS, timebase), or players glitch at joins. Use the same parameters and closed GOPs; or pay for a full re-encode.
 - Re-encoded segments are one generation lower in quality than copied ones; use a high-quality setting so the join is not visible.
-- Road scenes: other vehicles' plates are probably in almost every segment, so copy segments may be rare. Measure the share of segments with regions in the proof of concept before committing to this complexity.
+- Road scenes: other vehicles' plates are probably in almost every segment, so copy segments may be rare. Measure the share of segments with regions in the spike before committing to this complexity.
 
 **(c) Region track formats, storage and versioning**
 
@@ -335,7 +335,7 @@ Privacy and legal checklist for the legal team (INFERRED where not stated; each 
 - Disclosure: what the motorist is told about blurring and what happens when blurring fails.
 - Audit: who can see the audit log and the review queue; reviewer access to unblurred material and the training of reviewers.
 
-## 11. Proposed small proof of concept (design only, not started)
+## 11. Proposed small spike (design only, not started)
 
 Goal: show the pipeline end to end and replace the INFERRED numbers with measured ones, using no real video, no real plates and no real people.
 

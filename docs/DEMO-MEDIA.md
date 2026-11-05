@@ -12,9 +12,9 @@ What the manifest holds today is project-original content only:
 
 | File | Kind | Shows | Source | Author | Licence | Retrieved | Privacy check |
 |---|---|---|---|---|---|---|---|
-| `media/sample-image-1.svg` | image 960x540 | Flat illustration of a car on a road, plate text `TST123` | `scripts/demo-media/sample-image-1.svg` in this repository | CEVOC prototype project | Project-original, no third-party material (owner to confirm the release licence) | 2026-11-05 | Checked: synthetic vector drawing, no photograph, only the fictitious plate `TST123` |
-| `media/sample-image-2.svg` | image 960x540 | Flat illustration of a car at a red light, plate text `TST123` | `scripts/demo-media/sample-image-2.svg` | CEVOC prototype project | same | 2026-11-05 | same |
-| `media/sample-video-1.mp4` | video, about 0.7 MB | ffmpeg test pattern with a tone; no road, vehicle or person | `frontend/public/samples/video-1.mp4` (generated, see `frontend/public/samples/ATTRIBUTION.md`) | CEVOC prototype project | same | 2026-11-05 | Checked: machine-generated test pattern, no camera footage |
+| `media/sample-image-1.svg` | image 960x540 | Flat illustration of a car on a road, plate text `TST123` | `scripts/demo-media/sample-image-1.svg` in this repository | CEVOC project | Project-original, no third-party material (owner to confirm the release licence) | 2026-11-05 | Checked: synthetic vector drawing, no photograph, only the fictitious plate `TST123` |
+| `media/sample-image-2.svg` | image 960x540 | Flat illustration of a car at a red light, plate text `TST123` | `scripts/demo-media/sample-image-2.svg` | CEVOC project | same | 2026-11-05 | same |
+| `media/sample-video-1.mp4` | video, about 0.7 MB | ffmpeg test pattern with a tone; no road, vehicle or person | `frontend/public/samples/video-1.mp4` (generated, see `frontend/public/samples/ATTRIBUTION.md`) | CEVOC project | same | 2026-11-05 | Checked: machine-generated test pattern, no camera footage |
 
 Text payload (separate from the media, built from the manifest): `text/banners.json` holds the banner lines for each image (camera code `7109`, fictitious location, direction, date and time), `text/credits.json` the credits. The banner is text data, not part of the picture. The notice fields and the details map (camera code, direction, operator, location, incident number, lane, offence, speed limit, time since red, yellow duration, date and time) are built by `DemoCaseFactory` as the text record, apart from the media set, as before.
 

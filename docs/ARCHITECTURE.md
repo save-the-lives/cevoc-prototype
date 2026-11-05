@@ -4,6 +4,8 @@ This is the one place where anything architectural is captured. It is organised 
 
 Contributor note: this is a public repository. Describe people only as "owner" or "project owner" (and "owner approval" in decision records). Do not name anyone's employer or role, and do not name individuals. Naming organisations as data sources or providers (Revenue NSW, the TfNSW certificates page) is fine and needed.
 
+Temporary parts (to delete at cutover) are collected in one table in `docs/HANDOVER.md`; start there if you are new to the code.
+
 Status words used below: PROVEN means checked in the code or a run; INFERRED means reasoned but not checked; PROPOSED means designed, awaiting an owner pick, not built.
 
 ## Areas and decisions
@@ -13,11 +15,11 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Structure | Hexagonal: domain, application (ports), adapters; `ArchitectureTest` enforces direction | 0001 |
 | Cloud and vendors | Cloud-agnostic. Azure is the MVP trial only. AWS is the real target. Vendor specifics live behind adapters and in deploy config only | 0002, 0008 |
 | Providers (sources of data) | Revenue NSW is the interim provider. TfNSW APIs replace it concern by concern, by configuration | 0003 |
-| Browser (Chromium) route | Prototype only, behind its adapter, deleted at cutover | 0004 |
+| Browser (Chromium) route | Temporary: delete at cutover (interim route, removed when the TfNSW API exists), behind its adapter | 0004 |
 | Plain HTTP route (Revenue NSW JSON service) | BUILT 2026-11-05, offline-tested, NOT yet run live (UNTESTED). Selected by `cevoc.penalty-lookup.adapter=http`; not selected means it does not exist; default unchanged | 0010 |
 | Demo data (fictitious notices) | BUILT 2026-11-05. OFF by default, on only with `CEVOC_DEMO_DATA_ENABLED=true` (renamed 2026-11-05; old `CEVOC_DEMO_DATA` retired; one switch in `DemoDataConfig`); a demo adapter behind the same lookup port, `DemoCaseFactory`, demo hub at `/demo-cases`. Off: nothing demo exists. See docs/DEMO-DATA.md | 0007, 0009, 0010, 0013 to 0016 |
 | Data scope and security | Public data only. No secrets in code, logs or the hand-off log | 0005 |
-| Published URLs | Existing prototype URLs must not change | 0006 |
+| Published URLs | Existing published URLs (the original mockup site on GitHub Pages) must not change | 0006 |
 | Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers. BUILT 2026-11-05 in the front end config: DEFAULT block, video default on, switch inheritance. Only red light is built now |  0007, 0013, 0014, 0015 |
 | Vendor-neutrality drift | Audit of 2026-11-04: no core leak into domain or application cloud-wise; a few leaks listed in record 0008 | 0008 |
 | Privacy blurring of evidence video and images | PROPOSED, research only: fail closed, server-side burn-in, detect once into a timed region track and merge into one stream, verify by content, never release on failure. Paper: `docs/research/privacy-blurring.md` | 0017 |
@@ -28,7 +30,7 @@ The lookup port (`PenaltyLookupPort`) has several kinds of route. Each is simply
 | Route | Select with `cevoc.penalty-lookup.adapter` | Also needed | Package | Status |
 |---|---|---|---|---|
 | Stub (default; the former `manifest`) | `stub` (also when empty or unset) | nothing | `adapter.out` | PROVEN |
-| Chromium browser route (prototype only) | `browser` | `cevoc.scraper.evidence.url` and `.contact`, the `live-browser` build, Chromium in the image | `adapter.out.scraper` | PROVEN (live runs 2026-11-03/04) |
+| Chromium browser route (temporary: delete at cutover) | `browser` | `cevoc.scraper.evidence.url` and `.contact`, the `live-browser` build, Chromium in the image | `adapter.out.scraper` | PROVEN (live runs 2026-11-03/04) |
 | Plain HTTP, Revenue NSW JSON service (interim) | `http` | `base-url` (https, host `api.osr.nsw.gov.au` unless `allowed-hosts` says otherwise), `path-prefix`, `contact`, `approval-reference` | `adapter.out.revenuensw` | BUILT, UNTESTED live |
 | API providers (TfNSW or others) | `api` (reserved; selecting it stops start-up) | an agreed API, credentials, owner approval | n/a | reserved |
 
@@ -127,7 +129,7 @@ Select with `cevoc.penalty-lookup.adapter` (env `CEVOC_PENALTY_LOOKUP_ADAPTER`):
 - robots.txt disallows automated access. Production use needs the owner's approval, and this adapter should be replaced by the real certificate API.
 
 ## Certificate providers (search page is interim)
-**PROTOTYPE-ONLY: the browser option.** The Chromium route (provider `browser`, the legacy `browser-link`, the Playwright session in `src/live`, the `live-browser` Maven profile, the live-check endpoints and the Chromium layers of the Docker image) exists only for this prototype. Production uses the API providers. At cutover DELETE: `backend/src/live/` (PlaywrightSession, PlaywrightSessionFactory, NetworkMap*, HtmlCapture, LiveCheckController), the `live-browser` profile and `build-helper` entry in `pom.xml`, `RenderedPageSession`/`RenderedPageSessionFactory` and the scraper evidence adapter, `SearchPageCertificateSource`, `BrowserCertificateSourceAdapter`, `CertificateHandoff`, the `livecheck` package and guard, `.github/workflows/live-check-run.yml`, the live-check parts of the deploy workflow, `scripts/live-check.sh`, and Chromium from `backend/Dockerfile`. Nothing in production code may depend on them; the app logs a prototype-only warning at start-up when a browser provider is active.
+**TEMPORARY: delete at cutover: the browser option.** The Chromium route (provider `browser`, the legacy `browser-link`, the Playwright session in `src/live`, the `live-browser` Maven profile, the live-check endpoints and the Chromium layers of the Docker image) is an interim route only. Production uses the API providers. At cutover DELETE: `backend/src/live/` (PlaywrightSession, PlaywrightSessionFactory, NetworkMap*, HtmlCapture, LiveCheckController), the `live-browser` profile and `build-helper` entry in `pom.xml`, `RenderedPageSession`/`RenderedPageSessionFactory` and the scraper evidence adapter, `SearchPageCertificateSource`, `BrowserCertificateSourceAdapter`, `CertificateHandoff`, the `livecheck` package and guard, `.github/workflows/live-check-run.yml`, the live-check parts of the deploy workflow, `scripts/live-check.sh`, and Chromium from `backend/Dockerfile`. Nothing in production code may depend on them; the app logs a temporary-route warning at start-up when a browser provider is active.
 
 Since 2026-11-04 certificates come through an ordered provider list, `cevoc.certificates.providers` (default empty = none), which is the certificates adapter choice and uses the same names as the lookup adapter: `browser` (the public search page in a headless browser; interim, owner-approved despite robots.txt, replaced by `api` by config), `http` (the same page with plain requests), `api` (reserved), `http-form` and `browser-link` (legacy; the signed deep link answers 403 and is no longer followed unless `browser-link` is listed). The earlier names `search-page`, `search-page-http` and `tfnsw-api` are retired and ignored with a warning. All implement `CertificateSourcePort`, share the fictitious-fixture contract tests and the canonical shape in docs/DIRECT-API-ROUTE.md. An approval reference is an optional recorded note, never required. The sections below describing the deep link and the HTTP form describe the legacy providers.
 
@@ -140,7 +142,7 @@ Since 2026-11-04 certificates come through an ordered provider list, `cevoc.cert
 ### Browser route for certificates (same Chromium session)
 After the images state, `ScraperEvidenceLookupAdapter` calls `RenderedPageSession.openCertification()`, which clicks the page's "View certification details" link inside the same browser session (the signed `m` value never leaves the browser; no URL is built or logged). The rendered certificates page is handed over via `CertificateHandoff` (thread-local, consumed once, cleared at the start of each lookup) to `BrowserCertificateSourceAdapter`, a `CertificateSourcePort` that only parses (`CertificatePageParser.parseRendered`: results table, else label/value layout). `LookupPenaltyService` is unchanged: it calls `findCertificatesCovering(query, offenceAt)` as before. The bean exists only when `cevoc.scraper.evidence.browser=playwright` and `cevoc.scraper.evidence.enabled=true` and the HTTP certificate scraper is not enabled. Top-level navigation may leave the myPenalty host only for `*.transport.nsw.gov.au`. A failure never fails the lookup (empty list, "Certificates unavailable"). Live-check diagnostics for this step are structure only: `step=certificates; outcome=ok|failed|skipped; cause=<token>`, then counts, header labels from a fixed vocabulary and yes/no markers (`cert-*`), never values or page text.
 
-## Scraper adapter (prototype only, off by default)
+## Scraper adapter (temporary: delete at cutover, off by default)
 `adapter/out/scraper/` can read a Revenue NSW style penalty page and copy its images and videos into storage through `MediaStoragePort`, returning object keys like any other `PenaltyLookupPort`.
 
 **Production use needs the site owner's (Revenue NSW / Service NSW) written approval first. It should be replaced by the real evidence API.** The project owner obtains that approval before it is ever enabled. Until then it must stay off.

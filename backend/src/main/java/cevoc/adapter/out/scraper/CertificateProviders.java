@@ -64,7 +64,7 @@ public final class CertificateProviders {
             return null;
         }
         if (ids.contains(BROWSER) || ids.contains(BROWSER_LINK)) {
-            LOG.warn("A browser-based certificate provider is active. This is PROTOTYPE-ONLY: production uses the API providers, "
+            LOG.warn("A browser-based certificate provider is active. This is TEMPORARY (interim route, removed when the TfNSW API exists): production uses the API providers, "
                     + "and the Chromium route is removed at cutover (see docs/ARCHITECTURE.md).");
         }
         List<CertificateSourcePort> ports = new ArrayList<>();

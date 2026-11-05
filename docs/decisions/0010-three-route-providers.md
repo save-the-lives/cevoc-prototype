@@ -6,7 +6,7 @@ Owner approval: given by voice 2026-11-05 (default does not change until the own
 
 ## Decision
 For each information type the provider is chosen in configuration, from three kinds of route behind the same port:
-1. Chromium scraper (prototype only, today's route; stays fully working).
+1. Chromium scraper (temporary: delete at cutover, today's route; stays fully working).
 2. Plain HTTP adapter for the Revenue NSW JSON service (api.osr.nsw.gov.au, approved 2026-11-04): no browser.
 3. API providers (TfNSW or others), reserved.
 Switching is a configuration change (`cevoc.penalty-lookup.adapter=stub|browser|http`, renamed by record 0020 from `manifest|stub|scraper-evidence|revenue-nsw-http`). The default stays as today until the owner says otherwise. All three return the same canonical result (including the `details` map, record 0009), the same redacted step trace and cause tokens, and pass the same fixture-based contract tests.
@@ -59,7 +59,7 @@ Already in the code as the provider `http` (earlier `search-page-http`) (`Search
 | Speed per lookup | slowest: starts a browser, loads the page shell and scripts; about 47 s for a whole live run on 2026-11-03 (PROVEN) | a handful of JSON calls plus one call per image at a 1 s gap: expected seconds (INFERRED; not measured) | expected fastest (INFERRED) |
 | Memory and CPU | 2 CPU / 4 GiB live setting (PROVEN) | ordinary JVM settings (INFERRED) | ordinary JVM settings (INFERRED) |
 | Needs | Chromium in the image, `live-browser` build profile, approval to automate | JVM only; approval for api.osr.nsw.gov.au (given 2026-11-04); path prefix, contact and approval reference in configuration; timeouts and bounded retry (built) | an agreed API, credentials, network path, owner approval per source |
-| Status | working, prototype only: PROVEN | built and tested offline; live behaviour INFERRED from a network capture and UNTESTED | reserved |
+| Status | working, temporary: PROVEN | built and tested offline; live behaviour INFERRED from a network capture and UNTESTED | reserved |
 Labels: PROVEN means checked in code or a run; INFERRED means reasoned, not checked. No measurement of the plain HTTP route's speed or image size exists yet; fill the cells in after the first live run.
 
 ## Ruled out

@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory;
  * (env CEVOC_PENALTY_LOOKUP_ADAPTER). Every lookup route is just another adapter behind the same port; this picks which.
  * <ul>
  *   <li>{@code stub}: the default. Bundled fictitious manifest data only, no network, no browser. Also what an empty or unset value means.</li>
- *   <li>{@code browser}: the Chromium route to the Revenue NSW page (prototype only; needs the live-browser build).</li>
- *   <li>{@code http}: the plain HTTP route to the Revenue NSW JSON service (prototype only).</li>
+ *   <li>{@code browser}: the Chromium route to the Revenue NSW page (temporary: delete at cutover; needs the live-browser build).</li>
+ *   <li>{@code http}: the plain HTTP route to the Revenue NSW JSON service (interim: removed when the TfNSW API exists).</li>
  *   <li>{@code api}: the direct API route. Reserved; not built yet, so selecting it stops start-up with a clear message.</li>
  * </ul>
  * Any other value (including the retired names {@code manifest}, {@code scraper-evidence} and {@code revenue-nsw-http}) is

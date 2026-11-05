@@ -148,7 +148,7 @@ export default function App() {
       </main>
       <footer className="site-foot"><div className="wrap foot-in">
         <span>Need help? Call {HELP_PHONE}</span>
-        <span>Prototype service</span>
+        <span>Interim service</span>
       </div></footer>
     </>
   );

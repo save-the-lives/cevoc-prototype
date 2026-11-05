@@ -125,8 +125,8 @@ async function main() {
     total += data.length;
     entries.push([path, data]);
     listed.push({ path, kind: 'text', contentType: 'application/json', width: null, height: null, size: data.length, sha256: sha256(data),
-      licence: 'Project-original text', licenceUrl: 'https://github.com/save-the-lives/cevoc-prototype', author: 'CEVOC prototype project',
-      credit: 'CEVOC prototype project', sourceUrl: 'derived from docs/demo-media-manifest.json', retrieved: m.files[0].retrieved });
+      licence: 'Project-original text', licenceUrl: 'https://github.com/save-the-lives/cevoc-prototype', author: 'CEVOC project',
+      credit: 'CEVOC project', sourceUrl: 'derived from docs/demo-media-manifest.json', retrieved: m.files[0].retrieved });
   }
   if (total > totalMax) fail(`bundle content is ${total} bytes, allowed ${totalMax}`);
   const content = { bundleVersion: m.bundleVersion, format: 1, files: listed };

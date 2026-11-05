@@ -27,5 +27,5 @@ jobs:
             exit 1
           fi
           gh release create "$tag" dist/*.zip dist/*.sha256 --title "Demo bundle ${version}" \
-            --notes "Fictitious demo content for the CEVOC prototype. Checksum is in the .sha256 file. Not real notices, people or vehicles."
+            --notes "Fictitious demo content for the CEVOC project. Checksum is in the .sha256 file. Not real notices, people or vehicles."
           cat dist/*.sha256

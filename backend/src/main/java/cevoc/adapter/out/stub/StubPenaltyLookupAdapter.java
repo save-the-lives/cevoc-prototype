@@ -68,6 +68,6 @@ public class StubPenaltyLookupAdapter implements PenaltyLookupPort {
     }
 
     private static PenaltyLookupResult found(String n, NoticeDetails d, List<EvidenceItem> evidence) {
-        return new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, n, "Prototype data only.", d, evidence, SOURCE);
+        return new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, n, "Demonstration data only.", d, evidence, SOURCE);
     }
 }

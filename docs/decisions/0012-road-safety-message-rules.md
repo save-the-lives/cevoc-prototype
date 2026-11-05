@@ -16,7 +16,7 @@ Date recorded: 2026-11-05
 | 8 | `measure/content.js` + `GoodToKnow.jsx`, "How does this road safety camera work?" | one set of three cards per program (fixed, mobile, red light + speed, average, mobile phone) | none: chosen by program | Teaching cards, not warnings (for example "Amber is not red") | Folded block under the measurement picture |
 | 9 | `Measure.jsx` red light caption | red light | the program | "The light had been red for N seconds when the vehicle crossed the stop line, travelling at S km/h" | Under the signal graphic |
 | 10 | `Public.jsx` resources list | all | none | three links (NSW speeding facts, Towards Zero, a Victorian example) | Page foot |
-Lines 1 to 7 are limited to three lines by the code. Every figure and wording is marked in the mockup as prototype copy to be confirmed by the road safety program owners. There is no bus lane content and no per-trigger wording beyond the list above. IDEA ONLY (not in the mockup): messages driven by speed over the limit by a margin, time since red, lane, day of week, or any returned field.
+Lines 1 to 7 are limited to three lines by the code. Every figure and wording is marked in the mockup as draft copy to be confirmed by the road safety program owners. There is no bus lane content and no per-trigger wording beyond the list above. IDEA ONLY (not in the mockup): messages driven by speed over the limit by a margin, time since red, lane, day of week, or any returned field.
 
 ## Proposed structure (per-program configuration, same file as 0007, date-ranged and versioned with it)
     programs:

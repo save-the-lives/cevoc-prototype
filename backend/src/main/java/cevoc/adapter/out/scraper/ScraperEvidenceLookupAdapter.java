@@ -35,7 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * NOT FOR PRODUCTION WITHOUT THE SITE OWNER'S WRITTEN APPROVAL. Prototype only; replace with the real
+ * NOT FOR PRODUCTION WITHOUT THE SITE OWNER'S WRITTEN APPROVAL. Interim route, removed when the TfNSW API exists; replace with the real
  * evidence API. See docs/ARCHITECTURE.md ("Scraper adapter").
  *
  * Drives the three-state myPenalty flow through a {@link RenderedPageSession} (the site is an Angular app, so

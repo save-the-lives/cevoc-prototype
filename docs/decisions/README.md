@@ -7,9 +7,9 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0001 | Hexagonal design | Accepted |
 | 0002 | Cloud-agnostic; Azure MVP only, AWS target | Accepted |
 | 0003 | Revenue NSW interim, TfNSW APIs replace it | Accepted |
-| 0004 | Chromium route prototype only | Accepted |
+| 0004 | Chromium route temporary (delete at cutover) | Accepted |
 | 0005 | Public data only | Accepted |
-| 0006 | Existing prototype URLs must not change | Accepted |
+| 0006 | Existing published URLs must not change | Accepted |
 | 0007 | Information types, status and per-program switches | PROPOSED (config source and date-ranged versions decided 2026-11-04) |
 | 0008 | Vendor-neutrality drift status | Accepted (audit) |
 | 0009 | Every returned field travels as a flexible details map (with the field audit) | Accepted direction; build pending |

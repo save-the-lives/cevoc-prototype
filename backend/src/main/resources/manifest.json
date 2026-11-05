@@ -25,21 +25,21 @@
           "title": "Sample image",
           "objectKey": "image-1.jpg",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         },
         {
           "kind": "VIDEO",
           "title": "Sample video",
           "objectKey": "video-1.mp4",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         },
         {
           "kind": "CERTIFICATE",
           "title": "Sample camera certificate",
           "objectKey": "cert-1.pdf",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         }
       ]
     },
@@ -77,14 +77,14 @@
           "title": "Sample image",
           "objectKey": "image-1.jpg",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         },
         {
           "kind": "CERTIFICATE",
           "title": "Sample enforcement centre certificate",
           "objectKey": "cert-1.pdf",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         }
       ]
     },
@@ -112,21 +112,21 @@
           "title": "Sample image 1",
           "objectKey": "image-1.jpg",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         },
         {
           "kind": "IMAGE",
           "title": "Sample image 2",
           "objectKey": "image-2.jpg",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         },
         {
           "kind": "CERTIFICATE",
           "title": "Sample camera certificate",
           "objectKey": "cert-1.pdf",
           "licence": "CC0-1.0 (fictitious sample)",
-          "attribution": "Prototype sample file, no real source"
+          "attribution": "Demonstration sample file, no real source"
         }
       ]
     }

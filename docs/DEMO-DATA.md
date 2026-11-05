@@ -1,4 +1,4 @@
-# Demo data (fictitious notices for the prototype)
+# Demo data (fictitious notices; temporary: delete at cutover)
 
 Everything here is invented: ten-digit notice numbers, places, amounts, plate `TST123`, camera code `7109`, and the sample images. No real notice, person, vehicle or place is used, and by default nothing is fetched from any network (only if an optional demo content bundle URL is configured, see below). Decision records: 0007 (information types and status), 0009 (flexible details map), 0010 (route providers), 0013 to 0016 (red light first, default block, video default on).
 
@@ -48,7 +48,7 @@ A number inside a range that is not listed below behaves like the first case of 
 
 ### Can a demo number clash with a real notice number?
 
-Checked against this repository: the only constraints on a real number found in the code are that the lookup accepts 4 to 20 letters, digits, spaces or dashes (`PenaltyLookupController`) and the browser route 4 to 20 letters or digits. No source here states the real format, no real number is held anywhere, and the owner's description does not say it. So a clash **cannot be ruled out from this repository**: a real ten-digit number that starts with `000000` or with `100000` to `600000` followed by `00` and a sequence under 1000 would be answered by the demo adapter while the switch is on. That is why the switch is on only during the prototype, why every demo answer carries the banner, and why it must be turned off before real data. If the owner confirms that real numbers can be ten digits, add a marker real numbers cannot have (for example a leading letter) in `DemoNumber.parse`, the one place that reads the scheme.
+Checked against this repository: the only constraints on a real number found in the code are that the lookup accepts 4 to 20 letters, digits, spaces or dashes (`PenaltyLookupController`) and the browser route 4 to 20 letters or digits. No source here states the real format, no real number is held anywhere, and the owner's description does not say it. So a clash **cannot be ruled out from this repository**: a real ten-digit number that starts with `000000` or with `100000` to `600000` followed by `00` and a sequence under 1000 would be answered by the demo adapter while the switch is on. That is why the switch is on only while the service runs on demonstration data, why every demo answer carries the banner, and why it must be turned off before real data. If the owner confirms that real numbers can be ten digits, add a marker real numbers cannot have (for example a leading letter) in `DemoNumber.parse`, the one place that reads the scheme.
 
 ## Scenario table
 

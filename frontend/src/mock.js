@@ -39,7 +39,7 @@ export const SCENARIOS = [
 // 9000000006 and 9000000007 are the not-found and unavailable cases.
 export async function mockLookup({ infringementNumber, offenceDate, registration }) {
   await new Promise((r) => setTimeout(r, 250));
-  const base = { status: 'FOUND', infringementNumber, summary: 'Prototype data only.', source: 'STUB' };
+  const base = { status: 'FOUND', infringementNumber, summary: 'Demonstration data only.', source: 'STUB' };
   switch (infringementNumber) {
     case '9000000004':
       return { ...base, notice: notice({ offenceDate }), certificates: registration ? CERTS : [], plateRequired: !registration, evidence: registration ? [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2')] : [] };
