@@ -15,4 +15,8 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0009 | Every returned field travels as a flexible details map (with the field audit) | Accepted direction; build pending |
 | 0010 | Three selectable routes per information type; plain HTTP adapter design | Accepted direction; plain HTTP adapter built and tested offline, not yet live-tested |
 | 0011 | Evidence download and one-file evidence pack | Design for review |
-| 0012 | Road safety message rules | Proposal, waiting for the owner |
+| 0012 | Road safety message rules | Proposal; points decided in 0016, schema pending |
+| 0013 | Only red light is built now | Decided |
+| 0014 | Default program block and switch inheritance | Decided, built (front end config) |
+| 0015 | Video on by default, never a download | Decided, built |
+| 0016 | Road safety messages: owner decisions (one message, switch, none in PDF) | Decided; engine not built |

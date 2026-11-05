@@ -106,6 +106,13 @@ The mapping returns a program id; the version is then chosen by offence date. Th
 - Road safety messages (record 0012) live in the same per-program, date-ranged file as an optional `messages` list. Missing fields mean a rule does not fire.
 - Per-type status values stay: available, off by choice, not applicable, not yet available, failed. The status model and the config loader are NOT to be built until the owner confirms this design in a later entry.
 
+## Addendum 2026-11-05 (owner decisions, locked; see records 0013 to 0016)
+- Default block (0014): an unmatched or unconfigured notice uses a DEFAULT block in the same date-ranged file (core evidence per switches, common details, one plain visible message). This answers question 7. The `mapping.default` entry in the sketch above is replaced by this block.
+- Switch inheritance (0014): a program's own switch wins; a switch it does not set is inherited from the default block, for every switch (images, certificates, video, evidence pack, messages).
+- Video (0015): the `video` type is no longer only a placeholder. It is ON in the default block: played when returned, plainly "not available yet" when not, never a download, never in the evidence pack. A program can set it off or not applicable; then nothing is fetched or rendered and the plain message shows. The video port and player are kept.
+- Only red light is built now (0013).
+- Built so far: the default block, video default and switch inheritance, in `frontend/src/programs.json` and `programs.js`, with tests. The status model and a backend loader are still not built. Still open: date-ranged configuration design confirmation.
+
 ## Options considered for the configuration source
 | Option | What | Outcome |
 |---|---|---|

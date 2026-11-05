@@ -1,6 +1,6 @@
 # 0012. Road safety messages: rule structure (PROPOSAL, waiting for the owner)
 
-Status: PROPOSED. Discovery is complete; nothing is built. The owner picks before any build.
+Status: PROPOSED (rule structure). Discovery is complete; nothing is built. Owner decisions of 2026-11-05 are recorded in 0016 and applied below; the rule schema still waits for the owner to confirm it.
 Date recorded: 2026-11-05
 
 ## What the mockup contains today (PROVEN, prototype/src/public)
@@ -50,7 +50,7 @@ Lines 1 to 7 are limited to three lines by the code. Every figure and wording is
                 when: { any: [ { field: vehicleType, op: in, value: [heavy, motorcycle] } ] }
                 text: "..."
 Condition language: a leaf is `{ field | derived, op, value }`; ops `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `between`, `in`; groups `all` and `any` nest. `field` names a key of the `details` map (0009) or a typed core field. `derived` names a computed value defined in code once: `speedOver` (recorded minus limit), `hourOfDay`, `dayOfWeek`, `secondsAfterRed`. Rules: a missing or unparsable field means the rule does not fire and nothing errors; text placeholders `{key}` that are missing drop the rule instead of printing a blank. Load-time checks (fail fast, same as 0007): unique ids, known ops, a priority on every rule, valid dates. Adding a rule or a field is a configuration edit. Adding a new derived value is one small code change.
-Selection: sort by priority (highest first), take at most N (suggest 2, hard cap 3), then show them with a visible "why am I seeing this" line naming the rule id.
+Selection (DECIDED, record 0016): sort by priority (highest first) and show ONLY ONE message, the most relevant. Each program block has a `messages` on/off switch (inherited from the default block). Staff visibility of which rule fired is DEFERRED, so there is no "why am I seeing this" line in the first build. Messages are never in the PDF pack. Each message carries `approved_by` and `approved_on` (the owner approves the wording).
 
 ## Tester (plain table, fictitious values, runs without live data)
 | Case | Program | Fields | Expected rule ids |
@@ -60,8 +60,11 @@ Selection: sort by priority (highest first), take at most N (suggest 2, hard cap
 | C | FIXED_SPEED | speedLimit missing | none (no error) |
 | D | RED_LIGHT_SPEED | timeSinceRed 1.4 seconds | rl-late-red |
 | E | RED_LIGHT_SPEED | timeSinceRed 0.3 | none |
-| F | RED_LIGHT_SPEED | timeSinceRed 2.0, time 22:15 | rl-late-red, rl-night (cap 2) |
+| F | RED_LIGHT_SPEED | timeSinceRed 2.0, time 22:15 | rl-late-red only (cap of one, highest priority) |
 | G | any | rule outside active dates | none |
+
+## Answers recorded 2026-11-05 (record 0016)
+1. Cap: ONE message. 2. The owner approves wording, recorded beside each message in config. 3. Tone: plain, informative, never accusatory. 5. Which rule fired: staff visibility DEFERRED. 6. PDF pack: NO messages. Questions 4, 7 and 8 stay open.
 
 ## Questions for the owner (not guessed)
 1. How many messages at once: only the top one, or a cap of 2 or 3 in priority order (recommended: cap 2)?
