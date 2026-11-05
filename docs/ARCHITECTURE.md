@@ -19,6 +19,7 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Published URLs | Existing prototype URLs must not change | 0006 |
 | Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers. BUILT 2026-11-05 in the front end config: DEFAULT block, video default on, switch inheritance. Only red light is built now |  0007, 0013, 0014, 0015 |
 | Vendor-neutrality drift | Audit of 2026-11-04: no core leak into domain or application cloud-wise; a few leaks listed in record 0008 | 0008 |
+| Privacy blurring of evidence video and images | PROPOSED, research only: fail closed, server-side burn-in, detect once into a timed region track and merge into one stream, verify by content, never release on failure. Paper: `docs/research/privacy-blurring.md` | 0017 |
 
 ## Three selectable routes for notice details and images (record 0010)
 The lookup port (`PenaltyLookupPort`) has three kinds of route, chosen by configuration. The default (`manifest`) is unchanged and the Chromium route is unchanged.

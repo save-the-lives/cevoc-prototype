@@ -20,3 +20,4 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0014 | Default program block and switch inheritance | Decided, built (front end config) |
 | 0015 | Video on by default, never a download | Decided, built |
 | 0016 | Road safety messages: owner decisions (one message, switch, none in PDF) | Decided; engine not built |
+| 0017 | Privacy blurring of evidence video and still images | PROPOSED (research only, nothing built) |
