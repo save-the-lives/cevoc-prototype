@@ -10,8 +10,9 @@ class LookupAdapterKindTest {
 
     @Test
     void valuesMapToKindsCaseAndSpaceInsensitive() {
-        assertThat(LookupAdapterKind.of(null)).isEqualTo(LookupAdapterKind.STUB);
-        assertThat(LookupAdapterKind.of("")).isEqualTo(LookupAdapterKind.STUB);
+        assertThat(LookupAdapterKind.of(null)).isEqualTo(LookupAdapterKind.BROWSER);
+        assertThat(LookupAdapterKind.of("")).isEqualTo(LookupAdapterKind.BROWSER);
+        assertThat(LookupAdapterKind.of("  ")).isEqualTo(LookupAdapterKind.BROWSER);
         assertThat(LookupAdapterKind.of("stub")).isEqualTo(LookupAdapterKind.STUB);
         assertThat(LookupAdapterKind.of("browser")).isEqualTo(LookupAdapterKind.BROWSER);
         assertThat(LookupAdapterKind.of(" HTTP ")).isEqualTo(LookupAdapterKind.HTTP);

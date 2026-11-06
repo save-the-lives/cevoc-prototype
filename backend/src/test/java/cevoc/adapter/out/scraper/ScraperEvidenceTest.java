@@ -261,12 +261,14 @@ class ScraperEvidenceTest {
     }
 
     @Test
-    void shippedConfigKeepsStubAsDefaultAndHasNoScraperFlags() throws IOException {
+    void shippedConfigSetsNoAdapterSoTheCodeDefaultAppliesAndHasNoScraperFlags() throws IOException {
         Properties p = new Properties();
         try (InputStream in = Files.newInputStream(Path.of("src/main/resources/application.properties"))) {
             p.load(in);
         }
-        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isEqualTo("stub");
+        // Deliberately unset: the default (browser) lives in code, so an empty or blank environment variable cannot override it with nothing.
+        assertThat(p.getProperty("cevoc.penalty-lookup.adapter")).isNull();
+        assertThat(p.getProperty("cevoc.certificates.providers")).isNull();
         for (String retired : new String[] {"cevoc.scraper.enabled", "cevoc.scraper.evidence.enabled", "cevoc.scraper.evidence.browser",
                 "cevoc.scraper.certificates.enabled", "cevoc.revenue-nsw-http.enabled", "cevoc.live-check.token"}) {
             assertThat(p.getProperty(retired)).as(retired).isNull();
