@@ -14,13 +14,14 @@ import org.springframework.core.env.Environment;
  * Builds the certificate source from {@code cevoc.certificates.providers}, the certificates adapter choice: an ordered,
  * comma-separated list using the same names as the lookup adapter ({@code cevoc.penalty-lookup.adapter}):
  * <ul>
+ *   <li>{@code curl}: the same search as {@code http} but each request is the {@code curl} command line program (TLS fingerprint the bot management accepts); first in the default chain (decision 0025);</li>
  *   <li>{@code http}: the certificates search page with plain HTTP (GET, read the JSF hidden fields, POST the search form), no browser; interim;</li>
  *   <li>{@code browser}: the public certificates search page in a headless Chromium (interim, owner-approved 2026-11-04);</li>
  *   <li>{@code api}: reserved for the TfNSW API route; not available yet, so listing it fails at start-up;</li>
  *   <li>{@code http-form}: the older plain HTTP form scraper (legacy; only when listed);</li>
  *   <li>{@code browser-link}: follows the evidence page's signed link (legacy, answers 403; keep it last, it only parses a page the evidence step handed over).</li>
  * </ul>
- * Nothing listed (empty or unset, the default) means {@code http,browser}: plain HTTP with browser headers first, the browser as fallback. The explicit value {@code none} means no certificate source
+ * Nothing listed (empty or unset, the default) means {@code curl,http,browser}: curl first, then plain HTTP with browser headers, the browser as last fallback. The explicit value {@code none} means no certificate source
  * at all (tests, or a deployment that wants none). A name that is not in this list (including the retired
  * names {@code search-page} and {@code search-page-http}) is ignored with a warning: there is no alias and it never stops start-up.
  */
@@ -29,6 +30,7 @@ public final class CertificateProviders {
     public static final String BROWSER = "browser";
     public static final String API = "api";
     public static final String HTTP = "http";
+    public static final String CURL = "curl";
     public static final String HTTP_FORM = "http-form";
     public static final String BROWSER_LINK = "browser-link";
     /** Explicit "no certificate source". */
@@ -36,16 +38,16 @@ public final class CertificateProviders {
 
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviders.class);
 
-    private static final java.util.Set<String> KNOWN = java.util.Set.of(BROWSER, HTTP, API, HTTP_FORM, BROWSER_LINK);
+    private static final java.util.Set<String> KNOWN = java.util.Set.of(BROWSER, HTTP, CURL, API, HTTP_FORM, BROWSER_LINK);
 
     private CertificateProviders() {}
 
-    /** The provider ids to use, in order: the configured known ones, or {@code http,browser} when the setting is empty or unset. */
+    /** The provider ids to use, in order: the configured known ones, or {@code curl,http,browser} when the setting is empty or unset. */
     public static List<String> ids(Environment env) {
         String raw = env.getProperty("cevoc.certificates.providers", "").trim();
         List<String> out = new ArrayList<>();
         if (raw.isEmpty()) {
-            return List.of(HTTP, BROWSER);
+            return List.of(CURL, HTTP, BROWSER);
         }
         for (String part : raw.split(",")) {
             String id = part.trim().toLowerCase(Locale.ROOT);
@@ -55,7 +57,7 @@ public final class CertificateProviders {
             if (KNOWN.contains(id)) {
                 out.add(id);
             } else {
-                LOG.warn("certificate provider '{}' is not a known name and is ignored (known: http, browser, api, http-form, browser-link)", id);
+                LOG.warn("certificate provider '{}' is not a known name and is ignored (known: curl, http, browser, api, http-form, browser-link)", id);
             }
         }
         return out;
@@ -79,6 +81,10 @@ public final class CertificateProviders {
         for (String id : ids) {
             CertificateSourcePort port = switch (id) {
                 case BROWSER -> searchPage(env);
+                case CURL -> {
+                    CertificateSourcePort curl = curl(env);
+                    yield curl != null && ids.indexOf(CURL) < ids.size() - 1 ? new HttpLegFallbackSource(curl) : curl;
+                }
                 case HTTP -> {
                     CertificateSourcePort http = searchPageHttp(env);
                     boolean browserFollows = ids.subList(ids.indexOf(HTTP) + 1, ids.size()).stream().anyMatch(i -> i.equals(BROWSER) || i.equals(BROWSER_LINK));
@@ -122,6 +128,16 @@ public final class CertificateProviders {
                 cookies -> new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props, true, cs -> store.put(cs, Clock.systemUTC().instant())).withCookies(pageUrl, cookies), pageUrl,
                         new CertificatePageParser(), limiter, ttl, Clock.systemUTC()),
                 browser);
+    }
+
+    private static CertificateSourcePort curl(Environment env) {
+        ScraperSettings s = ScraperEvidenceFactory.settings(env);
+        String pageUrl = env.getProperty("cevoc.certificates.search-page.url", SearchPageCertificateSource.DEFAULT_PAGE_URL);
+        Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
+        String command = env.getProperty("cevoc.certificates.curl.command", "curl");
+        Duration timeout = Duration.ofSeconds(env.getProperty("cevoc.certificates.curl.timeout-seconds", Long.class, 10L));
+        return new CurlCertificateSource(command.isBlank() ? "curl" : command.trim(), timeout, pageUrl, EvidenceRateLimiter.system(s.minInterval()), ttl,
+                Clock.systemUTC(), CurlPageFetcher.processRunner());
     }
 
     private static CertificateSourcePort searchPageHttp(Environment env) {

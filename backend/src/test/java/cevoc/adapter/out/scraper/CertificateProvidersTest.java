@@ -30,13 +30,21 @@ class CertificateProvidersTest {
     }
 
     @Test
-    void nothingConfiguredMeansHttpThenTheBrowserProvider() {
-        assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("http", "browser");
-        assertThat(CertificateProviders.ids(env("", null))).containsExactly("http", "browser");
-        assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("http", "browser");
-        // No contact: the http leg is skipped, leaving the browser provider alone.
-        assertThat(CertificateProviders.create(new MockEnvironment())).isInstanceOf(SearchPageCertificateSource.class);
-        assertThat(CertificateProviders.create(env("  ", null))).isInstanceOf(SearchPageCertificateSource.class);
+    void nothingConfiguredMeansCurlThenHttpThenTheBrowserProvider() {
+        assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("curl", "http", "browser");
+        assertThat(CertificateProviders.ids(env("", null))).containsExactly("curl", "http", "browser");
+        assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("curl", "http", "browser");
+        // No contact: the http leg is skipped, curl (needs no contact) and the browser provider remain.
+        assertThat(CertificateProviders.create(new MockEnvironment())).isInstanceOf(CertificateProviderChain.class);
+        assertThat(CertificateProviders.create(env("  ", null))).isInstanceOf(CertificateProviderChain.class);
+    }
+
+    @Test
+    void curlIsSelectableOnItsOwnAndInOrder() {
+        assertThat(CertificateProviders.ids(env("curl", null))).containsExactly("curl");
+        assertThat(CertificateProviders.ids(env(" CURL , http", null))).containsExactly("curl", "http");
+        assertThat(CertificateProviders.create(env("curl", null))).isInstanceOf(CurlCertificateSource.class);
+        assertThat(CertificateProviders.create(env("curl,browser", null))).isInstanceOf(CertificateProviderChain.class);
     }
 
     @Test

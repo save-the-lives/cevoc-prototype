@@ -21,7 +21,8 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     CEVOC_BROWSER_CONTAINER=true
 COPY --from=deps /pw /pw
 # Tesseract OCR (Apache-2.0), English data and no recommended extras: the one engine behind BannerTextReaderPort.
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr \
+# curl: the `curl` certificates provider runs the curl command line program (record 0025); its TLS fingerprint is accepted where the JDK client is not.
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr curl \
     && rm -rf /var/lib/apt/lists/*
 RUN java -cp "/pw/*" com.microsoft.playwright.CLI install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* /pw \
