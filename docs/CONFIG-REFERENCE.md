@@ -170,9 +170,9 @@ All implemented by record 0020 except the items below.
 
 ## 13. Next steps for the owner (Azure Container App environment variables, names only)
 
-The deploy workflow sets the new names itself on every deploy (section 10), so the ADD and CHANGE lines happen by themselves on the first deploy after this change; they are listed so a manual setup is possible.
+Only a live-mode deploy sets these names itself (section 10); a normal deploy leaves them alone (record 0021), so the owner sets them on the container app.
 
 - **ADD:** `CEVOC_SCRAPER_EVIDENCE_URL` (live deploys only; from the GitHub variable `CEVOC_BASE_URL`, ideally the full login page address).
-- **CHANGE:** `CEVOC_PENALTY_LOOKUP_ADAPTER` (to `browser` for a live deploy, empty otherwise; the old values `manifest` and `scraper-evidence` are not aliases and behave as the default `stub`), `CEVOC_CERTIFICATES_PROVIDERS` (from `search-page` to `browser` for a live deploy, empty otherwise).
+- **CHANGE:** `CEVOC_PENALTY_LOOKUP_ADAPTER` (to `browser` for live use, otherwise unset or `stub`; the old values `manifest` and `scraper-evidence` are not aliases and behave as the default `stub`), `CEVOC_CERTIFICATES_PROVIDERS` (from `search-page` to `browser` for live use, otherwise unset).
 - **DELETE:** `CEVOC_SCRAPER_ENABLED`, `CEVOC_SCRAPER_EVIDENCE_ENABLED`, `CEVOC_SCRAPER_CERTIFICATES_ENABLED`, `CEVOC_SCRAPER_EVIDENCE_BROWSER`, `CEVOC_SCRAPER_EVIDENCE_BASE_URL`, `CEVOC_LIVECHECK_TOKEN`, `CEVOC_CERTIFICATES_APPROVAL_REFERENCE` (optional note, harmless if kept), and if present `CEVOC_SCRAPER_CERTIFICATES_APPROVAL_REFERENCE`, `CEVOC_REVENUE_NSW_HTTP_ENABLED`, `CEVOC_EVIDENCE_SCRAPER_ENABLED`, `CEVOC_CERTIFICATE_SCRAPER_ENABLED`, `CEVOC_DEMO_DATA`. Also delete the GitHub secret `LIVE_CHECK_TOKEN`.
 - **KEEP unchanged:** `CEVOC_LIVECHECK_ENABLED`, `CEVOC_BANNER_OCR_ENABLED`, `CEVOC_SCRAPER_EVIDENCE_CONTACT`, `CEVOC_DEMO_DATA_ENABLED` and the demo, CORS and media settings.
