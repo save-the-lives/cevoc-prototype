@@ -133,7 +133,7 @@ jobs:
             --image "${{ env.IMAGE }}:${{ github.sha }}" $size \
             --min-replicas 1 --max-replicas 1 \
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=browser CEVOC_LIVECHECK_ENABLED=true CEVOC_BANNER_OCR_ENABLED=true \
-            "CEVOC_SCRAPER_EVIDENCE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_CERTIFICATES_PROVIDERS=browser >/dev/null
+            "CEVOC_SCRAPER_EVIDENCE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_CERTIFICATES_PROVIDERS=curl,http,browser >/dev/null
 
       - name: Show what is deployed
         run: |
