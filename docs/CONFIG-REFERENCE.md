@@ -96,6 +96,21 @@ The default certificate provider is `browser`. It uses the same names as the loo
 | `CEVOC_SCRAPER_CERTIFICATES_*` (`PAGE_URL`, `USER_AGENT`, `MIN_INTERVAL_MS`, `CONNECT_TIMEOUT_MS`, `REQUEST_TIMEOUT_MS`, `CACHE_TTL_SECONDS`, `KEY_STRATEGY`) | `cevoc.scraper.certificates.<key>` | 5000 / 5000 / 10000 ms, 300 s, `VIA_ENFORCEMENT_SITE` | Tuning for the legacy `http-form` provider only. PROVEN. | Temporary | legacy |
 | `CEVOC_SCRAPER_CERTIFICATES_WINDOW_MARGIN_MINUTES` | `cevoc.scraper.certificates.window-margin-minutes` | unset (`-1`: whole offence day) | Offence time plus or minus N minutes. Read by `BeanConfig` for the lookup service as well as by `http-form`, so it is not legacy-only. PROVEN. | Temporary | in use |
 
+**Log lines for the certificates step.** Every lookup now leaves a line in the container console logs (in Azure: `ContainerAppConsoleLogs_CL`), so a failing certificates step can be found without running the live check. The lines hold fixed words and numbers only: never a notice number, plate, camera code, personal data or page content. Search for `Certificates step` first, then the logger lines below it.
+
+| Logger | Level | Line |
+|---|---|---|
+| `LookupPenaltyService` | INFO | `Certificates step ok: count=2, duration=1234ms` |
+| `LookupPenaltyService` | WARN | `Certificates step failed: cause=blocked-403, duration=889ms` (cause is the same fixed word as the step trace: `timeout`, `network-error`, `blocked-401`, `blocked-403`, `blocked-429`, `captcha`, `no-search-form`, `source-failed` and so on) |
+| `LookupPenaltyService` | INFO | `Certificates step skipped: reason=source-disabled`, `no-camera-code`, `supplied-by-adapter` or `not-applicable` |
+| `CertificateProviderChain` (two or more providers) | INFO / WARN | `Certificate provider ok: provider=http, count=0`; `Certificate provider failed: provider=browser, cause=timeout, refusal=false, chain-stopped=false` (a refusal, `blocked-401/403/429`, stops the chain) |
+| `SearchPageCertificateSource` (`browser`) | INFO | `Certificate search page ok: count=5, cache=miss` or `cache=hit` |
+| `SearchPageCertificateSource` | WARN | `Certificate search page failed: step=certificates; cause=blocked-403` |
+| `SearchPageCertificateSource` | DEBUG | `Certificate cache evicted: count=1` |
+| `CertificateProviders` (start-up) | INFO / WARN | `Certificate source: providers=[browser], url=https://cevoc.transport.nsw.gov.au/...` and the browser-route warning, which also carries the providers and the URL |
+
+A single provider is used without the chain, so its failures appear on the `SearchPageCertificateSource` line only. To see the DEBUG line set `LOGGING_LEVEL_CEVOC_ADAPTER_OUT_SCRAPER=DEBUG` (standard Spring Boot logging variable; not a `CEVOC_` name).
+
 The `browser` certificates provider opens its own Chromium session and, like the evidence route, needs the live-browser build and `CEVOC_SCRAPER_EVIDENCE_CONTACT` (the URL has a default); the `http` provider needs the contact. The legacy `CEVOC_SCRAPER_CERTIFICATES_*` tuning keys apply to `http-form` only: safe to delete.
 
 ## 5. Revenue NSW plain-HTTP route, adapter `http`

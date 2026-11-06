@@ -64,12 +64,15 @@ public final class CertificateProviders {
     /** Null when the setting is {@code none} (or lists nothing known). */
     public static CertificateSourcePort create(Environment env) {
         List<String> ids = ids(env);
+        String url = env.getProperty("cevoc.certificates.search-page.url", SearchPageCertificateSource.DEFAULT_PAGE_URL);
         if (ids.isEmpty()) {
+            LOG.info("Certificate source: none configured (cevoc.certificates.providers lists no known provider)");
             return null;
         }
+        LOG.info("Certificate source: providers={}, url={}", ids, url);
         if (ids.contains(BROWSER) || ids.contains(BROWSER_LINK)) {
-            LOG.warn("A browser-based certificate provider is active. This is TEMPORARY (interim route, removed when the TfNSW API exists): production uses the API providers, "
-                    + "and the Chromium route is removed at cutover (see docs/ARCHITECTURE.md).");
+            LOG.warn("A browser-based certificate provider is active (providers={}, url={}). This is TEMPORARY (interim route, removed when the TfNSW API exists): production uses the API providers, "
+                    + "and the Chromium route is removed at cutover (see docs/ARCHITECTURE.md).", ids, url);
         }
         List<CertificateSourcePort> ports = new ArrayList<>();
         List<String> usedIds = new ArrayList<>();
@@ -88,8 +91,10 @@ public final class CertificateProviders {
             }
         }
         if (ports.isEmpty()) {
+            LOG.warn("Certificate source: no provider could be built (providers={}), so certificates will be skipped", ids);
             return null;
         }
+        LOG.info("Certificate source ready: providers={}", usedIds);
         return ports.size() == 1 ? ports.get(0) : new CertificateProviderChain(usedIds, ports);
     }
 

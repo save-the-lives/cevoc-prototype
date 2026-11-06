@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Provider {@code search-page}: reads the public certificates SEARCH page (searchCertificates.jsf) in a headless
@@ -25,6 +27,8 @@ import java.util.Optional;
  * <p>Calls are serialised; results (including empty ones) are cached briefly; failures are not cached.
  */
 public class SearchPageCertificateSource implements CertificateSourcePort {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SearchPageCertificateSource.class);
 
     /** Fully qualified search page URL on cevoc.transport.nsw.gov.au (the basint host does not resolve from our infrastructure). Override: cevoc.certificates.search-page.url (env CEVOC_CERTIFICATES_SEARCH_PAGE_URL). */
     public static final String DEFAULT_PAGE_URL = CertificateScraperProperties.DEFAULT_PAGE_URL;
@@ -63,9 +67,14 @@ public class SearchPageCertificateSource implements CertificateSourcePort {
         Instant now = clock.instant();
         Cached hit = cache.get(key);
         if (hit != null && hit.at().plus(cacheTtl).isAfter(now)) {
+            LOG.info("Certificate search page ok: count={}, cache=hit", hit.value().size());
             return hit.value();
         }
+        int before = cache.size();
         cache.values().removeIf(c -> !c.at().plus(cacheTtl).isAfter(now));
+        if (cache.size() != before) {
+            LOG.debug("Certificate cache evicted: count={}", before - cache.size());
+        }
         List<CertificateRef> rows;
         try (RenderedPageSession session = sessions.open(URI.create(pageUrl))) {
             Optional<String> html = session.searchCertificates(pageUrl, query.locationCode(), query.from(), query.to());
@@ -80,6 +89,8 @@ public class SearchPageCertificateSource implements CertificateSourcePort {
             String reason = LookupDiagnostic.fromFailure(e.getMessage());
             String cause = reason.substring(reason.indexOf("cause=") + 6);
             LookupDiagnostic.note(LookupDiagnostic.certStep("failed", cause));
+            // reason is already the fixed vocabulary ("step=...; cause=..."): no message text, no query values.
+            LOG.warn("Certificate search page failed: {}", reason);
             if (cause.startsWith("ERR_NAME_NOT_RESOLVED") || cause.startsWith("ERR_CONNECTION") || cause.startsWith("ERR_INTERNET")) {
                 // Name or connection failure: add the redacted DNS view of the page host (kinds, counts, timings only).
                 LookupDiagnostic.note("cert-host-dns=" + HostReachability.line(HostReachability.hostOf(pageUrl)).trim().replace(" : ", " "));
@@ -89,6 +100,7 @@ public class SearchPageCertificateSource implements CertificateSourcePort {
         }
         LookupDiagnostic.note("cert-provider=search-page");
         cache.put(key, new Cached(now, rows));
+        LOG.info("Certificate search page ok: count={}, cache=miss", rows.size());
         return rows;
     }
 }

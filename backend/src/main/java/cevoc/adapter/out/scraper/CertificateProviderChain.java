@@ -5,6 +5,8 @@ import cevoc.domain.CertificateQuery;
 import cevoc.domain.CertificateRef;
 import java.util.List;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Ordered certificate providers behind the one {@link CertificateSourcePort}: the cutover seam. Config lists them in
@@ -14,6 +16,8 @@ import java.util.Locale;
  * retried and not worked around by trying another route to the same source.
  */
 public final class CertificateProviderChain implements CertificateSourcePort {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CertificateProviderChain.class);
 
     private final List<CertificateSourcePort> providers;
     private final List<String> ids;
@@ -36,16 +40,26 @@ public final class CertificateProviderChain implements CertificateSourcePort {
         RuntimeException last = null;
         for (int i = 0; i < providers.size(); i++) {
             try {
-                return providers.get(i).findCertificates(query);
+                List<CertificateRef> found = providers.get(i).findCertificates(query);
+                LOG.info("Certificate provider ok: provider={}, count={}", ids.get(i), found.size());
+                return found;
             } catch (RuntimeException e) {
                 LookupDiagnostic.note("cert-provider-failed=" + ids.get(i));
-                if (isRefusal(e)) {
+                boolean refusal = isRefusal(e);
+                // Provider id (fixed config name) and cause token only: no exception message, no query values.
+                LOG.warn("Certificate provider failed: provider={}, cause={}, refusal={}, chain-stopped={}", ids.get(i),
+                        cause(e), refusal, refusal);
+                if (refusal) {
                     throw e;
                 }
                 last = e;
             }
         }
         throw last;
+    }
+
+    private static String cause(Throwable t) {
+        return cevoc.domain.StepCause.of(t).token();
     }
 
     static boolean isRefusal(Throwable t) {

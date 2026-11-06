@@ -20,8 +20,12 @@ import cevoc.domain.PenaltyLookupResult;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LookupPenaltyService implements LookupPenaltyUseCase {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LookupPenaltyService.class);
 
     /** Long enough that a page opened and read for a while can still load the larger sizes when the viewer is opened. */
     static final Duration LINK_VALIDITY = Duration.ofMinutes(15);
@@ -152,6 +156,10 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
                 trace.skip(LookupStep.CERTIFICATES, r.cameraCode() == null || r.cameraCode().isBlank() ? StepCause.NO_CAMERA_CODE
                         : StepCause.NOT_APPLICABLE);
             }
+            // Fixed words only: never the notice number, plate, camera code or any page content.
+            LOG.info("Certificates step skipped: reason={}", certificates == null ? "source-disabled"
+                    : !r.certificates().isEmpty() ? "supplied-by-adapter"
+                    : r.cameraCode() == null || r.cameraCode().isBlank() ? "no-camera-code" : "not-applicable");
             return r;
         }
         long start = System.nanoTime();
@@ -164,13 +172,17 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             if (!trace.has(LookupStep.CERTIFICATES)) {
                 trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
             }
+            LOG.info("Certificates step ok: count={}, duration={}ms", items.size(), (System.nanoTime() - start) / 1_000_000);
             return r.withCertificates(items, items.isEmpty() ? "No certificates found" : null);
         } catch (RuntimeException e) {
             if (!trace.has(LookupStep.CERTIFICATES)) {
                 trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
             }
             StepCause cause = StepCause.of(e);
-            trace.fail(LookupStep.CERTIFICATES, cause == StepCause.OTHER ? StepCause.SOURCE_FAILED : cause);
+            StepCause shown = cause == StepCause.OTHER ? StepCause.SOURCE_FAILED : cause;
+            trace.fail(LookupStep.CERTIFICATES, shown);
+            // Cause token only (fixed vocabulary): the exception and its message are deliberately not logged.
+            LOG.warn("Certificates step failed: cause={}, duration={}ms", shown.token(), (System.nanoTime() - start) / 1_000_000);
             return r.withCertificates(List.of(), "Certificates unavailable");
         }
     }
