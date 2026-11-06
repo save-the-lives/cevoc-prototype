@@ -102,8 +102,9 @@ jobs:
           # Deliberately sets NO CEVOC_* variables. The owner sets CEVOC_PENALTY_LOOKUP_ADAPTER, CEVOC_CERTIFICATES_PROVIDERS,
           # CEVOC_SCRAPER_EVIDENCE_URL, CEVOC_SCRAPER_EVIDENCE_CONTACT, CEVOC_BANNER_OCR_ENABLED, CEVOC_LIVECHECK_ENABLED,
           # CEVOC_DEMO_DATA_ENABLED and CEVOC_CERTIFICATES_SEARCH_PAGE_URL on the container app; a normal deploy leaves them as they are.
+          # Also sets NO --cpu / --memory: the owner sets 2 CPU / 4Gi once in the Azure portal (Chromium needs it) and it stays (record 0021).
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 0.5 --memory 1.0Gi \
+            --image "${{ env.IMAGE }}:${{ github.sha }}" \
             --min-replicas 1 --max-replicas 1
           # Clears the secret the retired live-check token used to live in (harmless if it is already gone).
           az containerapp secret remove --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
@@ -121,8 +122,15 @@ jobs:
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
+          # Never shrinks: raise to 2 CPU / 4Gi only when the app is currently smaller; a larger owner-set size is kept.
+          cur_cpu=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.template.containers[0].resources.cpu" -o tsv)
+          cur_mem=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.template.containers[0].resources.memory" -o tsv)
+          size=""
+          awk -v c="${cur_cpu:-0}" 'BEGIN{exit !(c+0 < 2)}' && size="$size --cpu 2"
+          awk -v m="${cur_mem:-0}" 'BEGIN{v=m; gsub(/[^0-9.]/,"",v); if (m ~ /Mi$/) v=v/1024; exit !(v+0 < 4)}' && size="$size --memory 4Gi"
+          echo "current size: cpu=${cur_cpu:-unknown} memory=${cur_mem:-unknown}; size flags:${size:- none (not shrinking)}"
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
-            --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 2 --memory 4Gi \
+            --image "${{ env.IMAGE }}:${{ github.sha }}" $size \
             --min-replicas 1 --max-replicas 1 \
             --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=browser CEVOC_LIVECHECK_ENABLED=true CEVOC_BANNER_OCR_ENABLED=true \
             "CEVOC_SCRAPER_EVIDENCE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_CERTIFICATES_PROVIDERS=browser >/dev/null
@@ -139,11 +147,11 @@ jobs:
         run: |
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           bad=0
+          # GET /api/ping touches no adapter and no network, so it cannot reach the real site (record 0021).
           # Not up yet (no answer, 502/503/504) may fix itself: wait up to about 2.5 minutes.
           # A real answer that is not 200 will not: three in a row is enough.
           for i in $(seq 1 30); do
-            code=$(curl -m 15 -s -o /dev/null -w '%{http_code}' -X POST "https://$fqdn/api/penalty-lookups" \
-              -H 'Content-Type: application/json' -d '{"infringementNumber":"9000000001","offenceDate":"2026-01-15"}' || true)
+            code=$(curl -m 15 -s -o /dev/null -w '%{http_code}' "https://$fqdn/api/ping" || true)
             echo "attempt $i: HTTP $code"
             [ "$code" = "200" ] && exit 0
             case "$code" in 000|"" |502|503|504) bad=0;; *) bad=$((bad+1));; esac
