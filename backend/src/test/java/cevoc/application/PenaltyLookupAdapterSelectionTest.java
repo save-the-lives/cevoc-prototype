@@ -44,7 +44,7 @@ class PenaltyLookupAdapterSelectionTest {
         assertThat(port).isInstanceOf(ScraperEvidenceLookupAdapter.class);
         assertThat(port.find(UNKNOWN).status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
         assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
-        assertThat(ctx.getBean(CertificateSourcePort.class)).isInstanceOf(SearchPageCertificateSource.class);
+        assertThat(ctx.getBean(CertificateSourcePort.class)).isInstanceOf(cevoc.adapter.out.scraper.CertificateProviderChain.class);
         assertThat(ctx.getBeansOfType(LiveCheckGuardConfig.class)).isEmpty();
         assertThat(ctx.getBeansOfType(cevoc.adapter.out.demo.DemoRoute.class)).isEmpty();
     }
