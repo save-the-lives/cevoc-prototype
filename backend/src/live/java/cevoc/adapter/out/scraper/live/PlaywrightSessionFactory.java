@@ -81,9 +81,12 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
                 browser = held.browser();
             } else {
                 playwright = Playwright.create();
-                browser = playwright.chromium().launch(launchOptions(headless));
+                browser = playwright.chromium().launch(launchOptions(headless, browserDefaultUserAgent));
             }
             context = browser.newContext(contextOptions(settings, browserDefaultUserAgent, browser.version()));
+            if (browserDefaultUserAgent) {
+                context.addInitScript(WEBDRIVER_INIT_SCRIPT);
+            }
             Duration step = stepTimeout(settings);
             context.setDefaultTimeout(step.toMillis());
             context.setDefaultNavigationTimeout(step.toMillis());
@@ -121,7 +124,7 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
         }
         Playwright p = Playwright.create();
         try {
-            Browser b = p.chromium().launch(launchOptions(headless));
+            Browser b = p.chromium().launch(launchOptions(headless, browserDefaultUserAgent));
             h = new Holder(p, b);
             warm.put(t, h);
             return h;
@@ -158,6 +161,10 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
                 .setTimezoneId("Australia/Sydney")
                 .setAcceptDownloads(false)
                 .setServiceWorkers(ServiceWorkerPolicy.BLOCK);
+        if (browserDefaultUserAgent) {
+            // Certificates only: a desktop-sized window, as a real browser session has.
+            o.setViewportSize(1920, 1080);
+        }
         if (!browserDefaultUserAgent) {
             o.setUserAgent(settings.userAgent());
         } else if (browserVersion != null && !browserVersion.isBlank()) {
@@ -212,9 +219,35 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
      * sandbox and /dev/shm is small; the flags below are added only there. Local runs are unchanged.
      */
     static BrowserType.LaunchOptions launchOptions(boolean headless) {
-        var o = new BrowserType.LaunchOptions().setHeadless(headless);
+        return launchOptions(headless, false);
+    }
+
+    /** Runs before any page script in the certificates context: navigator.webdriver reads false, not Playwright's true. */
+    static final String WEBDRIVER_INIT_SCRIPT = "Object.defineProperty(navigator, 'webdriver', {get: () => false});";
+
+    /**
+     * @param newHeadless certificates browser only: run Chrome's new headless implementation, which shares the headed browser's
+     *                    DOM/JS fingerprint. Playwright's headless(true) selects the OLD headless mode, so for this case Playwright is
+     *                    told headed (setHeadless(false)) and "--headless=new" is passed as an argument, when headless was wanted.
+     */
+    static BrowserType.LaunchOptions launchOptions(boolean headless, boolean newHeadless) {
+        var args = new java.util.ArrayList<String>();
+        var o = new BrowserType.LaunchOptions();
+        if (newHeadless && headless) {
+            o.setHeadless(false);
+            args.add("--headless=new");
+            args.add("--disable-gpu");
+            args.add("--no-sandbox");
+        } else {
+            o.setHeadless(headless);
+        }
         if ("true".equalsIgnoreCase(System.getenv("CEVOC_BROWSER_CONTAINER"))) {
-            o.setArgs(java.util.List.of("--no-sandbox", "--disable-dev-shm-usage"));
+            for (String a : new String[] {"--no-sandbox", "--disable-dev-shm-usage"}) {
+                if (!args.contains(a)) args.add(a);
+            }
+        }
+        if (!args.isEmpty()) {
+            o.setArgs(args);
         }
         return o;
     }

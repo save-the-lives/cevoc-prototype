@@ -69,4 +69,26 @@ class PlaywrightHelpersTest {
         // The penalty lookup keeps the identifying agent whatever the browser version.
         assertThat(PlaywrightSessionFactory.contextOptions(s, false, "131.0.6778.33").userAgent).isEqualTo(s.userAgent());
     }
+
+    @Test
+    void certificatesBrowserUsesNewHeadlessAndHidesWebdriver() {
+        var certs = PlaywrightSessionFactory.launchOptions(true, true);
+        assertThat(certs.headless).isFalse();
+        assertThat(certs.args).contains("--headless=new", "--disable-gpu", "--no-sandbox");
+        // Penalty lookup launch is unchanged: plain Playwright headless, no extra args.
+        var penalty = PlaywrightSessionFactory.launchOptions(true, false);
+        assertThat(penalty.headless).isTrue();
+        assertThat(penalty.args).isNullOrEmpty();
+        // The script run before any page makes navigator.webdriver read false.
+        assertThat(PlaywrightSessionFactory.WEBDRIVER_INIT_SCRIPT)
+                .contains("navigator", "'webdriver'", "get: () => false");
+        ScraperSettings s = ScraperSettings.off();
+        var c = PlaywrightSessionFactory.contextOptions(s, true, "131.0.6778.33");
+        assertThat(c.viewportSize).isPresent();
+        assertThat(c.viewportSize.get().width).isEqualTo(1920);
+        assertThat(c.viewportSize.get().height).isEqualTo(1080);
+        assertThat(c.locale).isEqualTo("en-AU");
+        assertThat(c.timezoneId).isEqualTo("Australia/Sydney");
+        assertThat(PlaywrightSessionFactory.contextOptions(s, false).viewportSize).isNull();
+    }
 }
