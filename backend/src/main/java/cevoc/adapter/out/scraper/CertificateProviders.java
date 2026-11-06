@@ -20,7 +20,7 @@ import org.springframework.core.env.Environment;
  *   <li>{@code http-form}: the older plain HTTP form scraper (legacy; only when listed);</li>
  *   <li>{@code browser-link}: follows the evidence page's signed link (legacy, answers 403; keep it last, it only parses a page the evidence step handed over).</li>
  * </ul>
- * Nothing listed (empty or unset, the default) means {@code browser}. The explicit value {@code none} means no certificate source
+ * Nothing listed (empty or unset, the default) means {@code http,browser}: plain HTTP with browser headers first, the browser as fallback. The explicit value {@code none} means no certificate source
  * at all (tests, or a deployment that wants none). A name that is not in this list (including the retired
  * names {@code search-page} and {@code search-page-http}) is ignored with a warning: there is no alias and it never stops start-up.
  */
@@ -40,12 +40,12 @@ public final class CertificateProviders {
 
     private CertificateProviders() {}
 
-    /** The provider ids to use, in order: the configured known ones, or {@code browser} when the setting is empty or unset. */
+    /** The provider ids to use, in order: the configured known ones, or {@code http,browser} when the setting is empty or unset. */
     public static List<String> ids(Environment env) {
         String raw = env.getProperty("cevoc.certificates.providers", "").trim();
         List<String> out = new ArrayList<>();
         if (raw.isEmpty()) {
-            return List.of(BROWSER);
+            return List.of(HTTP, BROWSER);
         }
         for (String part : raw.split(",")) {
             String id = part.trim().toLowerCase(Locale.ROOT);
@@ -79,7 +79,11 @@ public final class CertificateProviders {
         for (String id : ids) {
             CertificateSourcePort port = switch (id) {
                 case BROWSER -> searchPage(env);
-                case HTTP -> searchPageHttp(env);
+                case HTTP -> {
+                    CertificateSourcePort http = searchPageHttp(env);
+                    boolean browserFollows = ids.subList(ids.indexOf(HTTP) + 1, ids.size()).stream().anyMatch(i -> i.equals(BROWSER) || i.equals(BROWSER_LINK));
+                    yield http != null && browserFollows ? new HttpLegFallbackSource(http) : http;
+                }
                 case HTTP_FORM -> httpForm(env);
                 case BROWSER_LINK -> new BrowserCertificateSourceAdapter(new CertificatePageParser());
                 case API -> throw new IllegalStateException("certificate provider api is not available yet");
@@ -132,7 +136,9 @@ public final class CertificateProviders {
         CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, s.userAgent(), s.minInterval(),
                 s.connectTimeout(), s.requestTimeout(), ttl, CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
         // A fresh fetcher per lookup: the session cookie lives in memory for that one lookup only.
-        return new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props), pageUrl, new CertificatePageParser(),
+        // Browser headers (decision 0024): the bot management in front of the page refuses the identifying agent.
+        boolean browserHeaders = env.getProperty("cevoc.certificates.search-page.http-browser-headers", Boolean.class, true);
+        return new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props, browserHeaders), pageUrl, new CertificatePageParser(),
                 EvidenceRateLimiter.system(s.minInterval()), ttl, Clock.systemUTC());
     }
 

@@ -30,12 +30,19 @@ class CertificateProvidersTest {
     }
 
     @Test
-    void nothingConfiguredMeansTheBrowserProvider() {
-        assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("browser");
-        assertThat(CertificateProviders.ids(env("", null))).containsExactly("browser");
-        assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("browser");
+    void nothingConfiguredMeansHttpThenTheBrowserProvider() {
+        assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("http", "browser");
+        assertThat(CertificateProviders.ids(env("", null))).containsExactly("http", "browser");
+        assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("http", "browser");
+        // No contact: the http leg is skipped, leaving the browser provider alone.
         assertThat(CertificateProviders.create(new MockEnvironment())).isInstanceOf(SearchPageCertificateSource.class);
         assertThat(CertificateProviders.create(env("  ", null))).isInstanceOf(SearchPageCertificateSource.class);
+    }
+
+    @Test
+    void withAContactTheDefaultIsAChainWithHttpFirst() {
+        MockEnvironment withContact = env(null, null).withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid");
+        assertThat(CertificateProviders.create(withContact)).isInstanceOf(CertificateProviderChain.class);
     }
 
     @Test

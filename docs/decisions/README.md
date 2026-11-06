@@ -26,3 +26,5 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0020 | Scrapers are adapters: one adapter-selection setting (`stub`, `browser`, `http`, later `api`), no per-route switches, no live-check token, one-URL convention | LOCKED by owner direction, 2026-11-06; built |
 | 0021 | Owner sets adapter and provider variables on the container app; normal deploys leave them alone | Decided, built |
 | 0022 | Real adapters are the defaults (`browser` lookup and certificates); `stub` is explicit; only the contact is required | Decided by owner, 2026-11-06; built |
+| 0023 | Certificates: HTTP first with cached browser-session cookies, browser as fallback | Accepted on owner direction, 2026-11-07; built |
+| 0024 | Certificates: the `http` provider sends browser headers and is first in the default chain | Owner direction, 2026-11-07; built, not verified live |

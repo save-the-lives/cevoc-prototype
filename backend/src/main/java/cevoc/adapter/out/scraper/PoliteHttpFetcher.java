@@ -21,13 +21,23 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class PoliteHttpFetcher implements PageFetcher {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PoliteHttpFetcher.class);
+
     private final CertificateScraperProperties props;
     private final HttpClient client;
     private final ReentrantLock lock = new ReentrantLock();
     private long lastRequestNanos;
     private boolean hasRequested;
+    private final boolean browserHeaders;
+    private String lastPageUrl;
 
     public PoliteHttpFetcher(CertificateScraperProperties props) {
+        this(props, false);
+    }
+
+    /** {@code browserHeaders}: send the headers of a desktop Chrome navigation instead of the identifying agent ({@link BrowserHeaders}). */
+    public PoliteHttpFetcher(CertificateScraperProperties props, boolean browserHeaders) {
+        this.browserHeaders = browserHeaders;
         this.props = props;
         this.client = HttpClient.newBuilder()
                 .connectTimeout(props.connectTimeout())
@@ -51,7 +61,8 @@ public class PoliteHttpFetcher implements PageFetcher {
 
     @Override
     public String get(String url) {
-        return send(base(url).GET().build());
+        lastPageUrl = url;
+        return send("GET", base(url, browserHeaders ? BrowserHeaders.forGet() : null).GET().build());
     }
 
     @Override
@@ -59,24 +70,31 @@ public class PoliteHttpFetcher implements PageFetcher {
         StringJoiner body = new StringJoiner("&");
         fields.forEach((k, v) -> body.add(URLEncoder.encode(k, StandardCharsets.UTF_8) + "="
                 + URLEncoder.encode(v == null ? "" : v, StandardCharsets.UTF_8)));
-        return send(base(url).header("Content-Type", "application/x-www-form-urlencoded")
+        return send("POST", base(url, browserHeaders ? BrowserHeaders.forFormPost(lastPageUrl == null ? url : lastPageUrl, url) : null)
+                .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString())).build());
     }
 
-    private HttpRequest.Builder base(String url) {
-        return HttpRequest.newBuilder(URI.create(url))
-                .timeout(props.requestTimeout())
-                .header("User-Agent", props.userAgent())
-                .header("Accept", "text/html");
+    private HttpRequest.Builder base(String url, Map<String, String> headers) {
+        HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(url)).timeout(props.requestTimeout());
+        if (headers == null) {
+            return b.header("User-Agent", props.userAgent()).header("Accept", "text/html");
+        }
+        headers.forEach(b::header);
+        return b;
     }
 
-    private String send(HttpRequest request) {
+    private String send(String method, HttpRequest request) {
         lock.lock(); // no parallelism: callers queue here
         try {
             waitForSlot();
+            long started = System.nanoTime();
             try {
                 HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
                 int code = resp.statusCode();
+                // Method, status and timing only: never the URL's query, a header value or the body.
+                LOG.info("Certificate HTTP request: method={}, status={}, ms={}, browser-headers={}", method, code,
+                        (System.nanoTime() - started) / 1_000_000, browserHeaders);
                 if (code == 401 || code == 403 || code == 429) {
                     // A refusal ends the attempt; callers must not retry or go another way round.
                     throw new ScrapeException("blocked-" + code);

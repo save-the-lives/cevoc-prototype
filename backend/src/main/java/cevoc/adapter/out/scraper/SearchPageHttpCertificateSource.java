@@ -25,6 +25,8 @@ import java.util.function.Supplier;
  */
 public class SearchPageHttpCertificateSource implements CertificateSourcePort {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(SearchPageHttpCertificateSource.class);
+
     private record Cached(Instant at, List<CertificateRef> value) {}
 
     private final Supplier<PageFetcher> fetchers;
@@ -73,7 +75,13 @@ public class SearchPageHttpCertificateSource implements CertificateSourcePort {
             if (SearchPageDiagnostic.hasCaptcha(form)) {
                 throw new ScrapeException("captcha present: stopping, not automating past it");
             }
-            SearchFormReader.Plan plan = SearchFormReader.plan(form, pageUrl, query.locationCode(), query.from(), query.to());
+            SearchFormReader.Plan plan;
+            try {
+                plan = SearchFormReader.plan(form, pageUrl, query.locationCode(), query.from(), query.to());
+            } catch (ScrapeException e) {
+                LOG.info("Certificate HTTP lookup: form-fetched=yes, viewstate-found=no, results-parsed=no, count=0");
+                throw e;
+            }
             LookupDiagnostic.note("srch-http-found: " + plan.how() + "; post-fields=" + Math.min(plan.body().size(), 99));
             limiter.acquire();
             String result = fetcher.postForm(plan.actionUrl(), plan.body());
@@ -81,7 +89,14 @@ public class SearchPageHttpCertificateSource implements CertificateSourcePort {
             if (SearchPageDiagnostic.hasCaptcha(result)) {
                 throw new ScrapeException("captcha present: stopping, not automating past it");
             }
-            rows = RenderedCertificates.parse(parser, result);
+            try {
+                rows = RenderedCertificates.parse(parser, result);
+            } catch (ScrapeException e) {
+                LOG.info("Certificate HTTP lookup: form-fetched=yes, viewstate-found=yes, results-parsed=no, count=0");
+                throw e;
+            }
+            // Counts and yes/no only: no location code, dates or certificate values.
+            LOG.info("Certificate HTTP lookup: form-fetched=yes, viewstate-found=yes, results-parsed=yes, count={}", rows.size());
         } catch (IllegalStateException e) {
             Thread.currentThread().interrupt();
             throw new ScrapeException("interrupted");
