@@ -169,6 +169,8 @@ jobs:
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
               f.write("\n".join(out) + "\n")
+          # Also print to stdout so the job log carries the results (gh run view --log can read them).
+          print("\n".join(out))
           print("Summary written to the run page (%s)." % name)
           PY
 
