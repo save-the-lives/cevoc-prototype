@@ -71,10 +71,10 @@ class PlaywrightHelpersTest {
     }
 
     @Test
-    void certificatesBrowserUsesNewHeadlessAndHidesWebdriver() {
+    void certificatesBrowserUsesStandardHeadlessAndHidesWebdriver() {
         var certs = PlaywrightSessionFactory.launchOptions(true, true);
-        assertThat(certs.headless).isFalse();
-        assertThat(certs.args).contains("--headless=new", "--disable-gpu", "--no-sandbox");
+        assertThat(certs.headless).isTrue();
+        assertThat(certs.args).isNullOrEmpty();
         // Penalty lookup launch is unchanged: plain Playwright headless, no extra args.
         var penalty = PlaywrightSessionFactory.launchOptions(true, false);
         assertThat(penalty.headless).isTrue();

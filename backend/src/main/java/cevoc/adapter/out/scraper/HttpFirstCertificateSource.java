@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Certificates {@code browser} provider with an HTTP-first optimisation (owner direction 2026-11-07): when a browser visit left
- * session cookies ({@link SessionCookies}), try the plain HTTP search with them first, which costs no Chromium. Any failure there
+ * Certificates {@code browser} provider with an HTTP-first optimisation (owner direction 2026-11-07): try the plain HTTP search first, with the
+ * session cookies ({@link SessionCookies}) a previous visit left, or none when there are none yet, which costs no Chromium. Any failure there
  * (403, expired session, no form, parse failure) drops the cookies and falls back to the browser source, whose successful visit
  * refreshes them. The browser leg keeps every safeguard; its own refusal still ends the attempt.
  */
@@ -31,18 +31,18 @@ public class HttpFirstCertificateSource implements CertificateSourcePort {
     @Override
     public List<CertificateRef> findCertificates(CertificateQuery query) {
         var cookies = store.fresh(clock.instant());
-        if (cookies.isPresent()) {
-            try {
-                List<CertificateRef> rows = http.apply(cookies.get()).findCertificates(query);
-                LookupDiagnostic.note("cert-http-first=hit");
-                return rows;
-            } catch (ScrapeException | IllegalStateException e) {
-                store.clear();
-                String m = e.getMessage() == null ? "failed" : e.getMessage().toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9-]+", "-");
-                LookupDiagnostic.note("cert-http-first=fallback; cause=" + m.substring(0, Math.min(m.length(), 40)));
-            }
-        } else {
-            LookupDiagnostic.note("cert-http-first=no-session");
+        boolean cold = cookies.isEmpty();
+        try {
+            // Cold: no cookies yet, so a cookieless GET (the bot check on a first request is server side); its response cookies
+            // are cached by the HTTP leg for the next lookup.
+            List<CertificateRef> rows = http.apply(cold ? List.of() : cookies.get()).findCertificates(query);
+            LookupDiagnostic.note(cold ? "cert-http-first=cold; result=hit" : "cert-http-first=hit");
+            return rows;
+        } catch (ScrapeException | IllegalStateException e) {
+            store.clear();
+            String m = e.getMessage() == null ? "failed" : e.getMessage().toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9-]+", "-");
+            LookupDiagnostic.note((cold ? "cert-http-first=cold; fallback; cause=" : "cert-http-first=fallback; cause=")
+                    + m.substring(0, Math.min(m.length(), 40)));
         }
         return browser.findCertificates(query);
     }

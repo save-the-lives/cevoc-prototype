@@ -71,6 +71,31 @@ class PoliteHttpFetcherHeadersTest {
     }
 
     @Test
+    void gzipBodyIsInflatedAndAllowListedResponseCookiesAreReported() throws Exception {
+        server.removeContext("/");
+        server.createContext("/", ex -> {
+            seen.add(ex.getRequestHeaders());
+            var bos = new java.io.ByteArrayOutputStream();
+            try (var gz = new java.util.zip.GZIPOutputStream(bos)) {
+                gz.write("<html>zipped</html>".getBytes(StandardCharsets.UTF_8));
+            }
+            byte[] body = bos.toByteArray();
+            ex.getResponseHeaders().add("Content-Encoding", "gzip");
+            ex.getResponseHeaders().add("Set-Cookie", "JSESSIONID=fictitious-s; Path=/");
+            ex.getResponseHeaders().add("Set-Cookie", "ak_bmsc=fictitious-a; Path=/");
+            ex.getResponseHeaders().add("Set-Cookie", "other=fictitious-o; Path=/");
+            ex.sendResponseHeaders(200, body.length);
+            ex.getResponseBody().write(body);
+            ex.close();
+        });
+        var got = new java.util.concurrent.atomic.AtomicReference<List<SessionCookies.Cookie>>();
+        String html = new PoliteHttpFetcher(props(), true, got::set).get(base);
+        assertThat(html).isEqualTo("<html>zipped</html>");
+        assertThat(seen.get(0).getFirst("Accept-Encoding")).isEqualTo("gzip");
+        assertThat(got.get()).extracting(SessionCookies.Cookie::name).containsExactlyInAnyOrder("JSESSIONID", "ak_bmsc");
+    }
+
+    @Test
     void a403IsARefusalAndIsNotRetried() {
         status = 403;
         assertThatThrownBy(() -> new PoliteHttpFetcher(props(), true).get(base)).hasMessage("blocked-403");

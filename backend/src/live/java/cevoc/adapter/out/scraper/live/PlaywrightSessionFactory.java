@@ -226,21 +226,13 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
     static final String WEBDRIVER_INIT_SCRIPT = "Object.defineProperty(navigator, 'webdriver', {get: () => false});";
 
     /**
-     * @param newHeadless certificates browser only: run Chrome's new headless implementation, which shares the headed browser's
-     *                    DOM/JS fingerprint. Playwright's headless(true) selects the OLD headless mode, so for this case Playwright is
-     *                    told headed (setHeadless(false)) and "--headless=new" is passed as an argument, when headless was wanted.
+     * @param newHeadless ignored since the "--headless=new" launch broke in the container image (browser-launch-failed): the
+     *                    standard Playwright headless mode is used for every lookup.
      */
     static BrowserType.LaunchOptions launchOptions(boolean headless, boolean newHeadless) {
         var args = new java.util.ArrayList<String>();
         var o = new BrowserType.LaunchOptions();
-        if (newHeadless && headless) {
-            o.setHeadless(false);
-            args.add("--headless=new");
-            args.add("--disable-gpu");
-            args.add("--no-sandbox");
-        } else {
-            o.setHeadless(headless);
-        }
+        o.setHeadless(headless);
         if ("true".equalsIgnoreCase(System.getenv("CEVOC_BROWSER_CONTAINER"))) {
             for (String a : new String[] {"--no-sandbox", "--disable-dev-shm-usage"}) {
                 if (!args.contains(a)) args.add(a);

@@ -30,6 +30,7 @@ public class PoliteHttpFetcher implements PageFetcher {
     private boolean hasRequested;
     private final boolean browserHeaders;
     private String lastPageUrl;
+    private final java.util.function.Consumer<java.util.List<SessionCookies.Cookie>> onCookies;
 
     public PoliteHttpFetcher(CertificateScraperProperties props) {
         this(props, false);
@@ -37,6 +38,16 @@ public class PoliteHttpFetcher implements PageFetcher {
 
     /** {@code browserHeaders}: send the headers of a desktop Chrome navigation instead of the identifying agent ({@link BrowserHeaders}). */
     public PoliteHttpFetcher(CertificateScraperProperties props, boolean browserHeaders) {
+        this(props, browserHeaders, null);
+    }
+
+    /**
+     * @param onCookies called after each successful response with the jar's cookies (JSESSIONID, ak_bmsc, bm_sv only), so the
+     *                  next lookup starts warmer; null for none. Values are never logged.
+     */
+    public PoliteHttpFetcher(CertificateScraperProperties props, boolean browserHeaders,
+                             java.util.function.Consumer<java.util.List<SessionCookies.Cookie>> onCookies) {
+        this.onCookies = onCookies;
         this.browserHeaders = browserHeaders;
         this.props = props;
         this.client = HttpClient.newBuilder()
@@ -90,7 +101,7 @@ public class PoliteHttpFetcher implements PageFetcher {
             waitForSlot();
             long started = System.nanoTime();
             try {
-                HttpResponse<String> resp = client.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<byte[]> resp = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
                 int code = resp.statusCode();
                 // Method, status and timing only: never the URL's query, a header value or the body.
                 LOG.info("Certificate HTTP request: method={}, status={}, ms={}, browser-headers={}", method, code,
@@ -102,7 +113,10 @@ public class PoliteHttpFetcher implements PageFetcher {
                 if (code / 100 != 2) {
                     throw new ScrapeException("Source returned HTTP " + resp.statusCode());
                 }
-                return resp.body();
+                if (onCookies != null) {
+                    onCookies.accept(jarCookies(request.uri()));
+                }
+                return decode(resp);
             } catch (IOException e) {
                 throw new ScrapeException("Source request failed: " + e.getClass().getSimpleName(), e);
             } catch (InterruptedException e) {
@@ -115,6 +129,26 @@ public class PoliteHttpFetcher implements PageFetcher {
         } finally {
             lock.unlock();
         }
+    }
+
+    private java.util.List<SessionCookies.Cookie> jarCookies(URI uri) {
+        CookieManager cm = (CookieManager) client.cookieHandler().orElseThrow();
+        return cm.getCookieStore().get(uri).stream()
+                .filter(c -> SessionCookies.ALLOWED.contains(c.getName().toLowerCase(java.util.Locale.ROOT)))
+                .map(c -> new SessionCookies.Cookie(c.getName(), c.getValue(), uri.getHost(), c.getPath()))
+                .toList();
+    }
+
+    /** Body as text; inflated first when the server answered {@code Content-Encoding: gzip} (the JDK client does not). */
+    private static String decode(HttpResponse<byte[]> resp) throws IOException {
+        byte[] body = resp.body();
+        boolean gzip = resp.headers().firstValue("Content-Encoding").map(v -> v.trim().equalsIgnoreCase("gzip")).orElse(false);
+        if (gzip && body.length > 0) {
+            try (var in = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(body))) {
+                body = in.readAllBytes();
+            }
+        }
+        return new String(body, StandardCharsets.UTF_8);
     }
 
     private void waitForSlot() {

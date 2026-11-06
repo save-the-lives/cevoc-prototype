@@ -119,7 +119,7 @@ public final class CertificateProviders {
                 s.connectTimeout(), s.requestTimeout(), ttl, CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
         EvidenceRateLimiter limiter = EvidenceRateLimiter.system(s.minInterval());
         return new HttpFirstCertificateSource(store, Clock.systemUTC(),
-                cookies -> new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props).withCookies(pageUrl, cookies), pageUrl,
+                cookies -> new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props, true, cs -> store.put(cs, Clock.systemUTC().instant())).withCookies(pageUrl, cookies), pageUrl,
                         new CertificatePageParser(), limiter, ttl, Clock.systemUTC()),
                 browser);
     }

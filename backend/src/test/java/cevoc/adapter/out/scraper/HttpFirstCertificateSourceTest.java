@@ -43,7 +43,7 @@ class HttpFirstCertificateSourceTest {
     }
 
     @Test
-    void withoutCookiesTheBrowserIsUsedAndWithCookiesHttpAnswersFirst() {
+    void withoutCookiesHttpIsTriedColdAndWhenItFailsTheBrowserIsUsed() {
         SessionCookies store = new SessionCookies();
         AtomicInteger httpCalls = new AtomicInteger();
         AtomicInteger browserCalls = new AtomicInteger();
@@ -58,12 +58,26 @@ class HttpFirstCertificateSourceTest {
                     return List.<CertificateRef>of();
                 }, browser);
         s.findCertificates(Q);
-        assertThat(browserCalls.get()).isEqualTo(1);
-        assertThat(httpCalls.get()).isZero();
+        assertThat(httpCalls.get()).isEqualTo(1);
+        assertThat(browserCalls.get()).isZero();
+        assertThat(LookupDiagnostic.take()).contains("cert-http-first=cold");
+    }
+
+    @Test
+    void aColdHttpRefusalFallsBackToTheBrowser() {
+        SessionCookies store = new SessionCookies();
+        AtomicInteger browserCalls = new AtomicInteger();
+        HttpFirstCertificateSource s = new HttpFirstCertificateSource(store, Clock.fixed(T0, ZoneOffset.UTC),
+                c -> q -> {
+                    assertThat(c).isEmpty();
+                    throw new ScrapeException("blocked-403");
+                }, q -> {
+                    browserCalls.incrementAndGet();
+                    return List.<CertificateRef>of();
+                });
         s.findCertificates(Q);
         assertThat(browserCalls.get()).isEqualTo(1);
-        assertThat(httpCalls.get()).isEqualTo(1);
-        assertThat(LookupDiagnostic.take()).contains("cert-http-first=no-session").contains("cert-http-first=hit");
+        assertThat(LookupDiagnostic.take()).contains("cert-http-first=cold; fallback; cause=blocked-403");
     }
 
     @Test

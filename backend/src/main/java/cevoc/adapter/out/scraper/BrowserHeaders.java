@@ -7,8 +7,8 @@ import java.util.Map;
 /**
  * The request headers a desktop Chrome navigation sends, for the plain-HTTP certificates leg (owner-approved 2026-11-07,
  * docs/decisions/0024-certificates-http-browser-headers.md). Header NAMES and fixed browser values only; nothing here
- * carries user data. {@code Accept-Encoding} is deliberately absent: the JDK client does not decompress, so asking for
- * gzip would hand back bytes the parser cannot read.
+ * carries user data. {@code Accept-Encoding: gzip} is sent like a browser does; {@link PoliteHttpFetcher} inflates a gzip body itself
+ * because the JDK client does not.
  */
 final class BrowserHeaders {
 
@@ -39,6 +39,7 @@ final class BrowserHeaders {
         Map<String, String> h = new LinkedHashMap<>();
         h.put("User-Agent", USER_AGENT);
         h.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
+        h.put("Accept-Encoding", "gzip");
         h.put("Accept-Language", "en-AU,en;q=0.9");
         h.put("Upgrade-Insecure-Requests", "1");
         h.put("Sec-Fetch-Mode", "navigate");

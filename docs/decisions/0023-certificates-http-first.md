@@ -6,7 +6,7 @@
 
 **Decision.** Built into the `browser` provider, not a separate provider in the chain: the two legs share one cache key, one set of safeguards and one "certificates" step, and a separate provider would make the chain treat an HTTP 403 as a final answer instead of a cue to start the browser.
 - `SessionCookies` (in memory, one replica): after each successful browser search the session's cookies are kept, allow-listed to `JSESSIONID`, `ak_bmsc`, `bm_sv`, for 15 minutes. Values are never logged.
-- `HttpFirstCertificateSource`: with fresh cookies, run the existing `SearchPageHttpCertificateSource` flow (GET form for the JSF state, POST search) seeded with them. Any failure (403, expired session, no form, parse) clears the cookies and calls the browser source, whose success refreshes them. Notes: `cert-http-first=hit | no-session | fallback; cause=<token>`.
+- `HttpFirstCertificateSource`: with fresh cookies, run the existing `SearchPageHttpCertificateSource` flow (GET form for the JSF state, POST search) seeded with them. Any failure (403, expired session, no form, parse) clears the cookies and calls the browser source, whose success refreshes them. Notes: `cert-http-first=hit | cold (cookieless attempt; "; result=hit" or "; fallback; cause=<token>") | fallback; cause=<token>`.
 - Switch: `cevoc.certificates.search-page.http-first` (default true).
 
 **Safeguards kept.** Honest identifying user agent on the HTTP leg (no browser user agent is copied onto a non-browser client), polite pacing, one lookup at a time, no captcha automation. The HTTP leg's refusal is not "worked around": it hands over to the browser, which is the approved session for this page; the browser leg's own refusal still ends the attempt as `blocked-<status>`.

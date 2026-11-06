@@ -25,7 +25,7 @@ class BrowserHeadersTest {
 
     @Test
     void noGzipIsRequestedBecauseTheClientCannotDecodeIt() {
-        assertThat(BrowserHeaders.forGet()).doesNotContainKey("Accept-Encoding");
+        assertThat(BrowserHeaders.forGet()).containsEntry("Accept-Encoding", "gzip");
     }
 
     @Test
