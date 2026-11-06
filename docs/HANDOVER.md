@@ -40,6 +40,9 @@ All settings, defaults and their scope (Temporary, Production, Both) are in `doc
 - GitHub Pages serves the original mockup (`deploy.yml`).
 - AWS is the real target and is a draft: `docs/RUNBOOK-AWS.md` maps each Azure piece to AWS and lists what changes (an S3 media adapter, an AWS deploy workflow, CloudFront routing of `/api`). Domain and application code do not change.
 
+## Reading the Azure logs
+Owner-run workflow `.github/workflows/log-query.yml` (read-only, manual) prints redacted summaries of the Container App's console logs on the run page: certificate step outcomes, step trace, app health and certificate failures. Needs a read-only service principal and five secrets in the `log-query` GitHub environment; names, role and the list of queries are in `docs/CONFIG-REFERENCE.md` section 9a. Delete the workflow and the environment when Azure is no longer used.
+
 ## Temporary parts (temporary: delete at cutover)
 Everything below is scheduled for removal when the TfNSW API providers exist (`api` value of the selectors). Nothing in production code may depend on them. The authoritative delete lists are in `docs/ARCHITECTURE.md` ("Certificate providers") and `docs/CONFIG-REFERENCE.md` (Scope = Temporary).
 

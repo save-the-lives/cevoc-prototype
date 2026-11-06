@@ -1,0 +1,177 @@
+name: Log query (read-only, redacted summary)
+# Manual only. Reads the Container App's Log Analytics workspace and prints a REDACTED summary to the run's step summary.
+# Reads only: the service principal needs the "Log Analytics Reader" role on the workspace and nothing else.
+# Nothing is uploaded as an artifact and raw query output is never printed to the job log.
+# The secrets are expected in the GitHub environment "log-query" (see docs/CONFIG-REFERENCE.md), so they
+# cannot overwrite the repository-level AZURE_* names that the deploy workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: Which fixed query to run
+        type: choice
+        required: true
+        default: certificate-step-last-24h
+        options:
+          - certificate-step-last-24h
+          - step-trace-last-hour
+          - app-health
+          - certificate-403-detail
+permissions:
+  contents: read
+concurrency:
+  group: log-query
+  cancel-in-progress: false
+jobs:
+  query:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: log-query
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_LOG_WORKSPACE_ID: ${{ secrets.AZURE_LOG_WORKSPACE_ID }}
+      QUERY_NAME: ${{ inputs.query }}
+    steps:
+      - name: Sign in (service principal, read-only role)
+        run: |
+          set -euo pipefail
+          for v in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_SUBSCRIPTION_ID AZURE_LOG_WORKSPACE_ID; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v is not set"; exit 1; fi
+          done
+          az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID" --output none
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+          az extension add --name log-analytics --only-show-errors
+
+      - name: Run the query and write the redacted summary
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, datetime
+
+          # ---- Redaction, applied twice: inside the KQL (so unredacted text never leaves Azure) and again here. ----
+          RULES = [
+              (r"(?i)\b(name|surname|given|driver|owner|holder|registered)\b[=: ]+[^,;]+", r"\1=[removed]"),  # personal names
+              (r"[^\s@]+@[^\s@]+", "[email]"),                                                              # e-mail addresses
+              (r"\d{7,}", "[number]"),                                                                      # 10-digit notice numbers and any long digit run
+              (r"\b[A-Za-z]{2,3}[ -]?\d{2,4}[A-Za-z]{0,3}\b", "[plate]"),                                    # plate shapes: AB12CD, ABC123, AB 123
+          ]
+
+          def redact(value):
+              if not isinstance(value, str):
+                  return value
+              for pattern, rewrite in RULES:
+                  value = re.sub(pattern, rewrite, value)
+              return value
+
+          def kql_escape(p):
+              return p.replace("'", "''")
+
+          # KQL form of the same rules (RE2; replace_regex uses \1 for groups).
+          def kql_redact_fn():
+              expr = "s"
+              for pattern, rewrite in RULES:
+                  expr = "replace_regex(%s, @'%s', '%s')" % (expr, kql_escape(pattern), kql_escape(rewrite))
+              return "let redact = (s:string) { %s };\n" % expr
+
+          PRE = kql_redact_fn() + (
+              'let lvl = (s:string) { iff(isempty(extract(@"\\b(ERROR|WARN|INFO|DEBUG|TRACE)\\b", 1, s)), "-", extract(@"\\b(ERROR|WARN|INFO|DEBUG|TRACE)\\b", 1, s)) };\n'
+              'let msg = (s:string) { substring(redact(iff(isempty(extract(@" : (.*)$", 1, s)), s, extract(@" : (.*)$", 1, s))), 0, 400) };\n'
+          )
+
+          CERT = 'ContainerAppConsoleLogs_CL | where Log_s contains "certificate"'
+
+          QUERIES = {
+              "certificate-step-last-24h": ("Certificate step, last 24 hours", [
+                  ("Counts by level", CERT + ' | where TimeGenerated > ago(24h)'
+                   ' | extend level = lvl(Log_s)'
+                   ' | summarize errors=countif(level=="ERROR"), warnings=countif(level=="WARN"), info=countif(level=="INFO"), other=countif(level !in ("ERROR","WARN","INFO")), total=count()'),
+                  ("Last 20 lines (oldest first)", CERT + ' | where TimeGenerated > ago(24h)'
+                   ' | top 20 by TimeGenerated desc | sort by TimeGenerated asc'
+                   ' | project timestamp=TimeGenerated, level=lvl(Log_s), message=msg(Log_s)'),
+              ]),
+              "step-trace-last-hour": ("Step trace (steps 1 to 8), last hour", [
+                  ("Step trace lines (oldest first, newest 100)",
+                   'ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h)'
+                   ' | where Log_s matches regex @"(?i)\\bstep[ =_:-]*[1-8]\\b|\\bsteps?=|LookupPenaltyService|Certificates? step"'
+                   ' | top 100 by TimeGenerated desc | sort by TimeGenerated asc'
+                   ' | project timestamp=TimeGenerated, level=lvl(Log_s), message=msg(Log_s)'),
+              ]),
+              "app-health": ("Application health, last hour", [
+                  ("Revision, replicas, last start-up (from console logs)",
+                   'ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h)'
+                   ' | summarize replicas=dcount(ContainerGroupName_s), log_lines=count(), last_log=max(TimeGenerated),'
+                   ' last_startup=maxif(TimeGenerated, Log_s has "Started" and Log_s has "seconds") by revision=RevisionName_s'),
+                  ("Restarts (from system events; empty if the system log table is not collected)",
+                   'ContainerAppSystemLogs_CL | where TimeGenerated > ago(1h)'
+                   ' | summarize restart_events=countif(Reason_s has_any ("Terminated","BackOff","Restart","Killing")),'
+                   ' last_started_event=maxif(TimeGenerated, Reason_s has_any ("ContainerStarted","Started")) by revision=RevisionName_s'),
+                  ("Last error that is not about certificates (class and logger only; message text is not shown)",
+                   'ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h)'
+                   ' | where Log_s matches regex @"\\bERROR\\b" and Log_s !contains "certificate"'
+                   ' | top 1 by TimeGenerated desc'
+                   ' | project timestamp=TimeGenerated, error_class=coalesce(extract(@"([A-Za-z0-9_.$]+(?:Exception|Error))", 1, Log_s), "-"),'
+                   ' logger=coalesce(extract(@"\\s([A-Za-z0-9_.$]+)\\s*:\\s", 1, Log_s), "-")'),
+              ]),
+              "certificate-403-detail": ("Certificate failures, last 6 hours", [
+                  ("Failures by cause",
+                   CERT + ' | where TimeGenerated > ago(6h) | where Log_s has_any ("failed","blocked","refus","captcha","timeout","403","401","429")'
+                   ' | extend cause=coalesce(extract(@"cause=([A-Za-z0-9_-]+)", 1, Log_s), "-")'
+                   ' | summarize failures=count(), first_seen=min(TimeGenerated), last_seen=max(TimeGenerated) by cause | sort by failures desc'),
+                  ("Detail, newest 50 (oldest first)",
+                   CERT + ' | where TimeGenerated > ago(6h) | where Log_s has_any ("failed","blocked","refus","captcha","timeout","403","401","429")'
+                   ' | top 50 by TimeGenerated desc | sort by TimeGenerated asc'
+                   ' | project timestamp=TimeGenerated, level=lvl(Log_s),'
+                   ' cause=coalesce(extract(@"cause=([A-Za-z0-9_-]+)", 1, Log_s), "-"),'
+                   ' provider=coalesce(extract(@"provider=([A-Za-z0-9_-]+)", 1, Log_s), "-"),'
+                   ' http_status=coalesce(extract(@"blocked-(\\d{3})", 1, Log_s), extract(@"(?i)\\bstatus[=: ]+(\\d{3})", 1, Log_s), "-"),'
+                   ' duration_ms=coalesce(extract(@"duration=(\\d+)ms", 1, Log_s), "-"),'
+                   ' server_header=coalesce(extract(@"(?i)\\bserver[=:]\\s*([^,;\\s]+)", 1, Log_s), "-"),'
+                   ' message=msg(Log_s)'),
+              ]),
+          }
+
+          name = os.environ["QUERY_NAME"]
+          if name not in QUERIES:
+              raise SystemExit("Unknown query name")
+          title, sections = QUERIES[name]
+          workspace = os.environ["AZURE_LOG_WORKSPACE_ID"]
+
+          def cell(v):
+              v = "" if v is None else str(redact(v))
+              return v.replace("|", "\\|").replace("\r", " ").replace("\n", " ")
+
+          out = ["## %s" % title,
+                 "Query `%s`, run %s UTC. Read-only; redacted (long numbers, plate shapes, names, e-mail)." %
+                 (name, datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")), ""]
+
+          for heading, body in sections:
+              out.append("### %s" % heading)
+              proc = subprocess.run(
+                  ["az", "monitor", "log-analytics", "query", "--workspace", workspace,
+                   "--analytics-query", PRE + body, "--timespan", "P2D", "--output", "json"],
+                  capture_output=True, text=True)
+              if proc.returncode != 0:
+                  first = (proc.stderr.strip().splitlines() or ["no error text"])[-1]
+                  out += ["Query failed (exit %d): %s" % (proc.returncode, cell(first)[:300]), ""]
+                  continue
+              rows = json.loads(proc.stdout or "[]")
+              if not rows:
+                  out += ["No matching lines.", ""]
+                  continue
+              cols = list(rows[0].keys())
+              out.append("| " + " | ".join(cols) + " |")
+              out.append("|" + "---|" * len(cols))
+              for r in rows:
+                  out.append("| " + " | ".join(cell(r.get(c)) for c in cols) + " |")
+              out.append("")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\n".join(out) + "\n")
+          print("Summary written to the run page (%s)." % name)
+          PY
+
+      - name: Sign out
+        if: always()
+        run: az logout || true

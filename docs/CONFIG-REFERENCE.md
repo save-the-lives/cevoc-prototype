@@ -179,8 +179,38 @@ Converted in this change: `CEVOC_SCRAPER_EVIDENCE_BASE_URL` became `CEVOC_SCRAPE
 | `LIVE_CASES` | secret | live-check run workflow | JSON list of cases; printed only as redacted summaries. |
 | `LIVE_CHECK_TOKEN` | secret | nothing | **Retired.** No workflow reads it; delete it. |
 | `CEVOC_API_BASE_URL` | variable | static web app workflow | Feeds `VITE_API_BASE_URL`. |
+| `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SUBSCRIPTION_ID`, `AZURE_LOG_WORKSPACE_ID` | secrets in environment `log-query` | log query workflow | Read-only log reader; see section 9a. |
 
 The demo flag is deliberately NOT set in any workflow, including the deploy workflow: the owner sets `CEVOC_DEMO_DATA_ENABLED` in the Azure portal.
+
+## 9a. Log query workflow (owner-run, read-only)
+
+`.github/workflows/log-query.yml` ("Log query") reads the Container App's console logs from its Log Analytics workspace and prints a redacted summary on the run page, so a failing certificates step can be read without the Azure portal. It runs only when started by hand (Actions, Log query, Run workflow); there is no schedule. It uses `az login --service-principal` and `az monitor log-analytics query`, and nothing else in Azure. Output goes to the run's step summary only: no artifacts, and raw query output is never printed to the job log.
+
+**Secrets the owner creates.** Create them as secrets of a GitHub environment named `log-query` (Settings, Environments, New environment, then add the secrets there). Environment secrets take priority over repository secrets of the same name, so the existing `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` that the deploy workflows use are left alone. Do NOT overwrite those repository-level secrets with the log reader's values.
+
+| Secret | What it is |
+|---|---|
+| `AZURE_TENANT_ID` | Microsoft Entra tenant (directory) ID of the service principal. |
+| `AZURE_CLIENT_ID` | Application (client) ID of a service principal made only for reading logs. |
+| `AZURE_CLIENT_SECRET` | A client secret for that service principal. Give it the shortest expiry that suits. |
+| `AZURE_SUBSCRIPTION_ID` | Subscription that holds the workspace. |
+| `AZURE_LOG_WORKSPACE_ID` | The Log Analytics workspace ID (the workspace's customer ID GUID, shown on the workspace Overview page). Not the resource group and not the full resource ID. |
+
+**Permission.** Assign the service principal the built-in `Log Analytics Reader` role on the workspace and no other role. That role cannot change anything. The workflow itself has only `contents: read` on the repository and never checks out code.
+
+**Queries (fixed list, no free text).**
+
+| Choice | What it prints |
+|---|---|
+| `certificate-step-last-24h` | Counts of error, warning and info lines for certificate log lines in the last 24 hours, then the last 20 such lines (timestamp, level, message). |
+| `step-trace-last-hour` | Step trace lines (steps 1 to 8: lines naming a step number or `step=`, the lookup service and the certificates step) from the last hour, newest 100, oldest first. |
+| `app-health` | Per revision: replica count, log line count, last log time and last start-up time (last hour); restart events from the system log table; and the last non-certificate error, shown as exception class and logger only (the message text is not shown). |
+| `certificate-403-detail` | Certificate failures in the last 6 hours: counts by cause, then the newest 50 lines with cause token, provider id, HTTP status, duration and the server header if a line carries one, plus the message. |
+
+**Redaction.** Applied inside the query (so unredacted text never leaves Azure) and again when the summary is written: any run of 7 or more digits (covers 10-digit notice numbers), plate-shaped text (2 or 3 letters then 2 to 4 digits, optional trailing letters, such as `AB12CD` or `ABC 123`), values after name-like keys (`name`, `owner`, `driver` and similar) and e-mail addresses. Free-text personal names cannot be found by pattern, so the safe-vocabulary log lines (see section 4) are the main protection; the redaction is a second layer. It can over-redact short letter-digit text, which is deliberate.
+
+Limits: the step trace is only as complete as what the application logs to the console; restart and start-up figures are read from log text and system event reasons, so treat them as indicators. If the system log table is not collected in the workspace, that part of `app-health` says the query failed.
 
 ## 10. Which names the deploy workflow manages (who sets what)
 
