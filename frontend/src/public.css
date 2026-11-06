@@ -83,7 +83,7 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .opts p { margin: 2px 0 0; color: var(--muted); }
 .site-foot { background: #f4f4f4; border-top: 4px solid var(--navy); padding: 18px 0; font-size: .9rem; }
 .foot-in { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; }
-.cert-row { margin: 0; }
+.cert-card { margin: 0; }
 
 @media (min-width: 700px) {
   .wrap { padding: 0 24px; }
