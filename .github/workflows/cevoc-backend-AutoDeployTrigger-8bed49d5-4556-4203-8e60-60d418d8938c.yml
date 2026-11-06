@@ -99,13 +99,12 @@ jobs:
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
-          # Also puts the adapter back to the default (empty = stub, nothing contacted) and switches live check, OCR, the
-          # evidence URL and contact and the certificates adapter off again if an earlier live run turned them on (empty value = off / unset).
+          # Deliberately sets NO CEVOC_* variables. The owner sets CEVOC_PENALTY_LOOKUP_ADAPTER, CEVOC_CERTIFICATES_PROVIDERS,
+          # CEVOC_SCRAPER_EVIDENCE_URL, CEVOC_SCRAPER_EVIDENCE_CONTACT, CEVOC_BANNER_OCR_ENABLED, CEVOC_LIVECHECK_ENABLED,
+          # CEVOC_DEMO_DATA_ENABLED and CEVOC_CERTIFICATES_SEARCH_PAGE_URL on the container app; a normal deploy leaves them as they are.
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --image "${{ env.IMAGE }}:${{ github.sha }}" --cpu 0.5 --memory 1.0Gi \
-            --min-replicas 1 --max-replicas 1 \
-            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER= CEVOC_LIVECHECK_ENABLED=false CEVOC_BANNER_OCR_ENABLED=false \
-            CEVOC_SCRAPER_EVIDENCE_URL= CEVOC_SCRAPER_EVIDENCE_CONTACT= CEVOC_CERTIFICATES_PROVIDERS=
+            --min-replicas 1 --max-replicas 1
           # Clears the secret the retired live-check token used to live in (harmless if it is already gone).
           az containerapp secret remove --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --secret-names live-check-token >/dev/null 2>&1 || true

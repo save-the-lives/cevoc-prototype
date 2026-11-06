@@ -27,6 +27,7 @@ With no settings the backend uses the `stub` adapter: bundled fictitious notices
   - `cevoc.penalty-lookup.adapter` (env `CEVOC_PENALTY_LOOKUP_ADAPTER`): `stub` (default), `browser`, `http`, `api` (reserved; selecting it stops start-up).
   - `cevoc.certificates.providers`: ordered list, default empty (none); `browser`, `http`, `api` (reserved), plus legacy names.
   - `cevoc.media.adapter`: `stub`, `memory` or `azure-blob` (unset: `memory` when the lookup adapter is `browser` or `http`, else `stub`).
+  - Who sets them (record 0021): the owner, on the Azure container app. A normal deploy never writes or blanks them; only a live-mode deploy (`LIVE_CHECK_ENABLED` = `true`) writes its own values.
   - Demo data is its own single switch, `CEVOC_DEMO_DATA_ENABLED=true`; banner OCR is `CEVOC_BANNER_OCR_ENABLED`.
 - Front end: React (Vite) in `frontend/`. Program-by-program display switches live in the front end config (records 0007, 0013 to 0016); only red light is built.
 - `prototype/` is the original clickable mockup, published to GitHub Pages. It is not part of the app and is not deployed with it. Its URL must not change (record 0006).

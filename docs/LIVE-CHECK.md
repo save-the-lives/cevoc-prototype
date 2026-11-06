@@ -46,7 +46,7 @@ The deployed app can run the same check. It is OFF unless you switch it on below
 
 Rules enforced by the app: while `CEVOC_LIVECHECK_ENABLED` is `true` the `/live-check/*` endpoints are open (no token, no 401); when it is not `true` they do not exist and answer 404; one lookup runs at a time (a second gets 429); nothing you send is logged or echoed. Only the existing front-end origin may call it from a browser.
 
-Turn it off: set `LIVE_CHECK_ENABLED` to `false` (or delete it), re-run the same workflow. That redeploys the normal image with the adapter back at its default (empty, which means `stub`), live check and OCR off, the evidence URL, contact and certificates adapter cleared, and resets the size to 0.5 CPU / 1 GiB. Do this when you are done.
+Turn it off: set `LIVE_CHECK_ENABLED` to `false` (or delete it), re-run the same workflow. That redeploys the normal image at 0.5 CPU / 1 GiB. It no longer changes any `CEVOC_*` setting (record 0021): the live deploy left the adapter, live check, OCR, evidence URL and contact and certificates provider set to their live values, so the owner must set them back (or to whatever is wanted) on the container app. Do this when you are done.
 
 Cost and memory: the live image is bigger (it contains Chromium) and runs at 2 CPU / 4 GiB with one always-on replica, roughly four times the normal size, so it costs more every hour it is left on. Chromium needs the memory; at 1 GiB it would be killed. The Docker build of this image is also checked by App CI on every change.
 

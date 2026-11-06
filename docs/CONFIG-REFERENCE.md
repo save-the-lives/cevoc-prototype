@@ -139,14 +139,14 @@ Converted in this change: `CEVOC_SCRAPER_EVIDENCE_BASE_URL` became `CEVOC_SCRAPE
 
 The demo flag is deliberately NOT set in any workflow, including the deploy workflow: the owner sets `CEVOC_DEMO_DATA_ENABLED` in the Azure portal.
 
-## 10. Which names the deploy workflow manages (portal edits to these do not stick)
+## 10. Which names the deploy workflow manages (who sets what)
 
 `.github/workflows/cevoc-backend-AutoDeployTrigger-*.yml` runs `az containerapp update --set-env-vars` on every deploy (PROVEN from the workflow text).
 
-- **Every non-live deploy sets:** `CEVOC_PENALTY_LOOKUP_ADAPTER` (empty, which means `stub`), `CEVOC_LIVECHECK_ENABLED=false`, `CEVOC_BANNER_OCR_ENABLED=false`, `CEVOC_SCRAPER_EVIDENCE_URL` (empty), `CEVOC_SCRAPER_EVIDENCE_CONTACT` (empty), `CEVOC_CERTIFICATES_PROVIDERS` (empty).
-- **Every live deploy sets:** `CEVOC_PENALTY_LOOKUP_ADAPTER=browser`, `CEVOC_LIVECHECK_ENABLED=true`, `CEVOC_BANNER_OCR_ENABLED=true`, `CEVOC_SCRAPER_EVIDENCE_URL` and `CEVOC_SCRAPER_EVIDENCE_CONTACT` from the GitHub variables, `CEVOC_CERTIFICATES_PROVIDERS=browser`.
+- **Every non-live deploy sets none of the `CEVOC_*` names** (record 0021). The owner sets these on the container app and a normal deploy leaves them exactly as they are, never blanking them: `CEVOC_PENALTY_LOOKUP_ADAPTER`, `CEVOC_CERTIFICATES_PROVIDERS`, `CEVOC_SCRAPER_EVIDENCE_URL`, `CEVOC_SCRAPER_EVIDENCE_CONTACT`, `CEVOC_BANNER_OCR_ENABLED`, `CEVOC_LIVECHECK_ENABLED`, `CEVOC_DEMO_DATA_ENABLED`, `CEVOC_CERTIFICATES_SEARCH_PAGE_URL`. A name never set stays unset, so the code default applies (adapter `stub`, no certificate provider, live check, OCR and demo data off). It does set the image, the size (0.5 CPU / 1 GiB) and one replica.
+- **Every live deploy (`LIVE_CHECK_ENABLED` = `true`) sets, and so overwrites any portal value for:** `CEVOC_PENALTY_LOOKUP_ADAPTER=browser`, `CEVOC_LIVECHECK_ENABLED=true`, `CEVOC_BANNER_OCR_ENABLED=true`, `CEVOC_SCRAPER_EVIDENCE_URL` and `CEVOC_SCRAPER_EVIDENCE_CONTACT` from the GitHub variables, `CEVOC_CERTIFICATES_PROVIDERS=browser`.
 - **Never touched by the workflow, so old values stay in the portal until the owner deletes them:** every REMOVED name in this document. They are read by nothing, so leaving them is harmless, but delete them.
-- **Not touched by the workflow, so portal edits stick:** `CEVOC_DEMO_DATA_ENABLED`, `CEVOC_DEMO_BUNDLE_*`, `CEVOC_CORS_ALLOWED_ORIGINS`, `CEVOC_MEDIA_*`, `CEVOC_REVENUE_NSW_HTTP_*`, `CEVOC_BANNER_OCR_COMMAND`, `CEVOC_CERTIFICATES_APPROVAL_REFERENCE` and the other tuning keys.
+- **Not touched by the workflow, so portal edits stick:** `CEVOC_DEMO_DATA_ENABLED` (and every other name the non-live bullet lists), `CEVOC_DEMO_BUNDLE_*`, `CEVOC_CORS_ALLOWED_ORIGINS`, `CEVOC_MEDIA_*`, `CEVOC_REVENUE_NSW_HTTP_*`, `CEVOC_BANNER_OCR_COMMAND`, `CEVOC_CERTIFICATES_APPROVAL_REFERENCE` and the other tuning keys.
 
 ## 11. Dead and removed names: safe to delete in the Azure portal
 

@@ -24,3 +24,4 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0018 | Demo content delivered as a separate bundle on a GitHub Release, fail safe | Built; owner approval of the release and its settings pending |
 | 0019 | Camera banner read from the image pixels by server-side OCR (Tesseract) | LOCKED by owner decision, 2026-11-05; built |
 | 0020 | Scrapers are adapters: one adapter-selection setting (`stub`, `browser`, `http`, later `api`), no per-route switches, no live-check token, one-URL convention | LOCKED by owner direction, 2026-11-06; built |
+| 0021 | Owner sets adapter and provider variables on the container app; normal deploys leave them alone | Decided; built on branch `envkeep`, not yet merged |
