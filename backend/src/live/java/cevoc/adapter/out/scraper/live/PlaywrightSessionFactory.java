@@ -30,6 +30,7 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
     private final boolean headless;
     private final EvidenceRateLimiter limiter;
     private final boolean reuseBrowser;
+    private final boolean browserDefaultUserAgent;
 
     /** A started Playwright driver and Chromium, kept for the next lookup on the same thread (Playwright is thread-confined). */
     private record Holder(Playwright playwright, Browser browser) {}
@@ -48,6 +49,17 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
      *                     is shared between people; only the started browser process is.
      */
     public PlaywrightSessionFactory(ScraperSettings settings, String captureDir, boolean headless, boolean reuseBrowser) {
+        this(settings, captureDir, headless, reuseBrowser, false);
+    }
+
+    /**
+     * @param browserDefaultUserAgent send the browser's OWN user agent (Playwright's Chromium default, nothing set by us) instead of
+     *                                the identifying one. Used only for the certificates search page, whose bot management refuses
+     *                                the identifying agent (owner-approved 2026-11-07). Everything else about the context is identical.
+     */
+    public PlaywrightSessionFactory(ScraperSettings settings, String captureDir, boolean headless, boolean reuseBrowser,
+                                    boolean browserDefaultUserAgent) {
+        this.browserDefaultUserAgent = browserDefaultUserAgent;
         this.reuseBrowser = reuseBrowser;
         this.settings = settings;
         this.captureDir = captureDir == null || captureDir.isBlank() ? null : Path.of(captureDir);
@@ -71,18 +83,14 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
                 playwright = Playwright.create();
                 browser = playwright.chromium().launch(launchOptions(headless));
             }
-            context = browser.newContext(new Browser.NewContextOptions()
-                    .setUserAgent(settings.userAgent())
-                    .setLocale("en-AU")
-                    .setTimezoneId("Australia/Sydney")
-                    .setAcceptDownloads(false)
-                    .setServiceWorkers(ServiceWorkerPolicy.BLOCK));
+            context = browser.newContext(contextOptions(settings, browserDefaultUserAgent));
             Duration step = stepTimeout(settings);
             context.setDefaultTimeout(step.toMillis());
             context.setDefaultNavigationTimeout(step.toMillis());
             PlaywrightSession session = new PlaywrightSession(playwright, browser, context, baseUrl, settings.maxBytes(), step, limiter,
                     captureDir == null ? null : new HtmlCapture(captureDir), owns);
             session.headless(headless);
+            session.userAgentCategory(browserDefaultUserAgent ? "browser-default" : "custom-identifying");
             return session;
         } catch (RuntimeException e) {
             if (!owns) {
@@ -128,6 +136,23 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
         if (h != null) {
             closeQuietly(null, h.browser(), h.playwright());
         }
+    }
+
+    /**
+     * The one place the browser context is configured, for every session. The identifying user agent is set unless
+     * {@code browserDefaultUserAgent}; that is the only difference between the penalty lookup and the certificates search page.
+     * No header is added or faked: cookies, Accept, Accept-Language and Sec-Fetch-* come from Chromium itself.
+     */
+    static Browser.NewContextOptions contextOptions(ScraperSettings settings, boolean browserDefaultUserAgent) {
+        var o = new Browser.NewContextOptions()
+                .setLocale("en-AU")
+                .setTimezoneId("Australia/Sydney")
+                .setAcceptDownloads(false)
+                .setServiceWorkers(ServiceWorkerPolicy.BLOCK);
+        if (!browserDefaultUserAgent) {
+            o.setUserAgent(settings.userAgent());
+        }
+        return o;
     }
 
     /** Generous but bounded: three times the HTTP request timeout, between 30 and 90 seconds. */

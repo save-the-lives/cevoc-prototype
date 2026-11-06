@@ -84,8 +84,9 @@ public final class ScraperEvidenceFactory {
     public static RenderedPageSessionFactory sessionsFor(Environment env) {
         ScraperSettings s = settings(env);
         if (liveRequested(s)) {
-            RenderedPageSessionFactory f = playwright(s, env.getProperty("cevoc.live-check.capture-dir", ""),
-                    env.getProperty("cevoc.scraper.evidence.browser-headless", Boolean.class, true));
+            RenderedPageSessionFactory f = playwrightForSearchPage(s, env.getProperty("cevoc.live-check.capture-dir", ""),
+                    env.getProperty("cevoc.scraper.evidence.browser-headless", Boolean.class, true),
+                    env.getProperty("cevoc.certificates.search-page.browser-default-user-agent", Boolean.class, true));
             if (f != null) {
                 return f;
             }
@@ -101,6 +102,26 @@ public final class ScraperEvidenceFactory {
     /** Reflection keeps the default build free of any Playwright reference. Null when the profile is not active. */
     static RenderedPageSessionFactory playwright(ScraperSettings s, String captureDir, boolean headless) {
         return playwright(s, captureDir, headless, false);
+    }
+
+    /**
+     * The certificates search page session: same browser context as the penalty lookup, but (by default) the browser's own user
+     * agent, because the page's bot management answers 403 to the identifying one. Not warm (a fresh browser per lookup, as before).
+     */
+    static RenderedPageSessionFactory playwrightForSearchPage(ScraperSettings s, String captureDir, boolean headless,
+                                                              boolean browserDefaultUserAgent) {
+        if (!browserDefaultUserAgent) {
+            return playwright(s, captureDir, headless);
+        }
+        try {
+            return (RenderedPageSessionFactory) Class.forName(LIVE_FACTORY)
+                    .getConstructor(ScraperSettings.class, String.class, boolean.class, boolean.class, boolean.class)
+                    .newInstance(s, captureDir, headless, false, true);
+        } catch (ReflectiveOperationException | LinkageError e) {
+            LOG.warn("The browser adapter is selected but the live-browser build profile is not active; "
+                    + "the evidence route stays unavailable");
+            return null;
+        }
     }
 
     static RenderedPageSessionFactory playwright(ScraperSettings s, String captureDir, boolean headless, boolean warm) {

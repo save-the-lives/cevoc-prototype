@@ -153,6 +153,8 @@ public final class SearchPageDiagnostic {
                                         boolean sentReferer, boolean sentOrigin) {
         try {
             TreeSet<String> names = new TreeSet<>();
+            java.util.List<String> nonCookie = new java.util.ArrayList<>();
+            boolean setsCookie = false;
             String server = null;
             String type = null;
             if (responseHeaders != null) {
@@ -160,12 +162,19 @@ public final class SearchPageDiagnostic {
                     String n = h.getKey() == null ? "" : h.getKey().toLowerCase(Locale.ROOT).trim();
                     if (!n.matches("[a-z0-9\\-]{1,40}")) continue;
                     names.add(n);
+                    if (n.equals("set-cookie") || n.equals("cookie")) {
+                        setsCookie = true;
+                    } else if (nonCookie.size() < 12) {
+                        nonCookie.add(n);
+                    }
                     if (n.equals("server")) server = serverProduct(h.getValue());
                     if (n.equals("content-type")) type = mediaType(h.getValue());
                 }
             }
             return label + ": host=" + (hostCategory == null ? "unknown" : token(hostCategory)) + "; header-names=" + (names.isEmpty() ? "none" : String.join(",", names.stream().limit(40).toList()))
-                    + "; server=" + (server == null ? "omitted" : server)
+                    + "; non-cookie-header-names=" + (nonCookie.isEmpty() ? "none" : String.join(",", nonCookie))
+                    + "; sets-cookie=" + yn(setsCookie)
+                    + "; server=" + (server == null ? (names.contains("server") ? "other" : "omitted") : server)
                     + "; content-type=" + (type == null ? "none" : type)
                     + "; body-size=" + sizeBucket(bodyLength) + "; body-html=" + yn(bodyHtml)
                     + "; client=" + (clientMode == null ? "unknown" : token(clientMode))

@@ -1101,7 +1101,7 @@ final class PlaywrightSession implements RenderedPageSession {
             }
             note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(label, "same", headers,
                     body == null ? 0 : body.length(), body != null && body.toLowerCase(Locale.ROOT).contains("<html"),
-                    (headless ? "headless-chromium" : "headed-chromium"), "custom-identifying",
+                    (headless ? "headless-chromium" : "headed-chromium"), userAgentCategory,
                     containsKeyIgnoreCase(sent, "referer"), containsKeyIgnoreCase(sent, "origin")));
         } catch (RuntimeException e) {
             note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfileUnavailable(label, e));
@@ -1136,7 +1136,7 @@ final class PlaywrightSession implements RenderedPageSession {
             String text = body == null ? "" : new String(body, 0, Math.min(body.length, 4096), java.nio.charset.StandardCharsets.ISO_8859_1).toLowerCase(Locale.ROOT);
             note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(label, requestHostCategory(route.request().url()),
                     resp.headers(), body == null ? 0 : body.length, text.contains("<html") || text.contains("<body"),
-                    (headless ? "headless-chromium" : "headed-chromium") + "-route-fetch", "custom-identifying",
+                    (headless ? "headless-chromium" : "headed-chromium") + "-route-fetch", userAgentCategory,
                     containsKeyIgnoreCase(sent, "referer"), containsKeyIgnoreCase(sent, "origin")));
         } catch (RuntimeException e) {
             note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfileUnavailable(label, e));
@@ -1144,6 +1144,11 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     private volatile boolean headless = true;
+    private volatile String userAgentCategory = "custom-identifying";
+
+    void userAgentCategory(String value) {
+        this.userAgentCategory = value;
+    }
 
     void headless(boolean value) {
         this.headless = value;

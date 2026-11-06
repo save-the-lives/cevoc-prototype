@@ -210,8 +210,21 @@ class SearchPageCertificateSourceTest {
         assertThat(d).doesNotContain("fictitious").doesNotContain("9.9").doesNotContain("charset").doesNotContain("secret");
         String odd = SearchPageDiagnostic.refusalProfile(java.util.Map.of("Server", "Acme-Internal/1 (fictitious@example.invalid)"),
                 "x".repeat(3000), "http-client", "browser-default", false, false);
-        assertThat(odd).contains("server=omitted").contains("body-size=<10KB").contains("body-html=no").doesNotContain("Acme").doesNotContain("example");
+        assertThat(odd).contains("server=other").contains("body-size=<10KB").contains("body-html=no").doesNotContain("Acme").doesNotContain("example");
         assertThat(SearchPageDiagnostic.refusalProfile(null, null, null, null, false, false)).contains("header-names=none").contains("body-size=<512B");
+    }
+
+    @Test
+    void theRefusalProfileListsNonCookieHeaderNamesAndWhetherCookiesWereSet() {
+        String d = SearchPageDiagnostic.refusalProfile(
+                java.util.Map.of("server", "AkamaiGHost", "set-cookie", "ak_bmsc=fictitious-secret", "mime-version", "1.0"),
+                "<html></html>", "headless-chromium", "browser-default", false, false);
+        assertThat(d).contains("server=akamaighost").contains("sets-cookie=yes")
+                .contains("non-cookie-header-names=").doesNotContain("non-cookie-header-names=none")
+                .doesNotContain("fictitious").doesNotContain("ak_bmsc=");
+        assertThat(d.substring(d.indexOf("non-cookie-header-names="), d.indexOf("; sets-cookie"))).doesNotContain("set-cookie");
+        String none = SearchPageDiagnostic.refusalProfile(java.util.Map.of("set-cookie", "x=y"), "", "c", "u", false, false);
+        assertThat(none).contains("non-cookie-header-names=none").contains("sets-cookie=yes");
     }
 
     @Test

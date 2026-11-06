@@ -37,4 +37,21 @@ class PlaywrightHelpersTest {
         assertThat(PlaywrightSessionFactory.stepTimeout(tiny)).isEqualTo(Duration.ofSeconds(30));
         assertThat(PlaywrightSessionFactory.stepTimeout(huge)).isEqualTo(Duration.ofSeconds(90));
     }
+
+    @Test
+    void certificatesSessionContextDiffersFromThePenaltyOneOnlyByTheUserAgent() {
+        ScraperSettings s = new ScraperSettings("https://penalty.example.invalid/", "test-contact@example.invalid", Duration.ZERO,
+                Duration.ZERO, Duration.ofSeconds(15), Duration.ZERO, 1);
+        var penalty = PlaywrightSessionFactory.contextOptions(s, false);
+        var certificates = PlaywrightSessionFactory.contextOptions(s, true);
+        assertThat(penalty.userAgent).isEqualTo(s.userAgent());
+        // The browser's own agent: nothing is set, so Chromium sends its real one. No header is added.
+        assertThat(certificates.userAgent).isNull();
+        assertThat(certificates.extraHTTPHeaders).isNull();
+        assertThat(certificates.locale).isEqualTo(penalty.locale).isEqualTo("en-AU");
+        assertThat(certificates.timezoneId).isEqualTo(penalty.timezoneId);
+        assertThat(certificates.acceptDownloads).isEqualTo(penalty.acceptDownloads);
+        assertThat(certificates.serviceWorkers).isEqualTo(penalty.serviceWorkers);
+        assertThat(penalty.extraHTTPHeaders).isNull();
+    }
 }
