@@ -1,6 +1,6 @@
 # Live check (owner-run)
 
-A one-off way for the owner to see what the evidence scraper makes of the real myPenalty pages, using their own notice, on their own machine. Nothing here runs in CI, in the Docker image or by default. Scrapers stay OFF by default simply because no scraper adapter is selected; this script selects the browser adapter for one run.
+A one-off way for the owner to see what the evidence scraper makes of the real myPenalty pages, using their own notice, on their own machine. Nothing here runs in CI or by default. The live check is a separate switch (`CEVOC_LIVECHECK_ENABLED`, off by default); the browser adapter itself is the default lookup route (record 0022) but makes no request until `CEVOC_SCRAPER_EVIDENCE_CONTACT` is set. This script sets the browser adapter, the address, the contact and the live-check switch for one run.
 
 Needs: Java 21, Maven, curl, network access to Maven Central and the site. The first run downloads dependencies and a Chromium build (a few minutes).
 

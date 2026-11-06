@@ -27,6 +27,9 @@ public final class ScraperEvidenceFactory {
                                            cevoc.application.port.out.BannerTextReaderPort bannerReader) {
         ScraperSettings s = settings(env);
         boolean live = liveRequested(s);
+        if (!live) {
+            logNotUsable(s, "the browser lookup adapter");
+        }
         RenderedPageSessionFactory sessions = NO_BROWSER;
         RegistrationProvider registrations = RegistrationProvider.none();
         if (live) {
@@ -49,13 +52,29 @@ public final class ScraperEvidenceFactory {
     static ScraperSettings settings(Environment env) {
         String p = "cevoc.scraper.evidence.";
         return new ScraperSettings(
-                env.getProperty(p + "url", ""),
+                orDefault(env.getProperty(p + "url", ""), ScraperSettings.DEFAULT_URL),
                 env.getProperty(p + "contact", ""),
                 Duration.ofMillis(env.getProperty(p + "min-interval-ms", Long.class, ScraperSettings.DEFAULT_MIN_INTERVAL.toMillis())),
                 Duration.ofMillis(env.getProperty(p + "connect-timeout-ms", Long.class, ScraperSettings.DEFAULT_CONNECT_TIMEOUT.toMillis())),
                 Duration.ofMillis(env.getProperty(p + "request-timeout-ms", Long.class, ScraperSettings.DEFAULT_REQUEST_TIMEOUT.toMillis())),
                 Duration.ofSeconds(env.getProperty(p + "cache-ttl-seconds", Long.class, ScraperSettings.DEFAULT_CACHE_TTL.toSeconds())),
                 env.getProperty(p + "max-bytes", Long.class, ScraperSettings.DEFAULT_MAX_BYTES));
+    }
+
+    private static String orDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    /** One clear start-up line when the route cannot run: only the contact has no default, so a blank contact is the usual reason. */
+    static void logNotUsable(ScraperSettings s, String what) {
+        if (s.contact() == null || s.contact().isBlank()) {
+            logContactMissing(what);
+        }
+    }
+
+    static void logContactMissing(String what) {
+        LOG.error("CEVOC_SCRAPER_EVIDENCE_CONTACT is not set, so {} cannot run. Lookups and certificate checks will answer that they are "
+                + "not available until it is set (the app keeps running). Set it to a contact the site owner can reach.", what);
     }
 
     /**

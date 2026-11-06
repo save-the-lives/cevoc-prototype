@@ -24,7 +24,7 @@ public class BeanConfig {
 
     /**
      * The lookup adapter, chosen by the ONE setting cevoc.penalty-lookup.adapter (see {@link LookupAdapterKind}):
-     * stub (default; bundled fictitious data, nothing contacted), browser (Chromium), http (plain request), api (reserved).
+     * browser (default; Chromium), stub (explicit; bundled fictitious data, nothing contacted), http (plain request), api (reserved).
      * There are no per-route on/off switches: a route that is not selected does not exist.
      */
     @Bean
@@ -73,11 +73,11 @@ public class BeanConfig {
     // The media adapter beans implement MediaStoragePort and SignedLinkPort (and for stub, CacheInvalidationPort) directly.
     // ---- media: cevoc.media.adapter = stub (default) | azure-blob ----
 
-    // cevoc.media.adapter unset: "memory" when the lookup adapter is browser (it captures real image bytes that the stub would
-    // silently drop) or http (which stores real image bytes too), otherwise "stub".
+    // cevoc.media.adapter unset: "memory" when the lookup adapter is browser (the default; it captures real image bytes that the
+    // stub would silently drop) or http (which stores real image bytes too), otherwise "stub".
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && '${cevoc.penalty-lookup.adapter:}'.trim().toLowerCase() != 'browser' && '${cevoc.penalty-lookup.adapter:}'.trim().toLowerCase() != 'http')")
+            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && !T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}'))")
     StubMediaAdapter stubMedia(@Value("${cevoc.media.base-url:/samples}") String baseUrl) {
         return new StubMediaAdapter(baseUrl);
     }
@@ -88,7 +88,7 @@ public class BeanConfig {
      */
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && ('${cevoc.penalty-lookup.adapter:}'.trim().toLowerCase() == 'browser' || '${cevoc.penalty-lookup.adapter:}'.trim().toLowerCase() == 'http'))")
+            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}'))")
     cevoc.adapter.out.memory.InMemoryMediaAdapter memoryMedia(
             @Value("${cevoc.media.public-base-url:}") String publicBaseUrl,
             @Value("${cevoc.media.memory.retention-minutes:20}") long retentionMinutes,
@@ -114,12 +114,12 @@ public class BeanConfig {
     }
 
     // ---- certificates: the certificates adapter choice is cevoc.certificates.providers (ordered list, same names as the lookup
-    // adapter: http, browser, api). INERT (no certificate source) while the list is empty, which is the default.
+    // adapter: http, browser, api). Empty or unset = the default, browser. The explicit value "none" means no certificate source.
     // See docs/DIRECT-API-ROUTE.md and docs/ARCHITECTURE.md. ----
 
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "!('${cevoc.certificates.providers:}'.trim().isEmpty())")
+            "!'${cevoc.certificates.providers:}'.trim().equalsIgnoreCase('none')")
     CertificateSourcePort certificateSource(org.springframework.core.env.Environment env) {
         return cevoc.adapter.out.scraper.CertificateProviders.create(env);
     }

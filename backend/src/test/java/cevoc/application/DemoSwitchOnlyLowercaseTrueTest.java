@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /** Only the lowercase word true turns demo data on; TRUE and 1 do not. */
-@SpringBootTest(properties = "cevoc.demo-data.enabled=TRUE")
+@SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.demo-data.enabled=TRUE"})
 class DemoSwitchOnlyLowercaseTrueTest {
 
     @Autowired ObjectProvider<DemoRoute> demo;

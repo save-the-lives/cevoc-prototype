@@ -25,12 +25,12 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Privacy blurring of evidence video and images | PROPOSED, research only: fail closed, server-side burn-in, detect once into a timed region track and merge into one stream, verify by content, never release on failure. Paper: `docs/research/privacy-blurring.md` | 0017 |
 
 ## Three selectable routes for notice details and images (record 0010)
-The lookup port (`PenaltyLookupPort`) has several kinds of route. Each is simply another adapter behind the same port, chosen by ONE setting, `cevoc.penalty-lookup.adapter` (record 0020). There are no per-route on/off switches: a route that is not selected does not exist. The default, `stub`, does exactly what the public page did before (bundled fictitious notices; an unknown number answers "live lookup is switched off"; nothing is contacted).
+The lookup port (`PenaltyLookupPort`) has several kinds of route. Each is simply another adapter behind the same port, chosen by ONE setting, `cevoc.penalty-lookup.adapter` (record 0020). There are no per-route on/off switches: a route that is not selected does not exist. The default is the real adapter, `browser` (record 0022); it needs only the contact setting and, until that is set, contacts nothing and answers "switched off". `stub` stays available as an explicit choice (bundled fictitious notices; an unknown number answers "live lookup is switched off"; nothing is contacted).
 
 | Route | Select with `cevoc.penalty-lookup.adapter` | Also needed | Package | Status |
 |---|---|---|---|---|
-| Stub (default; the former `manifest`) | `stub` (also when empty or unset) | nothing | `adapter.out` | PROVEN |
-| Chromium browser route (temporary: delete at cutover) | `browser` | `cevoc.scraper.evidence.url` and `.contact`, the `live-browser` build, Chromium in the image | `adapter.out.scraper` | PROVEN (live runs 2026-11-03/04) |
+| Stub (explicit choice; the former `manifest`) | `stub` | nothing | `adapter.out` | PROVEN |
+| Chromium browser route (the default; temporary: delete at cutover) | `browser` (also when empty or unset) | `cevoc.scraper.evidence.contact` (required); the url has a fully qualified default; the `live-browser` build, Chromium in the image | `adapter.out.scraper` | PROVEN (live runs 2026-11-03/04) |
 | Plain HTTP, Revenue NSW JSON service (interim) | `http` | `base-url` (https, host `api.osr.nsw.gov.au` unless `allowed-hosts` says otherwise), `path-prefix`, `contact`, `approval-reference` | `adapter.out.revenuensw` | BUILT, UNTESTED live |
 | API providers (TfNSW or others) | `api` (reserved; selecting it stops start-up) | an agreed API, credentials, owner approval | n/a | reserved |
 
@@ -83,7 +83,7 @@ Hexagonal. Dependencies point inwards: `adapter` -> `application` -> `domain`. `
                               BannerTextReaderPort   (text from the top strip of an evidence image, record 0019)
       application/service/    LookupPenaltyService
       adapter/in/web/         REST controller (public, unauthenticated)
-      adapter/out/            ManifestPenaltyLookupAdapter (resources/manifest.json), ManifestFirstPenaltyLookupAdapter (the `stub` default: manifest, then "live lookup switched off")
+      adapter/out/            ManifestPenaltyLookupAdapter (resources/manifest.json), ManifestFirstPenaltyLookupAdapter (the `stub` adapter, chosen explicitly: manifest, then "live lookup switched off")
       adapter/out/stub/       StubPenaltyLookupAdapter (fictitious data), StubMediaAdapter (sample-file links)
       adapter/out/ocr/        TesseractBannerTextReader (BannerTextReaderPort): the tesseract program, run inside the container; the only OCR code
       adapter/out/azureblob/  Azure Blob adapter (SAS links); the only place com.azure is allowed (plus config)
@@ -106,12 +106,12 @@ The backend never proxies media bytes. It only returns short-lived links; the br
 4. Do not touch `domain` or `application`; `ArchitectureTest` will fail if AWS types leak in.
 
 ## Swapping sources later
-Select with `cevoc.penalty-lookup.adapter` (env `CEVOC_PENALTY_LOOKUP_ADAPTER`): `stub` (default; manifest first, then status `LIVE_LOOKUP_DISABLED` for an unknown number), `browser` (Chromium), `http` (plain request) or `api` (reserved). That is the only switch (the old `CEVOC_SCRAPER_ENABLED` is retired). Adapters still to come:
+Select with `cevoc.penalty-lookup.adapter` (env `CEVOC_PENALTY_LOOKUP_ADAPTER`): `browser` (default; Chromium), `stub` (explicit; manifest first, then status `LIVE_LOOKUP_DISABLED` for an unknown number), `http` (plain request) or `api` (reserved). That is the only switch (the old `CEVOC_SCRAPER_ENABLED` is retired). Adapters still to come:
 - `http` (built): pass the notice number and offence date to the public Revenue NSW / Service NSW page and extract the returned content.
 - `api`: real image, video and certificate APIs, with caching or buffering.
 
-## Certificate scraper (inert by default, owner approval required)
-`CertificateSourcePort` (application/port/out) returns `CertificateRef`s for a `CertificateQuery`. The only adapter, `adapter/out/scraper`, reads the enforcement-centre certificates JSF page. It is wired into the lookup flow only as described under "Certificates in the lookup response", and is never a default.
+## Certificate scraper (browser provider by default; inert until the contact is set)
+`CertificateSourcePort` (application/port/out) returns `CertificateRef`s for a `CertificateQuery`. The only adapter, `adapter/out/scraper`, reads the enforcement-centre certificates JSF page. It is wired into the lookup flow only as described under "Certificates in the lookup response". The default provider is `browser` (record 0022); without `CEVOC_SCRAPER_EVIDENCE_CONTACT` it makes no request. `cevoc.certificates.providers=none` removes it.
 - Only used when `http-form` is listed in `cevoc.certificates.providers`. The old flag `cevoc.scraper.certificates.enabled` and the old `cevoc.scraper.certificates.approval-reference` are retired. An approval reference is an optional recorded note (`cevoc.certificates.approval-reference`); nothing is refused for lack of it.
 - Polite: identifying User-Agent (`...user-agent`), min 5 s between requests (`...min-interval-ms`, floor 2000), connect/request timeouts, one request at a time, no retries, cache of at most 10 minutes (`...cache-ttl-seconds`, default 300).
 - `CertificatePageParser` is the only class that knows the HTML and JSF ViewState handling. Tests use fictitious fixtures in `src/test/resources/scraper/certificates`, never live calls.

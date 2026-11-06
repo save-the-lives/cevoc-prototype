@@ -15,19 +15,19 @@ For developers taking this code over. It describes the system as it stands, not 
 A public, no-login web app for motorists. A person enters a penalty notice number and offence date (and, where needed, a vehicle registration) and sees the evidence behind a camera fine: images, video and the camera certificates that cover the offence time, so they can decide whether to go to court. Data comes from a source behind a port. Today that source is either bundled fictitious data (default) or an interim route to Revenue NSW pages; the TfNSW APIs are meant to replace the interim routes by configuration.
 
 ## Run locally
-    cd backend && mvn spring-boot:run             # http://127.0.0.1:8080
+    cd backend && CEVOC_PENALTY_LOOKUP_ADAPTER=stub CEVOC_CERTIFICATES_PROVIDERS=none mvn spring-boot:run   # http://127.0.0.1:8080
     cd frontend && npm install && npm run dev     # http://127.0.0.1:5174, proxies /api to the backend
     cd frontend && npm test && npm run build      # front end tests and build
 
-With no settings the backend uses the `stub` adapter: bundled fictitious notices (test numbers are in `README.md`), nothing external is contacted. `mvn test` in `backend/` runs the backend tests (CI installs `tesseract-ocr` because the banner OCR tests must run there).
+With no settings the backend uses the real defaults (record 0022): the `browser` lookup adapter and certificate provider, which do nothing and say so in the start-up log until `CEVOC_SCRAPER_EVIDENCE_CONTACT` is set. For local work select the `stub` adapter explicitly (command above): bundled fictitious notices (test numbers are in `README.md`), nothing external is contacted. `mvn test` in `backend/` runs the backend tests (CI installs `tesseract-ocr` because the banner OCR tests must run there).
 
 ## Architecture in one page
 - Backend: Spring Boot, hexagonal (ports and adapters). `domain/` and `application/` hold the rules and the ports (for example `PenaltyLookupPort`, `CertificateSourcePort`, `MediaStoragePort`, `BannerTextReaderPort`); no cloud or scraper type may appear there. `ArchitectureTest` enforces the direction. `adapter/in/web` is the HTTP API; `adapter/out/*` are the sources and stores (`stub`/manifest, `scraper`, `revenuensw`, `demo`, `httpbundle`, `memory`, `azureblob`, `s3` placeholder, `ocr`). `config/BeanConfig` wires them.
 - Adapter selector settings (one setting per concern, no per-route on/off switches, record 0020):
-  - `cevoc.penalty-lookup.adapter` (env `CEVOC_PENALTY_LOOKUP_ADAPTER`): `stub` (default), `browser`, `http`, `api` (reserved; selecting it stops start-up).
-  - `cevoc.certificates.providers`: ordered list, default empty (none); `browser`, `http`, `api` (reserved), plus legacy names.
-  - `cevoc.media.adapter`: `stub`, `memory` or `azure-blob` (unset: `memory` when the lookup adapter is `browser` or `http`, else `stub`).
-  - Who sets them (record 0021): the owner, on the Azure container app. A normal deploy never writes or blanks them; only a live-mode deploy (`LIVE_CHECK_ENABLED` = `true`) writes its own values. A normal deploy also leaves CPU and memory alone (owner sets 2 CPU / 4Gi once in the portal; a live deploy never shrinks it) and checks `GET /api/ping`, never `POST /api/penalty-lookups`.
+  - `cevoc.penalty-lookup.adapter` (env `CEVOC_PENALTY_LOOKUP_ADAPTER`): `browser` (default; also when empty or unset), `stub` (explicit choice), `http`, `api` (reserved; selecting it stops start-up). Optional override.
+  - `cevoc.certificates.providers`: ordered list, default `browser` (also when empty or unset); `none` = no certificate source; `http`, `api` (reserved), plus legacy names. Optional override.
+  - `cevoc.media.adapter`: `stub`, `memory` or `azure-blob` (unset: `memory` when the lookup adapter is `browser` (the default) or `http`, else `stub`).
+  - Who sets them (records 0021 and 0022): nobody has to. The defaults are the real adapters, so the container app needs only `CEVOC_SCRAPER_EVIDENCE_CONTACT`; the adapter variables are optional overrides. A normal deploy never writes or blanks them; only a live-mode deploy (`LIVE_CHECK_ENABLED` = `true`) writes its own values. A normal deploy also leaves CPU and memory alone (owner sets 2 CPU / 4Gi once in the portal; a live deploy never shrinks it) and checks `GET /api/ping`, never `POST /api/penalty-lookups`.
   - Demo data is its own single switch, `CEVOC_DEMO_DATA_ENABLED=true`; banner OCR is `CEVOC_BANNER_OCR_ENABLED`.
 - Front end: React (Vite) in `frontend/`. Program-by-program display switches live in the front end config (records 0007, 0013 to 0016); only red light is built.
 - `prototype/` is the original clickable mockup, published to GitHub Pages. It is not part of the app and is not deployed with it. Its URL must not change (record 0006).

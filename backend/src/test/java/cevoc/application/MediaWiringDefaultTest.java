@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-/** Which storage fills the media ports, by configuration. The scraper itself stays off (enabled=false by default). */
+/** Which storage fills the media ports, by configuration. The default lookup adapter is the browser one, which keeps real image bytes. */
 @SpringBootTest
 class MediaWiringDefaultTest {
     @Autowired MediaStoragePort storage;
@@ -19,9 +19,9 @@ class MediaWiringDefaultTest {
     @Autowired org.springframework.beans.factory.ObjectProvider<MediaReadPort> read;
 
     @Test
-    void theDefaultIsTheStubWithNoReadPort() {
-        assertThat(storage).isInstanceOf(StubMediaAdapter.class);
+    void theDefaultIsTheMemoryAdapterWithAReadPort() {
+        assertThat(storage).isInstanceOf(InMemoryMediaAdapter.class);
         assertThat(links).isSameAs(storage);
-        assertThat(read.getIfAvailable()).isNull();
+        assertThat(read.getIfAvailable()).isNotNull();
     }
 }

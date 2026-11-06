@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /** The public Server-Sent Events lookup, over the default (manifest, fictitious) configuration. */
-@SpringBootTest(properties = "cevoc.cors.allowed-origins=https://front.example.test")
+@SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.cors.allowed-origins=https://front.example.test"})
 @AutoConfigureMockMvc
 class PenaltyLookupStreamTest {
 

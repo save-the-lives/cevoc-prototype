@@ -20,10 +20,9 @@ import org.springframework.core.env.Environment;
  *   <li>{@code http-form}: the older plain HTTP form scraper (legacy; only when listed);</li>
  *   <li>{@code browser-link}: follows the evidence page's signed link (legacy, answers 403; keep it last, it only parses a page the evidence step handed over).</li>
  * </ul>
- * Nothing listed (the default) means no certificate source at all. A name that is not in this list (including the retired
+ * Nothing listed (empty or unset, the default) means {@code browser}. The explicit value {@code none} means no certificate source
+ * at all (tests, or a deployment that wants none). A name that is not in this list (including the retired
  * names {@code search-page} and {@code search-page-http}) is ignored with a warning: there is no alias and it never stops start-up.
- * An approval reference ({@code cevoc.certificates.approval-reference}) is an optional recorded note only: it is logged
- * at start-up when present and nothing is ever refused for lack of it.
  */
 public final class CertificateProviders {
 
@@ -32,6 +31,8 @@ public final class CertificateProviders {
     public static final String HTTP = "http";
     public static final String HTTP_FORM = "http-form";
     public static final String BROWSER_LINK = "browser-link";
+    /** Explicit "no certificate source". */
+    public static final String NONE = "none";
 
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviders.class);
 
@@ -39,13 +40,16 @@ public final class CertificateProviders {
 
     private CertificateProviders() {}
 
-    /** The configured provider ids that are known, in order. Empty list when none are configured. */
+    /** The provider ids to use, in order: the configured known ones, or {@code browser} when the setting is empty or unset. */
     public static List<String> ids(Environment env) {
         String raw = env.getProperty("cevoc.certificates.providers", "").trim();
         List<String> out = new ArrayList<>();
+        if (raw.isEmpty()) {
+            return List.of(BROWSER);
+        }
         for (String part : raw.split(",")) {
             String id = part.trim().toLowerCase(Locale.ROOT);
-            if (id.isEmpty() || out.contains(id)) {
+            if (id.isEmpty() || id.equals(NONE) || out.contains(id)) {
                 continue;
             }
             if (KNOWN.contains(id)) {
@@ -57,7 +61,7 @@ public final class CertificateProviders {
         return out;
     }
 
-    /** Null when no provider is configured. */
+    /** Null when the setting is {@code none} (or lists nothing known). */
     public static CertificateSourcePort create(Environment env) {
         List<String> ids = ids(env);
         if (ids.isEmpty()) {
@@ -68,29 +72,29 @@ public final class CertificateProviders {
                     + "and the Chromium route is removed at cutover (see docs/ARCHITECTURE.md).");
         }
         List<CertificateSourcePort> ports = new ArrayList<>();
+        List<String> usedIds = new ArrayList<>();
         for (String id : ids) {
-            ports.add(switch (id) {
+            CertificateSourcePort port = switch (id) {
                 case BROWSER -> searchPage(env);
                 case HTTP -> searchPageHttp(env);
                 case HTTP_FORM -> httpForm(env);
                 case BROWSER_LINK -> new BrowserCertificateSourceAdapter(new CertificatePageParser());
                 case API -> throw new IllegalStateException("certificate provider api is not available yet");
                 default -> throw new IllegalStateException("unreachable: unknown certificate provider '" + id + "'");
-            });
+            };
+            if (port != null) {
+                ports.add(port);
+                usedIds.add(id);
+            }
         }
-        return ports.size() == 1 ? ports.get(0) : new CertificateProviderChain(ids, ports);
-    }
-
-    /** The optional approval reference: a recorded note only. Logged when present, never required. */
-    private static void noteApproval(Environment env, String provider) {
-        String ref = env.getProperty("cevoc.certificates.approval-reference", "").trim();
-        if (!ref.isEmpty()) {
-            LOG.info("certificate provider {} started; recorded approval note present", provider);
+        if (ports.isEmpty()) {
+            return null;
         }
+        return ports.size() == 1 ? ports.get(0) : new CertificateProviderChain(usedIds, ports);
     }
 
     private static CertificateSourcePort searchPage(Environment env) {
-        noteApproval(env, BROWSER);
+        ScraperEvidenceFactory.logNotUsable(ScraperEvidenceFactory.settings(env), "the browser certificates provider");
         String pageUrl = env.getProperty("cevoc.certificates.search-page.url", SearchPageCertificateSource.DEFAULT_PAGE_URL);
         Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
         return new SearchPageCertificateSource(ScraperEvidenceFactory.sessionsFor(env), pageUrl, new CertificatePageParser(), ttl,
@@ -98,10 +102,11 @@ public final class CertificateProviders {
     }
 
     private static CertificateSourcePort searchPageHttp(Environment env) {
-        noteApproval(env, HTTP);
         ScraperSettings s = ScraperEvidenceFactory.settings(env);
         if (s.contact() == null || s.contact().isBlank()) {
-            throw new IllegalStateException("cevoc.scraper.evidence.contact is required: the user agent must identify who is calling");
+            // Not a crash: say so and run without this source, the same "not available" outcome as any unconfigured source.
+            ScraperEvidenceFactory.logContactMissing("the http certificates provider");
+            return null;
         }
         String pageUrl = env.getProperty("cevoc.certificates.search-page.url", SearchPageCertificateSource.DEFAULT_PAGE_URL);
         Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
@@ -113,7 +118,6 @@ public final class CertificateProviders {
     }
 
     private static CertificateSourcePort httpForm(Environment env) {
-        noteApproval(env, HTTP_FORM);
         String p = "cevoc.scraper.certificates.";
         long margin = env.getProperty(p + "window-margin-minutes", Long.class, -1L);
         CertificateScraperProperties props = new CertificateScraperProperties(

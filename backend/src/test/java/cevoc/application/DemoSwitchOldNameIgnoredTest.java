@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /** The retired name CEVOC_DEMO_DATA (property cevoc.demo-data) is ignored: no fallback, no alias. */
-@SpringBootTest(properties = {"cevoc.demo-data=true", "CEVOC_DEMO_DATA=true", "cevoc.demo.data=true"})
+@SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.demo-data=true", "CEVOC_DEMO_DATA=true", "cevoc.demo.data=true"})
 class DemoSwitchOldNameIgnoredTest {
 
     @Autowired ObjectProvider<DemoRoute> demo;

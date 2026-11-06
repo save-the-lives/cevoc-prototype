@@ -11,7 +11,7 @@ The lookup adapter and certificate providers are chosen by environment variables
 3. The normal post-deploy check is `GET /api/ping` (new, answers `ok`, touches no adapter or network). It no longer posts to `/api/penalty-lookups`. Live mode keeps checking `/live-check/ping`.
 
 ## Consequences
-- A variable never set stays unset and the code default applies (`stub`, nothing external).
+- A variable never set stays unset and the code default applies (since record 0022, the real `browser` adapter and provider, inert until the contact is set; before it, `stub`).
 - Turning live mode off no longer resets the variables; the owner does that on the container app.
 - If the owner selects `browser` while deploying non-live, the size stays whatever the owner set (2 CPU / 4Gi), and the post-deploy check cannot reach the real site.
 - If the owner never sets the size, the app keeps whatever it already has; the workflow will not fix a too-small app on a normal deploy.

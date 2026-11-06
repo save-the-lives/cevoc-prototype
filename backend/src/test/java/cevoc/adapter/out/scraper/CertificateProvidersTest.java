@@ -23,18 +23,32 @@ class CertificateProvidersTest {
         LookupDiagnostic.clear();
     }
 
-    private static MockEnvironment env(String providers, String approval) {
+    private static MockEnvironment env(String providers, String ignored) {
         MockEnvironment e = new MockEnvironment();
         if (providers != null) e.setProperty("cevoc.certificates.providers", providers);
-        if (approval != null) e.setProperty("cevoc.certificates.approval-reference", approval);
         return e;
     }
 
     @Test
-    void nothingConfiguredMeansNoCertificateSource() {
-        assertThat(CertificateProviders.ids(new MockEnvironment())).isEmpty();
-        assertThat(CertificateProviders.create(new MockEnvironment())).isNull();
-        assertThat(CertificateProviders.create(env("  ", null))).isNull();
+    void nothingConfiguredMeansTheBrowserProvider() {
+        assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("browser");
+        assertThat(CertificateProviders.ids(env("", null))).containsExactly("browser");
+        assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("browser");
+        assertThat(CertificateProviders.create(new MockEnvironment())).isInstanceOf(SearchPageCertificateSource.class);
+        assertThat(CertificateProviders.create(env("  ", null))).isInstanceOf(SearchPageCertificateSource.class);
+    }
+
+    @Test
+    void noneIsTheExplicitChoiceOfNoCertificateSource() {
+        assertThat(CertificateProviders.ids(env(" None ", null))).isEmpty();
+        assertThat(CertificateProviders.create(env("none", null))).isNull();
+    }
+
+    @Test
+    void theHttpProviderWithoutAContactDoesNotCrashAndHasNoSource() {
+        assertThat(CertificateProviders.create(env("http", null))).isNull();
+        MockEnvironment withContact = env("http", null).withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid");
+        assertThat(CertificateProviders.create(withContact)).isInstanceOf(SearchPageHttpCertificateSource.class);
     }
 
     @Test
@@ -48,8 +62,8 @@ class CertificateProvidersTest {
         assertThat(CertificateProviders.ids(env("search-page,search-page-http,tfnsw-api", null))).isEmpty();
         assertThat(CertificateProviders.create(env("search-page,search-page-http", null))).isNull();
         // the old flag no longer selects the http-form provider
-        MockEnvironment e = new MockEnvironment().withProperty("cevoc.scraper.certificates.enabled", "true")
-                .withProperty("cevoc.scraper.certificates.approval-reference", "TEST-REF-1");
+        MockEnvironment e = new MockEnvironment().withProperty("cevoc.certificates.providers", "search-page")
+                .withProperty("cevoc.scraper.certificates.enabled", "true");
         assertThat(CertificateProviders.ids(e)).isEmpty();
         assertThat(CertificateProviders.create(e)).isNull();
     }

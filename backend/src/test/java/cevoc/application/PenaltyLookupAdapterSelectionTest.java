@@ -6,6 +6,7 @@ import cevoc.adapter.out.ManifestFirstPenaltyLookupAdapter;
 import cevoc.adapter.out.memory.InMemoryMediaAdapter;
 import cevoc.adapter.out.revenuensw.RevenueNswHttpLookupAdapter;
 import cevoc.adapter.out.scraper.ScraperEvidenceLookupAdapter;
+import cevoc.adapter.out.scraper.SearchPageCertificateSource;
 import cevoc.adapter.out.stub.StubMediaAdapter;
 import cevoc.application.port.out.CertificateSourcePort;
 import cevoc.application.port.out.MediaStoragePort;
@@ -34,8 +35,18 @@ class PenaltyLookupAdapterSelectionTest {
         // Same answer the public page gave before: an unknown number is "live lookup switched off", nothing is contacted.
         assertThat(port.find(UNKNOWN).status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_DISABLED);
         assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(StubMediaAdapter.class);
-        assertThat(ctx.getBeansOfType(CertificateSourcePort.class)).isEmpty();
         assertThat(ctx.getBeansOfType(LiveCheckGuardConfig.class)).isEmpty();
+    }
+
+    /** The default: the real (Chromium) adapter and the browser certificates provider, nothing else switched on. With no contact set
+     *  it makes no network call and answers the "switched off" message (the app starts and keeps running). */
+    private static void assertBrowserDefault(PenaltyLookupPort port, ApplicationContext ctx) {
+        assertThat(port).isInstanceOf(ScraperEvidenceLookupAdapter.class);
+        assertThat(port.find(UNKNOWN).status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
+        assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
+        assertThat(ctx.getBean(CertificateSourcePort.class)).isInstanceOf(SearchPageCertificateSource.class);
+        assertThat(ctx.getBeansOfType(LiveCheckGuardConfig.class)).isEmpty();
+        assertThat(ctx.getBeansOfType(cevoc.adapter.out.demo.DemoRoute.class)).isEmpty();
     }
 
     @Nested
@@ -45,20 +56,21 @@ class PenaltyLookupAdapterSelectionTest {
         @Autowired PenaltyLookupPort port;
 
         @Test
-        void startsAndDefaultsToStubWithScrapersNotSelected() {
-            assertSafeStubDefault(port, ctx);
+        void startsAndDefaultsToTheBrowserAdapterAndProvider() {
+            assertBrowserDefault(port, ctx);
         }
     }
 
     @Nested
-    @SpringBootTest(properties = "cevoc.penalty-lookup.adapter=stub")
+    @SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none"})
     class StubValue {
         @Autowired ApplicationContext ctx;
         @Autowired PenaltyLookupPort port;
 
         @Test
-        void selectsStub() {
+        void selectsStubExplicitly() {
             assertSafeStubDefault(port, ctx);
+            assertThat(ctx.getBeansOfType(CertificateSourcePort.class)).isEmpty();
         }
     }
 
@@ -70,7 +82,7 @@ class PenaltyLookupAdapterSelectionTest {
 
         @Test
         void emptyIsTheDefault() {
-            assertSafeStubDefault(port, ctx);
+            assertBrowserDefault(port, ctx);
         }
     }
 
@@ -106,7 +118,7 @@ class PenaltyLookupAdapterSelectionTest {
     @Nested
     @SpringBootTest(properties = {
             "cevoc.scraper.enabled=true", "cevoc.scraper.evidence.enabled=true", "cevoc.scraper.evidence.browser=playwright",
-            "cevoc.scraper.evidence.base-url=https://site.example.invalid/", "cevoc.scraper.evidence.contact=c@example.invalid",
+            "cevoc.scraper.evidence.base-url=https://site.example.invalid/",
             "cevoc.scraper.certificates.enabled=true", "cevoc.scraper.certificates.approval-reference=x",
             "cevoc.revenue-nsw-http.enabled=true", "cevoc.live-check.token=abc",
             "CEVOC_SCRAPER_ENABLED=true", "CEVOC_SCRAPER_EVIDENCE_ENABLED=true", "CEVOC_SCRAPER_EVIDENCE_BROWSER=playwright",
@@ -116,8 +128,8 @@ class PenaltyLookupAdapterSelectionTest {
         @Autowired PenaltyLookupPort port;
 
         @Test
-        void stillTheSafeDefault() {
-            assertSafeStubDefault(port, ctx);
+        void stillTheDefault() {
+            assertBrowserDefault(port, ctx);
         }
     }
 

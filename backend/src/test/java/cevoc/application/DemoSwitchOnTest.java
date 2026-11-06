@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /** Demo data ON (CEVOC_DEMO_DATA_ENABLED=true, set explicitly): the demo adapter, the hub list and the sample images exist. */
-@SpringBootTest(properties = "cevoc.demo-data.enabled=true")
+@SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.demo-data.enabled=true"})
 @AutoConfigureMockMvc
 class DemoSwitchOnTest {
 

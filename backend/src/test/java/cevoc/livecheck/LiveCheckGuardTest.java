@@ -36,7 +36,7 @@ class LiveCheckGuardTest {
     }
 
     @Nested
-    @SpringBootTest(properties = {"cevoc.live-check.enabled=true", "cevoc.cors.allowed-origins=https://front.example.test"})
+    @SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.live-check.enabled=true", "cevoc.cors.allowed-origins=https://front.example.test"})
     @AutoConfigureMockMvc
     @Import(Stub.class)
     class Enabled {
@@ -64,7 +64,7 @@ class LiveCheckGuardTest {
     }
 
     @Nested
-    @SpringBootTest
+    @SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none"})
     @AutoConfigureMockMvc
     @Import(Stub.class)
     class NotEnabled {

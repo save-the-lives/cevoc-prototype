@@ -20,12 +20,12 @@ class RevenueNswHttpWiringTest {
 
     @Nested
     @SpringBootTest
-    class DefaultStaysAsItWas {
+    class DefaultIsTheBrowserRoute {
         @Autowired ApplicationContext ctx;
 
         @Test
-        void theStubDefaultIsUnchangedAndNoHttpRouteExists() {
-            assertThat(ctx.getBean(PenaltyLookupPort.class)).isInstanceOf(ManifestFirstPenaltyLookupAdapter.class);
+        void theDefaultIsTheBrowserRouteAndNoHttpRouteExists() {
+            assertThat(ctx.getBean(PenaltyLookupPort.class)).isInstanceOf(cevoc.adapter.out.scraper.ScraperEvidenceLookupAdapter.class);
             assertThat(ctx.getBeansOfType(RevenueNswHttpLookupAdapter.class)).isEmpty();
         }
     }

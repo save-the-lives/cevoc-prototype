@@ -8,12 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 
-@SpringBootTest
+@SpringBootTest(properties = "cevoc.certificates.providers=none")
 class ScraperInertByDefaultTest {
     @Autowired ApplicationContext ctx;
 
     @Test
-    void noScraperBeanUnlessEnabled() {
+    void noCertificateSourceWhenNoneIsChosen() {
         assertEquals(0, ctx.getBeansOfType(CertificateSourcePort.class).size());
     }
 }

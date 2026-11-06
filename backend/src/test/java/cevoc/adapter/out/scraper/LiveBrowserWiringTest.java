@@ -39,7 +39,8 @@ class LiveBrowserWiringTest {
                 .withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid")
                 .withProperty("cevoc.scraper.evidence.enabled", "true").withProperty("cevoc.scraper.enabled", "true")
                 .withProperty("cevoc.scraper.evidence.browser", "playwright");
-        assertThat(ScraperEvidenceFactory.settings(old).usable()).isFalse();
+        // The retired base-url name is not read: the address is the built-in default, not BASE.
+        assertThat(ScraperEvidenceFactory.settings(old).url()).isEqualTo(ScraperSettings.DEFAULT_URL).isNotEqualTo(BASE);
     }
 
     @Test

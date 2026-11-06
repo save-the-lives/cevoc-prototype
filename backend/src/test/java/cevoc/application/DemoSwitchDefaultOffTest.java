@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /** No setting at all: demo data is OFF by default. */
-@SpringBootTest
+@SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none"})
 class DemoSwitchDefaultOffTest {
 
     @Autowired ObjectProvider<DemoRoute> demo;
