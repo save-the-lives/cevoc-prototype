@@ -83,7 +83,7 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
                 playwright = Playwright.create();
                 browser = playwright.chromium().launch(launchOptions(headless));
             }
-            context = browser.newContext(contextOptions(settings, browserDefaultUserAgent));
+            context = browser.newContext(contextOptions(settings, browserDefaultUserAgent, browser.version()));
             Duration step = stepTimeout(settings);
             context.setDefaultTimeout(step.toMillis());
             context.setDefaultNavigationTimeout(step.toMillis());
@@ -144,6 +144,15 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
      * No header is added or faked: cookies, Accept, Accept-Language and Sec-Fetch-* come from Chromium itself.
      */
     static Browser.NewContextOptions contextOptions(ScraperSettings settings, boolean browserDefaultUserAgent) {
+        return contextOptions(settings, browserDefaultUserAgent, null);
+    }
+
+    /**
+     * @param browserVersion the launched Chromium's version (browser.version()). Headless Chromium's default agent contains
+     *                       "HeadlessChrome", which the certificates page's bot management refuses. For the browser-default case the
+     *                       agent is therefore the one this same Chromium sends when headed: identical, minus the word "Headless".
+     */
+    static Browser.NewContextOptions contextOptions(ScraperSettings settings, boolean browserDefaultUserAgent, String browserVersion) {
         var o = new Browser.NewContextOptions()
                 .setLocale("en-AU")
                 .setTimezoneId("Australia/Sydney")
@@ -151,8 +160,20 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
                 .setServiceWorkers(ServiceWorkerPolicy.BLOCK);
         if (!browserDefaultUserAgent) {
             o.setUserAgent(settings.userAgent());
+        } else if (browserVersion != null && !browserVersion.isBlank()) {
+            o.setUserAgent(headedUserAgent(browserVersion, System.getProperty("os.name", "")));
         }
         return o;
+    }
+
+    /** The user agent of this Chromium build when run headed (same string headless sends, without "Headless"). */
+    static String headedUserAgent(String chromiumVersion, String osName) {
+        String os = osName == null ? "" : osName.toLowerCase(java.util.Locale.ROOT);
+        String platform = os.contains("win") ? "Windows NT 10.0; Win64; x64"
+                : os.contains("mac") ? "Macintosh; Intel Mac OS X 10_15_7"
+                : "X11; Linux x86_64";
+        return "Mozilla/5.0 (" + platform + ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/" + chromiumVersion.trim()
+                + " Safari/537.36";
     }
 
     /** Generous but bounded: three times the HTTP request timeout, between 30 and 90 seconds. */

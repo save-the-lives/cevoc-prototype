@@ -54,4 +54,19 @@ class PlaywrightHelpersTest {
         assertThat(certificates.serviceWorkers).isEqualTo(penalty.serviceWorkers);
         assertThat(penalty.extraHTTPHeaders).isNull();
     }
+
+    @Test
+    void certificatesContextUserAgentIsTheHeadedChromeOneAndNeverHeadless() {
+        ScraperSettings s = ScraperSettings.off();
+        var certificates = PlaywrightSessionFactory.contextOptions(s, true, "131.0.6778.33");
+        assertThat(certificates.userAgent)
+                .isNotNull()
+                .doesNotContain("Headless")
+                .contains("Chrome/131.0.6778.33")
+                .startsWith("Mozilla/5.0 (");
+        assertThat(PlaywrightSessionFactory.headedUserAgent("131.0.6778.33", "Linux"))
+                .isEqualTo("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.6778.33 Safari/537.36");
+        // The penalty lookup keeps the identifying agent whatever the browser version.
+        assertThat(PlaywrightSessionFactory.contextOptions(s, false, "131.0.6778.33").userAgent).isEqualTo(s.userAgent());
+    }
 }
