@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { certificateLabel, certificateRows, certificateSummary, formatDate, hasCertificateList, orderCertificates } from './certs.js';
+import { MAX_CARDS, certificateLabel, certificateRows, certificateSummary, coverageTone, formatDate, hasCertificateList } from './certs.js';
 
 const c = (over) => ({ description: 'd', type: 't', periodText: 'p', certifiedDate: '2026-01-01', expiryDate: '2027-01-01', coversOffence: false, ...over });
 
@@ -13,24 +13,35 @@ describe('certificate helpers', () => {
     expect(formatDate('2026-13-01')).toBe('2026-13-01');
   });
   it('labels rows in plain words', () => {
-    expect(certificateLabel(c({ coversOffence: true }))).toBe('Valid on the offence date');
+    expect(certificateLabel(c({ coversOffence: true }))).toBe('In force on the offence date');
     expect(certificateLabel(c({ coversOffence: false }))).toBe('Not in force on the offence date');
     expect(certificateLabel(c({ coversOffence: undefined }))).toBe('Not in force on the offence date');
   });
-  it('puts covering rows first, then newest certified first, without mutating', () => {
-    const input = [c({ description: 'old', certifiedDate: '2024-01-01' }), c({ description: 'cover', certifiedDate: '2025-01-01', coversOffence: true }), c({ description: 'new', certifiedDate: '2026-01-01' })];
-    const out = orderCertificates(input);
-    expect(out.map((x) => x.description)).toEqual(['cover', 'new', 'old']);
-    expect(input[0].description).toBe('old');
+  it('keeps the order the server chose and shows at most three cards, without mutating', () => {
+    const input = [c({ description: 'before' }), c({ description: 'after' }), c({ description: 'x' }), c({ description: 'y' })];
+    const rows = certificateRows(input);
+    expect(rows.map((x) => x.description)).toEqual(['before', 'after', 'x']);
+    expect(rows).toHaveLength(MAX_CARDS);
+    expect(input).toHaveLength(4);
   });
   it('builds rows with text fields', () => {
     const [r] = certificateRows([c({ coversOffence: true, certifiedDate: '2026-03-14', expiryDate: '2027-03-13' })]);
-    expect(r).toMatchObject({ covers: true, label: 'Valid on the offence date', certifiedText: '14 Mar 2026', expiryText: '13 Mar 2027' });
+    expect(r).toMatchObject({ covers: true, label: 'In force on the offence date', certifiedText: '14 Mar 2026', expiryText: '13 Mar 2027' });
   });
-  it('summarises how many cover the offence', () => {
-    expect(certificateSummary([c({ coversOffence: true })])).toBe('1 certificate was valid on the offence date.');
-    expect(certificateSummary([c({ coversOffence: true }), c({ coversOffence: true })])).toBe('2 certificates were valid on the offence date.');
-    expect(certificateSummary([c()])).toMatch(/None of these/);
+  it('says what the cards are', () => {
+    expect(certificateSummary([c({ coversOffence: true })], { status: 'covered' })).toBe('This is the certificate in force on the offence date.');
+    expect(certificateSummary([c(), c()], { status: 'gap', side: 'between', gapDays: 5 })).toMatch(/either side/);
+    expect(certificateSummary([c()], { status: 'gap', side: 'before-only', gapDays: 5 })).toMatch(/nearest/);
+    expect(certificateSummary([c()], null)).toMatch(/None of these/);
+  });
+  it('picks a tone from the coverage summary', () => {
+    expect(coverageTone({ status: 'covered' })).toBe('ok');
+    expect(coverageTone({ status: 'gap', side: 'between', gapDays: 0 })).toBe('ok');
+    expect(coverageTone({ status: 'gap', side: 'between', gapDays: 12 })).toBe('warn');
+    expect(coverageTone({ status: 'gap', side: 'before-only', gapDays: 0 })).toBe('warn');
+    expect(coverageTone({ status: 'gap', side: 'after-only', gapDays: 3 })).toBe('warn');
+    expect(coverageTone({ status: 'none' })).toBe('neutral');
+    expect(coverageTone(null)).toBe('neutral');
   });
   it('falls back to the old display unless certificates is a non-empty array', () => {
     expect(hasCertificateList({ certificates: [c()] })).toBe(true);

@@ -3,6 +3,7 @@ package cevoc.adapter.out.demo;
 import cevoc.application.port.in.LookupSink;
 import cevoc.application.port.out.DemoCatalogPort;
 import cevoc.application.service.LookupPenaltyService;
+import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.LookupTrace;
@@ -157,6 +158,15 @@ public final class DemoArtifacts {
             @Override
             public void certificates(List<CertificateItem> certificates) {
                 out.add(List.of("certificates", Map.of("certificates", certificates)));
+            }
+
+            @Override
+            public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage) {
+                if (coverage == null) {
+                    certificates(certificates);
+                } else {
+                    out.add(List.of("certificates", Map.of("certificates", certificates, "coverage", coverage)));
+                }
             }
 
             @Override

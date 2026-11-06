@@ -1,5 +1,5 @@
 // Pure helpers for the public journey: what to say, given what the backend returned.
-import { hasCertificateList } from './certs.js';
+import { coverageTone, hasCertificateList } from './certs.js';
 
 export const HELP_PHONE = 'Revenue NSW on 1300 138 118';
 
@@ -59,14 +59,17 @@ export function evidenceState(result, registrationGiven) {
 
 /** The plain-language answer under "Was the camera working properly?". */
 export function certificateAnswer(result) {
+  const cov = result?.certificateCoverage;
+  if (cov && typeof cov.message === 'string' && cov.message) {
+    return { tone: coverageTone(cov), text: cov.message };
+  }
   if (!hasCertificateList(result)) {
     return { tone: 'neutral', text: 'We can’t show the camera’s certificates for this notice yet.' };
   }
-  const n = result.certificates.filter((c) => c.coversOffence === true).length;
-  if (n === 0) {
-    return { tone: 'warn', text: 'None of the certificates we found covers the time of the offence. You may want to mention this if you ask for a review.' };
-  }
-  return { tone: 'ok', text: n === 1 ? 'A certificate for this camera was in force at the time of the offence.' : `${n} certificates for this camera were in force at the time of the offence.` };
+  // No summary from the server: say only what the rows themselves say.
+  return result.certificates.some((c) => c.coversOffence === true)
+    ? { tone: 'ok', text: 'A certificate for this camera was in force on the offence date.' }
+    : { tone: 'warn', text: 'None of the certificates we found was in force on the offence date.' };
 }
 
 /** Headline for the notice status box. Only says what the data says. */

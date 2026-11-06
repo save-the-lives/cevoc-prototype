@@ -3,6 +3,7 @@ package cevoc.adapter.in.web;
 import cevoc.adapter.in.web.PenaltyLookupController.LookupBody;
 import cevoc.application.port.in.LookupPenaltyUseCase;
 import cevoc.application.port.in.LookupSink;
+import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.NoticeDetails;
@@ -71,7 +72,9 @@ public class PenaltyLookupStreamController {
 
     public record Evidence(List<EvidenceItem> evidence, boolean plateRequired) {}
 
-    public record Certificates(List<CertificateItem> certificates) {}
+    public record Certificates(List<CertificateItem> certificates,
+                               @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+                               CertificateCoverage coverage) {}
 
     /** The flexible details map (record 0009); sent only when a route returned any. */
     public record Extra(java.util.Map<String, Object> details) {}
@@ -115,7 +118,7 @@ public class PenaltyLookupStreamController {
                 if (d.status() != PenaltyLookupResult.Status.FOUND) {
                     // The stream carries "evidence": [] for the unhappy cases so the page can settle every section.
                     send(emitter, open, "evidence", new Evidence(List.of(), false));
-                    send(emitter, open, "certificates", new Certificates(List.of()));
+                    send(emitter, open, "certificates", new Certificates(List.of(), null));
                 }
             }
 
@@ -131,7 +134,12 @@ public class PenaltyLookupStreamController {
 
             @Override
             public void certificates(List<CertificateItem> certificates) {
-                send(emitter, open, "certificates", new Certificates(certificates));
+                send(emitter, open, "certificates", new Certificates(certificates, null));
+            }
+
+            @Override
+            public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage) {
+                send(emitter, open, "certificates", new Certificates(certificates, coverage));
             }
 
             @Override

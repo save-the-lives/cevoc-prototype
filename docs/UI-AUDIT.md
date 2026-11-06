@@ -68,7 +68,7 @@ Measured and passing (so not listed above): text contrast, reflow at 320 px and 
 | Form, Text input, hints, errors | Labels above fields, hints, `aria-describedby`, inline error plus summary; matches the guidance | Adopt DS markup for the error summary; document the privacy reason for the generic not-found message |
 | Date input | Day, month, year fieldset with legend and hint like the DS, but auto-advances and uses `bday-day` | Adopt behaviour: no auto-advance, no birthday token (UI-04, UI-05) |
 | In-page alert | `.notice-box` and `.errsum` boxes with border colours | Adopt (information, warning, critical); use for the expired-photos message |
-| Status labels | `.badge` "Valid on the offence date" with a tick and text | Adopt, or document (colour is not the only cue, which is good) |
+| Status labels | `.badge` "In force on the offence date" with a tick and text | Adopt, or document (colour is not the only cue, which is good) |
 | Steps | Numbered `.q` sections | Compare markup once readable; add step number to the accessible name (UI-13) |
 | In-page navigation | `nav "On this page"` list of anchors | Adopt (same pattern, left bar on desktop) |
 | Loader | Skeleton placeholders, sr-only labels, spinner | Document: skeletons are a reasonable choice for page sections; keep one labelled loader or live line (UI-07, UI-17) |

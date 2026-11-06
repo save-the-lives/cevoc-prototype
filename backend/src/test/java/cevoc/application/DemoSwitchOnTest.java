@@ -51,8 +51,9 @@ class DemoSwitchOnTest {
         // several found, one in force
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"1000000001\",\"offenceDate\":\"2026-09-01\"}"))
-                .andExpect(jsonPath("$.certificates.length()").value(3))
-                .andExpect(jsonPath("$.certificates[1].coversOffence").value(true))
+                .andExpect(jsonPath("$.certificates.length()").value(1))
+                .andExpect(jsonPath("$.certificates[0].coversOffence").value(true))
+                .andExpect(jsonPath("$.certificateCoverage.status").value("covered"))
                 .andExpect(jsonPath("$.certificates[0].description").value(org.hamcrest.Matchers.startsWith("Fictitious")));
         // exactly one found
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
@@ -62,12 +63,14 @@ class DemoSwitchOnTest {
         // none found
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"1000000101\",\"offenceDate\":\"2026-09-01\"}"))
-                .andExpect(jsonPath("$.certificates.length()").value(0));
+                .andExpect(jsonPath("$.certificates.length()").value(0))
+                .andExpect(jsonPath("$.certificateCoverage.status").value("none"));
         // a failure of the source: no certificates, the lookup itself still answers
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"1000000201\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(jsonPath("$.status").value("FOUND"))
-                .andExpect(jsonPath("$.certificates.length()").value(0));
+                .andExpect(jsonPath("$.certificates.length()").value(0))
+                .andExpect(jsonPath("$.certificateCoverage").doesNotExist());
     }
 
     @Test
@@ -77,7 +80,8 @@ class DemoSwitchOnTest {
                         .content("{\"infringementNumber\":\"1000000001\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(request().asyncStarted()).andReturn();
         await().atMost(Duration.ofSeconds(10)).until(() -> result.getResponse().getContentAsString().contains("event:done"));
-        assertThat(result.getResponse().getContentAsString()).contains("event:certificates").contains("\"coversOffence\":true");
+        assertThat(result.getResponse().getContentAsString()).contains("event:certificates").contains("\"coversOffence\":true")
+                .contains("\"coverage\":{\"status\":\"covered\"");
     }
 
     @Test

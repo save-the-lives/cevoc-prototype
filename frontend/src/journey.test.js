@@ -63,10 +63,24 @@ describe('isCamera', () => {
 
 describe('certificateAnswer', () => {
   const cert = (c) => ({ description: 'd', type: 't', periodText: 'p', certifiedDate: '2026-01-01', expiryDate: '2027-01-01', coversOffence: c });
-  it('says plainly whether a certificate covered the offence', () => {
-    expect(certificateAnswer({ certificates: [cert(true), cert(false)] })).toMatchObject({ tone: 'ok', text: expect.stringMatching(/was in force/) });
-    expect(certificateAnswer({ certificates: [cert(true), cert(true)] }).text).toMatch(/2 certificates/);
-    expect(certificateAnswer({ certificates: [cert(false)] })).toMatchObject({ tone: 'warn' });
+  it('uses the server summary: covered, gap, continuous, one-sided and none', () => {
+    const msg = (status, extra, message) => ({ certificates: [cert(status === 'covered')], certificateCoverage: { status, message, ...extra } });
+    expect(certificateAnswer(msg('covered', {}, 'A certificate for this camera was in force on the offence date.')))
+      .toEqual({ tone: 'ok', text: 'A certificate for this camera was in force on the offence date.' });
+    expect(certificateAnswer(msg('gap', { side: 'between', gapDays: 39 }, 'There is a 39 day gap in certification around the offence date.')))
+      .toEqual({ tone: 'warn', text: 'There is a 39 day gap in certification around the offence date.' });
+    expect(certificateAnswer(msg('gap', { side: 'between', gapDays: 0 }, 'The camera was certified continuously around the offence date.')).tone).toBe('ok');
+    expect(certificateAnswer(msg('gap', { side: 'before-only', gapDays: 10 }, 'The most recent certificate expired 10 days before the offence.')))
+      .toEqual({ tone: 'warn', text: 'The most recent certificate expired 10 days before the offence.' });
+    expect(certificateAnswer(msg('gap', { side: 'after-only', gapDays: 10 }, 'The next certificate starts 10 days after the offence.')).tone).toBe('warn');
+    expect(certificateAnswer({ certificates: [], certificateCoverage: { status: 'none', message: 'We found no certificates for this camera around the offence date.' } }))
+      .toEqual({ tone: 'neutral', text: 'We found no certificates for this camera around the offence date.' });
+  });
+  it('without a summary says only what the rows say, and never the old long message', () => {
+    expect(certificateAnswer({ certificates: [cert(true)] })).toMatchObject({ tone: 'ok', text: expect.stringMatching(/was in force/) });
+    const none = certificateAnswer({ certificates: [cert(false)] });
+    expect(none.tone).toBe('warn');
+    expect(none.text).not.toMatch(/covers the time/);
     expect(certificateAnswer({ certificates: [] })).toMatchObject({ tone: 'neutral' });
   });
 });

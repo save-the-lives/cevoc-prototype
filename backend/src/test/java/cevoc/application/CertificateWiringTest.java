@@ -7,6 +7,7 @@ import cevoc.adapter.out.stub.StubMediaAdapter;
 import cevoc.application.port.out.CertificateSourcePort;
 import cevoc.application.port.out.PenaltyLookupPort;
 import cevoc.application.service.LookupPenaltyService;
+import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateQuery;
 import cevoc.domain.CertificateRef;
 import cevoc.domain.EnforcementMethod;
@@ -76,10 +77,11 @@ class CertificateWiringTest {
         assertThat(certs.queries).hasSize(1);
         assertThat(certs.queries.get(0).locationCode()).isEqualTo("7109");
         assertThat(certs.queries.get(0).from()).isEqualTo(DAY.atStartOfDay());
-        assertThat(r.certificates()).hasSize(2);
-        assertThat(r.certificates().get(0).coversOffence()).isFalse();
-        assertThat(r.certificates().get(1).coversOffence()).isTrue();
-        assertThat(r.certificates().get(1).expiryDate()).isEqualTo("2027-01-15");
+        // the old certificate has no bearing and is dropped: only the one in force is kept
+        assertThat(r.certificates()).hasSize(1);
+        assertThat(r.certificates().get(0).coversOffence()).isTrue();
+        assertThat(r.certificates().get(0).expiryDate()).isEqualTo("2027-01-15");
+        assertThat(r.certificateCoverage().status()).isEqualTo(CertificateCoverage.Status.COVERED);
     }
 
     @Test
@@ -114,12 +116,13 @@ class CertificateWiringTest {
         var certs = new FakeCerts(List.of(), null);
         PenaltyLookupResult r = service(new ManifestPenaltyLookupAdapter(), certs, null).lookup(REQ);
         assertThat(certs.queries).isEmpty();
-        assertThat(r.certificates()).hasSize(3);
-        assertThat(r.certificates().stream().filter(c -> c.coversOffence()).count()).isEqualTo(1);
+        assertThat(r.certificates()).hasSize(1);
+        assertThat(r.certificates().get(0).coversOffence()).isTrue();
+        assertThat(r.certificateCoverage().status()).isEqualTo(CertificateCoverage.Status.COVERED);
         PenaltyLookupResult other = service(new ManifestPenaltyLookupAdapter(), certs, null)
                 .lookup(new PenaltyLookupRequest("9000000001", DAY));
-        assertThat(other.certificates()).hasSize(3);
-        assertThat(other.certificates().stream().filter(c -> c.coversOffence()).count()).isEqualTo(1);
+        assertThat(other.certificates()).hasSize(1);
+        assertThat(other.certificates().get(0).coversOffence()).isTrue();
     }
 
     @Test
@@ -132,6 +135,8 @@ class CertificateWiringTest {
                 "description", "type", "periodText", "certifiedDate", "expiryDate", "coversOffence");
         assertThat(c.get("coversOffence").isBoolean()).isTrue();
         assertThat(c.get("certifiedDate").asText()).isEqualTo("2026-01-15");
+        assertThat(json.get("certificateCoverage").get("status").asText()).isEqualTo("covered");
+        assertThat(json.get("certificateCoverage").fieldNames()).toIterable().containsExactlyInAnyOrder("status", "message");
         assertThat(json.has("cameraCode")).isFalse();
         assertThat(json.has("certificatesNote")).isFalse();
         assertThat(json.toString()).doesNotContain("7109");

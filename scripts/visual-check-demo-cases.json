@@ -55,27 +55,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -146,7 +136,11 @@
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -210,7 +204,11 @@
           "operator" : "Sample Operator"
         }
       } ], [ "certificates", {
-        "certificates" : [ ]
+        "certificates" : [ ],
+        "coverage" : {
+          "status" : "none",
+          "message" : "We found no certificates for this camera around the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -288,7 +286,13 @@
           "certifiedDate" : "2026-04-13",
           "expiryDate" : "2028-03-14",
           "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "gap",
+          "side" : "between",
+          "gapDays" : 79,
+          "message" : "There is a 79 day gap in certification around the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -349,27 +353,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -418,27 +412,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -479,27 +463,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -556,27 +530,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -641,27 +605,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -726,27 +680,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -924,27 +868,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -979,27 +913,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1064,27 +988,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "31/12/1996 - 30/12/1998",
-          "certifiedDate" : "1996-12-21",
-          "expiryDate" : "1998-12-30",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "31/12/1998 - 31/12/2000",
           "certifiedDate" : "1998-12-21",
           "expiryDate" : "2000-12-31",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "01/01/2001 - 31/12/2002",
-          "certifiedDate" : "2000-12-22",
-          "expiryDate" : "2002-12-31",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1149,27 +1063,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1234,27 +1138,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1324,27 +1218,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1420,7 +1304,11 @@
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1489,7 +1377,11 @@
           "yellowLightDuration" : 4.0
         }
       } ], [ "certificates", {
-        "certificates" : [ ]
+        "certificates" : [ ],
+        "coverage" : {
+          "status" : "none",
+          "message" : "We found no certificates for this camera around the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1572,7 +1464,13 @@
           "certifiedDate" : "2026-04-13",
           "expiryDate" : "2028-03-14",
           "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "gap",
+          "side" : "between",
+          "gapDays" : 79,
+          "message" : "There is a 79 day gap in certification around the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1638,27 +1536,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1727,27 +1615,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1801,27 +1679,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1867,27 +1735,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -1949,27 +1807,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2039,27 +1887,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2129,27 +1967,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2300,27 +2128,17 @@
         "plateRequired" : false
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2412,27 +2230,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2472,27 +2280,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2562,27 +2360,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "31/12/1996 - 30/12/1998",
-          "certifiedDate" : "1996-12-21",
-          "expiryDate" : "1998-12-30",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "31/12/1998 - 31/12/2000",
           "certifiedDate" : "1998-12-21",
           "expiryDate" : "2000-12-31",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "01/01/2001 - 31/12/2002",
-          "certifiedDate" : "2000-12-22",
-          "expiryDate" : "2002-12-31",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2637,27 +2425,17 @@
         "plateRequired" : false
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious default block camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious default block camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious default block camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2727,27 +2505,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2817,27 +2585,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2907,27 +2665,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -2997,27 +2745,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -3087,27 +2825,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -3177,27 +2905,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -3267,27 +2985,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],
@@ -3357,27 +3065,17 @@
         }
       } ], [ "certificates", {
         "certificates" : [ {
-          "description" : "Fictitious red light camera certificate (superseded)",
-          "type" : "Camera",
-          "periodText" : "14/03/2023 - 13/03/2025",
-          "certifiedDate" : "2023-03-04",
-          "expiryDate" : "2025-03-13",
-          "coversOffence" : false
-        }, {
           "description" : "Fictitious red light camera certificate (current)",
           "type" : "Camera",
           "periodText" : "14/03/2025 - 14/03/2027",
           "certifiedDate" : "2025-03-04",
           "expiryDate" : "2027-03-14",
           "coversOffence" : true
-        }, {
-          "description" : "Fictitious red light camera certificate (next year)",
-          "type" : "Camera",
-          "periodText" : "15/03/2027 - 14/03/2029",
-          "certifiedDate" : "2027-03-05",
-          "expiryDate" : "2029-03-14",
-          "coversOffence" : false
-        } ]
+        } ],
+        "coverage" : {
+          "status" : "covered",
+          "message" : "A certificate for this camera was in force on the offence date."
+        }
       } ], [ "done", {
         "ok" : true
       } ] ],

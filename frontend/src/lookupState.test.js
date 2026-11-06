@@ -22,6 +22,20 @@ describe('lookup state', () => {
     expect(toResult(s).certificates).toHaveLength(1);
   });
 
+  it('carries the coverage summary from the certificates event into the result', () => {
+    const coverage = { status: 'gap', side: 'between', gapDays: 39, message: 'There is a 39 day gap in certification around the offence date.' };
+    const s = run([['details', details], ['evidence', { evidence: [], plateRequired: false }], ['certificates', { certificates: [{}, {}], coverage }], ['done', {}]]);
+    expect(toResult(s).certificateCoverage).toEqual(coverage);
+    const older = run([['details', details], ['certificates', { certificates: [] }]]);
+    expect(toResult(older).certificateCoverage).toBeNull();
+  });
+
+  it('a single JSON answer keeps the coverage summary', () => {
+    const coverage = { status: 'covered', message: 'x' };
+    const ev = eventsFromResult({ ...details, evidence: [], certificates: [{}], certificateCoverage: coverage }).find((e) => e[0] === 'certificates');
+    expect(ev[1]).toEqual({ certificates: [{}], coverage });
+  });
+
   it('carries the plate-required flag into the result', () => {
     const s = run([['details', details], ['evidence', { evidence: [], plateRequired: true }], ['certificates', { certificates: [] }], ['done', {}]]);
     expect(toResult(s).plateRequired).toBe(true);

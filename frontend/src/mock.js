@@ -8,16 +8,12 @@ const notice = (over) => ({
 
 const IMG = (n, title) => ({ kind: 'IMAGE', title, url: `/samples/image-${n}.jpg`, previewUrl: `/samples/image-${n}-preview.jpg` });
 const CERT = { kind: 'CERTIFICATE', title: 'Sample camera certificate', url: '/samples/cert-1.pdf' };
+// The server sends only the certificate in force (or the two either side of a gap) plus a summary.
 const CERTS = [
-  { description: 'Sample speed camera - annual accuracy check', type: 'Annual certificate', periodText: '1 Jan 2025 to 31 Dec 2025',
-    certifiedDate: '2024-12-20', expiryDate: '2025-12-31', coversOffence: false },
   { description: 'Sample speed camera - annual accuracy check', type: 'Annual certificate', periodText: '1 Jan 2026 to 31 Dec 2026',
     certifiedDate: '2025-12-18', expiryDate: '2026-12-31', coversOffence: true },
-  { description: 'Sample speed camera - repair and recheck', type: 'Interim certificate', periodText: '1 Apr 2026 to 30 Jun 2026',
-    certifiedDate: '2026-03-30', expiryDate: '2026-06-30', coversOffence: false },
-  { description: 'Sample speed camera - earlier unit', type: 'Annual certificate', periodText: '1 Jan 2024 to 31 Dec 2024',
-    certifiedDate: '2023-12-15', expiryDate: '2024-12-31', coversOffence: false },
 ];
+const COVERAGE = { status: 'covered', message: 'A certificate for this camera was in force on the offence date.' };
 const VIDEO = {
   kind: 'VIDEO', title: 'Sample video (adaptive)', url: '/samples/hls/master.m3u8',
   posterUrl: '/samples/video-1-poster.jpg', downloadUrl: '/samples/video-1.mp4',
@@ -42,7 +38,7 @@ export async function mockLookup({ infringementNumber, offenceDate, registration
   const base = { status: 'FOUND', infringementNumber, summary: 'Demonstration data only.', source: 'STUB' };
   switch (infringementNumber) {
     case '9000000004':
-      return { ...base, notice: notice({ offenceDate }), certificates: registration ? CERTS : [], plateRequired: !registration, evidence: registration ? [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2')] : [] };
+      return { ...base, notice: notice({ offenceDate }), certificates: registration ? CERTS : [], certificateCoverage: registration ? COVERAGE : undefined, plateRequired: !registration, evidence: registration ? [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2')] : [] };
     case '9000000005':
       return { ...base, notice: notice({ offenceDate }), evidence: [] };
     case '9000000006':
@@ -65,7 +61,7 @@ export async function mockLookup({ infringementNumber, offenceDate, registration
         { kind: 'VIDEO', title: 'Sample video (missing file)', url: '/samples/hls/missing.m3u8', posterUrl: '/samples/video-1-poster.jpg' },
         { ...VIDEO, title: 'Sample video (still works)' }, CERT] };
     default:
-      return { ...base, notice: notice({ offenceDate }), certificates: CERTS, evidence: [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2'), VIDEO,
+      return { ...base, notice: notice({ offenceDate }), certificates: CERTS, certificateCoverage: COVERAGE, evidence: [IMG(1, 'Sample image 1'), IMG(2, 'Sample image 2'), VIDEO,
         { kind: 'VIDEO', title: 'Sample video (plain MP4)', url: '/samples/video-1.mp4', posterUrl: '/samples/video-1-poster.jpg' }, CERT] };
   }
 }

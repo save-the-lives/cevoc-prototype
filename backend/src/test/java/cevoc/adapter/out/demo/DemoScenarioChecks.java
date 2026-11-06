@@ -1,6 +1,7 @@
 package cevoc.adapter.out.demo;
 
 import cevoc.application.port.in.LookupSink;
+import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.LookupStep;
@@ -31,6 +32,7 @@ final class DemoScenarioChecks {
         boolean plateRequired;
         Map<String, Object> extra = Map.of();
         List<CertificateItem> certificates = List.of();
+        CertificateCoverage coverage;
         String error;
         LookupTrace trace;
 
@@ -38,6 +40,7 @@ final class DemoScenarioChecks {
         @Override public void evidence(List<EvidenceItem> e, boolean p) { events.add("evidence"); evidence = e; plateRequired = p; }
         @Override public void extra(Map<String, Object> d) { events.add("extra"); extra = d; }
         @Override public void certificates(List<CertificateItem> c) { events.add("certificates"); certificates = c; }
+        @Override public void certificates(List<CertificateItem> c, CertificateCoverage cov) { certificates(c); coverage = cov; }
         @Override public void done() { events.add("done"); }
         @Override public void error(String cause) { events.add("error"); error = cause; }
     }

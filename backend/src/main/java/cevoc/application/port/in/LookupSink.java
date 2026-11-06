@@ -1,5 +1,6 @@
 package cevoc.application.port.in;
 
+import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.PenaltyLookupResult;
@@ -24,6 +25,14 @@ public interface LookupSink {
     default void extra(Map<String, Object> details) {}
 
     void certificates(List<CertificateItem> certificates);
+
+    /**
+     * The filtered certificate list with the coverage summary (covered, gap or none). {@code coverage} is null when the
+     * certificate step did not run. Default: just the list.
+     */
+    default void certificates(List<CertificateItem> certificates, CertificateCoverage coverage) {
+        certificates(certificates);
+    }
 
     void done();
 

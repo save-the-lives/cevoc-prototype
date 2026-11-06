@@ -6,8 +6,8 @@ import cevoc.application.port.out.CertificateSourcePort;
 import cevoc.application.port.out.LookupProgress;
 import cevoc.application.port.out.PenaltyLookupPort;
 import cevoc.application.port.out.SignedLinkPort;
+import cevoc.domain.CertificateAssessment;
 import cevoc.domain.CertificateItem;
-import cevoc.domain.CertificateMatch;
 import cevoc.domain.CertificateQuery;
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.ImageVariant;
@@ -137,7 +137,7 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
                 sink.extra(raw.details());
             }
             PenaltyLookupResult withCerts = withCertificates(raw);
-            sink.certificates(withCerts.certificates());
+            sink.certificates(withCerts.certificates(), withCerts.certificateCoverage());
             sink.done();
         } catch (RuntimeException e) {
             sink.error(StepCause.of(e).token());
@@ -167,13 +167,14 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             LocalDateTime offenceAt = r.notice().offenceDate().atTime(r.notice().offenceTime());
             CertificateQuery query = CertificateQuery.aroundOffence(r.cameraCode(), r.notice().offenceDate(),
                     r.notice().offenceTime(), certificateWindowMargin);
-            List<CertificateItem> items = certificates.findCertificatesCovering(query, offenceAt).stream()
-                    .map(CertificateItem::from).toList();
+            // Only the certificates that bear on the offence are kept (domain rule), with the coverage answer.
+            CertificateAssessment assessment = CertificateAssessment.of(certificates.findCertificates(query), offenceAt);
+            List<CertificateItem> items = assessment.certificates();
             if (!trace.has(LookupStep.CERTIFICATES)) {
                 trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
             }
             LOG.info("Certificates step ok: count={}, duration={}ms", items.size(), (System.nanoTime() - start) / 1_000_000);
-            return r.withCertificates(items, items.isEmpty() ? "No certificates found" : null);
+            return r.withCertificates(items, assessment.coverage(), items.isEmpty() ? "No certificates found" : null);
         } catch (RuntimeException e) {
             if (!trace.has(LookupStep.CERTIFICATES)) {
                 trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);

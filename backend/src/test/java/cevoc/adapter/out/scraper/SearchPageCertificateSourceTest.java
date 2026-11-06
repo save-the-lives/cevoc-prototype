@@ -122,8 +122,9 @@ class SearchPageCertificateSourceTest {
     @Test
     void theCertificatesStepReturnsRowsAndMarksTheCoveringOnes() {
         PenaltyLookupResult r = lookup(source(new ScraperEvidenceTest.Sessions(new FakeRenderedPageSession())));
-        assertThat(r.certificates()).hasSize(5);
-        assertThat(r.certificates().stream().filter(c -> c.coversOffence()).count()).isEqualTo(2);
+        // five rows on the page, two in force: only those two bear on the offence
+        assertThat(r.certificates()).hasSize(2);
+        assertThat(r.certificates()).allMatch(c -> c.coversOffence());
         LookupTrace.Entry e = LookupTrace.current().entries().get(LookupStep.CERTIFICATES.ordinal());
         assertThat(e.outcome().label()).isEqualTo("ok");
     }

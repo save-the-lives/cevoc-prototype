@@ -54,7 +54,7 @@ class BrowserCertificateRouteTest {
         PenaltyLookupResult r = lookup(fake);
 
         assertThat(fake.calls).containsSubsequence("submitPlate", "imageBytes", "openCertification");
-        assertThat(r.certificates()).hasSize(2);
+        assertThat(r.certificates()).hasSize(1); // the 2025 row is not in force and has no bearing
         CertificateItem first = r.certificates().get(0);
         assertThat(first.description()).isEqualTo("TEST camera certificate one");
         assertThat(first.type()).isEqualTo("Camera");
@@ -62,7 +62,6 @@ class BrowserCertificateRouteTest {
         assertThat(first.certifiedDate()).isEqualTo("2026-01-02");
         assertThat(first.expiryDate()).isEqualTo("2027-06-30");
         assertThat(first.coversOffence()).isTrue();
-        assertThat(r.certificates().get(1).coversOffence()).isFalse();
         String json = com.fasterxml.jackson.databind.json.JsonMapper.builder().findAndAddModules().build().writeValueAsString(r);
         assertThat(json).contains("\"certificates\"").doesNotContain("cameraCode").doesNotContain("0123456789abcdef");
         String diag = LookupDiagnostic.take();
@@ -75,9 +74,8 @@ class BrowserCertificateRouteTest {
         FakeRenderedPageSession fake = new FakeRenderedPageSession();
         fake.certificationHtml = FakeRenderedPageSession.fixture("fictitious-certification-labelled.html");
         PenaltyLookupResult r = lookup(fake);
-        assertThat(r.certificates()).hasSize(2);
+        assertThat(r.certificates()).hasSize(1);
         assertThat(r.certificates().get(0).coversOffence()).isTrue();
-        assertThat(r.certificates().get(1).periodText()).contains("2025");
     }
 
     @Test

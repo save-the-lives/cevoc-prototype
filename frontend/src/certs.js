@@ -1,6 +1,9 @@
 // Pure helpers for the "Camera certificates" list. Contract per row:
 // { description, type, periodText, certifiedDate: 'yyyy-MM-dd', expiryDate: 'yyyy-MM-dd', coversOffence: boolean }
-export const LABEL_VALID = 'Valid on the offence date';
+// The server sends only the certificates that bear on the offence (the one in force, or the two either side of a gap), already
+// in the order to show, with a coverage summary { status: 'covered'|'gap'|'none', side, gapDays, message }.
+export const MAX_CARDS = 3;
+export const LABEL_VALID = 'In force on the offence date';
 export const LABEL_NOT_VALID = 'Not in force on the offence date';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -22,17 +25,9 @@ export function certificateLabel(cert) {
   return cert.coversOffence === true ? LABEL_VALID : LABEL_NOT_VALID;
 }
 
-/** Covering rows first, then the rest; within each group the latest certified date first. Does not mutate the input. */
-export function orderCertificates(list) {
-  return [...list].sort((a, b) => {
-    if ((b.coversOffence === true) !== (a.coversOffence === true)) return b.coversOffence === true ? 1 : -1;
-    return String(b.certifiedDate || '').localeCompare(String(a.certifiedDate || ''));
-  });
-}
-
 /** View model for rendering. */
 export function certificateRows(list) {
-  return orderCertificates(list).map((c) => ({
+  return list.slice(0, MAX_CARDS).map((c) => ({
     ...c,
     covers: c.coversOffence === true,
     label: certificateLabel(c),
@@ -41,9 +36,19 @@ export function certificateRows(list) {
   }));
 }
 
-/** Short sentence for the section intro. */
-export function certificateSummary(list) {
+/** Tone for a coverage summary: ok when a certificate was in force or the two either side meet, warn for a real gap, neutral when unknown. */
+export function coverageTone(coverage) {
+  if (!coverage) return 'neutral';
+  if (coverage.status === 'covered') return 'ok';
+  if (coverage.status === 'gap') return coverage.side === 'between' && coverage.gapDays === 0 ? 'ok' : 'warn';
+  return 'neutral';
+}
+
+/** Short line above the cards. The server's message is the headline; this only says what the cards are. */
+export function certificateSummary(list, coverage) {
   const n = list.filter((c) => c.coversOffence === true).length;
-  if (n === 0) return 'None of these certificates is marked as valid on the offence date.';
-  return n === 1 ? '1 certificate was valid on the offence date.' : `${n} certificates were valid on the offence date.`;
+  if (n > 0) return n === 1 ? 'This is the certificate in force on the offence date.' : 'These are the certificates in force on the offence date.';
+  if (coverage?.status === 'gap' && list.length === 2) return 'These are the certificates either side of the offence date.';
+  if (coverage?.status === 'gap') return 'This is the nearest certificate to the offence date.';
+  return 'None of these certificates was in force on the offence date.';
 }

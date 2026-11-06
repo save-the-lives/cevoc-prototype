@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import cevoc.application.port.out.CertificateSourcePort;
+import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.CertificateMatch;
 import cevoc.domain.CertificateQuery;
@@ -127,9 +128,12 @@ class DemoCertificateSourceTest {
                     one |= items.size() == 1 && items.get(0).coversOffence();
                     assertThat(cert.get().outcome()).isEqualTo(StepOutcome.OK);
                 }
-                case COVERING -> several |= items.size() >= 2 && items.stream().filter(CertificateItem::coversOffence).count() == 1;
-                case NONE -> none |= items.isEmpty() && cert.get().outcome() == StepOutcome.OK;
-                case NOT_COVERING -> notCovering |= !items.isEmpty() && items.stream().noneMatch(CertificateItem::coversOffence);
+                case COVERING -> several |= items.size() == 1 && items.get(0).coversOffence()
+                        && o.coverage.status() == CertificateCoverage.Status.COVERED; // three on the page, one bears on the offence
+                case NONE -> none |= items.isEmpty() && cert.get().outcome() == StepOutcome.OK
+                        && o.coverage.status() == CertificateCoverage.Status.NONE;
+                case NOT_COVERING -> notCovering |= items.size() == 2 && items.stream().noneMatch(CertificateItem::coversOffence)
+                        && o.coverage.status() == CertificateCoverage.Status.GAP && o.coverage.gapDays() == 79;
                 case FAILED -> failedWithCause |= cert.get().outcome() == StepOutcome.FAILED && cert.get().cause() == StepCause.TIMEOUT;
             }
         }

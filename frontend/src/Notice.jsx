@@ -234,10 +234,12 @@ export default function Notice({ result, query, sections = READY, registrationGi
                 : certFailed || detailsFailed
                   ? <Failed what="the camera certificates" onRetry={onRetry} />
                   : hasCertificateList(result)
-                    ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} /></Suspense>
-                    : oldCerts.length > 0
-                      ? <Suspense fallback={<PhotoSkeleton count={oldCerts.length} />}><EvidenceGrid items={oldCerts} /></Suspense>
-                      : <p className="notice-box" role="status">Certificate information is not available to show yet. Everything else on this page is still correct.</p>}
+                    ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} coverage={result.certificateCoverage} /></Suspense>
+                    : result?.certificateCoverage?.status === 'none'
+                      ? null
+                      : oldCerts.length > 0
+                        ? <Suspense fallback={<PhotoSkeleton count={oldCerts.length} />}><EvidenceGrid items={oldCerts} /></Suspense>
+                        : <p className="notice-box" role="status">Certificate information is not available to show yet. Everything else on this page is still correct.</p>}
             </Step>
           )}
 

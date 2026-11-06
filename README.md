@@ -29,7 +29,7 @@ See `docs/ARCHITECTURE.md` (the standing architecture document) and `docs/decisi
 
 ## Test notice numbers (fictitious, any past offence date)
 
-Frontend: when the lookup response has a non-empty `certificates` array (`description`, `type`, `periodText`, `certifiedDate`, `expiryDate`, `coversOffence`), the result page shows a "Camera certificates" list. Covering rows are badged "Valid on the offence date", others "Not in force on the offence date". Without it, the older certificate display is used. In `?mock=1` dev mode, 9000000001 returns four fictitious rows, one covering.
+Frontend: when the lookup response has a non-empty `certificates` array (`description`, `type`, `periodText`, `certifiedDate`, `expiryDate`, `coversOffence`), the result page shows a "Camera certificates" list. Covering rows are badged "In force on the offence date", others "Not in force on the offence date". The server sends only the certificates that bear on the offence (the one in force, or the two either side of a gap) with a `certificateCoverage` summary, and the page shows that message under "Was the camera working properly?". Without a list, the older certificate display is used. In `?mock=1` dev mode, 9000000001 returns one fictitious covering row.
 
 | Number | Shows |
 |---|---|

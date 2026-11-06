@@ -86,7 +86,7 @@ class CertificateLoggingTest {
     @Test
     void serviceLogsOkWithCountAndDuration() {
         lookup(source(new ScraperEvidenceTest.Sessions(new FakeRenderedPageSession()), Instant.parse("2030-01-01T00:00:00Z")), CAMERA);
-        assertThat(lines(Level.INFO)).anyMatch(l -> l.matches("Certificates step ok: count=5, duration=\\d+ms"));
+        assertThat(lines(Level.INFO)).anyMatch(l -> l.matches("Certificates step ok: count=2, duration=\\d+ms"));
     }
 
     @Test

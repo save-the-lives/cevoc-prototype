@@ -1,8 +1,7 @@
 package cevoc.adapter.out;
 
 import cevoc.application.port.out.PenaltyLookupPort;
-import cevoc.domain.CertificateItem;
-import cevoc.domain.CertificateMatch;
+import cevoc.domain.CertificateAssessment;
 import cevoc.domain.CertificateRef;
 import cevoc.domain.EnforcementMethod;
 import cevoc.domain.EvidenceItem;
@@ -75,20 +74,21 @@ public class ManifestPenaltyLookupAdapter implements PenaltyLookupPort {
             evidence.add(EvidenceItem.ofObject(EvidenceItem.Kind.valueOf(e.path("kind").asText()),
                     e.path("title").asText(), e.path("objectKey").asText()));
         }
-        return new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, number,
-                "Demonstration data only.", notice, evidence, SOURCE)
-                .withCertificates(certificates(entry, notice.offenceDate().atTime(notice.offenceTime())), null);
+        PenaltyLookupResult found = new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, number,
+                "Demonstration data only.", notice, evidence, SOURCE);
+        CertificateAssessment assessment = certificates(entry, notice.offenceDate().atTime(notice.offenceTime()));
+        return assessment == null ? found : found.withCertificates(assessment.certificates(), assessment.coverage(), null);
     }
 
-    /** Optional fictitious "certificates" rows; periodFrom/periodTo (ISO date-time or date) decide which row covers the offence. */
-    private static List<CertificateItem> certificates(JsonNode entry, LocalDateTime offenceAt) {
+    /** Null when the case has no rows. Optional fictitious "certificates" rows; periodFrom/periodTo (ISO date-time or date) decide which row covers the offence. */
+    private static CertificateAssessment certificates(JsonNode entry, LocalDateTime offenceAt) {
         List<CertificateRef> rows = new ArrayList<>();
         for (JsonNode c : entry.path("certificates")) {
             rows.add(new CertificateRef(text(c, "description"), text(c, "type"), text(c, "periodText"),
                     time(c, "periodFrom", false), time(c, "periodTo", true), time(c, "certifiedDate", false),
                     time(c, "expiryDate", false), null));
         }
-        return CertificateMatch.mark(rows, offenceAt).stream().map(CertificateItem::from).toList();
+        return rows.isEmpty() ? null : CertificateAssessment.of(rows, offenceAt);
     }
 
     private static String text(JsonNode n, String field) {

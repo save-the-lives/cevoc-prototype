@@ -7,7 +7,7 @@ export function initialLookup() {
   return {
     details: null, // { status, infringementNumber, summary, notice, source } once known
     evidence: { state: SECTION.LOADING, items: [], plateRequired: false },
-    certificates: { state: SECTION.LOADING, items: [] },
+    certificates: { state: SECTION.LOADING, items: [], coverage: null }, // coverage: { status, side, gapDays, message } from the server
     finished: false,
     error: null, // whitelisted cause token
   };
@@ -29,7 +29,7 @@ export function applyEvent(state, name, data) {
     case 'extra':
       return data && data.details && typeof data.details === 'object' ? { ...state, extra: { ...data.details } } : state;
     case 'certificates':
-      return { ...state, certificates: { state: SECTION.READY, items: data.certificates || [] } };
+      return { ...state, certificates: { state: SECTION.READY, items: data.certificates || [], coverage: data.coverage || null } };
     case 'done':
       return settle({ ...state, finished: true });
     case 'error':
@@ -53,7 +53,7 @@ export function eventsFromResult(result) {
   if (result.status === 'FOUND') {
     events.push(['evidence', { evidence: result.evidence || [], plateRequired: !!result.plateRequired }]);
     if (result.details && Object.keys(result.details).length) events.push(['extra', { details: result.details }]);
-    events.push(['certificates', { certificates: result.certificates || [] }]);
+    events.push(['certificates', { certificates: result.certificates || [], coverage: result.certificateCoverage || null }]);
   } else {
     events.push(['evidence', { evidence: [], plateRequired: false }], ['certificates', { certificates: [] }]);
   }
@@ -69,6 +69,7 @@ export function toResult(state) {
     ...d,
     evidence: state.evidence.items,
     certificates: state.certificates.items,
+    certificateCoverage: state.certificates.coverage,
     plateRequired: state.evidence.plateRequired,
     ...(state.extra ? { details: state.extra } : {}), // flexible details map (record 0009); keys the page does not know are ignored
   };

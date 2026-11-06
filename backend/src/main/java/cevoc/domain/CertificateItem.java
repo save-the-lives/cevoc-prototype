@@ -15,6 +15,12 @@ public record CertificateItem(String description, String type, String periodText
                 day(c.expiryDate()), m.covering());
     }
 
+    /** From a raw row, with the covering flag already decided by the assessment. */
+    public static CertificateItem from(CertificateRef c, boolean covering) {
+        return new CertificateItem(c.description(), c.type(), c.periodText(), day(c.certifiedDate()),
+                day(c.expiryDate()), covering);
+    }
+
     private static String day(LocalDateTime t) {
         return t == null ? null : t.toLocalDate().toString();
     }

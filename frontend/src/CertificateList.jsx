@@ -1,11 +1,11 @@
 import { certificateRows, certificateSummary } from './certs.js';
 
-export default function CertificateList({ certificates }) {
+export default function CertificateList({ certificates, coverage }) {
   const rows = certificateRows(certificates);
   return (
     <section className="certs" aria-labelledby="certs-h">
       <h3 id="certs-h">Camera certificates</h3>
-      <p className="hint">{certificateSummary(certificates)}</p>
+      <p className="hint">{certificateSummary(certificates, coverage)}</p>
       <ul className="cert-list">
         {rows.map((c, i) => (
           <li key={i} className={`cert-row${c.covers ? ' covers' : ''}`}>

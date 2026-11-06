@@ -13,7 +13,7 @@ public interface LookupPenaltyUseCase {
         sink.details(r.withEvidence(java.util.List.of()));
         if (r.status() == PenaltyLookupResult.Status.FOUND) {
             sink.evidence(r.evidence(), r.plateRequired());
-            sink.certificates(r.certificates());
+            sink.certificates(r.certificates(), r.certificateCoverage());
         }
         sink.done();
     }
