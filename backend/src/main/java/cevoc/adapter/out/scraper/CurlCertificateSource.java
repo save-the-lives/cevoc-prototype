@@ -34,7 +34,14 @@ public final class CurlCertificateSource implements CertificateSourcePort {
         try {
             List<CertificateRef> rows = delegate.findCertificates(query);
             LookupDiagnostic.note("cert-provider=curl");
-            LOG.info("Certificate curl lookup ok: count={}, ms={}", rows.size(), (System.nanoTime() - started) / 1_000_000);
+            long withPeriod = rows.stream().filter(r -> r.periodFrom() != null).count();
+            LOG.info("Certificate curl lookup ok: count={}, with-period={}, ms={}", rows.size(), withPeriod, (System.nanoTime() - started) / 1_000_000);
+            if (withPeriod == 0 && !rows.isEmpty()) {
+                // Log the format shape of the first period text (day separators only, no values) so we can fix the parser.
+                String sample = rows.get(0).periodText();
+                String shape = sample == null ? "null" : sample.replaceAll("\\d", "#");
+                LOG.warn("Certificate period parse failed for all rows: period-shape={}", shape);
+            }
             return rows;
         } catch (RuntimeException e) {
             LOG.warn("Certificate curl lookup failed: cause={}, ms={}", cevoc.domain.StepCause.of(e).token(), (System.nanoTime() - started) / 1_000_000);
