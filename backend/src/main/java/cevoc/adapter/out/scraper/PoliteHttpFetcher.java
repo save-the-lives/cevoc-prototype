@@ -36,6 +36,19 @@ public class PoliteHttpFetcher implements PageFetcher {
                 .build();
     }
 
+    /** Puts cookies from an earlier browser visit into this fetcher's in-memory jar (host-only, for {@code pageUrl}'s host). */
+    public PoliteHttpFetcher withCookies(String pageUrl, java.util.List<SessionCookies.Cookie> cookies) {
+        URI uri = URI.create(pageUrl);
+        CookieManager cm = (CookieManager) client.cookieHandler().orElseThrow();
+        for (SessionCookies.Cookie c : cookies) {
+            java.net.HttpCookie hc = new java.net.HttpCookie(c.name(), c.value());
+            hc.setPath(c.path() == null || c.path().isBlank() ? "/" : c.path());
+            hc.setSecure(true);
+            cm.getCookieStore().add(uri, hc);
+        }
+        return this;
+    }
+
     @Override
     public String get(String url) {
         return send(base(url).GET().build());

@@ -1169,9 +1169,27 @@ final class PlaywrightSession implements RenderedPageSession {
     private static final String SEARCH_BUTTON_CSS = "button:has-text(\"Search\"), input[type=\"submit\"][value*=\"search\" i], input[type=\"button\"][value*=\"search\" i], a:has-text(\"Search\")";
     private static final String RESULT_MESSAGES = ".ui-messages-error, .ui-message-error, .ui-messages-warn, .ui-messages-info, .ui-growl-message, [role=\"alert\"], .alert";
 
+    private volatile String searchPageUrl;
+
+    /** Allow-listed cookies of the search page host (JSF session and bot-management cookies), for the HTTP-first path. Names and values stay in memory only. */
+    @Override
+    public java.util.List<cevoc.adapter.out.scraper.SessionCookies.Cookie> sessionCookies() {
+        String url = searchPageUrl;
+        if (url == null) return java.util.List.of();
+        try {
+            return context.cookies(url).stream()
+                    .filter(c -> cevoc.adapter.out.scraper.SessionCookies.ALLOWED.contains(c.name.toLowerCase(Locale.ROOT)))
+                    .map(c -> new cevoc.adapter.out.scraper.SessionCookies.Cookie(c.name, c.value, c.domain, c.path))
+                    .toList();
+        } catch (RuntimeException e) {
+            return java.util.List.of();
+        }
+    }
+
     @Override
     public Optional<String> searchCertificates(String pageUrl, String locationCode, java.time.LocalDateTime from,
                                                java.time.LocalDateTime to) throws IOException, InterruptedException {
+        this.searchPageUrl = pageUrl;
         String fromText = SEARCH_FORMAT.format(from);
         String toText = SEARCH_FORMAT.format(to);
         redactor.add(locationCode);

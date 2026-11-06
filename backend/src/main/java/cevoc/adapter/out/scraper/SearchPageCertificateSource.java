@@ -41,9 +41,17 @@ public class SearchPageCertificateSource implements CertificateSourcePort {
     private final Duration cacheTtl;
     private final Clock clock;
     private final Map<String, Cached> cache = new HashMap<>();
+    private final SessionCookies cookieStore;
 
     public SearchPageCertificateSource(RenderedPageSessionFactory sessions, String pageUrl, CertificatePageParser parser,
                                        Duration cacheTtl, Clock clock) {
+        this(sessions, pageUrl, parser, cacheTtl, clock, null);
+    }
+
+    /** @param cookieStore receives the session cookies after each successful search (HTTP-first path); null for none */
+    public SearchPageCertificateSource(RenderedPageSessionFactory sessions, String pageUrl, CertificatePageParser parser,
+                                       Duration cacheTtl, Clock clock, SessionCookies cookieStore) {
+        this.cookieStore = cookieStore;
         URI u = URI.create(pageUrl);
         if (!"https".equalsIgnoreCase(u.getScheme()) || u.getHost() == null) {
             throw new IllegalArgumentException("the certificates search page address must be https");
@@ -82,6 +90,9 @@ public class SearchPageCertificateSource implements CertificateSourcePort {
                 throw new ScrapeException("no-search-form");
             }
             rows = RenderedCertificates.parse(parser, html.get());
+            if (cookieStore != null) {
+                cookieStore.put(session.sessionCookies(), now);
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ScrapeException("interrupted");

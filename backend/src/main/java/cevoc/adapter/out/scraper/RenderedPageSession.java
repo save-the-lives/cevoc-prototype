@@ -93,6 +93,14 @@ public interface RenderedPageSession extends AutoCloseable {
         return Optional.empty();
     }
 
+    /**
+     * The allow-listed cookies (see {@link SessionCookies#ALLOWED}) this session holds for the search page after a successful
+     * {@link #searchCertificates}, for the HTTP-first path. Default: none.
+     */
+    default java.util.List<SessionCookies.Cookie> sessionCookies() {
+        return java.util.List.of();
+    }
+
     @Override
     void close();
 }

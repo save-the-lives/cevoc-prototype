@@ -102,8 +102,22 @@ public final class CertificateProviders {
         ScraperEvidenceFactory.logNotUsable(ScraperEvidenceFactory.settings(env), "the browser certificates provider");
         String pageUrl = env.getProperty("cevoc.certificates.search-page.url", SearchPageCertificateSource.DEFAULT_PAGE_URL);
         Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
-        return new SearchPageCertificateSource(ScraperEvidenceFactory.sessionsFor(env), pageUrl, new CertificatePageParser(), ttl,
-                Clock.systemUTC());
+        ScraperSettings s = ScraperEvidenceFactory.settings(env);
+        if (!env.getProperty("cevoc.certificates.search-page.http-first", Boolean.class, true) || !s.usable()) {
+            return new SearchPageCertificateSource(ScraperEvidenceFactory.sessionsFor(env), pageUrl, new CertificatePageParser(), ttl,
+                    Clock.systemUTC());
+        }
+        // HTTP first with the cookies of the last browser visit; the browser is the fallback and refreshes them.
+        SessionCookies store = new SessionCookies();
+        SearchPageCertificateSource browser = new SearchPageCertificateSource(ScraperEvidenceFactory.sessionsFor(env), pageUrl,
+                new CertificatePageParser(), ttl, Clock.systemUTC(), store);
+        CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, s.userAgent(), s.minInterval(),
+                s.connectTimeout(), s.requestTimeout(), ttl, CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
+        EvidenceRateLimiter limiter = EvidenceRateLimiter.system(s.minInterval());
+        return new HttpFirstCertificateSource(store, Clock.systemUTC(),
+                cookies -> new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props).withCookies(pageUrl, cookies), pageUrl,
+                        new CertificatePageParser(), limiter, ttl, Clock.systemUTC()),
+                browser);
     }
 
     private static CertificateSourcePort searchPageHttp(Environment env) {
