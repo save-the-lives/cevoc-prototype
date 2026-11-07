@@ -217,7 +217,7 @@ Status: the parser, fixtures and the session port are built (see "Three-state my
 - The public certificates page (`/cevoc/pages/sdro/searchCertificates.jsf`) blocks automated fetching via robots.txt. Its form structure needs to be captured by a person.
 - Certificates key: RESOLVED, location code plus date range (see the scraper section). Result layout and link exposure are now resolved (see above). Still open: real JSF ids, and whether the penalty page gives a real location code or only a place name.
 
-## Post-deployment verification tests (PDVT)
+## Deployment smoke tests
 
 Real-data smoke tests run against the deployed app's public streaming endpoint (`/api/penalty-lookups/stream`), the same one the search form uses. They check data conformance (SSE events match expectations), not display. A separate UI layer (planned) uses Playwright for screen checks on tagged cases.
 
@@ -237,8 +237,8 @@ Pass cases check that the stream returns the expected data. Fail cases check tha
 
 ### How to run
 
-- **Manually**: Actions → "Post-deployment verification tests (PDVT)" → Run workflow. Optional `tags` input filters cases (e.g. `smoke`).
-- **After deploy** (planned): the deploy workflow triggers the PDVT with `tags: smoke`.
+- **Manually**: Actions → "Deployment smoke tests" → Run workflow. Optional `tags` input filters cases (e.g. `smoke`).
+- **After deploy** (planned): the deploy workflow triggers the smoke tests with `tags: smoke`.
 - **Nightly** (planned): a scheduled run with no tag filter runs all cases.
 
 ### Tag filtering

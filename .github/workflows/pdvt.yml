@@ -1,4 +1,4 @@
-name: Post-deployment verification tests (PDVT)
+name: Deployment smoke tests
 # Reads LIVE_CASES_PASS and LIVE_CASES_FAIL secrets (JSON arrays).
 # Each case is sent to the deployed app's public streaming endpoint and checked
 # against its expect block. Values are masked; nothing from the secrets is echoed.
