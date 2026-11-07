@@ -251,12 +251,11 @@ export default function Notice({ result, query, sections = READY, registrationGi
       </div>
       {query && (
         <p className="query-line">
-          Notice {query.infringementNumber}, offence date {niceDate(query.offenceDate)}.
+          Penalty notice {query.infringementNumber}, {niceDate(query.offenceDate)}.
         </p>
       )}
       {demo && <p className="banner" role="note"><strong>Demonstration data only.</strong> This is not a real notice.</p>}
       <h1 ref={headingRef} tabIndex={-1}>What happened</h1>
-      <p className="lede">Penalty notice ({result?.infringementNumber || query?.infringementNumber})</p>
 
       <section className={`stat is-${status?.tone || 'info'}`} aria-labelledby="stat-h" aria-live="polite" aria-busy={detailsLoading || undefined}>
         {status ? (
@@ -284,7 +283,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                 ? <Failed what="your notice" onRetry={onRetry} />
                 : (
                   <dl className="facts">
-                    <div><dt>When</dt><dd><strong>{niceDate(n.offenceDate)}</strong><small>{niceTime(n.offenceTime)}</small></dd></div>
+                    {n.offenceTime && <div><dt>Time</dt><dd><strong>{niceTime(n.offenceTime)}</strong></dd></div>}
                     <div><dt>Where</dt><dd><strong>{n.location}</strong></dd></div>
                     <div className="span"><dt>Offence</dt><dd><strong>{n.offenceDescription}</strong></dd></div>
                     <div><dt>Penalty</dt><dd><strong>{money(n.penaltyAmount)}</strong></dd></div>
