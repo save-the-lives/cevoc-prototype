@@ -37,10 +37,10 @@ function Accordion({ title, children }) {
 }
 
 const OPTIONS = [
-  { id: ‘pay’, title: ‘Pay’, text: ‘In full, or ask for a payment plan or more time if money is tight.’, cta: ‘Pay or set up a plan’, what: ‘Paying and payment plans’ },
-  { id: ‘review’, title: ‘Ask for a review’, text: ‘If you think the fine is wrong or there were special circumstances.’, cta: ‘Ask for a review’, what: ‘Asking for a review’ },
-  { id: ‘nominate’, title: ‘Nominate the driver’, text: ‘If it wasn’t you.’, cta: ‘Nominate the driver’, what: ‘Nominating the driver’ },
-  { id: ‘court’, title: ‘Have a court decide’, text: ‘You can choose to have the matter heard in court.’, cta: ‘Choose court’, what: ‘Choosing a court hearing’ },
+  { id: 'pay', title: 'Pay', text: 'In full, or ask for a payment plan or more time if money is tight.', cta: 'Pay or set up a plan', what: 'Paying and payment plans' },
+  { id: 'review', title: 'Ask for a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Ask for a review', what: 'Asking for a review' },
+  { id: 'nominate', title: 'Nominate the driver', text: "If it wasn't you.", cta: 'Nominate the driver', what: 'Nominating the driver' },
+  { id: 'court', title: 'Have a court decide', text: 'You can choose to have the matter heard in court.', cta: 'Choose court', what: 'Choosing a court hearing' },
 ];
 
 const Step = memo(function Step({ n, id, title, answer, tone, children }) {
@@ -72,7 +72,7 @@ function PlateAsk({ onSubmit, busy, again }) {
   return (
     <form className="plate-ask" onSubmit={send} noValidate>
       <label htmlFor="rego2">Number plate of the vehicle</label>
-      <p className="hint" id="rego2-hint">Used for this check only. We don’t keep it.</p>
+      <p className="hint" id="rego2-hint">Used for this check only. We don't keep it.</p>
       {err && <p className="field-err" id="rego2-err" role="alert"><span aria-hidden="true">⚠ </span><span className="sr-only">Error: </span>{err}</p>}
       <div className="plate-row">
         <input id="rego2" className={`rego${err ? ' is-bad' : ''}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
@@ -92,7 +92,7 @@ function TimedOut() {
       {expired && (
         <div className="notice-box">
           <h3>Your photos have timed out</h3>
-          <p>Photo links stop working after a short time, to keep them private. To see them again, reload them: we’ll take you back to the form with your notice number and date filled in. We don’t keep your number plate, so you’ll need to type it again.</p>
+          <p>Photo links stop working after a short time, to keep them private. To see them again, reload them: we'll take you back to the form with your notice number and date filled in. We don't keep your number plate, so you'll need to type it again.</p>
           {rerun && <p><button type="button" className="btn primary" onClick={rerun}>Reload the photos</button></p>}
         </div>
       )}
@@ -115,15 +115,15 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
       return (
         <div className="notice-box" role="status">
           <h3>The photos need your number plate</h3>
-          <p>For this notice the photos are only shown once the number plate is given. Enter it below and we’ll look again.</p>
+          <p>For this notice the photos are only shown once the number plate is given. Enter it below and we'll look again.</p>
           <PlateAsk onSubmit={onPlate} busy={plateBusy} />
         </div>
       );
     case 'plate-no-images':
       return (
         <div className="notice-box" role="status">
-          <h3>We couldn’t show the photos</h3>
-          <p>Either the number plate didn’t match the notice, or the photos aren’t available to show yet. Check the plate on your letter and try again. If it still doesn’t work, call {HELP_PHONE}.</p>
+          <h3>We couldn't show the photos</h3>
+          <p>Either the number plate didn't match the notice, or the photos aren't available to show yet. Check the plate on your letter and try again. If it still doesn't work, call {HELP_PHONE}.</p>
           <PlateAsk onSubmit={onPlate} busy={plateBusy} again />
         </div>
       );
@@ -132,7 +132,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
         <p className="notice-box" role="status">
           {result.notice.enforcementMethod === 'OFFICER_ISSUED'
             ? 'No camera evidence applies to this notice. It was issued by an officer, not detected by a camera.'
-            : 'We can’t show camera evidence for this notice. That may mean no camera was involved, or it isn’t available to show yet.'}
+            : "We can't show camera evidence for this notice. That may mean no camera was involved, or it isn't available to show yet."}
         </p>
       );
   }
@@ -199,7 +199,7 @@ const READY = { details: 'ready', evidence: 'ready', certificates: 'ready' };
 function Failed({ what, onRetry }) {
   return (
     <p className="notice-box" role="status">
-      We couldn’t load {what}. The rest of this page is not affected.{' '}
+      We couldn't load {what}. The rest of this page is not affected.{' '}
       {onRetry && <button type="button" className="linklike" onClick={onRetry}>Try again</button>}
     </p>
   );
@@ -238,9 +238,9 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
   const expiredCtx = useMemo(() => ({ rerun: onRerun || null, expired: timedOut, report }), [onRerun, timedOut, report]);
   const demo = result?.source === 'STUB' || result?.source === 'MANIFEST';
-  const evAnswer = detailsLoading ? 'Fetching the camera photos…' : evLoading ? 'Fetching the camera photos…' : evFailed ? 'We couldn’t load the photos.'
+  const evAnswer = detailsLoading ? 'Fetching the camera photos…' : evLoading ? 'Fetching the camera photos…' : evFailed ? "We couldn't load the photos."
     : ev === 'show' ? photosAnswer({ hasVideo: media.some((m) => m.kind === 'VIDEO'), timedOut })
-      : ev === 'not-applicable' ? undefined : 'We can’t show the photos yet.';
+      : ev === 'not-applicable' ? undefined : "We can't show the photos yet.";
 
   return (
     <ExpiredContext.Provider value={expiredCtx}>
@@ -269,7 +269,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
         ) : (
           <>
             <h2 id="stat-h">Notice status</h2>
-            {detailsFailed ? <p className="stat-lead">We couldn’t load your notice.</p> : <p className="stat-lead">Looking up your notice…</p>}
+            {detailsFailed ? <p className="stat-lead">We couldn't load your notice.</p> : <p className="stat-lead">Looking up your notice…</p>}
           </>
         )}
       </section>
@@ -327,7 +327,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
 
           {camera && (
             <Step n={stepNo('step-camera')} id="step-camera" title="Was the camera working properly?" tone={certAns.tone === 'warn' ? 'warn' : ''}
-              answer={detailsLoading ? 'Checking the camera certificates…' : certFailed || detailsFailed ? 'We couldn’t load the certificates.' : certAns.text}>
+              answer={detailsLoading ? 'Checking the camera certificates…' : certFailed || detailsFailed ? "We couldn't load the certificates." : certAns.text}>
               {detailsLoading || certLoading
                 ? <ListSkeleton label="Checking the camera certificates" />
                 : certFailed || detailsFailed
