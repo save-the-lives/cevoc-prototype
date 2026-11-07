@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, memo, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ListSkeleton, PhotoSkeleton } from './Skeleton.jsx';
 import { ExpiredContext } from './expired.js';
 import { hasCertificateList } from './certs.js';
@@ -18,7 +18,7 @@ const OPTIONS = [
   ['Have a court decide', 'You can choose to have the matter heard in court.'],
 ];
 
-function Step({ n, id, title, answer, tone, children }) {
+const Step = memo(function Step({ n, id, title, answer, tone, children }) {
   return (
     <section className="q" id={id} aria-labelledby={`${id}-h`}>
       <div className={`q-n${tone === 'warn' ? ' is-warn' : ''}`} aria-hidden="true">{n}</div>
@@ -31,7 +31,7 @@ function Step({ n, id, title, answer, tone, children }) {
       </div>
     </section>
   );
-}
+});
 
 function PlateAsk({ onSubmit, busy, again }) {
   const [reg, setReg] = useState('');
@@ -210,7 +210,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                     <div><dt>Amount owing</dt><dd><strong>{money(n.amountOwing)}</strong></dd></div>
                   </dl>
                 )}
-            {!detailsLoading && !detailsFailed && !evLoading && !certLoading && <ProgramDetails result={result} />}
+            {!detailsLoading && !detailsFailed && <ProgramDetails result={result} />}
           </Step>
 
           <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
