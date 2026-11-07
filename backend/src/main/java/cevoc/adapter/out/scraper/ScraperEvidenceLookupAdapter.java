@@ -430,9 +430,40 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         if (items.isEmpty()) {
             trace.fail(LookupStep.CAPTURE_IMAGES, refs.isEmpty() ? StepCause.NO_IMAGES : StepCause.NO_IMAGE_BYTES);
         }
+        // Filter out thumbnails: any image whose longest side < 400px when a larger image with
+        // a similar aspect ratio (within 5%) already exists in the collection.
+        int thumbs = 0;
+        if (items.size() > 1) {
+            List<EvidenceItem> filtered = new ArrayList<>();
+            for (EvidenceItem item : items) {
+                if (item.width() != null && item.height() != null
+                        && Math.max(item.width(), item.height()) < 400
+                        && hasLargerWithSameRatio(item, items)) {
+                    thumbs++;
+                    LookupDiagnostic.note("thumbnail-filtered: " + item.title()
+                            + " (" + item.width() + "x" + item.height() + ")");
+                } else {
+                    filtered.add(item);
+                }
+            }
+            items = filtered;
+        }
         LookupDiagnostic.note("image-refs=" + refs.size() + "; image-stored=" + items.size() + "; image-no-bytes=" + noBytes
-                + "; image-rejected=" + rejected + "; image-failed=" + failed);
+                + "; image-rejected=" + rejected + "; image-failed=" + failed
+                + (thumbs > 0 ? "; thumbnails-filtered=" + thumbs : ""));
         return items;
+    }
+
+    /** True when {@code items} contains a larger image with the same aspect ratio (within 5%). */
+    private static boolean hasLargerWithSameRatio(EvidenceItem small, List<EvidenceItem> items) {
+        double ratio = (double) small.width() / small.height();
+        for (EvidenceItem other : items) {
+            if (other == small || other.width() == null || other.height() == null) continue;
+            if (Math.max(other.width(), other.height()) < 400) continue; // also small
+            double otherRatio = (double) other.width() / other.height();
+            if (Math.abs(ratio - otherRatio) / Math.max(ratio, otherRatio) < 0.05) return true;
+        }
+        return false;
     }
 
     /**
