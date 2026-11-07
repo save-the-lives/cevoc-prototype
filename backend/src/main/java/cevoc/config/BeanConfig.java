@@ -34,6 +34,9 @@ public class BeanConfig {
             case STUB -> new ManifestFirstPenaltyLookupAdapter(new ManifestPenaltyLookupAdapter(), null, false);
             case BROWSER -> cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media, bannerReader.getIfAvailable());
             case HTTP -> cevoc.adapter.out.revenuensw.RevenueNswHttpFactory.create(env, media);
+            case ADAPTIVE -> new cevoc.adapter.out.revenuensw.AdaptivePenaltyLookupAdapter(
+                    cevoc.adapter.out.revenuensw.RevenueNswHttpFactory.create(env, media),
+                    cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media, bannerReader.getIfAvailable()));
             case API -> throw new IllegalStateException("cevoc.penalty-lookup.adapter=api is not available yet (see docs/DIRECT-API-ROUTE.md)");
         };
     }

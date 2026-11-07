@@ -13,13 +13,15 @@ import org.slf4j.LoggerFactory;
  *       says so, until {@code cevoc.scraper.evidence.contact} is set.</li>
  *   <li>{@code stub}: an explicit choice only. Bundled fictitious manifest data, no network, no browser.</li>
  *   <li>{@code http}: the plain HTTP route to the Revenue NSW JSON service (interim: removed when the TfNSW API exists).</li>
+ *   <li>{@code adaptive}: circuit breaker. Tries the plain HTTP route first and falls back to the Chromium route
+ *       on failure. After 3 failures within 5 minutes the breaker opens and goes straight to Chromium for 10 minutes.</li>
  *   <li>{@code api}: the direct API route. Reserved; not built yet, so selecting it stops start-up with a clear message.</li>
  * </ul>
  * Any other value (including the retired names {@code manifest}, {@code scraper-evidence} and {@code revenue-nsw-http}) is
  * not an alias of anything: it is treated as the safe choice, {@code stub} (nothing is contacted), and logged as a warning.
  */
 public enum LookupAdapterKind {
-    STUB, BROWSER, HTTP, API;
+    STUB, BROWSER, HTTP, ADAPTIVE, API;
 
     public static final String PROPERTY = "cevoc.penalty-lookup.adapter";
     private static final Logger LOG = LoggerFactory.getLogger(LookupAdapterKind.class);
@@ -30,7 +32,7 @@ public enum LookupAdapterKind {
      */
     public static boolean keepsImageBytes(String raw) {
         String v = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
-        return v.isEmpty() || v.equals("browser") || v.equals("http");
+        return v.isEmpty() || v.equals("browser") || v.equals("http") || v.equals("adaptive");
     }
 
     public static LookupAdapterKind of(String raw) {
@@ -39,9 +41,10 @@ public enum LookupAdapterKind {
             case "", "browser" -> BROWSER;
             case "stub" -> STUB;
             case "http" -> HTTP;
+            case "adaptive" -> ADAPTIVE;
             case "api" -> API;
             default -> {
-                LOG.warn("{} has a value that is not a known adapter (known: stub, browser, http, api); using stub (nothing is contacted)", PROPERTY);
+                LOG.warn("{} has a value that is not a known adapter (known: stub, browser, http, adaptive, api); using stub (nothing is contacted)", PROPERTY);
                 yield STUB;
             }
         };
