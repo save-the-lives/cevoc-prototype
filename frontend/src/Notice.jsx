@@ -223,10 +223,10 @@ function StepNav({ steps }) {
 
 const READY = { details: 'ready', evidence: 'ready', certificates: 'ready' };
 
-function Failed({ what, onRetry }) {
+function Failed({ what, note, onRetry }) {
   return (
     <p className="notice-box" role="status">
-      We couldn't load {what}. The rest of this page is not affected.{' '}
+      We couldn't load {what}. {note || 'The rest of this page is not affected.'}{' '}
       {onRetry && <button type="button" className="linklike" onClick={onRetry}>Try again</button>}
     </p>
   );
@@ -241,6 +241,12 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const [timedOut, setTimedOut] = useState(false); // any photo link has expired
   const report = useCallback(() => setTimedOut(true), []);
   const detailsLoading = sections.details === 'loading';
+  const [loadingTooLong, setLoadingTooLong] = useState(false);
+  useEffect(() => {
+    if (!detailsLoading) { setLoadingTooLong(false); return; }
+    const t = setTimeout(() => setLoadingTooLong(true), 45000); // 45s
+    return () => clearTimeout(t);
+  }, [detailsLoading]);
   const detailsFailed = sections.details === 'error' || (!detailsLoading && !result);
   const n = result?.notice;
   const evLoading = sections.evidence === 'loading';
@@ -306,7 +312,9 @@ export default function Notice({ result, query, sections = READY, registrationGi
         ) : (
           <>
             <h2 id="stat-h">Notice status</h2>
-            {detailsFailed ? <p className="stat-lead">We couldn't load your notice.</p> : <p className="stat-lead">Looking up your notice…</p>}
+            {detailsFailed ? <p className="stat-lead">We couldn't load your notice.</p>
+              : loadingTooLong ? <p className="stat-lead">This is taking longer than expected. Check the notice number and offence date.</p>
+              : <p className="stat-lead">Looking up your notice…</p>}
           </>
         )}
       </section>
@@ -316,7 +324,9 @@ export default function Notice({ result, query, sections = READY, registrationGi
         <div>
           <Step n={stepNo('step-what')} id="step-what" title="What happened" answer={detailsLoading ? 'Looking up your notice…' : undefined}>
             {detailsLoading
-              ? <ListSkeleton rows={1} label="Looking up your notice. This can take up to half a minute." />
+              ? loadingTooLong
+                ? <Failed what="your notice" note="This is taking longer than expected. Check the penalty notice number and offence date are correct." onRetry={onRetry} />
+                : <ListSkeleton rows={1} label="Looking up your notice. This can take up to half a minute." />
               : detailsFailed
                 ? <Failed what="your notice" onRetry={onRetry} />
                 : (
