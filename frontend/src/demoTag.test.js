@@ -20,7 +20,7 @@ describe('Demo data tag', () => {
   });
   it('lives in the NSW Government header and only for the DEMO source', () => {
     const app = readFileSync(new URL('./App.jsx', import.meta.url), 'utf8');
-    expect(app).toMatch(/className="masthead"><div className="wrap">NSW Government\{live\?\.details\?\.source === 'DEMO' && <DemoTag \/>\}/);
+    expect(app).toMatch(/className="nsw-masthead"><div className="wrap">NSW Government\{live\?\.details\?\.source === 'DEMO' && <DemoTag \/>\}/);
     expect(app.match(/<DemoTag/g)).toHaveLength(1);
   });
 });

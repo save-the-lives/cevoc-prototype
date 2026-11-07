@@ -123,8 +123,9 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .opt-cta:hover .u { text-decoration-thickness: 2px; }
 .opt-cta:focus-visible { outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 3px; }
 @media (max-width: 640px) { .opts2 li { display: block; } .opts2 p { margin-bottom: 0; } }
-.site-foot { background: #f4f4f4; border-top: 4px solid var(--navy); padding: 18px 0; font-size: .9rem; }
-.foot-in { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; }
+.nsw-footer { background: #f4f4f7; border-top: 4px solid var(--navy); padding: 24px 0; font-size: .9rem; color: #333; }
+.nsw-footer p { margin: 4px 0; }
+.nsw-footer__info { color: #6a7078; font-size: .85rem; }
 .cert-card { margin: 0; }
 
 @media (min-width: 700px) {

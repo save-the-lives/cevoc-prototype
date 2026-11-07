@@ -141,8 +141,8 @@ export default function App() {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <div className="masthead"><div className="wrap">NSW Government{live?.details?.source === 'DEMO' && <DemoTag />}</div></div>
-      <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement</p></div></header>
+      <div className="nsw-masthead"><div className="wrap">NSW Government{live?.details?.source === 'DEMO' && <DemoTag />}</div></div>
+      <header className="nsw-header"><div className="wrap"><div className="nsw-header__title">Check your camera fine</div></div></header>
       <main id="main" tabIndex={-1}>
         {view.name === 'notice' && found
           ? <Notice result={foundResult} query={found.query}
@@ -151,9 +151,9 @@ export default function App() {
           : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit} draft={draft} reloadNote={reloadNote}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
-      <footer className="site-foot"><div className="wrap foot-in">
-        <span>Need help? Call {HELP_PHONE}</span>
-        <span>Interim service</span>
+      <footer className="nsw-footer"><div className="wrap">
+        <p>Need help? Call {HELP_PHONE}</p>
+        <p className="nsw-footer__info">&copy; State of New South Wales. Interim service.</p>
       </div></footer>
     </>
   );
