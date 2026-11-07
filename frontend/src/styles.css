@@ -1,7 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
 :root {
   --ink: #1b1f24; --muted: #4a5360; --bg: #f5f7fa; --card: #fff; --line: #c9d1db;
-  --brand: #002664; --brand-ink: #fff; --focus: #0b5fd6; --warn-bg: #fff4d6; --warn-line: #8a6100; --err: #b00020;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--ink); line-height: 1.5;
+  --brand: #002664; --brand-ink: #fff; --focus: #0b5fd6; --focus-yellow: #FAAF05; --warn-bg: #fff4d6; --warn-line: #8a6100; --err: #b00020;
+  font-family: 'Public Sans', system-ui, -apple-system, sans-serif; color: var(--ink); line-height: 1.5;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); }
@@ -17,13 +18,19 @@ h4 { font-size: 1rem; margin: 0 0 .5rem; }
 
 .form { display: grid; gap: 12px; max-width: 420px; }
 .form label { display: grid; gap: 4px; font-weight: 600; }
-input { font: inherit; min-height: 44px; padding: 6px 10px; border: 1px solid #5b6572; border-radius: 6px; background: #fff; }
+input { font: inherit; min-height: 44px; padding: 6px 10px; border: 2px solid #333; border-radius: 6px; background: #fff; }
+input:focus { outline: 3px solid #2E5299; outline-offset: 0; }
 .btn, button { font: inherit; }
-.btn { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 16px; border-radius: 6px;
-  border: 1px solid var(--brand); background: #fff; color: var(--brand); font-weight: 600; text-decoration: none; cursor: pointer; }
+.btn { display: inline-flex; align-items: center; min-height: 44px; padding: 12px 24px; border-radius: 4px;
+  border: 2px solid var(--brand); background: transparent; color: var(--brand); font-weight: 600; text-decoration: none; cursor: pointer; }
+.btn:hover { background: #f0f4fa; }
+.btn:focus-visible { outline: 3px solid var(--focus-yellow); outline-offset: 3px; }
 .btn.primary { background: var(--brand); color: var(--brand-ink); justify-content: center; }
+.btn.primary:hover { background: #001a4d; border-color: #001a4d; }
 .btn:disabled { opacity: .6; cursor: progress; }
-.linklike { background: none; border: 0; padding: 8px 6px; min-height: 24px; color: var(--focus); text-decoration: underline; cursor: pointer; }
+.linklike { background: none; border: 0; padding: 8px 6px; min-height: 24px; color: #2E5299; text-decoration: underline; cursor: pointer; }
+.linklike:hover { color: #001a4d; }
+.linklike:focus-visible { outline: 3px solid var(--focus-yellow); outline-offset: 3px; }
 .error { color: var(--err); font-weight: 600; }
 .dev { font-size: .9rem; color: var(--muted); }
 
