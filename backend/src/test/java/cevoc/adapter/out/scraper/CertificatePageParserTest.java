@@ -145,4 +145,94 @@ class CertificatePageParserTest {
         assertTrue(parser.hasNoResults(fixture("no-results.html")));
         assertTrue(parser.parseCertificates(fixture("no-results.html")).isEmpty());
     }
+
+    // --- Multi-format date parsing tests ---
+
+    @Test
+    void periodParsesSlashFormat() {
+        LocalDateTime[] p = CertificatePageParser.period("01/07/2026 00:00 - 31/12/2026 23:59");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 23, 59), p[1]);
+    }
+
+    @Test
+    void periodParsesSlashDateOnly() {
+        LocalDateTime[] p = CertificatePageParser.period("01/07/2026 - 31/12/2026");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 0, 0).with(LocalTime.MAX), p[1]);
+    }
+
+    @Test
+    void periodParsesDashNumericFormat() {
+        LocalDateTime[] p = CertificatePageParser.period("01-07-2026 - 31-12-2026");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 0, 0).with(LocalTime.MAX), p[1]);
+    }
+
+    @Test
+    void periodParsesMonthNameSpaces() {
+        LocalDateTime[] p = CertificatePageParser.period("1 Jul 2026 - 31 Dec 2026");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 0, 0).with(LocalTime.MAX), p[1]);
+    }
+
+    @Test
+    void periodParsesMonthNameDashes() {
+        LocalDateTime[] p = CertificatePageParser.period("01-Jul-2026 - 31-Dec-2026");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 0, 0).with(LocalTime.MAX), p[1]);
+    }
+
+    @Test
+    void periodParsesMonthNameWithTime() {
+        LocalDateTime[] p = CertificatePageParser.period("1 Jul 2026 09:00 - 31 Dec 2026 17:30");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 9, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 17, 30), p[1]);
+    }
+
+    @Test
+    void periodParsesIsoFormat() {
+        LocalDateTime[] p = CertificatePageParser.period("2026-07-01 - 2026-12-31");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 0, 0).with(LocalTime.MAX), p[1]);
+    }
+
+    @Test
+    void periodParsesIsoWithTime() {
+        LocalDateTime[] p = CertificatePageParser.period("2026-07-01 09:00 - 2026-12-31 17:30");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 9, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 17, 30), p[1]);
+    }
+
+    @Test
+    void periodParsesIsoWithT() {
+        LocalDateTime[] p = CertificatePageParser.period("2026-07-01T09:00 - 2026-12-31T17:30");
+        assertEquals(LocalDateTime.of(2026, 7, 1, 9, 0), p[0]);
+        assertEquals(LocalDateTime.of(2026, 12, 31, 17, 30), p[1]);
+    }
+
+    @Test
+    void periodReturnsNullForGarbage() {
+        LocalDateTime[] p = CertificatePageParser.period("not a date at all");
+        assertNull(p[0]);
+        assertNull(p[1]);
+    }
+
+    @Test
+    void dateTimeParsesMonthName() {
+        assertEquals(LocalDateTime.of(2026, 3, 14, 0, 0), CertificatePageParser.dateTime("14 Mar 2026", false));
+        assertEquals(LocalDateTime.of(2026, 3, 14, 0, 0).with(LocalTime.MAX), CertificatePageParser.dateTime("14-Mar-2026", true));
+    }
+
+    @Test
+    void dateTimeParsesIso() {
+        assertEquals(LocalDateTime.of(2026, 3, 14, 0, 0), CertificatePageParser.dateTime("2026-03-14", false));
+        assertEquals(LocalDateTime.of(2026, 3, 14, 11, 30), CertificatePageParser.dateTime("2026-03-14 11:30", false));
+    }
+
+    @Test
+    void dateTimeParsesMonthNameCaseInsensitive() {
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), CertificatePageParser.dateTime("1 JUL 2026", false));
+        assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), CertificatePageParser.dateTime("1 jul 2026", false));
+    }
 }

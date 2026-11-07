@@ -54,9 +54,26 @@ public class CertificatePageParser {
     // ----------------------------------------------------------------------------
     /** Format shown on the real page's date/time fields (known). */
     static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    /** Result dates: dd/MM/yyyy with an optional HH:mm[:ss]. Tolerant because the exact result format is not confirmed. */
-    private static final Pattern DATE_TIME =
-            Pattern.compile("(\\d{1,2})/(\\d{1,2})/(\\d{4})(?:\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?");
+    /**
+     * Result dates: tolerant of several Australian date formats because the real page format is not confirmed.
+     * Tried in order; the first match wins. Each must capture day, month, year and optionally hour, minute, second.
+     */
+    private static final Pattern[] DATE_PATTERNS = {
+            // dd/MM/yyyy[ HH:mm[:ss]]
+            Pattern.compile("(\\d{1,2})/(\\d{1,2})/(\\d{4})(?:\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?"),
+            // dd-MM-yyyy[ HH:mm[:ss]]
+            Pattern.compile("(\\d{1,2})-(\\d{1,2})-(\\d{4})(?:\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?"),
+            // dd MMM yyyy or dd-MMM-yyyy[ HH:mm[:ss]]  (month name)
+            Pattern.compile("(\\d{1,2})[- ](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ](\\d{4})(?:\\s+(\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?", Pattern.CASE_INSENSITIVE),
+            // yyyy-MM-dd[ HH:mm[:ss]]  (ISO)
+            Pattern.compile("(\\d{4})-(\\d{1,2})-(\\d{1,2})(?:[T ](\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?"),
+    };
+
+    /** Which format each pattern index uses: false = d/m/y, true = y/m/d (ISO). Index 2 is month-name. */
+    private static final Map<String, Integer> MONTH_NAMES = Map.ofEntries(
+            Map.entry("jan", 1), Map.entry("feb", 2), Map.entry("mar", 3), Map.entry("apr", 4),
+            Map.entry("may", 5), Map.entry("jun", 6), Map.entry("jul", 7), Map.entry("aug", 8),
+            Map.entry("sep", 9), Map.entry("oct", 10), Map.entry("nov", 11), Map.entry("dec", 12));
 
     /** What a POST needs: where to submit and the hidden fields (including javax.faces.ViewState). */
     public record FormState(String actionUrl, String viewState, Map<String, String> hiddenFields) {}
@@ -265,29 +282,57 @@ public class CertificatePageParser {
         return null;
     }
 
-    /** The first two dd/MM/yyyy[ HH:mm[:ss]] values in the Period text, whatever separates them. Else both null. */
+    /** The first two date values in the Period text, whatever separates them. Tries all known date formats. Else both null. */
     static LocalDateTime[] period(String text) {
-        Matcher m = DATE_TIME.matcher(text);
-        if (!m.find()) return new LocalDateTime[] {null, null};
-        LocalDateTime from = toDateTime(m, false);
-        if (!m.find()) return new LocalDateTime[] {null, null};
-        LocalDateTime to = toDateTime(m, true);
-        return from == null || to == null ? new LocalDateTime[] {null, null} : new LocalDateTime[] {from, to};
+        for (int pi = 0; pi < DATE_PATTERNS.length; pi++) {
+            Matcher m = DATE_PATTERNS[pi].matcher(text);
+            if (!m.find()) continue;
+            LocalDateTime from = toDateTime(m, pi, false);
+            if (!m.find()) continue;
+            LocalDateTime to = toDateTime(m, pi, true);
+            if (from != null && to != null) return new LocalDateTime[] {from, to};
+        }
+        return new LocalDateTime[] {null, null};
     }
 
-    /** dd/MM/yyyy with optional time. Date-only gives 00:00, or end of day when endOfDay is true. Unparseable gives null. */
+    /** Parses a single date from text using all known formats. Date-only gives 00:00, or end of day when endOfDay is true. Unparseable gives null. */
     static LocalDateTime dateTime(String text, boolean endOfDay) {
-        Matcher m = DATE_TIME.matcher(text);
-        return m.find() ? toDateTime(m, endOfDay) : null;
+        for (int pi = 0; pi < DATE_PATTERNS.length; pi++) {
+            Matcher m = DATE_PATTERNS[pi].matcher(text);
+            if (m.find()) {
+                LocalDateTime result = toDateTime(m, pi, endOfDay);
+                if (result != null) return result;
+            }
+        }
+        return null;
     }
 
-    private static LocalDateTime toDateTime(Matcher m, boolean endOfDay) {
+    private static LocalDateTime toDateTime(Matcher m, int patternIndex, boolean endOfDay) {
         try {
-            LocalDate d = LocalDate.of(Integer.parseInt(m.group(3)), Integer.parseInt(m.group(2)), Integer.parseInt(m.group(1)));
+            int day, month, year;
+            if (patternIndex == 3) {
+                // ISO: yyyy-MM-dd
+                year = Integer.parseInt(m.group(1));
+                month = Integer.parseInt(m.group(2));
+                day = Integer.parseInt(m.group(3));
+            } else if (patternIndex == 2) {
+                // dd MMM yyyy (month name)
+                day = Integer.parseInt(m.group(1));
+                Integer mon = MONTH_NAMES.get(m.group(2).toLowerCase(Locale.ROOT));
+                if (mon == null) return null;
+                month = mon;
+                year = Integer.parseInt(m.group(3));
+            } else {
+                // dd/MM/yyyy or dd-MM-yyyy
+                day = Integer.parseInt(m.group(1));
+                month = Integer.parseInt(m.group(2));
+                year = Integer.parseInt(m.group(3));
+            }
+            LocalDate d = LocalDate.of(year, month, day);
             if (m.group(4) == null) return endOfDay ? d.atTime(LocalTime.MAX) : d.atStartOfDay();
             int sec = m.group(6) == null ? 0 : Integer.parseInt(m.group(6));
             return d.atTime(Integer.parseInt(m.group(4)), Integer.parseInt(m.group(5)), sec);
-        } catch (DateTimeException e) {
+        } catch (DateTimeException | NumberFormatException e) {
             return null;
         }
     }
