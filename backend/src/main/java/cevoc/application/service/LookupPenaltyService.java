@@ -20,6 +20,7 @@ import cevoc.domain.PenaltyLookupResult;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +93,9 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
     @Override
     public void lookup(PenaltyLookupRequest request, LookupSink sink) {
         boolean[] sent = new boolean[2];
+        // Started as soon as the camera code is known (from the details callback), so certificate
+        // lookup runs in parallel with evidence capture instead of waiting for it to finish.
+        CompletableFuture<PenaltyLookupResult>[] certFuture = new CompletableFuture[1];
         PenaltyLookupResult raw;
         try {
             raw = penaltyLookup.find(request, new LookupProgress() {
@@ -100,6 +104,12 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
                     if (!sent[0]) {
                         sent[0] = true;
                         sink.details(partial.withEvidence(List.of()));
+                        // Start certificate fetch now — the camera code and offence time are available.
+                        if (certificates != null && partial.cameraCode() != null && !partial.cameraCode().isBlank()
+                                && partial.notice() != null && partial.notice().offenceDate() != null
+                                && partial.notice().offenceTime() != null) {
+                            certFuture[0] = CompletableFuture.supplyAsync(() -> withCertificates(partial));
+                        }
                     }
                 }
 
@@ -136,7 +146,19 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             if (!raw.details().isEmpty()) {
                 sink.extra(raw.details());
             }
-            PenaltyLookupResult withCerts = withCertificates(raw);
+            // Use the early-started certificate future if available; fall back to synchronous.
+            PenaltyLookupResult withCerts;
+            if (certFuture[0] != null) {
+                try {
+                    withCerts = certFuture[0].join();
+                } catch (java.util.concurrent.CompletionException ce) {
+                    // Same handling as the synchronous path's catch block in withCertificates.
+                    LOG.warn("Async certificate fetch failed: {}", ce.getCause() != null ? ce.getCause().getClass().getSimpleName() : "unknown");
+                    withCerts = raw.withCertificates(List.of(), "Certificates unavailable");
+                }
+            } else {
+                withCerts = withCertificates(raw);
+            }
             sink.certificates(withCerts.certificates(), withCerts.certificateCoverage());
             sink.done();
         } catch (RuntimeException e) {

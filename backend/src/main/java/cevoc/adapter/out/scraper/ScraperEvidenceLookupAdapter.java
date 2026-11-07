@@ -360,6 +360,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         int rejected = 0;
         int failed = 0;
         boolean bannerUnreadable = false;
+        boolean bannerRead = false;
         for (RevenueNswPageParser.ImageRef ref : refs) {
             if (n >= MAX_IMAGES) {
                 break;
@@ -388,8 +389,16 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 String objectKey = "scraped/" + key.substring(0, 16) + "/image-" + n + extension(type);
                 storage.store(objectKey, type, new ByteArrayInputStream(data), data.length);
                 trace.image(sizeOf(bytes.get(), type), type, data);
-                if (n == 1 && bannerReader != null) {
-                    bannerUnreadable = !readBanner(data, ocrDetails);
+                // Try banner OCR on each photo until one succeeds (the banner strip is in the same
+                // position on every camera image, so any photo can supply the camera code).
+                if (!bannerRead && bannerReader != null) {
+                    bannerRead = readBanner(data, ocrDetails);
+                    if (bannerRead && n > 1) {
+                        LOG.info("Banner OCR succeeded on photo {}", n);
+                    }
+                    if (!bannerRead && n == refs.size()) {
+                        bannerUnreadable = true;
+                    }
                 }
                 EvidenceItem item = EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey);
                 int[] px = pixelsOf(data);
