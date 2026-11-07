@@ -1,0 +1,71 @@
+name: Post-deployment verification tests (PDVT)
+# Reads LIVE_CASES_PASS and LIVE_CASES_FAIL secrets (JSON arrays).
+# Each case is sent to the deployed app's public streaming endpoint and checked
+# against its expect block. Values are masked; nothing from the secrets is echoed.
+#
+# Case format (placeholders — real values in the secrets):
+#   {"id":"paid-speed","description":"Paid speed fine","program":"speed",
+#    "tags":["smoke"],"input":{"notice":"<10 digits>","date":"<yyyy-mm-dd>","plate":"<rego>"},
+#    "expect":{"status":"FOUND","noticeStatus":"PAID","minPhotos":1,"certificates":"covered"}}
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: "Comma-separated tags to filter (e.g. 'smoke'). Empty = all cases."
+        type: string
+        default: ""
+permissions:
+  contents: read
+  id-token: write
+env:
+  APP_NAME: cevoc-backend
+  RESOURCE_GROUP: cevoc
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CEVOCBACKEND_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Mask secrets and resolve FQDN
+        id: prep
+        env:
+          LIVE_CASES_PASS: ${{ secrets.LIVE_CASES_PASS }}
+          LIVE_CASES_FAIL: ${{ secrets.LIVE_CASES_FAIL }}
+        run: |
+          set +x
+          # At least one secret must be set.
+          [ -n "$LIVE_CASES_PASS" ] || [ -n "$LIVE_CASES_FAIL" ] || { echo "::error::Neither LIVE_CASES_PASS nor LIVE_CASES_FAIL is set."; exit 1; }
+          # Mask every value so nothing leaks into the log.
+          for secret in "$LIVE_CASES_PASS" "$LIVE_CASES_FAIL"; do
+            [ -n "$secret" ] || continue
+            while IFS= read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done \
+              < <(printf %s "$secret" | jq -r '.[]? | .input.notice, .input.date, .input.plate // empty' 2>/dev/null)
+          done
+          # Resolve the deployed app's public FQDN.
+          fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "base_url=https://$fqdn" >> "$GITHUB_OUTPUT"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run PDVT
+        working-directory: frontend
+        env:
+          LIVE_CASES_PASS: ${{ secrets.LIVE_CASES_PASS }}
+          LIVE_CASES_FAIL: ${{ secrets.LIVE_CASES_FAIL }}
+          PDVT_BASE_URL: ${{ steps.prep.outputs.base_url }}
+          PDVT_TAGS: ${{ inputs.tags }}
+        run: npx vitest run src/pdvt.test.js --reporter=verbose

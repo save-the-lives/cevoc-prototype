@@ -217,6 +217,42 @@ Status: the parser, fixtures and the session port are built (see "Three-state my
 - The public certificates page (`/cevoc/pages/sdro/searchCertificates.jsf`) blocks automated fetching via robots.txt. Its form structure needs to be captured by a person.
 - Certificates key: RESOLVED, location code plus date range (see the scraper section). Result layout and link exposure are now resolved (see above). Still open: real JSF ids, and whether the penalty page gives a real location code or only a place name.
 
+## Post-deployment verification tests (PDVT)
+
+Real-data smoke tests run against the deployed app's public streaming endpoint (`/api/penalty-lookups/stream`), the same one the search form uses. They check data conformance (SSE events match expectations), not display. A separate UI layer (planned) uses Playwright for screen checks on tagged cases.
+
+### Case format
+
+Two GitHub secrets hold the cases as JSON arrays: `LIVE_CASES_PASS` (happy paths) and `LIVE_CASES_FAIL` (sad paths). Each case has:
+
+- `id` — unique test name (e.g. `paid-speed-with-plate`)
+- `description` — what the case covers
+- `program` — enforcement program (speed, red-light, mobile-phone, etc.)
+- `tags` — array of `smoke` (post-deploy), `full` (nightly), `ui` (also run browser check)
+- `input` — `{notice, date (yyyy-mm-dd), plate (optional)}`
+- `expect` — what the SSE events should contain: `status`, `noticeStatus`, `plateRequired`, `minPhotos`, `minImageBytes`, `certificates` (covered/none)
+- `expectUi` (optional) — screen-specific checks for the UI layer
+
+Pass cases check that the stream returns the expected data. Fail cases check that the expected error or non-FOUND status appears.
+
+### How to run
+
+- **Manually**: Actions → "Post-deployment verification tests (PDVT)" → Run workflow. Optional `tags` input filters cases (e.g. `smoke`).
+- **After deploy** (planned): the deploy workflow triggers the PDVT with `tags: smoke`.
+- **Nightly** (planned): a scheduled run with no tag filter runs all cases.
+
+### Tag filtering
+
+Set the `PDVT_TAGS` input (or env var) to a comma-separated list of tags. Only cases with at least one matching tag run. Empty = all cases.
+
+### Image checks
+
+Each photo URL in a pass case is fetched and checked: downloadable, real JPEG/PNG, and over 10 KB (the thumbnail floor — tonight's 3 KB thumbnail would fail). Dimensions and banner text are planned as warnings only.
+
+### Implementation
+
+Test file: `frontend/src/pdvt.test.js` (Vitest, `test.each` parametrisation). Workflow: `.github/workflows/pdvt.yml`. The test reads the SSE stream with Node's built-in `fetch`, parses the events, and asserts against each case's `expect` block. Skipped when neither secret is set, so normal CI is unaffected.
+
 ## Index of decisions added 2026-11-05
 - Flexible details map and the banner field audit: docs/decisions/0009-flexible-details-map.md.
 - Three selectable routes per information type (Chromium, plain HTTP, API providers) and the plain HTTP adapter design: docs/decisions/0010-three-route-providers.md. Configuration choice: `cevoc.providers.<concern>` ordered list as described in docs/DIRECT-API-ROUTE.md; the default does not change until the owner says so.
