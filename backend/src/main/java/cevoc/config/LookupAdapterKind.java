@@ -29,10 +29,24 @@ public enum LookupAdapterKind {
     /**
      * True when the lookup route keeps real image bytes (browser, http), so the media default is the in-memory adapter.
      * Quiet (no warning): used from property expressions. An unknown value counts as stub, like {@link #of}.
+     * Also returns true when the new {@code cevoc.evidence.providers} list contains browser or http.
      */
     public static boolean keepsImageBytes(String raw) {
         String v = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
         return v.isEmpty() || v.equals("browser") || v.equals("http") || v.equals("adaptive");
+    }
+
+    /**
+     * True when the evidence providers list (comma-separated) contains a provider that keeps real image bytes.
+     * Called from property expressions for {@code cevoc.evidence.providers}.
+     */
+    public static boolean evidenceProvidersKeepImageBytes(String raw) {
+        if (raw == null || raw.isBlank()) return false;
+        for (String part : raw.split(",")) {
+            String id = part.trim().toLowerCase(Locale.ROOT);
+            if (id.equals("browser") || id.equals("http") || id.equals("adaptive")) return true;
+        }
+        return false;
     }
 
     public static LookupAdapterKind of(String raw) {

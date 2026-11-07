@@ -114,6 +114,74 @@ class PenaltyLookupAdapterSelectionTest {
         }
     }
 
+    /** The new cevoc.evidence.providers list takes precedence over the legacy single-value setting. */
+    @Nested
+    @SpringBootTest(properties = {"cevoc.evidence.providers=browser", "cevoc.penalty-lookup.adapter=stub"})
+    class EvidenceProvidersOverridesLegacy {
+        @Autowired ApplicationContext ctx;
+        @Autowired PenaltyLookupPort port;
+
+        @Test
+        void newPropertyTakesPrecedence() {
+            // The new property says browser, the legacy says stub; browser wins.
+            assertBrowserDefault(port, ctx);
+        }
+    }
+
+    /** cevoc.evidence.providers=http,browser activates the adaptive (circuit-breaker) adapter. */
+    @Nested
+    @SpringBootTest(properties = "cevoc.evidence.providers=http,browser")
+    class EvidenceProvidersHttpBrowser {
+        @Autowired ApplicationContext ctx;
+        @Autowired PenaltyLookupPort port;
+
+        @Test
+        void selectsTheAdaptiveAdapter() {
+            assertThat(port).isInstanceOf(cevoc.adapter.out.revenuensw.AdaptivePenaltyLookupAdapter.class);
+            assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
+        }
+    }
+
+    /** cevoc.evidence.providers=http selects just the HTTP adapter. */
+    @Nested
+    @SpringBootTest(properties = "cevoc.evidence.providers=http")
+    class EvidenceProvidersHttpOnly {
+        @Autowired ApplicationContext ctx;
+        @Autowired PenaltyLookupPort port;
+
+        @Test
+        void selectsSingleHttpAdapter() {
+            assertThat(port).isInstanceOf(RevenueNswHttpLookupAdapter.class);
+            assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
+        }
+    }
+
+    /** cevoc.evidence.providers=stub selects stub. */
+    @Nested
+    @SpringBootTest(properties = {"cevoc.evidence.providers=stub", "cevoc.certificates.providers=none"})
+    class EvidenceProvidersStub {
+        @Autowired ApplicationContext ctx;
+        @Autowired PenaltyLookupPort port;
+
+        @Test
+        void selectsStub() {
+            assertSafeStubDefault(port, ctx);
+        }
+    }
+
+    /** When cevoc.evidence.providers is empty, the legacy setting is used (backward compatibility). */
+    @Nested
+    @SpringBootTest(properties = {"cevoc.evidence.providers=", "cevoc.penalty-lookup.adapter=http"})
+    class EvidenceProvidersEmptyFallsBackToLegacy {
+        @Autowired ApplicationContext ctx;
+        @Autowired PenaltyLookupPort port;
+
+        @Test
+        void fallsBackToLegacySetting() {
+            assertThat(port).isInstanceOf(RevenueNswHttpLookupAdapter.class);
+        }
+    }
+
     /** The retired switches and values are read by nothing: no fallback, no alias. */
     @Nested
     @SpringBootTest(properties = {

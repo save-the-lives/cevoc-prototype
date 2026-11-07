@@ -99,7 +99,7 @@ jobs:
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
-          # Deliberately sets NO CEVOC_* variables. The owner sets CEVOC_PENALTY_LOOKUP_ADAPTER, CEVOC_CERTIFICATES_PROVIDERS,
+          # Deliberately sets NO CEVOC_* variables. The owner sets CEVOC_EVIDENCE_PROVIDERS (or legacy CEVOC_PENALTY_LOOKUP_ADAPTER), CEVOC_CERTIFICATES_PROVIDERS,
           # CEVOC_SCRAPER_EVIDENCE_URL, CEVOC_SCRAPER_EVIDENCE_CONTACT, CEVOC_LIVECHECK_ENABLED,
           # CEVOC_DEMO_DATA_ENABLED and CEVOC_CERTIFICATES_SEARCH_PAGE_URL on the container app; a normal deploy leaves them as they are.
           # Also sets NO --cpu / --memory: the owner sets 2 CPU / 4Gi once in the Azure portal (Chromium needs it) and it stays (record 0021).
@@ -116,8 +116,8 @@ jobs:
           CEVOC_BASE_URL: ${{ vars.CEVOC_BASE_URL }}
           LIVE_CONTACT: ${{ vars.LIVE_CONTACT }}
         run: |
-          # Adapter selection is the only switch: CEVOC_PENALTY_LOOKUP_ADAPTER=browser selects the Chromium route. Certificates
-          # (TEMPORARY, interim until the TfNSW API provider exists; owner-approved 2026-11-04) use the same name, browser.
+          # Evidence providers: CEVOC_EVIDENCE_PROVIDERS replaces the single CEVOC_PENALTY_LOOKUP_ADAPTER setting.
+          # Certificates (TEMPORARY, interim until the TfNSW API provider exists; owner-approved 2026-11-04) use the same name, browser.
           # The app still requires the URL and contact, the rate limit and the honest user agent, and stops on 401/403/429/captcha.
           az containerapp revision set-mode --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --mode single
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
@@ -132,7 +132,7 @@ jobs:
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --image "${{ env.IMAGE }}:${{ github.sha }}" $size \
             --min-replicas 1 --max-replicas 1 \
-            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=browser CEVOC_LIVECHECK_ENABLED=true \
+            --set-env-vars CEVOC_EVIDENCE_PROVIDERS=http,browser CEVOC_LIVECHECK_ENABLED=true \
             "CEVOC_SCRAPER_EVIDENCE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" \
             "CEVOC_CERTIFICATES_SEARCH_PAGE_URL=https://cevoc.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf" \
             CEVOC_CERTIFICATES_PROVIDERS=curl,http,browser \

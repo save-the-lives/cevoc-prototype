@@ -23,22 +23,43 @@ import org.springframework.context.annotation.Configuration;
 public class BeanConfig {
 
     /**
-     * The lookup adapter, chosen by the ONE setting cevoc.penalty-lookup.adapter (see {@link LookupAdapterKind}):
-     * browser (default; Chromium), stub (explicit; bundled fictitious data, nothing contacted), http (plain request), api (reserved).
-     * There are no per-route on/off switches: a route that is not selected does not exist.
+     * The lookup adapter, chosen by {@code cevoc.evidence.providers} (env {@code CEVOC_EVIDENCE_PROVIDERS}) when set,
+     * otherwise by the legacy {@code cevoc.penalty-lookup.adapter} (see {@link LookupAdapterKind}).
+     * <p>The new setting is an ordered comma-separated list: {@code http,browser} means try HTTP first, fall to browser
+     * (the adaptive/circuit-breaker adapter). A single value like {@code browser} or {@code http} selects just that adapter.
+     * <p>The legacy single-value setting still works when the new one is unset.
      */
     @Bean
     PenaltyLookupPort penaltyLookup(org.springframework.core.env.Environment env, cevoc.application.port.out.MediaStoragePort media,
             org.springframework.beans.factory.ObjectProvider<cevoc.application.port.out.BannerTextReaderPort> bannerReader) {
-        return switch (LookupAdapterKind.of(env.getProperty(LookupAdapterKind.PROPERTY, ""))) {
-            case STUB -> new ManifestFirstPenaltyLookupAdapter(new ManifestPenaltyLookupAdapter(), null, false);
-            case BROWSER -> cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media, bannerReader.getIfAvailable());
-            case HTTP -> cevoc.adapter.out.revenuensw.RevenueNswHttpFactory.create(env, media);
-            case ADAPTIVE -> new cevoc.adapter.out.revenuensw.AdaptivePenaltyLookupAdapter(
+        EvidenceProviders.Result result = EvidenceProviders.resolve(env);
+        java.util.List<String> ids = result.ids();
+
+        // Single provider: direct selection (backward compatible).
+        if (ids.size() == 1) {
+            return switch (ids.get(0)) {
+                case EvidenceProviders.STUB -> new ManifestFirstPenaltyLookupAdapter(new ManifestPenaltyLookupAdapter(), null, false);
+                case EvidenceProviders.BROWSER -> cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media, bannerReader.getIfAvailable());
+                case EvidenceProviders.HTTP -> cevoc.adapter.out.revenuensw.RevenueNswHttpFactory.create(env, media);
+                case EvidenceProviders.ADAPTIVE -> new cevoc.adapter.out.revenuensw.AdaptivePenaltyLookupAdapter(
+                        cevoc.adapter.out.revenuensw.RevenueNswHttpFactory.create(env, media),
+                        cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media, bannerReader.getIfAvailable()));
+                case EvidenceProviders.API -> throw new IllegalStateException("evidence provider api is not available yet (see docs/DIRECT-API-ROUTE.md)");
+                default -> throw new IllegalStateException("unreachable: unknown evidence provider '" + ids.get(0) + "'");
+            };
+        }
+
+        // Multiple providers: build the adaptive (circuit-breaker) adapter from the ordered list.
+        // Currently the only multi-provider combination is http,browser (the adaptive adapter).
+        boolean hasHttp = ids.contains(EvidenceProviders.HTTP);
+        boolean hasBrowser = ids.contains(EvidenceProviders.BROWSER);
+        if (hasHttp && hasBrowser) {
+            return new cevoc.adapter.out.revenuensw.AdaptivePenaltyLookupAdapter(
                     cevoc.adapter.out.revenuensw.RevenueNswHttpFactory.create(env, media),
                     cevoc.adapter.out.scraper.ScraperEvidenceFactory.create(env, media, bannerReader.getIfAvailable()));
-            case API -> throw new IllegalStateException("cevoc.penalty-lookup.adapter=api is not available yet (see docs/DIRECT-API-ROUTE.md)");
-        };
+        }
+        throw new IllegalStateException("unsupported evidence provider combination: " + ids
+                + " (supported multi-provider lists: http,browser)");
     }
 
     /**
@@ -79,7 +100,7 @@ public class BeanConfig {
     // stub would silently drop) or http (which stores real image bytes too), otherwise "stub".
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && !T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}'))")
+            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && !T(cevoc.config.LookupAdapterKind).evidenceProvidersKeepImageBytes('${cevoc.evidence.providers:}') && !T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}'))")
     StubMediaAdapter stubMedia(@Value("${cevoc.media.base-url:/samples}") String baseUrl) {
         return new StubMediaAdapter(baseUrl);
     }
@@ -90,7 +111,7 @@ public class BeanConfig {
      */
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}'))")
+            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && (T(cevoc.config.LookupAdapterKind).evidenceProvidersKeepImageBytes('${cevoc.evidence.providers:}') || T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}')))")
     cevoc.adapter.out.memory.InMemoryMediaAdapter memoryMedia(
             @Value("${cevoc.media.public-base-url:}") String publicBaseUrl,
             @Value("${cevoc.media.memory.retention-minutes:20}") long retentionMinutes,
