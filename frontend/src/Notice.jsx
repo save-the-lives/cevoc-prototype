@@ -2,15 +2,39 @@ import { Suspense, lazy, memo, useCallback, useContext, useEffect, useMemo, useR
 import { ListSkeleton, PhotoSkeleton } from './Skeleton.jsx';
 import { ExpiredContext } from './expired.js';
 import { hasCertificateList } from './certs.js';
-import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, photosAnswer, statusSummary, stepsFor } from './journey.js';
+import { HELP_PHONE, certificateAnswer, evidenceState, hasMeasureData, isCamera, money, niceDate, niceTime, photosAnswer, statusSummary, stepsFor } from './journey.js';
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
 import ProgramDetails from './ProgramDetails.jsx';
 import RoadSafetyMessage from './RoadSafetyMessage.jsx';
-import { videoView } from './programs.js';
+import { detailRows, pickMessage, pickProgram, videoView } from './programs.js';
 
 // Heavier parts load on their own, after the notice details have painted.
 const EvidenceGrid = lazy(() => import('./EvidenceGrid.jsx'));
 const CertificateList = lazy(() => import('./CertificateList.jsx'));
+
+/** Coded explainer per camera program — not config-driven. */
+function CameraExplainer({ programId }) {
+  switch (programId) {
+    case 'RED_LIGHT_SPEED':
+      return (
+        <p>Red light cameras use sensors embedded in the road at the stop line. When the traffic light turns red, the system arms.
+          If a vehicle crosses the sensors after the light is red, the camera photographs the vehicle — typically twice — recording
+          the position, speed and time since the light changed. A second sensor confirms the vehicle continued through the intersection.</p>
+      );
+    default:
+      return <p>The camera system records vehicle speed using calibrated sensors and photographs the vehicle at the time of the offence.</p>;
+  }
+}
+
+/** Collapsed accordion. */
+function Accordion({ title, children }) {
+  return (
+    <details className="accordion">
+      <summary>{title}</summary>
+      <div className="accordion-body">{children}</div>
+    </details>
+  );
+}
 
 const OPTIONS = [
   { id: ‘pay’, title: ‘Pay’, text: ‘In full, or ask for a payment plan or more time if money is tight.’, cta: ‘Pay or set up a plan’, what: ‘Paying and payment plans’ },
@@ -207,7 +231,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const ev = known ? evidenceState({ ...result, evidence: [...media, ...(result.evidence || []).filter((e) => e.kind === 'CERTIFICATE')] }, registrationGiven) : 'show';
   const steps = known ? stepsFor(result, ev) : [
     { id: 'step-what', label: 'What happened' }, { id: 'step-evidence', label: 'Was it my vehicle?' },
-    { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
+    { id: 'step-measure', label: 'How it was measured' }, { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
   ];
   const status = known ? statusSummary(n) : null;
   const certAns = certLoading ? { tone: 'neutral', text: 'Checking the camera certificates…' } : certificateAnswer(result || {});
@@ -265,8 +289,6 @@ export default function Notice({ result, query, sections = READY, registrationGi
                     <div><dt>Amount owing</dt><dd><strong>{money(n.amountOwing)}</strong></dd></div>
                   </dl>
                 )}
-            {!detailsLoading && !detailsFailed && <ProgramDetails result={result} />}
-            {!detailsLoading && !detailsFailed && <RoadSafetyMessage result={result} />}
           </Step>
 
           <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
@@ -281,6 +303,25 @@ export default function Notice({ result, query, sections = READY, registrationGi
                   </>
                 )}
           </Step>
+
+          {camera && known && hasMeasureData(result) && (() => {
+            const prog = pickProgram(result);
+            const safetyMsg = pickMessage(result);
+            return (
+              <Step n={stepNo('step-measure')} id="step-measure" title="How it was measured"
+                answer={prog?.measureSubtitle || undefined}>
+                <ProgramDetails result={result} />
+                {safetyMsg && (
+                  <Accordion title="Why this matters">
+                    <p>{safetyMsg.text}</p>
+                  </Accordion>
+                )}
+                <Accordion title={`How does this ${(prog?.label || 'camera').toLowerCase()} work?`}>
+                  <CameraExplainer programId={prog?.id} />
+                </Accordion>
+              </Step>
+            );
+          })()}
 
           {camera && (
             <Step n={stepNo('step-camera')} id="step-camera" title="Was the camera working properly?" tone={certAns.tone === 'warn' ? 'warn' : ''}

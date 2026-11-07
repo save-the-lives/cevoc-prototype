@@ -1,5 +1,6 @@
 // Pure helpers for the public journey: what to say, given what the backend returned.
 import { coverageTone, hasCertificateList } from './certs.js';
+import { detailRows, pickProgram } from './programs.js';
 
 export const HELP_PHONE = 'Revenue NSW on 1300 138 118';
 
@@ -99,9 +100,16 @@ export function stepsFor(result, evState) {
     { id: 'step-what', label: 'What happened' },
     { id: 'step-evidence', label: evState === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?' },
   ];
+  if (camera && hasMeasureData(result)) steps.push({ id: 'step-measure', label: 'How it was measured' });
   if (camera) steps.push({ id: 'step-camera', label: 'Was the camera working?' });
   steps.push({ id: 'step-options', label: 'Your options' });
   return steps;
+}
+
+/** True when the result has enough measurement metadata to warrant the "How it was measured" step. */
+export function hasMeasureData(result) {
+  const view = detailRows(result);
+  return view.state === 'rows' && view.rows.some((r) => !r.missing);
 }
 
 /** The line under "Was it my vehicle?" once the photos are available. It must not send people to photos they cannot see. */

@@ -4,6 +4,7 @@
     {
       "id": "RED_LIGHT_SPEED",
       "label": "Red light camera",
+      "measureSubtitle": "Red light and speed",
       "match": {"offenceTextContains": ["red light", "red traffic light"], "detailKeysAny": ["timeSinceRed"]},
       "versions": [
         {

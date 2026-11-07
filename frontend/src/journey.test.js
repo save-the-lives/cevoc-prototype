@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { certificateAnswer, classify, evidenceState, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
+import { certificateAnswer, classify, evidenceState, hasMeasureData, isCamera, money, niceDate, niceTime, statusSummary, stepsFor } from './journey.js';
 
 const notice = (over) => ({ enforcementMethod: 'CAMERA', noticeStatus: 'PAYABLE', amountOwing: 277, ...over });
 const img = { kind: 'IMAGE', title: 'Sample', url: '/x.jpg' };
@@ -94,5 +94,13 @@ describe('statusSummary and steps', () => {
   it('only lists the camera step for camera notices', () => {
     expect(stepsFor({ notice: notice() }, 'show').map((s) => s.id)).toEqual(['step-what', 'step-evidence', 'step-camera', 'step-options']);
     expect(stepsFor({ notice: notice({ enforcementMethod: 'OFFICER_ISSUED' }) }, 'not-applicable').map((s) => s.id)).toEqual(['step-what', 'step-evidence', 'step-options']);
+  });
+  it('includes measure step when measurement data exists', () => {
+    const redLight = { notice: notice({ offenceDescription: 'Red light', offenceDate: '2026-03-01' }), details: { timeSinceRed: 2.5, speedLimit: 60 } };
+    expect(stepsFor(redLight, 'show').map((s) => s.id)).toEqual(['step-what', 'step-evidence', 'step-measure', 'step-camera', 'step-options']);
+    expect(hasMeasureData(redLight)).toBe(true);
+  });
+  it('omits measure step when no measurement data', () => {
+    expect(hasMeasureData({ notice: notice() })).toBe(false);
   });
 });
