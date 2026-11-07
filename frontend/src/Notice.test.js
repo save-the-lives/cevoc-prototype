@@ -7,7 +7,7 @@ describe('Notice step navigation', () => {
   it('step links call preventDefault and scrollIntoView instead of navigating', () => {
     // The nav links must have an onClick that prevents the default hash navigation
     expect(src).toMatch(/e\.preventDefault\(\)/);
-    expect(src).toMatch(/scrollIntoView\(\s*\{\s*behavior:\s*'smooth'\s*\}\s*\)/);
+    expect(src).toMatch(/scrollIntoView\(/);
   });
 
   it('step link onClick is on the same <a> element as the href', () => {

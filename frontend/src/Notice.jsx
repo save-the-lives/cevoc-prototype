@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ListSkeleton, PhotoSkeleton } from './Skeleton.jsx';
 import { ExpiredContext } from './expired.js';
 import { hasCertificateList } from './certs.js';
@@ -114,6 +114,62 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
   }
 }
 
+/** Mobile step counter: "2/4 Was it my vehicle?" with a segmented progress bar, expandable to the full list. Desktop: vertical rail. */
+function StepNav({ steps }) {
+  const [tocOpen, setTocOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const total = steps.length;
+
+  // Track which step is in view via IntersectionObserver
+  useEffect(() => {
+    const ids = steps.map((s) => s.id);
+    const els = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    if (!els.length) return;
+    const ob = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          const idx = ids.indexOf(e.target.id);
+          if (idx >= 0) setActive(idx);
+        }
+      }
+    }, { rootMargin: '-20% 0px -60% 0px' });
+    els.forEach((el) => ob.observe(el));
+    return () => ob.disconnect();
+  }, [steps.map((s) => s.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scrollTo = (id) => {
+    setTocOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  };
+
+  return (
+    <nav className="toc" aria-label="On this page" style={{ '--prog': active / Math.max(total - 1, 1) }} onKeyDown={(e) => { if (e.key === 'Escape') setTocOpen(false); }}>
+      {/* Phone: one steady line — "2/4 Was it my vehicle?" — with a segmented bar and an expandable list on tap */}
+      <div className="toc-mini">
+        <button type="button" className="toc-mini__btn" aria-expanded={tocOpen} aria-controls="toc-list" onClick={() => setTocOpen((o) => !o)}>
+          <b>{active + 1}/{total}</b><em>{steps[active]?.label}</em><i aria-hidden="true">{tocOpen ? '▴' : '▾'}</i>
+          <span className="sr-only">Step {active + 1} of {total}. {tocOpen ? 'Hide' : 'Show'} all steps</span>
+        </button>
+        <div className="toc-mini__seg" aria-hidden="true">{steps.map((s, i) => <i key={s.id} className={i <= active ? 'on' : ''} />)}</div>
+      </div>
+      {/* Full list: always visible on desktop, expandable on phone */}
+      <div id="toc-list" className={`toc-list${tocOpen ? ' is-open' : ''}`}>
+        <ol>
+          {steps.map((s, i) => (
+            <li key={s.id}>
+              <a href={`#${s.id}`} className={i < active ? 'is-done' : i === active ? 'is-now' : ''} aria-current={i === active ? 'step' : undefined}
+                onClick={(e) => { e.preventDefault(); scrollTo(s.id); }}>
+                <span aria-hidden="true">{i < active ? '✓' : i + 1}</span>
+                <em>{s.label}</em>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </nav>
+  );
+}
+
 const READY = { details: 'ready', evidence: 'ready', certificates: 'ready' };
 
 function Failed({ what, onRetry }) {
@@ -193,9 +249,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
       </section>
 
       <div className="story">
-        <nav className="toc" aria-label="On this page">
-          <ol>{steps.map((s) => <li key={s.id}><a href={`#${s.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' }); }}>{s.label}</a></li>)}</ol>
-        </nav>
+        <StepNav steps={steps} />
         <div>
           <Step n={stepNo('step-what')} id="step-what" title="What happened" answer={detailsLoading ? 'Looking up your notice…' : undefined}>
             {detailsLoading
@@ -246,7 +300,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
           )}
 
           <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, Revenue NSW handles it. Your notice details will be filled in for you.">
-            <ul className="opts">
+            <ul className="opts2">
               {OPTIONS.map((o) => (
                 <li key={o.id}>
                   <div><strong>{o.title}</strong><p>{o.text}</p></div>

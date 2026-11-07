@@ -116,3 +116,26 @@ WCAG versions named by the sources are stated in each line. Read on 2026-11-06.
 ## 7. Screenshots
 
 Small, downscaled copies in `docs/ui-audit/` (fictitious data): `form-errors-phone.png` (failed submit, summary and inline errors), `loading-pair-phone.png` (before and after the details arrive, UI-06), `expired-phone.png` (expired photos, UI-03), `viewer-phone-zoomed.png` (full-screen viewer zoomed to 250%, UI-10). Full-size captures and the measurement output are not committed.
+
+---
+
+## 8. Mockup drift study — 2026-11-07
+
+Comparison of the working app (`frontend/src/`) against the prototype (`prototype/src/public/Public.jsx` and `prototype/src/styles/public.css`), section by section. The prototype uses `@nswds/ui` components; the working app matches the visual pattern without that dependency.
+
+### Differences found
+
+| # | Section | Difference | Status |
+|---|---|---|---|
+| D-01 | **Step navigation (mobile)** | Prototype has a "2/5 Was it my vehicle?" mini bar with segmented progress and expandable step list. Working app had a flat `<ol>` with no mobile-specific treatment — no step counter, no progress segments, no sticky bar. | **Fixed.** Added `StepNav` component with `toc-mini` bar, segmented progress, expand/collapse, and IntersectionObserver-based active-step tracking. Sticky on mobile. |
+| D-02 | **Step navigation (desktop)** | Prototype has a vertical rail with progress line (`::before` with `--prog`), numbered circles with done/active states (`is-done`, `is-now`), and highlight styling. Working app had plain text links with no state. | **Fixed.** Added progress rail, numbered circles, done/active visual states matching the prototype. |
+| D-03 | **Options section styling** | Prototype uses flat dividers between options (`opts2` — `border-top` only, no card borders) with text-link CTAs (`pub-out`). Working app used bordered cards (`opts`) with bordered button CTAs (`opt-cta`). | **Fixed.** Changed to `opts2` class with flat divider styling. CTAs changed from bordered buttons to text-link style matching the prototype. |
+| D-04 | **Step circle states** | Prototype tracks active step and shows done (grey, checkmark) and active (enlarged, glowing) states on the numbered circles. Working app had static circles with no state. | **Fixed.** The `StepNav` component tracks the active step and applies `is-done`/`is-now` classes. |
+| D-05 | **Reduced-motion support in scrolling** | Prototype respects `prefers-reduced-motion` for `scrollIntoView`. Working app used hardcoded `behavior: 'smooth'`. | **Fixed.** Step navigation now checks `prefers-reduced-motion` before choosing scroll behaviour. |
+| D-06 | **Facts grid fields** | Prototype shows When, Where, Vehicle, Offence. Working app shows When, Where, Offence, Penalty, Amount owing. | **Open.** By design — the working app pulls from a different data source (Revenue NSW API) which provides penalty amounts but not the vehicle field directly. |
+| D-07 | **"How it was measured" as separate step** | Prototype has 5 steps with "How it was measured" as step 3. Working app has 4 steps with program details folded into step 1 ("What happened"). | **Open.** Architectural — the step list is data-driven in the working app (`stepsFor()`) and the program-details component renders inline. |
+| D-08 | **Status bar** | Prototype has a 3-column status bar with sticky mini version, agencies list, and pay CTA. Working app has a single-column status box. | **Open.** The prototype's status bar uses data from multiple sources (due date, case, agencies) that the working app receives differently. Needs design work. |
+| D-09 | **Hero section** | Prototype hero: 48px top padding, 40px heading, subtext. Working app hero: 28px top padding, 1.75rem heading. Slightly smaller and tighter. | **Open.** Minor spacing difference; the working app is mobile-optimised with smaller defaults that scale up. |
+| D-10 | **Header** | Prototype uses `@nswds/ui` Masthead and Header with NSW Government logo, nav links (Evidence, Enforcement Certificate). Working app uses plain text masthead and site name, no nav links. | **Open.** Nav links are absent because the working app has only the lookup and notice views (no cameras page). The masthead is documented in UI-09 above. |
+| D-11 | **Learning/education links** | Prototype has an "If you'd like to know more" section with road safety links at the bottom. Working app does not have this. | **Open.** Content decision — the links need confirmation with Transport for NSW before adding. |
+| D-12 | **Evidence gallery** | Prototype uses a `MediaGallery` component with view/download buttons. Working app uses `EvidenceGrid` with zoom-and-pan viewer. | **Open.** By design — the working app's viewer supports real high-resolution camera evidence with zoom, pan, and fullscreen. |
