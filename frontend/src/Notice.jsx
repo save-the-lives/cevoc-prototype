@@ -62,11 +62,12 @@ function Accordion({ title, children }) {
   );
 }
 
+const FINES_BASE = 'https://www.nsw.gov.au/money-and-taxes/fines-and-fees/fines';
 const OPTIONS = [
-  { id: 'pay', title: 'Pay', text: 'In full, or ask for a payment plan or more time if money is tight.', cta: 'Pay or set up a plan', what: 'Paying and payment plans' },
-  { id: 'review', title: 'Ask for a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Ask for a review', what: 'Asking for a review' },
-  { id: 'nominate', title: 'Nominate the driver', text: "If it wasn't you.", cta: 'Nominate the driver', what: 'Nominating the driver' },
-  { id: 'court', title: 'Have a court decide', text: 'You can choose to have the matter heard in court.', cta: 'Choose court', what: 'Choosing a court hearing' },
+  { id: 'pay', title: 'Pay', text: 'In full, or ask for a payment plan or more time if money is tight.', cta: 'Pay or set up a plan', href: `${FINES_BASE}/pay-your-fine` },
+  { id: 'review', title: 'Ask for a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Ask for a review', href: `${FINES_BASE}/request-a-review` },
+  { id: 'nominate', title: 'Nominate the driver', text: "If it wasn't you.", cta: 'Nominate the driver', href: `${FINES_BASE}/nominate-someone-else-for-a-fine` },
+  { id: 'court', title: 'Have a court decide', text: 'You can choose to have the matter heard in court.', cta: 'Choose court', href: `${FINES_BASE}/apply-to-go-to-court-for-a-fine` },
 ];
 
 const Step = memo(function Step({ n, id, title, answer, tone, children }) {
@@ -387,7 +388,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                     <strong>{o.title}</strong>
                     <p>{o.text}</p>
                   </div>
-                  <a href="#" className="option-cta" aria-label={o.cta}>{o.cta}<span aria-hidden="true"> ↗</span></a>
+                  <a href={o.href} className="option-cta" target="_blank" rel="noopener noreferrer" aria-label={o.cta}>{o.cta}<span aria-hidden="true"> ↗</span></a>
                 </li>
               ))}
             </ul>
