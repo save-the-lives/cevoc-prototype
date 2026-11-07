@@ -158,6 +158,73 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
 
     private PenaltyLookupResult run(Call call, PenaltyLookupRequest request, String plate, LookupProgress progress)
             throws Stop, IOException, InterruptedException {
+        long wallStart = System.nanoTime();
+
+        // ---- Call A: token + summary (no plate) → stream details immediately ----
+        RevenueNswSummaryMapper.Summary summary = callA(call, request);
+        long detailsMs = (System.nanoTime() - wallStart) / 1_000_000;
+
+        LookupTrace trace = LookupTrace.current();
+        boolean hasImages = summary.imageCount() > 0 && !summary.imageIds().isEmpty();
+        boolean plateRequired = hasImages && plate == null;
+        Map<String, Object> details = new LinkedHashMap<>(summary.details());
+        String text = "Content from the penalty page.";
+        progress.details(new PenaltyLookupResult(Status.FOUND, call.number, text, summary.notice(), List.of(), SOURCE, summary.cameraCode(),
+                List.of(), null, plateRequired, details));
+        LookupDiagnostic.note("plate-given=" + (plate != null ? "yes" : "no") + "; image-count=" + summary.imageCount()
+                + "; image-ids=" + summary.imageIds().size() + "; details-keys=" + details.size());
+
+        // ---- Call B: plate token + image fetches (only when plate is given and images exist) ----
+        long photosMs = 0;
+        List<EvidenceItem> evidence = List.of();
+        if (!hasImages) {
+            trace.skip(LookupStep.GIVE_PLATE, StepCause.NO_IMAGES);
+            trace.skip(LookupStep.VIEW_IMAGES, StepCause.NO_IMAGES);
+            trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.NO_IMAGES);
+            progress.evidence(List.of(), false);
+        } else if (plate == null) {
+            trace.skip(LookupStep.GIVE_PLATE, StepCause.NO_PLATE);
+            trace.skip(LookupStep.VIEW_IMAGES, StepCause.NO_PLATE);
+            trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.NO_IMAGES);
+            progress.evidence(List.of(), plateRequired);
+        } else {
+            long photosStart = System.nanoTime();
+            try {
+                evidence = images(call, request, plate, summary, request.offenceDate().format(dateFormat));
+                if (evidence.isEmpty()) {
+                    text = "Notice details found. The images could not be retrieved.";
+                }
+            } catch (PlateNotAccepted e) {
+                text = "Notice details found. The registration number was not accepted, so no images are shown.";
+                trace.fail(LookupStep.VIEW_IMAGES, StepCause.PLATE_NOT_ACCEPTED);
+                trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.PRIOR_FAILURE);
+            } catch (Stop s) {
+                // The notice details are already good: a refusal or fault on the image calls degrades to "no images".
+                trace.ok(s.step, s.millis);
+                trace.fail(s.step, s.cause);
+                LookupDiagnostic.note("step=" + s.step.label() + "; cause=" + s.cause.token() + "; http=" + (s.http > 0 ? s.http : "none"));
+                if (!trace.has(LookupStep.CAPTURE_IMAGES)) {
+                    trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.PRIOR_FAILURE);
+                }
+                text = "Notice details found. The source did not release the images, so none are shown.";
+            }
+            photosMs = (System.nanoTime() - photosStart) / 1_000_000;
+            progress.evidence(evidence, false);
+        }
+
+        long totalMs = (System.nanoTime() - wallStart) / 1_000_000;
+        LOG.info("Lookup timing: details={}ms, photos={}ms, ocr=0ms, certs=0ms, total={}ms", detailsMs, photosMs, totalMs);
+
+        return new PenaltyLookupResult(Status.FOUND, call.number, text, summary.notice(), evidence, SOURCE, summary.cameraCode(),
+                List.of(), null, plateRequired, details);
+    }
+
+    /**
+     * Call A: token (no plate) + summary. Returns the parsed summary and streams details to the caller.
+     * When no plate is given, this is the only call made.
+     */
+    private RevenueNswSummaryMapper.Summary callA(Call call, PenaltyLookupRequest request)
+            throws Stop, IOException, InterruptedException {
         LookupTrace trace = LookupTrace.current();
         String offenceDate = request.offenceDate().format(dateFormat);
 
@@ -212,51 +279,7 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
         }
         trace.ok(LookupStep.READ_SUMMARY, readMillis);
         useRotated(call, sumResp);
-
-        boolean hasImages = summary.imageCount() > 0 && !summary.imageIds().isEmpty();
-        boolean plateRequired = hasImages && plate == null;
-        Map<String, Object> details = new LinkedHashMap<>(summary.details());
-        String text = "Content from the penalty page.";
-        progress.details(new PenaltyLookupResult(Status.FOUND, call.number, text, summary.notice(), List.of(), SOURCE, summary.cameraCode(),
-                List.of(), null, plateRequired, details));
-        LookupDiagnostic.note("plate-given=" + (plate != null ? "yes" : "no") + "; image-count=" + summary.imageCount()
-                + "; image-ids=" + summary.imageIds().size() + "; details-keys=" + details.size());
-
-        List<EvidenceItem> evidence = List.of();
-        if (!hasImages) {
-            trace.skip(LookupStep.GIVE_PLATE, StepCause.NO_IMAGES);
-            trace.skip(LookupStep.VIEW_IMAGES, StepCause.NO_IMAGES);
-            trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.NO_IMAGES);
-            progress.evidence(List.of(), false);
-        } else if (plate == null) {
-            trace.skip(LookupStep.GIVE_PLATE, StepCause.NO_PLATE);
-            trace.skip(LookupStep.VIEW_IMAGES, StepCause.NO_PLATE);
-            trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.NO_IMAGES);
-            progress.evidence(List.of(), plateRequired);
-        } else {
-            try {
-                evidence = images(call, request, plate, summary, offenceDate);
-                if (evidence.isEmpty()) {
-                    text = "Notice details found. The images could not be retrieved.";
-                }
-            } catch (PlateNotAccepted e) {
-                text = "Notice details found. The registration number was not accepted, so no images are shown.";
-                trace.fail(LookupStep.VIEW_IMAGES, StepCause.PLATE_NOT_ACCEPTED);
-                trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.PRIOR_FAILURE);
-            } catch (Stop s) {
-                // The notice details are already good: a refusal or fault on the image calls degrades to "no images".
-                trace.ok(s.step, s.millis);
-                trace.fail(s.step, s.cause);
-                LookupDiagnostic.note("step=" + s.step.label() + "; cause=" + s.cause.token() + "; http=" + (s.http > 0 ? s.http : "none"));
-                if (!trace.has(LookupStep.CAPTURE_IMAGES)) {
-                    trace.skip(LookupStep.CAPTURE_IMAGES, StepCause.PRIOR_FAILURE);
-                }
-                text = "Notice details found. The source did not release the images, so none are shown.";
-            }
-            progress.evidence(evidence, false);
-        }
-        return new PenaltyLookupResult(Status.FOUND, call.number, text, summary.notice(), evidence, SOURCE, summary.cameraCode(),
-                List.of(), null, plateRequired, details);
+        return summary;
     }
 
     /** The registration was given but the source did not accept it. */
