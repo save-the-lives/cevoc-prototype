@@ -87,9 +87,9 @@ describe('certificateAnswer', () => {
 
 describe('statusSummary and steps', () => {
   it('describes each notice status', () => {
-    expect(statusSummary(notice()).headline).toBe('$277 is owing on this notice.');
-    expect(statusSummary(notice({ noticeStatus: 'PAID' })).headline).toMatch(/paid/);
-    expect(statusSummary(notice({ noticeStatus: 'CAUTION' })).next).toMatch(/no longer need to pay/);
+    expect(statusSummary(notice(), '123').headline).toMatch(/\$277 owing/);
+    expect(statusSummary(notice({ noticeStatus: 'PAID' }), '123').headline).toMatch(/paid/);
+    expect(statusSummary(notice({ noticeStatus: 'CAUTION' }), '123').sub).toMatch(/no further action/i);
   });
   it('only lists the camera step for camera notices', () => {
     expect(stepsFor({ notice: notice() }, 'show').map((s) => s.id)).toEqual(['step-what', 'step-evidence', 'step-camera', 'step-options']);
