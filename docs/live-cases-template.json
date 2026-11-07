@@ -1,0 +1,82 @@
+{
+  "_comment": "Template for LIVE_CASES_PASS and LIVE_CASES_FAIL secrets. Replace <placeholder> values with real data. Program values must match programs.json (RED_LIGHT_SPEED or DEFAULT). Do not commit this file with real values.",
+
+  "LIVE_CASES_PASS": [
+    {
+      "id": "red-light-with-plate",
+      "description": "Red light camera, paid, plate given — photos and covering certificate expected",
+      "program": "RED_LIGHT_SPEED",
+      "tags": ["smoke", "ui"],
+      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>", "plate": "<rego>" },
+      "expect": { "status": "FOUND", "noticeStatus": "PAID", "plateRequired": false, "minPhotos": 2, "minImageBytes": 10240, "certificates": "covered" },
+      "expectUi": { "bannerText": "has been paid" }
+    },
+    {
+      "id": "red-light-no-plate",
+      "description": "Red light camera, no plate — details found but photos held back",
+      "program": "RED_LIGHT_SPEED",
+      "tags": ["smoke"],
+      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>" },
+      "expect": { "status": "FOUND", "plateRequired": true, "minPhotos": 0 }
+    },
+    {
+      "id": "mobile-phone",
+      "description": "Mobile phone camera offence — photos expected, no certificates",
+      "program": "DEFAULT",
+      "tags": ["smoke"],
+      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>", "plate": "<rego>" },
+      "expect": { "status": "FOUND", "minPhotos": 1, "minImageBytes": 10240, "certificates": "none" }
+    },
+    {
+      "id": "stopping-parking",
+      "description": "Officer-issued stopping/parking — no camera, no photos",
+      "program": "DEFAULT",
+      "tags": ["full"],
+      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>" },
+      "expect": { "status": "FOUND", "minPhotos": 0, "certificates": "none" }
+    },
+    {
+      "id": "bpes",
+      "description": "Bus priority enforcement — details found, no photos or certificates",
+      "program": "DEFAULT",
+      "tags": ["full"],
+      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>" },
+      "expect": { "status": "FOUND", "minPhotos": 0, "certificates": "none" }
+    },
+    {
+      "id": "fdsc",
+      "description": "Fixed digital speed camera — details found",
+      "program": "DEFAULT",
+      "tags": ["full"],
+      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>" },
+      "expect": { "status": "FOUND", "minPhotos": 0 }
+    }
+  ],
+
+  "LIVE_CASES_FAIL": [
+    {
+      "id": "seat-belt-unavailable",
+      "description": "Seat belt offence — notice unavailable (not a camera offence)",
+      "program": "DEFAULT",
+      "tags": ["smoke"],
+      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>" },
+      "expect": { "status": "UNAVAILABLE" }
+    },
+    {
+      "id": "not-found",
+      "description": "Made-up notice number — should return not found",
+      "program": "DEFAULT",
+      "tags": ["smoke"],
+      "input": { "notice": "0000000000", "date": "2026-01-15" },
+      "expect": { "status": "NOT_FOUND" }
+    },
+    {
+      "id": "wrong-date",
+      "description": "Real notice, wrong offence date — should return not found",
+      "program": "DEFAULT",
+      "tags": ["smoke"],
+      "input": { "notice": "<10-digit notice number>", "date": "<wrong yyyy-mm-dd>" },
+      "expect": { "status": "NOT_FOUND" }
+    }
+  ]
+}
