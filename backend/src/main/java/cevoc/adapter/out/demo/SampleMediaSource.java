@@ -48,7 +48,7 @@ public final class SampleMediaSource implements DemoMediaSource {
         String[] bodies = {"#2f6f9f", "#8a5a2b", "#4b4b4b", "#7a2e5f", "#2e7a55"};
         String body = bodies[seed % bodies.length];
         boolean redLight = number.startsWith("100000");
-        StringBuilder b = new StringBuilder(2400);
+        StringBuilder b = new StringBuilder(3200);
         b.append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ").append(WIDTH).append(' ').append(HEIGHT)
                 .append("\" width=\"").append(WIDTH).append("\" height=\"").append(HEIGHT).append("\" role=\"img\" aria-label=\"")
                 .append("Sample image ").append(index).append(" for demo case ").append(number).append(", fictitious\">")
@@ -67,11 +67,18 @@ public final class SampleMediaSource implements DemoMediaSource {
                     .append("<circle cx=\"820\" cy=\"120\" r=\"14\" fill=\"#e53935\"/>")
                     .append("<circle cx=\"820\" cy=\"170\" r=\"14\" fill=\"#424242\"/>");
         }
-        b.append("<rect width=\"960\" height=\"64\" fill=\"#212121\"/>")
-                .append("<text x=\"24\" y=\"40\" font-family=\"sans-serif\" font-size=\"24\" font-weight=\"bold\" fill=\"#ffffff\">SAMPLE IMAGE, NOT A REAL PHOTO</text>")
-                .append("<text x=\"936\" y=\"40\" font-family=\"sans-serif\" font-size=\"20\" text-anchor=\"end\" fill=\"#ffffff\">Case ").append(number)
-                .append(" · image ").append(index).append("</text>")
-                .append("<rect y=\"476\" width=\"960\" height=\"64\" fill=\"#212121\"/>")
+        // Camera banner strip: realistic layout matching real evidence photo banners (Location, Date, Time, Camera, Operator).
+        String cameraCode = redLight ? "DEMO-RL-1" : "DEMO-CAM-1";
+        String location = (seed % 2 == 0) ? "TEST AVENUE AND DEMO LANE, EXAMPLEVILLE" : "SAMPLE ROAD AND EXAMPLE STREET, SAMPLETOWN";
+        b.append("<rect width=\"960\" height=\"80\" fill=\"#212121\"/>")
+                .append("<text x=\"12\" y=\"18\" font-family=\"monospace\" font-size=\"13\" fill=\"#ffffff\">Location: ").append(location).append("</text>")
+                .append("<text x=\"12\" y=\"36\" font-family=\"monospace\" font-size=\"13\" fill=\"#ffffff\">Date: 14/03/2026  Time: 11:12:00  Camera: ").append(cameraCode).append("</text>")
+                .append("<text x=\"12\" y=\"54\" font-family=\"monospace\" font-size=\"13\" fill=\"#ffffff\">Operator: Sample Operator  Incident: ").append(6 + seed % 90).append("</text>")
+                .append("<text x=\"12\" y=\"72\" font-family=\"monospace\" font-size=\"13\" fill=\"#ffd54f\">FICTITIOUS DEMO DATA - NOT A REAL PHOTO</text>")
+                .append("<text x=\"936\" y=\"72\" font-family=\"monospace\" font-size=\"13\" text-anchor=\"end\" fill=\"#ffffff\">Case ").append(number)
+                .append(" img ").append(index).append("</text>");
+        // Bottom strip
+        b.append("<rect y=\"476\" width=\"960\" height=\"64\" fill=\"#212121\"/>")
                 .append("<text x=\"24\" y=\"516\" font-family=\"sans-serif\" font-size=\"22\" fill=\"#ffffff\">Fictitious demo data. Generated, no vehicle or person is shown.</text>")
                 .append("</svg>");
         return b.toString();

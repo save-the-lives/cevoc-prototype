@@ -50,6 +50,14 @@ public final class DemoScenarios {
                     .status(NoticeStatus.PAID, "This penalty has been paid."));
             out.add(s(p, 108).title("Notice in review", "Everything returned; the notice is under review.")
                     .status(NoticeStatus.OTHER, "This notice is under review. Contact Revenue NSW about its current status."));
+            out.add(s(p, 109).title("All certificate types covered",
+                    "Two certificate types (accuracy and calibration); both cover the offence date.").certs(Certs.ALL_TYPES_COVERED));
+            out.add(s(p, 110).title("One certificate type uncovered",
+                    "Two certificate types; the accuracy certificate covers the date but the calibration certificate does not.")
+                    .certs(Certs.ONE_TYPE_UNCOVERED));
+            out.add(s(p, 111).title("Mixed certificate types",
+                    "Three certificate types; accuracy and calibration cover the date but the maintenance certificate does not.")
+                    .certs(Certs.MIXED));
             // ---- sad: something failed
             out.add(s(p, 201).title("Certificate lookup failed", "Images and video are there; the certificate lookup has a technical failure.")
                     .certs(Certs.FAILED));

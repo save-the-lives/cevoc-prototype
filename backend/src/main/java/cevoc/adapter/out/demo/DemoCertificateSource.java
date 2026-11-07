@@ -6,7 +6,6 @@ import cevoc.domain.CertificateRef;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,12 +17,15 @@ import java.util.List;
  * Keyed like the real page, by camera code and date range. Only the invented demo camera codes ({@link DemoCameras}) are
  * answered here; any other code is not a demo camera and gets an empty list (in practice {@link DemoFirstCertificateSource}
  * hands those on to the configured provider before this is asked). The outcome follows the camera: three rows with one in
- * force, a single row in force, rows none of which is in force, no rows, or a simulated failure whose message makes the
- * lookup record the step cause {@code timeout}. Every row is fictitious sample data.
+ * force, a single row in force, rows none of which is in force, no rows, a simulated failure, or multi-type scenarios
+ * (all types covered, one uncovered, mixed) whose rows carry realistic "YEARLY" period text like the real certificate page.
+ * Every row is fictitious sample data.
  */
 public final class DemoCertificateSource implements CertificateSourcePort {
 
-    private static final DateTimeFormatter PERIOD = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+    private static final String ACCURACY_DESC = "Fictitious speed/red light camera - accuracy test certificate";
+    private static final String CALIBRATION_DESC = "Fictitious speed/red light camera - calibration certificate";
+    private static final String MAINTENANCE_DESC = "Fictitious speed/red light camera - maintenance certificate";
 
     /** True when the code is one of the invented demo camera codes. */
     public boolean handles(String cameraCode) {
@@ -42,23 +44,45 @@ public final class DemoCertificateSource implements CertificateSourcePort {
         List<CertificateRef> rows = new ArrayList<>();
         switch (camera.certs()) {
             case COVERING -> {
-                rows.add(row(what + " (superseded)", d.minusYears(3), d.minusYears(1).minusDays(1)));
-                rows.add(row(what + " (current)", d.minusYears(1), d.plusYears(1)));
-                rows.add(row(what + " (next year)", d.plusYears(1).plusDays(1), d.plusYears(3)));
+                rows.add(yearly(what + " (superseded)", d.minusYears(3), d.minusYears(1).minusDays(1)));
+                rows.add(yearly(what + " (current)", d.minusYears(1), d.plusYears(1)));
+                rows.add(yearly(what + " (next year)", d.plusYears(1).plusDays(1), d.plusYears(3)));
             }
-            case SINGLE -> rows.add(row(what, d.minusYears(1), d.plusYears(1)));
+            case SINGLE -> rows.add(yearly(what, d.minusYears(1), d.plusYears(1)));
             case NOT_COVERING -> {
-                rows.add(row(what + " (expired before the offence)", d.minusYears(3), d.minusDays(40)));
-                rows.add(row(what + " (starts after the offence)", d.plusDays(40), d.plusYears(2)));
+                rows.add(yearly(what + " (expired before the offence)", d.minusYears(3), d.minusDays(40)));
+                rows.add(yearly(what + " (starts after the offence)", d.plusDays(40), d.plusYears(2)));
             }
             case NONE -> { }
             case FAILED -> throw new IllegalStateException("demo certificate source: timeout (simulated failure)");
+            case ALL_TYPES_COVERED -> {
+                // Two types, both covering the offence date
+                rows.add(yearly(ACCURACY_DESC, d.minusYears(1), d.plusYears(1)));
+                rows.add(yearly(CALIBRATION_DESC, d.minusMonths(6), d.plusMonths(6)));
+            }
+            case ONE_TYPE_UNCOVERED -> {
+                // Two types: accuracy covers, calibration does not
+                rows.add(yearly(ACCURACY_DESC, d.minusYears(1), d.plusYears(1)));
+                rows.add(yearly(CALIBRATION_DESC, d.minusYears(2), d.minusDays(30)));
+            }
+            case MIXED -> {
+                // Three types: accuracy and calibration cover, maintenance does not
+                rows.add(yearly(ACCURACY_DESC, d.minusYears(1), d.plusYears(1)));
+                rows.add(yearly(CALIBRATION_DESC, d.minusMonths(6), d.plusMonths(6)));
+                rows.add(yearly(MAINTENANCE_DESC, d.minusYears(3), d.minusDays(60)));
+            }
         }
         return List.copyOf(rows);
     }
 
-    private static CertificateRef row(String description, LocalDate from, LocalDate to) {
-        return new CertificateRef(description, "Camera", PERIOD.format(from) + " - " + PERIOD.format(to), from.atStartOfDay(),
-                to.atTime(23, 59), from.minusDays(10).atStartOfDay(), to.atStartOfDay(), null);
+    /**
+     * A certificate row with "YEARLY" period text, matching the shape of real certificate page data.
+     * The coverage window is derived from certifiedDate/expiryDate by the period parser's keyword fallback,
+     * just as for real certificates whose period column says "YEARLY" instead of a date range.
+     */
+    private static CertificateRef yearly(String description, LocalDate certifiedDate, LocalDate expiryDate) {
+        return new CertificateRef(description, "Camera", "YEARLY",
+                certifiedDate.atStartOfDay(), expiryDate.atTime(23, 59),
+                certifiedDate.atStartOfDay(), expiryDate.atStartOfDay(), null);
     }
 }

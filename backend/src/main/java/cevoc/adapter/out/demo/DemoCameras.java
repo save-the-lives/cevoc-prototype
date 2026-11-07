@@ -16,8 +16,9 @@ final class DemoCameras { // invented codes only
     static final String RED_LIGHT_PREFIX = "DEMO-RL-";
     static final String GENERIC_PREFIX = "DEMO-CAM-";
 
-    /** The certificate outcome of a camera, in the order of the code's last digit (1 to 5). */
-    private static final Certs[] BY_DIGIT = {Certs.COVERING, Certs.SINGLE, Certs.NOT_COVERING, Certs.NONE, Certs.FAILED};
+    /** The certificate outcome of a camera, in the order of the code's last digit (1 to 8). */
+    private static final Certs[] BY_DIGIT = {Certs.COVERING, Certs.SINGLE, Certs.NOT_COVERING, Certs.NONE, Certs.FAILED,
+            Certs.ALL_TYPES_COVERED, Certs.ONE_TYPE_UNCOVERED, Certs.MIXED};
 
     /** A parsed demo camera code. */
     record Camera(boolean redLight, Certs certs) {}
@@ -45,7 +46,7 @@ final class DemoCameras { // invented codes only
             return Optional.empty();
         }
         String digit = code.substring(red ? RED_LIGHT_PREFIX.length() : GENERIC_PREFIX.length());
-        if (digit.length() != 1 || digit.charAt(0) < '1' || digit.charAt(0) > '5') {
+        if (digit.length() != 1 || digit.charAt(0) < '1' || digit.charAt(0) > '8') {
             return Optional.empty();
         }
         return Optional.of(new Camera(red, BY_DIGIT[digit.charAt(0) - '1']));

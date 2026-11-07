@@ -96,7 +96,7 @@ class DemoCaseFactoryTest {
     @Test
     void sampleImagesSayTheyAreSamples() {
         String svg = new String(factory.mediaSource().read("1000000001", "image-2.svg").orElseThrow().data(), StandardCharsets.UTF_8);
-        assertThat(svg).startsWith("<svg").contains("SAMPLE IMAGE, NOT A REAL PHOTO").contains("1000000001");
+        assertThat(svg).startsWith("<svg").contains("FICTITIOUS DEMO DATA - NOT A REAL PHOTO").contains("1000000001");
         assertThat(factory.mediaSource().read("1000000001", "../etc.svg")).isEmpty();
         assertThat(factory.mediaSource().read("2000000001", "image-1.svg")).isEmpty();
         assertThat(factory.mediaSource().read("1000000001", "image-1.png")).isEmpty();

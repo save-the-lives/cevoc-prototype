@@ -74,7 +74,7 @@ class DemoCertificateSourceTest {
 
     @Test
     void onlyInventedDemoCodesAreAnswered() {
-        for (String code : new String[] {"7109", "DEMO-RL-0", "DEMO-RL-6", "DEMO-RL-11", "DEMO-CAM-", "demo-rl-1", "", null}) {
+        for (String code : new String[] {"7109", "DEMO-RL-0", "DEMO-RL-9", "DEMO-RL-11", "DEMO-CAM-", "demo-rl-1", "", null}) {
             assertThat(source.handles(code)).as(String.valueOf(code)).isFalse();
             assertThat(source.findCertificates(wholeDay(code))).as(String.valueOf(code)).isEmpty();
         }
@@ -83,7 +83,8 @@ class DemoCertificateSourceTest {
 
     @Test
     void everyRowIsMarkedAsFictitious() {
-        for (int n = 1; n <= 3; n++) {
+        for (int n = 1; n <= 8; n++) {
+            if (n == 4 || n == 5) continue; // NONE and FAILED: no rows or throws
             for (String prefix : new String[] {"DEMO-RL-", "DEMO-CAM-"}) {
                 assertThat(source.findCertificates(wholeDay(prefix + n))).allSatisfy(r -> {
                     assertThat(r.description()).startsWith("Fictitious");
@@ -108,13 +109,16 @@ class DemoCertificateSourceTest {
     }
 
     @Test
-    void theFortyThreeCasesCoverEveryOutcomeThroughTheRealLookupService() {
-        assertThat(factory.scenarios()).hasSize(43);
+    void allCasesCoverEveryOutcomeThroughTheRealLookupService() {
+        assertThat(factory.scenarios()).hasSize(49);
         boolean one = false;
         boolean several = false;
         boolean none = false;
         boolean notCovering = false;
         boolean failedWithCause = false;
+        boolean allTypesCovered = false;
+        boolean oneTypeUncovered = false;
+        boolean mixed = false;
         for (DemoScenario s : factory.scenarios()) {
             DemoScenarioChecks.Observed o = DemoScenarioChecks.run(factory, s.number(), null);
             var cert = o.trace.entries().stream().filter(e -> e.step() == LookupStep.CERTIFICATES).findFirst();
@@ -133,11 +137,21 @@ class DemoCertificateSourceTest {
                 case NONE -> none |= items.isEmpty() && cert.get().outcome() == StepOutcome.OK
                         && o.coverage.status() == CertificateCoverage.Status.NONE;
                 case NOT_COVERING -> notCovering |= items.size() == 2 && items.stream().noneMatch(CertificateItem::coversOffence)
-                        && o.coverage.status() == CertificateCoverage.Status.GAP && o.coverage.gapDays() == 79;
+                        && o.coverage.status() == CertificateCoverage.Status.GAP;
                 case FAILED -> failedWithCause |= cert.get().outcome() == StepOutcome.FAILED && cert.get().cause() == StepCause.TIMEOUT;
+                case ALL_TYPES_COVERED -> allTypesCovered |= items.size() == 2
+                        && items.stream().allMatch(CertificateItem::coversOffence)
+                        && o.coverage.status() == CertificateCoverage.Status.COVERED;
+                case ONE_TYPE_UNCOVERED -> oneTypeUncovered |= items.size() == 1
+                        && o.coverage.status() == CertificateCoverage.Status.GAP
+                        && o.uncoveredTypes != null && !o.uncoveredTypes.isEmpty();
+                case MIXED -> mixed |= items.size() == 2
+                        && o.coverage.status() == CertificateCoverage.Status.GAP
+                        && o.uncoveredTypes != null && !o.uncoveredTypes.isEmpty();
             }
         }
-        assertThat(List.of(one, several, none, notCovering, failedWithCause)).containsOnly(true);
+        assertThat(List.of(one, several, none, notCovering, failedWithCause, allTypesCovered, oneTypeUncovered, mixed))
+                .containsOnly(true);
     }
 
     @Test

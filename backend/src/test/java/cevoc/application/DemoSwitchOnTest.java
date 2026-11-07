@@ -54,12 +54,14 @@ class DemoSwitchOnTest {
                 .andExpect(jsonPath("$.certificates.length()").value(1))
                 .andExpect(jsonPath("$.certificates[0].coversOffence").value(true))
                 .andExpect(jsonPath("$.certificateCoverage.status").value("covered"))
-                .andExpect(jsonPath("$.certificates[0].description").value(org.hamcrest.Matchers.startsWith("Fictitious")));
+                .andExpect(jsonPath("$.certificates[0].description").value(org.hamcrest.Matchers.startsWith("Fictitious")))
+                .andExpect(jsonPath("$.certificates[0].periodText").value("YEARLY"));
         // exactly one found
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"1000000002\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(jsonPath("$.certificates.length()").value(1))
-                .andExpect(jsonPath("$.certificates[0].coversOffence").value(true));
+                .andExpect(jsonPath("$.certificates[0].coversOffence").value(true))
+                .andExpect(jsonPath("$.certificates[0].periodText").value("YEARLY"));
         // none found
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"1000000101\",\"offenceDate\":\"2026-09-01\"}"))
@@ -71,6 +73,28 @@ class DemoSwitchOnTest {
                 .andExpect(jsonPath("$.status").value("FOUND"))
                 .andExpect(jsonPath("$.certificates.length()").value(0))
                 .andExpect(jsonPath("$.certificateCoverage").doesNotExist());
+    }
+
+    @Test
+    void multiTypeCertificateScenarios() throws Exception {
+        // all types covered: two certificate types, both covering
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"1000000109\",\"offenceDate\":\"2026-09-01\"}"))
+                .andExpect(jsonPath("$.certificates.length()").value(2))
+                .andExpect(jsonPath("$.certificates[0].coversOffence").value(true))
+                .andExpect(jsonPath("$.certificates[1].coversOffence").value(true))
+                .andExpect(jsonPath("$.certificateCoverage.status").value("covered"));
+        // one type uncovered: accuracy covers, calibration does not
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"1000000110\",\"offenceDate\":\"2026-09-01\"}"))
+                .andExpect(jsonPath("$.certificateCoverage.status").value("gap"))
+                .andExpect(jsonPath("$.uncoveredTypes.length()").value(1));
+        // mixed: accuracy and calibration cover, maintenance does not
+        mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"infringementNumber\":\"1000000111\",\"offenceDate\":\"2026-09-01\"}"))
+                .andExpect(jsonPath("$.certificateCoverage.status").value("gap"))
+                .andExpect(jsonPath("$.certificates.length()").value(2))
+                .andExpect(jsonPath("$.uncoveredTypes.length()").value(1));
     }
 
     @Test
@@ -116,7 +140,7 @@ class DemoSwitchOnTest {
         mvc.perform(get("/api/demo/media/1000000001/image-1.svg"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("image/svg+xml"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("SAMPLE IMAGE, NOT A REAL PHOTO")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("FICTITIOUS DEMO DATA - NOT A REAL PHOTO")));
         mvc.perform(get("/api/demo/media/2000000001/image-1.svg")).andExpect(status().isNotFound());
         mvc.perform(get("/api/demo/media/1000000001/evil.html")).andExpect(status().isNotFound());
     }

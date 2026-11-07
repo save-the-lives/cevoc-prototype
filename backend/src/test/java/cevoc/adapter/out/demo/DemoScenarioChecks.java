@@ -1,6 +1,7 @@
 package cevoc.adapter.out.demo;
 
 import cevoc.application.port.in.LookupSink;
+import cevoc.domain.CertificateAssessment;
 import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
@@ -33,6 +34,7 @@ final class DemoScenarioChecks {
         Map<String, Object> extra = Map.of();
         List<CertificateItem> certificates = List.of();
         CertificateCoverage coverage;
+        List<CertificateAssessment.UncoveredType> uncoveredTypes = List.of();
         String error;
         LookupTrace trace;
 
@@ -41,6 +43,8 @@ final class DemoScenarioChecks {
         @Override public void extra(Map<String, Object> d) { events.add("extra"); extra = d; }
         @Override public void certificates(List<CertificateItem> c) { events.add("certificates"); certificates = c; }
         @Override public void certificates(List<CertificateItem> c, CertificateCoverage cov) { certificates(c); coverage = cov; }
+        @Override public void certificates(List<CertificateItem> c, CertificateCoverage cov,
+                                           List<CertificateAssessment.UncoveredType> ut) { certificates(c, cov); uncoveredTypes = ut; }
         @Override public void done() { events.add("done"); }
         @Override public void error(String cause) { events.add("error"); error = cause; }
     }
@@ -93,8 +97,10 @@ final class DemoScenarioChecks {
                 : video ? DemoStatus.AVAILABLE : DemoStatus.NOT_RETURNED);
         LookupTrace.Entry cert = o.trace.entries().stream().filter(e -> e.step() == LookupStep.CERTIFICATES).findFirst().orElseThrow();
         long covering = o.certificates.stream().filter(CertificateItem::coversOffence).count();
+        boolean hasUncoveredTypes = o.uncoveredTypes != null && !o.uncoveredTypes.isEmpty();
         m.put(DemoInfo.CERTIFICATES, failedAfterDetails ? DemoStatus.FAILED : cert.outcome() == StepOutcome.FAILED ? DemoStatus.FAILED
-                : o.certificates.isEmpty() ? DemoStatus.NOT_RETURNED : covering == 0 ? DemoStatus.PARTIAL : DemoStatus.AVAILABLE);
+                : o.certificates.isEmpty() && !hasUncoveredTypes ? DemoStatus.NOT_RETURNED
+                : covering == 0 || hasUncoveredTypes ? DemoStatus.PARTIAL : DemoStatus.AVAILABLE);
         // Details: the page has display rules for a red light notice only (offence text or the timeSinceRed key), and only for a date
         // from 1 Jan 2000. Within that, the keys the red light block shows are timeSinceRed and speedLimit.
         boolean rules = o.details != null && o.details.notice() != null
