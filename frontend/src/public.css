@@ -148,8 +148,13 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .option-cta:hover { text-decoration-thickness: 2px; }
 .option-cta:focus-visible { outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 3px; }
 @media (max-width: 640px) { .option-row { flex-direction: column; align-items: flex-start; gap: 6px; } }
-.nsw-footer { background: #f4f4f7; border-top: 4px solid var(--navy); padding: 24px 0; font-size: .9rem; color: #333; }
-.nsw-footer p { margin: 4px 0; }
+.nsw-footer { background: #f4f4f7; border-top: 4px solid var(--navy); padding: 32px 0; font-size: .9rem; color: #333; }
+.nsw-footer__inner { text-align: center; }
+.nsw-footer p { margin: 6px 0; }
+.nsw-footer__links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; margin: 12px 0; }
+.nsw-footer__links a { color: var(--link, #2E5299); text-decoration: underline; text-underline-offset: 3px; }
+.nsw-footer__links a:hover { text-decoration-thickness: 2px; }
+.nsw-footer__ack { max-width: 600px; margin: 16px auto 8px; font-size: .85rem; color: #6a7078; font-style: italic; }
 .nsw-footer__info { color: #6a7078; font-size: .85rem; }
 .cert-card { margin: 0; }
 

@@ -151,10 +151,19 @@ export default function App() {
           : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit} draft={draft} reloadNote={reloadNote}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
-      <footer className="nsw-footer"><div className="wrap">
-        <p>Need help? Call <a href="tel:1300138118">{HELP_PHONE}</a></p>
-        <p className="nsw-footer__info">&copy; State of New South Wales. Interim service.</p>
-      </div></footer>
+      <footer className="nsw-footer">
+        <div className="wrap nsw-footer__inner">
+          <p>Need help? Call <a href="tel:1300138118">{HELP_PHONE}</a></p>
+          <nav className="nsw-footer__links" aria-label="Footer links">
+            <a href="https://www.nsw.gov.au/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
+            <a href="https://www.nsw.gov.au/accessibility-statement" target="_blank" rel="noopener noreferrer">Accessibility</a>
+            <a href="https://www.nsw.gov.au/nsw-government/copyright" target="_blank" rel="noopener noreferrer">Copyright</a>
+            <a href="https://www.nsw.gov.au/departments-and-agencies/transport-for-nsw" target="_blank" rel="noopener noreferrer">About</a>
+          </nav>
+          <p className="nsw-footer__ack">We acknowledge the Traditional Custodians of the lands where we work and live. We pay our respects to Elders past, present and emerging.</p>
+          <p className="nsw-footer__info">&copy; State of New South Wales. Interim service.</p>
+        </div>
+      </footer>
     </>
   );
 }
