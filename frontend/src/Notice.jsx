@@ -390,7 +390,6 @@ export default function Notice({ result, query, sections = READY, registrationGi
                 </li>
               ))}
             </ul>
-            <p className="muted">Your notice details are filled in for you. You can come back here any time.</p>
           </Step>
 
           {/* Bottom banner — "If you'd like to know more" */}
