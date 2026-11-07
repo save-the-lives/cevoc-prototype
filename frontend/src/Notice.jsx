@@ -272,9 +272,14 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
   const expiredCtx = useMemo(() => ({ rerun: onRerun || null, expired: timedOut, report }), [onRerun, timedOut, report]);
   const demo = result?.source === 'STUB' || result?.source === 'MANIFEST';
-  const evAnswer = detailsLoading ? 'Fetching the camera photos…' : evLoading ? 'Fetching the camera photos…' : evFailed ? "We couldn't load the photos."
+  const evAnswer = detailsLoading ? 'Fetching the camera photos…'
+    : evLoading ? 'Fetching the camera photos…'
+    : evFailed ? "We couldn't load the photos."
     : ev === 'show' ? photosAnswer({ hasVideo: media.some((m) => m.kind === 'VIDEO'), timedOut })
-      : ev === 'not-applicable' ? undefined : "We can't show the photos yet.";
+    : ev === 'not-applicable' ? 'This notice was not issued by a camera. There are no camera photos.'
+    : ev === 'plate-no-images' ? 'No photos are available for this notice.'
+    : ev === 'needs-plate' ? 'Enter your registration number to see the photos.'
+    : "We can't show the photos yet.";
 
   return (
     <ExpiredContext.Provider value={expiredCtx}>
@@ -345,6 +350,10 @@ export default function Notice({ result, query, sections = READY, registrationGi
               ? <PhotoSkeleton label="Fetching the camera photos. This can take up to half a minute." />
               : evFailed || detailsFailed
                 ? <Failed what="the photos" onRetry={onRetry} />
+              : ev === 'not-applicable'
+                ? <p className="muted">This notice was issued by an officer, not a camera. There are no camera photos to show.</p>
+              : ev === 'plate-no-images'
+                ? <p className="muted">No photos are available for this notice. They may have been removed after the retention period.</p>
                 : (
                   <>
                     <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} timedOut={timedOut} />
