@@ -106,7 +106,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
       return (
         <>
           <TimedOut />
-          {!timedOut && <p className="hint">Zoom in to read plates and signs: pinch or double-tap on a touch screen, scroll wheel or the buttons with a mouse, plus and minus keys on a keyboard.</p>}
+          {!timedOut && <p className="hint">Zoom in to read plates and signs: scroll wheel or pinch on the photo, or click it to open full size.</p>}
           <Suspense fallback={<PhotoSkeleton count={media.length} />}><EvidenceGrid items={media} /></Suspense>
           <p className="muted">If someone else was driving, you can nominate them with Revenue NSW (see Your options).</p>
         </>
