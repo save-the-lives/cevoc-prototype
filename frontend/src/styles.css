@@ -130,3 +130,38 @@ input { font: inherit; min-height: 44px; padding: 6px 10px; border: 1px solid #5
 .media-expired p { margin: 0 0 6px; }
 .gp .media-expired { position: absolute; inset: 0; border: 0; border-radius: 0; }
 .zp-overlay:focus { outline: none; }
+
+/* Red light camera visual — signal timeline */
+.rl-visual { margin: 8px 0 0; }
+.rl-signal { position: relative; display: flex; height: 40px; border-radius: 4px; overflow: visible; margin: 28px 0 8px; }
+.rl-signal span { display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
+.rl-g { background: #008a07; border-radius: 4px 0 0 4px; }
+.rl-a { background: #e0a800; color: #222 !important; }
+.rl-r { background: #b81237; border-radius: 0 4px 4px 0; }
+.rl-marker { position: absolute; top: -26px; bottom: -6px; width: 3px; background: var(--ink); font-style: normal; }
+.rl-marker b { position: absolute; top: -2px; left: 6px; font-style: normal; font-size: 13px; white-space: nowrap; }
+.rl-calc { margin: 12px 0 0; }
+
+/* Speed scale */
+.ss { margin: 16px 0 0; border: 0; padding: 0; }
+.ss-plot { position: relative; padding-top: 4px; }
+.ss-marks { position: relative; height: 56px; }
+.ss-reading { position: absolute; bottom: 16px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; line-height: 1.1; white-space: nowrap; }
+.ss-reading b { font-size: 22px; color: var(--brand); }
+.ss-reading.is-over b { color: #b81237; }
+.ss-reading small { font-size: 12px; color: var(--muted); }
+.ss-reading.is-over small { color: #8c1129; font-weight: 600; }
+.ss-track { position: relative; display: flex; height: 40px; border-radius: 6px; overflow: visible; }
+.ss-zone { height: 100%; }
+.ss-zone.is-ok { background: #dbe5f1; border-radius: 6px 0 0 6px; }
+.ss-zone.is-over { background: linear-gradient(90deg, #f1dfc2 0%, #eab9a5 55%, #dd8f8a 100%); border-radius: 0 6px 6px 0; }
+.ss-limit { position: absolute; top: -8px; bottom: -8px; width: 3px; margin-left: -1.5px; background: var(--brand); border-radius: 2px; opacity: .75; font-style: normal; }
+.ss-limit b { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: #fff; color: var(--brand); border: 1.5px solid var(--brand); font-size: 12px; padding: 1px 8px; border-radius: 10px; white-space: nowrap; font-style: normal; }
+.ss-pin { position: absolute; top: -12px; width: 0; height: 0; margin-left: -9px; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 12px solid var(--brand); font-style: normal; }
+.ss-pin::after { content: ''; position: absolute; left: -2px; top: -2px; width: 4px; height: 54px; background: var(--brand); }
+.ss-pin.is-over { border-top-color: #b81237; }
+.ss-pin.is-over::after { background: #b81237; }
+.ss-axis { position: relative; height: 22px; margin-top: 30px; font-size: 12px; color: var(--muted); }
+.ss-axis span { position: absolute; transform: translateX(-50%); }
+.ss-axis span::before { content: ''; position: absolute; left: 50%; top: -8px; width: 1px; height: 6px; background: #8a9399; }
+@media (max-width: 640px) { .ss-reading b { font-size: 17px; } .ss-limit b { font-size: 11px; padding: 2px 6px; } .rl-marker b { left: auto; right: 8px; text-align: right; } }
