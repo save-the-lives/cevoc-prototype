@@ -25,9 +25,9 @@ picture's pixels. The mock-up shows two of the facts: time since red (seconds) a
 5. Privacy of the process: raw OCR text and values are never logged or stored. Diagnostics are counts only (image size, strip height,
    number of text lines, number of labels read, whether each of the two fields was read). When OCR ran and gave no usable field the step
    trace carries the whitelisted cause `banner-unreadable` on the capture-images step (outcome stays ok); the lookup never fails.
-6. Switch: `cevoc.banner-ocr.enabled` (env `CEVOC_BANNER_OCR_ENABLED`), false in code, set true in the live-mode deploy only. Optional
-   `cevoc.banner-ocr.command` and `cevoc.banner-ocr.timeout-seconds`. Demo data never runs OCR (it has its own adapter and its banner
-   text is data, record 0018).
+6. No separate switch: banner OCR is always available; the scraping adapter uses it when active. The former `cevoc.banner-ocr.enabled`
+   env var is removed. Optional `cevoc.banner-ocr.command` and `cevoc.banner-ocr.timeout-seconds`. Demo data never runs OCR (it has
+   its own adapter and its banner text is data, record 0018).
 7. `ArchitectureTest`: only the OCR adapter package and the wiring may know the OCR adapter; the adapter uses only ports and domain;
    OCR wrapper libraries may not appear elsewhere; domain and application never start processes.
 

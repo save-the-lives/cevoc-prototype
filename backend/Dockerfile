@@ -2,8 +2,8 @@
 # (CEVOC_LIVECHECK_ENABLED, CEVOC_PENALTY_LOOKUP_ADAPTER=browser and its URL and contact), see docs/LIVE-CHECK.md. Scrapers are off unless the browser adapter is selected.
 # Layer order, most stable first, so an app-code change rebuilds only the build step and the last (thin) layer:
 #   1. JDK/Maven base  2. pom.xml -> dependencies + Playwright CLI jars  3. JRE base, Tesseract (banner OCR), Chromium + OS deps  4. app jar
-# Banner OCR (record 0019) calls the tesseract command line program from the app; English data only. It is used only when
-# CEVOC_BANNER_OCR_ENABLED=true.
+# Banner OCR (record 0019) calls the tesseract command line program from the app; English data only. It is always available;
+# the scraping adapter uses it when active.
 
 FROM maven:3.9-eclipse-temurin-21 AS deps
 WORKDIR /src

@@ -28,7 +28,7 @@ With no settings the backend uses the real defaults (record 0022): the `browser`
   - `cevoc.certificates.providers`: ordered list, default `http,browser` (also when empty or unset); `none` = no certificate source; `http`, `api` (reserved), plus legacy names. Optional override.
   - `cevoc.media.adapter`: `stub`, `memory` or `azure-blob` (unset: `memory` when the lookup adapter is `browser` (the default) or `http`, else `stub`).
   - Who sets them (records 0021 and 0022): nobody has to. The defaults are the real adapters, so the container app needs only `CEVOC_SCRAPER_EVIDENCE_CONTACT`; the adapter variables are optional overrides. A normal deploy never writes or blanks them; only a live-mode deploy (`LIVE_CHECK_ENABLED` = `true`) writes its own values. A normal deploy also leaves CPU and memory alone (owner sets 2 CPU / 4Gi once in the portal; a live deploy never shrinks it) and checks `GET /api/ping`, never `POST /api/penalty-lookups`.
-  - Demo data is its own single switch, `CEVOC_DEMO_DATA_ENABLED=true`; banner OCR is `CEVOC_BANNER_OCR_ENABLED`.
+  - Demo data is its own single switch, `CEVOC_DEMO_DATA_ENABLED=true`; banner OCR is always available when a scraping adapter is active (no separate switch).
 - Front end: React (Vite) in `frontend/`. Program-by-program display switches live in the front end config (records 0007, 0013 to 0016); only red light is built.
 - `prototype/` is the original clickable mockup, published to GitHub Pages. It is not part of the app and is not deployed with it. Its URL must not change (record 0006).
 

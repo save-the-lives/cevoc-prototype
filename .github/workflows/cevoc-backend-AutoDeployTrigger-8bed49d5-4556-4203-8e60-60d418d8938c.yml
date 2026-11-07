@@ -100,7 +100,7 @@ jobs:
           az containerapp ingress enable --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --type external --target-port 8080 --transport auto
           # Deliberately sets NO CEVOC_* variables. The owner sets CEVOC_PENALTY_LOOKUP_ADAPTER, CEVOC_CERTIFICATES_PROVIDERS,
-          # CEVOC_SCRAPER_EVIDENCE_URL, CEVOC_SCRAPER_EVIDENCE_CONTACT, CEVOC_BANNER_OCR_ENABLED, CEVOC_LIVECHECK_ENABLED,
+          # CEVOC_SCRAPER_EVIDENCE_URL, CEVOC_SCRAPER_EVIDENCE_CONTACT, CEVOC_LIVECHECK_ENABLED,
           # CEVOC_DEMO_DATA_ENABLED and CEVOC_CERTIFICATES_SEARCH_PAGE_URL on the container app; a normal deploy leaves them as they are.
           # Also sets NO --cpu / --memory: the owner sets 2 CPU / 4Gi once in the Azure portal (Chromium needs it) and it stays (record 0021).
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
@@ -132,8 +132,11 @@ jobs:
           az containerapp update --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" \
             --image "${{ env.IMAGE }}:${{ github.sha }}" $size \
             --min-replicas 1 --max-replicas 1 \
-            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=browser CEVOC_LIVECHECK_ENABLED=true CEVOC_BANNER_OCR_ENABLED=true \
-            "CEVOC_SCRAPER_EVIDENCE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" CEVOC_CERTIFICATES_PROVIDERS=curl,http,browser >/dev/null
+            --set-env-vars CEVOC_PENALTY_LOOKUP_ADAPTER=browser CEVOC_LIVECHECK_ENABLED=true \
+            "CEVOC_SCRAPER_EVIDENCE_URL=$CEVOC_BASE_URL" "CEVOC_SCRAPER_EVIDENCE_CONTACT=$LIVE_CONTACT" \
+            "CEVOC_CERTIFICATES_SEARCH_PAGE_URL=https://cevoc.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf" \
+            CEVOC_CERTIFICATES_PROVIDERS=curl,http,browser \
+            --remove-env-vars CEVOC_BANNER_OCR_ENABLED >/dev/null
 
       - name: Show what is deployed
         run: |

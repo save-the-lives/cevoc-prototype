@@ -43,10 +43,9 @@ public class BeanConfig {
 
     /**
      * Reads the camera banner text out of the first evidence image (OCR, server side, Tesseract command line inside the image).
-     * Off unless cevoc.banner-ocr.enabled=true (env CEVOC_BANNER_OCR_ENABLED). Demo data never uses it. See record 0019.
+     * Always available: the scraper adapter uses it when active; other adapters ignore it. Demo data never uses it. See record 0019.
      */
     @Bean
-    @ConditionalOnProperty(name = "cevoc.banner-ocr.enabled", havingValue = "true")
     cevoc.application.port.out.BannerTextReaderPort bannerTextReader(
             @Value("${cevoc.banner-ocr.command:tesseract}") String command,
             @Value("${cevoc.banner-ocr.timeout-seconds:30}") long timeoutSeconds) {
