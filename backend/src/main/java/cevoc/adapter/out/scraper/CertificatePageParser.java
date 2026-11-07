@@ -166,13 +166,20 @@ public class CertificatePageParser {
             if (cells.isEmpty() || cells.stream().anyMatch(c -> c.hasAttr("colspan"))) continue; // header/empty-message rows
             String period = cell(cells, cols.get("period"));
             LocalDateTime[] window = period(period);
+            LocalDateTime certified = dateTime(cell(cells, cols.get("certified")), false);
+            LocalDateTime expiry = dateTime(cell(cells, cols.get("expiry")), false);
+            // When the period is a keyword like "YEARLY" (no date range), fall back to certified/expiry dates
+            if (window[0] == null && window[1] == null && isKeywordPeriod(period)) {
+                window[0] = certified;
+                window[1] = expiry != null ? expiry : (certified != null ? certified.plusYears(1) : null);
+            }
             out.add(new CertificateRef(
                     nullIfEmpty(cell(cells, cols.get("description"))),
                     nullIfEmpty(cell(cells, cols.get("type"))),
                     nullIfEmpty(period),
                     window[0], window[1],
-                    dateTime(cell(cells, cols.get("certified")), false),
-                    dateTime(cell(cells, cols.get("expiry")), false),
+                    certified,
+                    expiry,
                     href(row)));
         }
         return out;
@@ -252,13 +259,19 @@ public class CertificatePageParser {
         if (!rec.containsKey("description") && !rec.containsKey("period")) return;
         String period = rec.getOrDefault("period", "");
         LocalDateTime[] window = period(period);
+        LocalDateTime certified = dateTime(rec.getOrDefault("certified", ""), false);
+        LocalDateTime expiry = dateTime(rec.getOrDefault("expiry", ""), false);
+        if (window[0] == null && window[1] == null && isKeywordPeriod(period)) {
+            window[0] = certified;
+            window[1] = expiry != null ? expiry : (certified != null ? certified.plusYears(1) : null);
+        }
         out.add(new CertificateRef(
                 nullIfEmpty(rec.getOrDefault("description", "")),
                 nullIfEmpty(rec.getOrDefault("type", "")),
                 nullIfEmpty(period),
                 window[0], window[1],
-                dateTime(rec.getOrDefault("certified", ""), false),
-                dateTime(rec.getOrDefault("expiry", ""), false),
+                certified,
+                expiry,
                 null));
     }
 
@@ -282,6 +295,13 @@ public class CertificatePageParser {
         return null;
     }
 
+    /**
+     * Known keyword-based period values (no date range, just a recurrence label).
+     * When matched, the period window must be inferred from certifiedDate/expiryDate.
+     */
+    static final Pattern KEYWORD_PERIOD = Pattern.compile(
+            "^\\s*(YEARLY|ANNUAL|MONTHLY|WEEKLY|DAILY|BIENNIAL|TRIENNIAL)\\s*$", Pattern.CASE_INSENSITIVE);
+
     /** The first two date values in the Period text, whatever separates them. Tries all known date formats. Else both null. */
     static LocalDateTime[] period(String text) {
         for (int pi = 0; pi < DATE_PATTERNS.length; pi++) {
@@ -293,6 +313,11 @@ public class CertificatePageParser {
             if (from != null && to != null) return new LocalDateTime[] {from, to};
         }
         return new LocalDateTime[] {null, null};
+    }
+
+    /** True when the period text is a keyword (e.g. "YEARLY") rather than a date range. */
+    static boolean isKeywordPeriod(String text) {
+        return text != null && KEYWORD_PERIOD.matcher(text).matches();
     }
 
     /** Parses a single date from text using all known formats. Date-only gives 00:00, or end of day when endOfDay is true. Unparseable gives null. */

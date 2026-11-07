@@ -235,4 +235,54 @@ class CertificatePageParserTest {
         assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), CertificatePageParser.dateTime("1 JUL 2026", false));
         assertEquals(LocalDateTime.of(2026, 7, 1, 0, 0), CertificatePageParser.dateTime("1 jul 2026", false));
     }
+
+    @Test
+    void isKeywordPeriodMatchesKnownKeywords() {
+        assertTrue(CertificatePageParser.isKeywordPeriod("YEARLY"));
+        assertTrue(CertificatePageParser.isKeywordPeriod("Yearly"));
+        assertTrue(CertificatePageParser.isKeywordPeriod("  MONTHLY  "));
+        assertTrue(CertificatePageParser.isKeywordPeriod("ANNUAL"));
+        assertTrue(CertificatePageParser.isKeywordPeriod("DAILY"));
+        assertTrue(CertificatePageParser.isKeywordPeriod("BIENNIAL"));
+        assertTrue(CertificatePageParser.isKeywordPeriod("TRIENNIAL"));
+        assertFalse(CertificatePageParser.isKeywordPeriod("01/07/2026 00:00 - 31/12/2026 23:59"));
+        assertFalse(CertificatePageParser.isKeywordPeriod("not a period"));
+        assertFalse(CertificatePageParser.isKeywordPeriod(null));
+        assertFalse(CertificatePageParser.isKeywordPeriod(""));
+    }
+
+    @Test
+    void keywordPeriodFallsBackToCertifiedAndExpiryDates() {
+        List<CertificateRef> certs = parser.parseCertificates(fixture("results-keyword-period.html"));
+        assertEquals(3, certs.size());
+
+        // "YEARLY" with certified 01/03/2025 and expiry 28/02/2026
+        CertificateRef f = certs.get(0);
+        assertEquals("TEST camera certificate F", f.description());
+        assertEquals("YEARLY", f.periodText());
+        assertEquals(LocalDateTime.of(2025, 3, 1, 0, 0), f.periodFrom());
+        assertEquals(LocalDateTime.of(2026, 2, 28, 0, 0), f.periodTo());
+        assertTrue(f.covers(LocalDateTime.of(2025, 6, 15, 12, 0)));
+        assertFalse(f.covers(LocalDateTime.of(2026, 10, 30, 11, 12)));
+
+        // "Yearly" (mixed case) with certified 01/03/2026 and expiry 28/02/2027
+        CertificateRef g = certs.get(1);
+        assertEquals("Yearly", g.periodText());
+        assertEquals(LocalDateTime.of(2026, 3, 1, 0, 0), g.periodFrom());
+        assertTrue(g.covers(LocalDateTime.of(2026, 10, 30, 11, 12)));
+
+        // "MONTHLY"
+        CertificateRef h = certs.get(2);
+        assertEquals("MONTHLY", h.periodText());
+        assertNotNull(h.periodFrom());
+        assertNotNull(h.periodTo());
+    }
+
+    @Test
+    void periodStillReturnsNullForKeyword() {
+        // period() itself doesn't handle keywords -- it just returns nulls
+        LocalDateTime[] p = CertificatePageParser.period("YEARLY");
+        assertNull(p[0]);
+        assertNull(p[1]);
+    }
 }
