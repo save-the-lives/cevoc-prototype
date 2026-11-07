@@ -1,7 +1,8 @@
 // Pure helpers for the "Camera certificates" list. Contract per row:
 // { description, type, periodText, certifiedDate: 'yyyy-MM-dd', expiryDate: 'yyyy-MM-dd', coversOffence: boolean }
-// The server sends only the certificates that bear on the offence (the one in force, or the two either side of a gap), already
-// in the order to show, with a coverage summary { status: 'covered'|'gap'|'none', side, gapDays, message }.
+// The server sends only the certificates that bear on the offence (one per type, covering the offence date),
+// plus uncoveredTypes: [{ description, gapDays, message }] for types with no covering certificate,
+// and a coverage summary { status: 'covered'|'gap'|'none', side, gapDays, message }.
 export const MAX_CARDS = 3;
 export const LABEL_VALID = 'In force on the offence date';
 export const LABEL_NOT_VALID = 'Not in force on the offence date';
@@ -18,7 +19,8 @@ export function formatDate(iso) {
 }
 
 export function hasCertificateList(result) {
-  return Array.isArray(result?.certificates) && result.certificates.length > 0;
+  return (Array.isArray(result?.certificates) && result.certificates.length > 0) ||
+         (Array.isArray(result?.uncoveredTypes) && result.uncoveredTypes.length > 0);
 }
 
 export function certificateLabel(cert) {
@@ -36,7 +38,7 @@ export function certificateRows(list) {
   }));
 }
 
-/** Tone for a coverage summary: ok when a certificate was in force or the two either side meet, warn for a real gap, neutral when unknown. */
+/** Tone for a coverage summary: ok when all types covered, warn when any uncovered, neutral when unknown. */
 export function coverageTone(coverage) {
   if (!coverage) return 'neutral';
   if (coverage.status === 'covered') return 'ok';
@@ -44,11 +46,11 @@ export function coverageTone(coverage) {
   return 'neutral';
 }
 
-/** Short line above the cards. The server's message is the headline; this only says what the cards are. */
+/** Headline above the cards. Uses the server's coverage message directly. */
 export function certificateSummary(list, coverage) {
+  if (coverage?.message) return coverage.message;
+  // Fallback for older server responses
   const n = list.filter((c) => c.coversOffence === true).length;
   if (n > 0) return 'This camera was certified at the time of the offence.';
-  if (coverage?.status === 'gap' && list.length === 2) return 'These are the certificates either side of the offence date.';
-  if (coverage?.status === 'gap') return 'This is the nearest certificate to the offence date.';
   return 'None of these certificates was in force on the offence date.';
 }

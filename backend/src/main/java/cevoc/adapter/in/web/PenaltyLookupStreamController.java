@@ -3,6 +3,7 @@ package cevoc.adapter.in.web;
 import cevoc.adapter.in.web.PenaltyLookupController.LookupBody;
 import cevoc.application.port.in.LookupPenaltyUseCase;
 import cevoc.application.port.in.LookupSink;
+import cevoc.domain.CertificateAssessment;
 import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
@@ -74,7 +75,9 @@ public class PenaltyLookupStreamController {
 
     public record Certificates(List<CertificateItem> certificates,
                                @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-                               CertificateCoverage coverage) {}
+                               CertificateCoverage coverage,
+                               @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+                               List<CertificateAssessment.UncoveredType> uncoveredTypes) {}
 
     /** The flexible details map (record 0009); sent only when a route returned any. */
     public record Extra(java.util.Map<String, Object> details) {}
@@ -134,12 +137,18 @@ public class PenaltyLookupStreamController {
 
             @Override
             public void certificates(List<CertificateItem> certificates) {
-                send(emitter, open, "certificates", new Certificates(certificates, null));
+                send(emitter, open, "certificates", new Certificates(certificates, null, List.of()));
             }
 
             @Override
             public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage) {
-                send(emitter, open, "certificates", new Certificates(certificates, coverage));
+                send(emitter, open, "certificates", new Certificates(certificates, coverage, List.of()));
+            }
+
+            @Override
+            public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage,
+                                     List<CertificateAssessment.UncoveredType> uncoveredTypes) {
+                send(emitter, open, "certificates", new Certificates(certificates, coverage, uncoveredTypes));
             }
 
             @Override

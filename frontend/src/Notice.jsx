@@ -333,7 +333,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                 : certFailed || detailsFailed
                   ? <Failed what="the camera certificates" onRetry={onRetry} />
                   : hasCertificateList(result)
-                    ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} coverage={result.certificateCoverage} /></Suspense>
+                    ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} coverage={result.certificateCoverage} uncoveredTypes={result.uncoveredTypes} /></Suspense>
                     : result?.certificateCoverage?.status === 'none'
                       ? null
                       : oldCerts.length > 0

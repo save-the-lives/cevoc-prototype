@@ -1,5 +1,6 @@
 package cevoc.application.port.in;
 
+import cevoc.domain.CertificateAssessment;
 import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
@@ -32,6 +33,12 @@ public interface LookupSink {
      */
     default void certificates(List<CertificateItem> certificates, CertificateCoverage coverage) {
         certificates(certificates);
+    }
+
+    /** With uncovered types from the per-type assessment. Default: delegates without them. */
+    default void certificates(List<CertificateItem> certificates, CertificateCoverage coverage,
+                              List<CertificateAssessment.UncoveredType> uncoveredTypes) {
+        certificates(certificates, coverage);
     }
 
     void done();

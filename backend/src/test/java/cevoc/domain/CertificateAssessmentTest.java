@@ -2,7 +2,6 @@ package cevoc.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import cevoc.domain.CertificateCoverage.Side;
 import cevoc.domain.CertificateCoverage.Status;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
@@ -21,6 +20,15 @@ class CertificateAssessmentTest {
         LocalDate t = LocalDate.parse(to);
         return new CertificateRef(name, "Camera", from + " - " + to, f.atStartOfDay(), t.atTime(23, 59),
                 f.atStartOfDay(), t.atStartOfDay(), null);
+    }
+
+    /** Cert with a specific certifiedDate for tie-breaking. */
+    private static CertificateRef certWithCertDate(String name, String from, String to, String certDate) {
+        LocalDate f = LocalDate.parse(from);
+        LocalDate t = LocalDate.parse(to);
+        LocalDate cd = LocalDate.parse(certDate);
+        return new CertificateRef(name, "Camera", from + " - " + to, f.atStartOfDay(), t.atTime(23, 59),
+                cd.atStartOfDay(), t.atStartOfDay(), null);
     }
 
     private static List<String> names(CertificateAssessment a) {
@@ -47,117 +55,117 @@ class CertificateAssessmentTest {
     }
 
     @Test
-    void oneCertificateInForceIsShownAloneAndOldOnesAreDropped() {
+    void oneTypeOneCoveringCertificate() {
         CertificateAssessment a = CertificateAssessment.of(List.of(
-                cert("years ago", "2019-01-01", "2020-12-31"),
-                cert("covering", "2026-01-01", "2026-12-31"),
-                cert("far future", "2030-01-01", "2031-12-31")), OFFENCE);
-        assertThat(names(a)).containsExactly("covering");
+                cert("Yearly", "2026-01-01", "2026-12-31")), OFFENCE);
+        assertThat(names(a)).containsExactly("Yearly");
         assertThat(a.certificates().get(0).coversOffence()).isTrue();
         assertThat(a.coverage().status()).isEqualTo(Status.COVERED);
-        assertThat(a.coverage().side()).isNull();
-        assertThat(a.coverage().gapDays()).isNull();
         assertThat(a.coverage().message()).isEqualTo("This camera was certified at the time of the offence.");
+        assertThat(a.uncoveredTypes()).isEmpty();
     }
 
     @Test
-    void severalInForceAreCappedAtThreeNewestFirst() {
+    void twoTypesAllCoveredHeadlineIsCovered() {
         CertificateAssessment a = CertificateAssessment.of(List.of(
-                cert("a", "2026-01-01", "2026-12-31"), cert("b", "2026-02-01", "2026-12-31"),
-                cert("c", "2026-03-01", "2026-12-31"), cert("d", "2026-04-01", "2026-12-31")), OFFENCE);
-        assertThat(names(a)).containsExactly("d", "c", "b");
-        assertThat(a.certificates()).allMatch(CertificateItem::coversOffence);
+                cert("Yearly", "2026-01-01", "2026-12-31"),
+                cert("Quarterly", "2026-04-01", "2026-09-30")), OFFENCE);
+        assertThat(names(a)).containsExactly("Yearly", "Quarterly");
+        assertThat(a.coverage().status()).isEqualTo(Status.COVERED);
+        assertThat(a.coverage().message()).isEqualTo("This camera was certified at the time of the offence.");
+        assertThat(a.uncoveredTypes()).isEmpty();
     }
 
     @Test
-    void expiredThenFutureWithAGapShowsBothAndTheGapInDays() {
-        // expired 31 May, next starts 10 July: 1 June to 9 July is 39 days with no certificate
+    void oneTypeUncoveredProducesPartialHeadline() {
         CertificateAssessment a = CertificateAssessment.of(List.of(
-                cert("long ago", "2020-01-01", "2021-12-31"),
-                cert("before", "2025-06-01", "2026-05-31"),
-                cert("after", "2026-07-10", "2027-07-09"),
-                cert("much later", "2028-01-01", "2029-12-31")), OFFENCE);
-        assertThat(names(a)).containsExactly("before", "after");
-        assertThat(a.certificates()).noneMatch(CertificateItem::coversOffence);
+                cert("Yearly", "2026-01-01", "2026-12-31"),
+                cert("Quarterly", "2025-01-01", "2026-03-31")), OFFENCE);
+        assertThat(names(a)).containsExactly("Yearly");
         assertThat(a.coverage().status()).isEqualTo(Status.GAP);
-        assertThat(a.coverage().side()).isEqualTo(Side.BETWEEN);
-        assertThat(a.coverage().gapDays()).isEqualTo(39);
-        assertThat(a.coverage().message()).isEqualTo("There is a 39 day gap in certification around the offence date.");
+        assertThat(a.coverage().message()).isEqualTo("Some camera certificates may not have been in force on the offence date.");
+        assertThat(a.uncoveredTypes()).hasSize(1);
+        assertThat(a.uncoveredTypes().get(0).description()).isEqualTo("Quarterly");
+        assertThat(a.uncoveredTypes().get(0).message()).contains("No Quarterly certificate covered the offence date");
     }
 
     @Test
-    void unsortedInputGivesTheSameAnswer() {
+    void uncoveredTypeShowsGapDays() {
+        // Quarterly expired on 31 March, offence on 15 June: 76 days gap
         CertificateAssessment a = CertificateAssessment.of(List.of(
-                cert("after", "2026-07-10", "2027-07-09"), cert("long ago", "2020-01-01", "2021-12-31"),
-                cert("before", "2025-06-01", "2026-05-31")), OFFENCE);
-        assertThat(names(a)).containsExactly("before", "after");
-        assertThat(a.coverage().gapDays()).isEqualTo(39);
+                cert("Yearly", "2026-01-01", "2026-12-31"),
+                cert("Quarterly", "2025-04-01", "2026-03-31")), OFFENCE);
+        CertificateAssessment.UncoveredType u = a.uncoveredTypes().get(0);
+        assertThat(u.gapDays()).isEqualTo(76);
+        assertThat(u.message()).contains("76 days gap");
     }
 
     @Test
-    void expiredThenFutureBackToBackIsContinuous() {
-        // Times inside one day: the first Period ends at 10:00 and the next starts at 11:00 on the offence day, so the
-        // offence minute (10:30) is in neither, yet no whole day is missing.
-        CertificateRef before = new CertificateRef("before", "Camera", "p", LocalDateTime.of(2025, 6, 16, 0, 0),
-                LocalDateTime.of(2026, 6, 15, 10, 0), null, null, null);
-        CertificateRef after = new CertificateRef("after", "Camera", "p", LocalDateTime.of(2026, 6, 15, 11, 0),
-                LocalDateTime.of(2027, 6, 15, 23, 59), null, null, null);
-        CertificateAssessment a = CertificateAssessment.of(List.of(after, before), OFFENCE);
-        assertThat(names(a)).containsExactly("before", "after");
+    void dedupBySameDescriptionKeepsCoveringWithLatestCertifiedDate() {
+        // Two certs with the same description both cover, but different certifiedDate
+        CertificateAssessment a = CertificateAssessment.of(List.of(
+                certWithCertDate("Yearly", "2026-01-01", "2026-12-31", "2026-01-15"),
+                certWithCertDate("Yearly", "2026-03-01", "2026-12-31", "2026-03-15")), OFFENCE);
+        assertThat(a.certificates()).hasSize(1);
+        // Should pick the one with latest certifiedDate (2026-03-15)
+        assertThat(a.certificates().get(0).certifiedDate()).isEqualTo("2026-03-15");
+    }
+
+    @Test
+    void dedupIsCaseInsensitive() {
+        CertificateAssessment a = CertificateAssessment.of(List.of(
+                cert("YEARLY", "2026-01-01", "2026-12-31"),
+                cert("yearly", "2026-02-01", "2026-12-31")), OFFENCE);
+        assertThat(a.certificates()).hasSize(1);
+    }
+
+    @Test
+    void oldCertificatesOutsideLookbackAreIgnored() {
+        // Lookback is 2 years. A cert from 3 years ago should be ignored.
+        CertificateAssessment a = CertificateAssessment.of(List.of(
+                cert("Yearly", "2022-01-01", "2023-06-14")), OFFENCE);
+        assertThat(a.certificates()).isEmpty();
+        assertThat(a.coverage().status()).isEqualTo(Status.NONE);
+        assertThat(a.coverage().message()).contains("within 2 years");
+    }
+
+    @Test
+    void certWithinLookbackIsKept() {
+        CertificateAssessment a = CertificateAssessment.of(List.of(
+                cert("Yearly", "2025-01-01", "2025-12-31")), OFFENCE);
+        // Not covering, but within lookback — should appear as uncovered type
+        assertThat(a.uncoveredTypes()).hasSize(1);
+    }
+
+    @Test
+    void allTypesUncoveredShowsGapHeadline() {
+        CertificateAssessment a = CertificateAssessment.of(List.of(
+                cert("Yearly", "2025-01-01", "2025-12-31"),
+                cert("Quarterly", "2025-04-01", "2026-03-31")), OFFENCE);
+        assertThat(a.certificates()).isEmpty();
+        assertThat(a.uncoveredTypes()).hasSize(2);
         assertThat(a.coverage().status()).isEqualTo(Status.GAP);
-        assertThat(a.coverage().side()).isEqualTo(Side.BETWEEN);
-        assertThat(a.coverage().gapDays()).isZero();
-        assertThat(a.coverage().message()).isEqualTo("The camera was certified continuously around the offence date.");
-    }
-
-    @Test
-    void consecutiveDatesAreContinuous() {
-        // Ends 14 June, next starts 15 June: nothing missing. The offence falls in the last seconds of 14 June, after the
-        // 23:59 end and before the 00:00 start.
-        LocalDateTime between = LocalDateTime.of(2026, 6, 14, 23, 59, 30);
-        CertificateAssessment a = CertificateAssessment.of(List.of(
-                cert("before", "2025-06-15", "2026-06-14"), cert("after", "2026-06-15", "2027-06-14")), between);
-        assertThat(names(a)).containsExactly("before", "after");
-        assertThat(a.coverage().gapDays()).isZero();
-        assertThat(a.coverage().message()).isEqualTo("The camera was certified continuously around the offence date.");
-    }
-
-    @Test
-    void onlyEarlierCertificatesSayHowLongAgoTheLastOneExpired() {
-        CertificateAssessment a = CertificateAssessment.of(List.of(
-                cert("older", "2023-01-01", "2024-12-31"), cert("latest", "2025-06-01", "2026-06-05")), OFFENCE);
-        assertThat(names(a)).containsExactly("latest");
-        assertThat(a.coverage().status()).isEqualTo(Status.GAP);
-        assertThat(a.coverage().side()).isEqualTo(Side.BEFORE_ONLY);
-        assertThat(a.coverage().gapDays()).isEqualTo(10);
-        assertThat(a.coverage().message()).isEqualTo("The most recent certificate expired 10 days before the offence.");
-    }
-
-    @Test
-    void onlyEarlierCertificateExpiredYesterdayUsesTheSingular() {
-        CertificateAssessment a = CertificateAssessment.of(List.of(cert("latest", "2025-06-01", "2026-06-14")), OFFENCE);
-        assertThat(a.coverage().message()).isEqualTo("The most recent certificate expired 1 day before the offence.");
-    }
-
-    @Test
-    void onlyLaterCertificatesSayHowSoonTheNextOneStarts() {
-        CertificateAssessment a = CertificateAssessment.of(List.of(
-                cert("next", "2026-06-25", "2027-06-24"), cert("after that", "2027-06-25", "2028-06-24")), OFFENCE);
-        assertThat(names(a)).containsExactly("next");
-        assertThat(a.coverage().status()).isEqualTo(Status.GAP);
-        assertThat(a.coverage().side()).isEqualTo(Side.AFTER_ONLY);
-        assertThat(a.coverage().gapDays()).isEqualTo(10);
-        assertThat(a.coverage().message()).isEqualTo("The next certificate starts 10 days after the offence.");
+        assertThat(a.coverage().message()).isEqualTo("Some camera certificates may not have been in force on the offence date.");
     }
 
     @Test
     void theCoverageSerialisesToTheAgreedWireShape() throws Exception {
         ObjectMapper m = new ObjectMapper();
-        CertificateAssessment gap = CertificateAssessment.of(List.of(
-                cert("before", "2025-06-01", "2026-05-31"), cert("after", "2026-07-10", "2027-07-09")), OFFENCE);
-        assertThat(m.readTree(m.writeValueAsString(gap.coverage())).toString())
-                .isEqualTo("{\"status\":\"gap\",\"side\":\"between\",\"gapDays\":39,\"message\":\"There is a 39 day gap in certification around the offence date.\"}");
         CertificateAssessment covered = CertificateAssessment.of(List.of(cert("c", "2026-01-01", "2026-12-31")), OFFENCE);
-        assertThat(m.readTree(m.writeValueAsString(covered.coverage())).fieldNames()).toIterable().containsExactly("status", "message");
+        assertThat(m.readTree(m.writeValueAsString(covered.coverage())).get("status").asText()).isEqualTo("covered");
+        assertThat(m.readTree(m.writeValueAsString(covered.coverage())).get("message").asText())
+                .isEqualTo("This camera was certified at the time of the offence.");
+    }
+
+    @Test
+    void uncoveredTypesSerialiseProperly() throws Exception {
+        ObjectMapper m = new ObjectMapper();
+        CertificateAssessment a = CertificateAssessment.of(List.of(
+                cert("Yearly", "2026-01-01", "2026-12-31"),
+                cert("Quarterly", "2025-04-01", "2026-03-31")), OFFENCE);
+        String json = m.writeValueAsString(a);
+        var tree = m.readTree(json);
+        assertThat(tree.get("uncoveredTypes").size()).isEqualTo(1);
+        assertThat(tree.get("uncoveredTypes").get(0).get("description").asText()).isEqualTo("Quarterly");
     }
 }

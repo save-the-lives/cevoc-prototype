@@ -28,10 +28,15 @@ describe('certificate helpers', () => {
     const [r] = certificateRows([c({ coversOffence: true, certifiedDate: '2026-03-14', expiryDate: '2027-03-13' })]);
     expect(r).toMatchObject({ covers: true, label: 'In force on the offence date', certifiedText: '14 Mar 2026', expiryText: '13 Mar 2027' });
   });
-  it('says what the cards are', () => {
-    expect(certificateSummary([c({ coversOffence: true })], { status: 'covered' })).toBe('This camera was certified at the time of the offence.');
-    expect(certificateSummary([c(), c()], { status: 'gap', side: 'between', gapDays: 5 })).toMatch(/either side/);
-    expect(certificateSummary([c()], { status: 'gap', side: 'before-only', gapDays: 5 })).toMatch(/nearest/);
+  it('uses the server coverage message as the headline', () => {
+    expect(certificateSummary([c({ coversOffence: true })], { status: 'covered', message: 'This camera was certified at the time of the offence.' }))
+      .toBe('This camera was certified at the time of the offence.');
+    expect(certificateSummary([c()], { status: 'gap', message: 'Some camera certificates may not have been in force on the offence date.' }))
+      .toMatch(/may not have been in force/);
+  });
+  it('falls back when coverage has no message', () => {
+    expect(certificateSummary([c({ coversOffence: true })], { status: 'covered' }))
+      .toBe('This camera was certified at the time of the offence.');
     expect(certificateSummary([c()], null)).toMatch(/None of these/);
   });
   it('picks a tone from the coverage summary', () => {
@@ -43,8 +48,9 @@ describe('certificate helpers', () => {
     expect(coverageTone({ status: 'none' })).toBe('neutral');
     expect(coverageTone(null)).toBe('neutral');
   });
-  it('falls back to the old display unless certificates is a non-empty array', () => {
+  it('detects certificate data from either certificates or uncoveredTypes', () => {
     expect(hasCertificateList({ certificates: [c()] })).toBe(true);
+    expect(hasCertificateList({ certificates: [], uncoveredTypes: [{ description: 'x', message: 'y' }] })).toBe(true);
     expect(hasCertificateList({ certificates: [] })).toBe(false);
     expect(hasCertificateList({ certificates: null })).toBe(false);
     expect(hasCertificateList({})).toBe(false);

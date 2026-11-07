@@ -33,7 +33,7 @@ describe('lookup state', () => {
   it('a single JSON answer keeps the coverage summary', () => {
     const coverage = { status: 'covered', message: 'x' };
     const ev = eventsFromResult({ ...details, evidence: [], certificates: [{}], certificateCoverage: coverage }).find((e) => e[0] === 'certificates');
-    expect(ev[1]).toEqual({ certificates: [{}], coverage });
+    expect(ev[1]).toEqual({ certificates: [{}], coverage, uncoveredTypes: [] });
   });
 
   it('carries the plate-required flag into the result', () => {

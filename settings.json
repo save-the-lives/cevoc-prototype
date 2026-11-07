@@ -5,6 +5,7 @@
   "certificates.intraDelayMaxMs": 1000,
   "certificates.cacheTtlSeconds": 300,
   "certificates.curl.timeoutSeconds": 10,
+  "certificates.lookbackYears": 2,
 
   "_candidates": [
     "SSE heartbeat interval (currently 8s in PenaltyLookupStreamController.HEARTBEAT_SECONDS)",

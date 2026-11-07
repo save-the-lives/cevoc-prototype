@@ -33,11 +33,13 @@ public record PenaltyLookupResult(
         @JsonIgnore String certificatesNote,
         boolean plateRequired,
         @JsonInclude(JsonInclude.Include.NON_EMPTY) Map<String, Object> details,
-        @JsonInclude(JsonInclude.Include.NON_NULL) CertificateCoverage certificateCoverage) {
+        @JsonInclude(JsonInclude.Include.NON_NULL) CertificateCoverage certificateCoverage,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<CertificateAssessment.UncoveredType> uncoveredTypes) {
 
     public PenaltyLookupResult {
         certificates = certificates == null ? List.of() : List.copyOf(certificates);
         details = details == null ? Map.of() : Map.copyOf(details);
+        uncoveredTypes = uncoveredTypes == null ? List.of() : List.copyOf(uncoveredTypes);
     }
 
     /** Without a coverage summary. */
@@ -46,7 +48,7 @@ public record PenaltyLookupResult(
                                List<CertificateItem> certificates, String certificatesNote, boolean plateRequired,
                                Map<String, Object> details) {
         this(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates, certificatesNote,
-                plateRequired, details, null);
+                plateRequired, details, null, List.of());
     }
 
     /** Without details (the common case until a route fills the map). */
@@ -66,18 +68,18 @@ public record PenaltyLookupResult(
     /** A copy with the evidence list replaced (for example linked, or emptied for the early "details" part). */
     public PenaltyLookupResult withEvidence(List<EvidenceItem> items) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, items, source, cameraCode, certificates,
-                certificatesNote, plateRequired, details, certificateCoverage);
+                certificatesNote, plateRequired, details, certificateCoverage, uncoveredTypes);
     }
 
     public PenaltyLookupResult withPlateRequired(boolean required) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates,
-                certificatesNote, required, details, certificateCoverage);
+                certificatesNote, required, details, certificateCoverage, uncoveredTypes);
     }
 
     /** A copy carrying the flexible details map (null or empty clears it). */
     public PenaltyLookupResult withDetails(Map<String, Object> extra) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates,
-                certificatesNote, plateRequired, extra, certificateCoverage);
+                certificatesNote, plateRequired, extra, certificateCoverage, uncoveredTypes);
     }
 
     /** With a camera code but no certificates yet. */
@@ -88,13 +90,19 @@ public record PenaltyLookupResult(
 
     /** Returns a copy carrying the certificate list (covering rows marked) and an internal status note. */
     public PenaltyLookupResult withCertificates(List<CertificateItem> items, String note) {
-        return withCertificates(items, null, note);
+        return withCertificates(items, null, List.of(), note);
     }
 
     /** As above, with the coverage summary for the (already filtered) list. */
     public PenaltyLookupResult withCertificates(List<CertificateItem> items, CertificateCoverage coverage, String note) {
+        return withCertificates(items, coverage, List.of(), note);
+    }
+
+    /** Full version with uncovered types from the per-type assessment. */
+    public PenaltyLookupResult withCertificates(List<CertificateItem> items, CertificateCoverage coverage,
+                                                List<CertificateAssessment.UncoveredType> uncovered, String note) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, items, note,
-                plateRequired, details, coverage);
+                plateRequired, details, coverage, uncovered);
     }
 
     /** Without a camera code (all adapters except the evidence scraper). */

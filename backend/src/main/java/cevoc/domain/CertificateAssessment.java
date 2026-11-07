@@ -2,87 +2,124 @@ package cevoc.domain;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Decides which certificates matter for an offence and what they say about the camera. Pure domain logic.
- * <ul>
- *   <li>If one or more certificates were in force at the offence time: those (at most {@value #MAX_SHOWN}, newest first), status covered.</li>
- *   <li>Otherwise the certificate that expired most recently before the offence and the one that starts soonest after it
- *       (either may be missing), status gap, with the gap measured in whole days.</li>
- *   <li>No usable certificate: nothing listed, status none.</li>
- * </ul>
- * Certificates whose Period could not be read are ignored. Older or later certificates have no bearing and are dropped.
+ * <p>
+ * Certificates are grouped by description (case-insensitive trim) — each distinct description is one "type".
+ * Per type, exactly one certificate is shown: the one covering the offence date (tie-break: latest certifiedDate).
+ * Types with no covering certificate produce an uncovered-type message instead of a card.
+ * <p>
+ * Overall headline: "This camera was certified at the time of the offence" only when every type is covered.
+ * Otherwise: "Some camera certificates may not have been in force on the offence date."
  */
-public record CertificateAssessment(List<CertificateItem> certificates, CertificateCoverage coverage) {
+public record CertificateAssessment(List<CertificateItem> certificates, CertificateCoverage coverage,
+                                    List<UncoveredType> uncoveredTypes) {
 
-    static final int MAX_SHOWN = 3;
+    /** Default look-back window in years. */
+    static final int LOOKBACK_YEARS = 2;
 
     public CertificateAssessment {
         certificates = List.copyOf(certificates);
+        uncoveredTypes = uncoveredTypes == null ? List.of() : List.copyOf(uncoveredTypes);
     }
 
+    /** An uncovered certificate type: no certificate of this description covered the offence date. */
+    public record UncoveredType(String description, Long gapDays, String message) {}
+
     public static CertificateAssessment of(List<CertificateRef> all, LocalDateTime offenceAt) {
+        return of(all, offenceAt, LOOKBACK_YEARS);
+    }
+
+    public static CertificateAssessment of(List<CertificateRef> all, LocalDateTime offenceAt, int lookbackYears) {
         List<CertificateRef> usable = all == null ? List.of() : all.stream()
                 .filter(c -> c != null && c.periodFrom() != null && c.periodTo() != null).toList();
         if (usable.isEmpty() || offenceAt == null) {
             String msg = all == null || all.isEmpty() ? "We found no certificates for this camera around the offence date."
                     : "We found certificates for this camera but could not read their dates.";
-            return new CertificateAssessment(List.of(), new CertificateCoverage(CertificateCoverage.Status.NONE, null, null, msg));
+            return new CertificateAssessment(List.of(), new CertificateCoverage(CertificateCoverage.Status.NONE, null, null, msg), List.of());
         }
-        List<CertificateRef> covering = usable.stream().filter(c -> c.covers(offenceAt))
-                .sorted(Comparator.comparing(CertificateRef::periodFrom).reversed())
-                .filter(distinctByKey(c -> dedupKey(c)))
-                .limit(MAX_SHOWN).toList();
-        if (!covering.isEmpty()) {
-            return new CertificateAssessment(covering.stream().map(c -> CertificateItem.from(c, true)).toList(),
-                    new CertificateCoverage(CertificateCoverage.Status.COVERED, null, null,
-                            "This camera was certified at the time of the offence."));
+
+        // Apply look-back window: only consider certificates within N years of the offence
+        LocalDateTime cutoff = offenceAt.minusYears(lookbackYears);
+        usable = usable.stream().filter(c -> !c.periodTo().isBefore(cutoff)).toList();
+        if (usable.isEmpty()) {
+            return new CertificateAssessment(List.of(),
+                    new CertificateCoverage(CertificateCoverage.Status.NONE, null, null,
+                            "We found no certificates for this camera within " + lookbackYears + " years of the offence date."),
+                    List.of());
         }
-        CertificateRef before = usable.stream().filter(c -> c.periodTo().isBefore(offenceAt))
-                .max(Comparator.comparing(CertificateRef::periodTo)).orElse(null);
-        CertificateRef after = usable.stream().filter(c -> c.periodFrom().isAfter(offenceAt))
-                .min(Comparator.comparing(CertificateRef::periodFrom)).orElse(null);
-        List<CertificateItem> shown = new java.util.ArrayList<>();
-        if (before != null) {
-            shown.add(CertificateItem.from(before, false));
+
+        // Group by description (case-insensitive trim) — each distinct description = one type
+        Map<String, List<CertificateRef>> byType = usable.stream()
+                .collect(Collectors.groupingBy(CertificateAssessment::dedupKey, LinkedHashMap::new, Collectors.toList()));
+
+        List<CertificateItem> covered = new ArrayList<>();
+        List<UncoveredType> uncovered = new ArrayList<>();
+
+        for (Map.Entry<String, List<CertificateRef>> entry : byType.entrySet()) {
+            List<CertificateRef> group = entry.getValue();
+            String typeDesc = group.get(0).description(); // original casing
+
+            // Find certs that cover the offence date
+            List<CertificateRef> covering = group.stream().filter(c -> c.covers(offenceAt)).toList();
+            if (!covering.isEmpty()) {
+                // Pick the one with the latest certifiedDate
+                CertificateRef best = covering.stream()
+                        .max(Comparator.comparing(c -> c.certifiedDate() == null ? LocalDateTime.MIN : c.certifiedDate()))
+                        .orElse(covering.get(0));
+                covered.add(CertificateItem.from(best, true));
+            } else {
+                // No certificate of this type covers the offence date — compute gap
+                CertificateRef before = group.stream().filter(c -> c.periodTo().isBefore(offenceAt))
+                        .max(Comparator.comparing(CertificateRef::periodTo)).orElse(null);
+                CertificateRef after = group.stream().filter(c -> c.periodFrom().isAfter(offenceAt))
+                        .min(Comparator.comparing(CertificateRef::periodFrom)).orElse(null);
+                Long gapDays = null;
+                if (before != null) {
+                    gapDays = ChronoUnit.DAYS.between(before.periodTo().toLocalDate(), offenceAt.toLocalDate());
+                } else if (after != null) {
+                    gapDays = ChronoUnit.DAYS.between(offenceAt.toLocalDate(), after.periodFrom().toLocalDate());
+                }
+                String gapText = gapDays != null ? " (" + days(gapDays) + " gap)" : "";
+                String msg = "No " + typeDesc + " certificate covered the offence date" + gapText + ".";
+                uncovered.add(new UncoveredType(typeDesc, gapDays, msg));
+            }
         }
-        if (after != null) {
-            shown.add(CertificateItem.from(after, false));
+
+        // Overall status
+        boolean allCovered = uncovered.isEmpty() && !covered.isEmpty();
+        String headline;
+        CertificateCoverage.Status status;
+        if (allCovered) {
+            status = CertificateCoverage.Status.COVERED;
+            headline = "This camera was certified at the time of the offence.";
+        } else if (covered.isEmpty()) {
+            status = CertificateCoverage.Status.GAP;
+            headline = "Some camera certificates may not have been in force on the offence date.";
+        } else {
+            status = CertificateCoverage.Status.GAP;
+            headline = "Some camera certificates may not have been in force on the offence date.";
         }
-        if (before != null && after != null) {
-            long gap = Math.max(0, ChronoUnit.DAYS.between(before.periodTo().toLocalDate(), after.periodFrom().toLocalDate()) - 1);
-            String msg = gap == 0 ? "The camera was certified continuously around the offence date."
-                    : "There is a " + gap + " day gap in certification around the offence date.";
-            return new CertificateAssessment(shown, new CertificateCoverage(CertificateCoverage.Status.GAP,
-                    CertificateCoverage.Side.BETWEEN, gap, msg));
-        }
-        if (before != null) {
-            long days = ChronoUnit.DAYS.between(before.periodTo().toLocalDate(), offenceAt.toLocalDate());
-            String msg = days == 0 ? "The most recent certificate expired earlier on the day of the offence."
-                    : "The most recent certificate expired " + days(days) + " before the offence.";
-            return new CertificateAssessment(shown, new CertificateCoverage(CertificateCoverage.Status.GAP,
-                    CertificateCoverage.Side.BEFORE_ONLY, days, msg));
-        }
-        long days = ChronoUnit.DAYS.between(offenceAt.toLocalDate(), after.periodFrom().toLocalDate());
-        String msg = days == 0 ? "The next certificate starts later on the day of the offence."
-                : "The next certificate starts " + days(days) + " after the offence.";
-        return new CertificateAssessment(shown, new CertificateCoverage(CertificateCoverage.Status.GAP,
-                CertificateCoverage.Side.AFTER_ONLY, days, msg));
+
+        return new CertificateAssessment(covered,
+                new CertificateCoverage(status, null, null, headline),
+                uncovered);
     }
 
     private static String days(long n) {
         return n == 1 ? "1 day" : n + " days";
     }
 
-    /** Key for deduplication: same description means the same certificate type; keep only the newest per type. */
+    /** Key for grouping: same description means the same certificate type. */
     private static String dedupKey(CertificateRef c) {
-        return c.description() == null ? "" : c.description().trim().toLowerCase(java.util.Locale.ROOT);
-    }
-
-    private static <T> java.util.function.Predicate<T> distinctByKey(java.util.function.Function<? super T, ?> keyFn) {
-        java.util.Set<Object> seen = new java.util.HashSet<>();
-        return t -> seen.add(keyFn.apply(t));
+        return c.description() == null ? "" : c.description().trim().toLowerCase(Locale.ROOT);
     }
 }

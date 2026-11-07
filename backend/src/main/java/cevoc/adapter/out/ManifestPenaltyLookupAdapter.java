@@ -77,7 +77,7 @@ public class ManifestPenaltyLookupAdapter implements PenaltyLookupPort {
         PenaltyLookupResult found = new PenaltyLookupResult(PenaltyLookupResult.Status.FOUND, number,
                 "Demonstration data only.", notice, evidence, SOURCE);
         CertificateAssessment assessment = certificates(entry, notice.offenceDate().atTime(notice.offenceTime()));
-        return assessment == null ? found : found.withCertificates(assessment.certificates(), assessment.coverage(), null);
+        return assessment == null ? found : found.withCertificates(assessment.certificates(), assessment.coverage(), assessment.uncoveredTypes(), null);
     }
 
     /** Null when the case has no rows. Optional fictitious "certificates" rows; periodFrom/periodTo (ISO date-time or date) decide which row covers the offence. */

@@ -159,7 +159,7 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             } else {
                 withCerts = withCertificates(raw);
             }
-            sink.certificates(withCerts.certificates(), withCerts.certificateCoverage());
+            sink.certificates(withCerts.certificates(), withCerts.certificateCoverage(), withCerts.uncoveredTypes());
             sink.done();
         } catch (RuntimeException e) {
             sink.error(StepCause.of(e).token());
@@ -196,7 +196,8 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
                 trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
             }
             LOG.info("Certificates step ok: count={}, duration={}ms", items.size(), (System.nanoTime() - start) / 1_000_000);
-            return r.withCertificates(items, assessment.coverage(), items.isEmpty() ? "No certificates found" : null);
+            return r.withCertificates(items, assessment.coverage(), assessment.uncoveredTypes(),
+                    items.isEmpty() && assessment.uncoveredTypes().isEmpty() ? "No certificates found" : null);
         } catch (RuntimeException e) {
             if (!trace.has(LookupStep.CERTIFICATES)) {
                 trace.ok(LookupStep.CERTIFICATES, (System.nanoTime() - start) / 1_000_000);
