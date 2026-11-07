@@ -260,7 +260,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
     { id: 'step-what', label: 'What happened' }, { id: 'step-evidence', label: 'Was it my vehicle?' },
     { id: 'step-measure', label: 'How it was measured' }, { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
   ];
-  const status = known ? statusSummary(n) : null;
+  const status = known ? statusSummary(n, query?.infringementNumber) : null;
   const certAns = certLoading ? { tone: 'neutral', text: 'Checking the camera certificates…' } : certificateAnswer(result || {});
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
   const expiredCtx = useMemo(() => ({ rerun: onRerun || null, expired: timedOut, report }), [onRerun, timedOut, report]);
@@ -278,7 +278,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
       </div>
       {query && (
         <p className="query-line" ref={headingRef} tabIndex={-1}>
-          Penalty notice {query.infringementNumber}, {niceDate(query.offenceDate)}.
+          {prog?.label || 'Camera offence'}, {niceDate(query.offenceDate)}.
         </p>
       )}
       {demo && <p className="banner" role="note"><strong>Demonstration data only.</strong> This is not a real notice.</p>}
@@ -286,31 +286,20 @@ export default function Notice({ result, query, sections = READY, registrationGi
       <section className={`stat is-${status?.tone || 'info'}`} aria-labelledby="stat-h" aria-live="polite" aria-busy={detailsLoading || undefined}>
         {status ? (
           status.resolved ? (
-            /* Resolved state (paid, caution): simple confirmation, no actions needed */
-            <div>
-              <h2 id="stat-h">{status.stage}</h2>
-              <p className="stat-lead">{status.headline}</p>
-              {status.sub && <p className="muted">{status.sub}</p>}
+            /* Resolved (paid, caution): confirmation with notice number */
+            <div className="stat-resolved">
+              <span className="stat-icon" aria-hidden="true">&#9432;</span>
+              <div>
+                <p className="stat-lead">{status.headline}</p>
+                <p className="muted">{status.sub}</p>
+              </div>
             </div>
           ) : (
-            /* Actionable state (payable, other): three-column with next steps and options */
-            <div className="stat-grid">
-              <div className="stat-col">
-                <h2 id="stat-h">{status.stage}</h2>
-                <p className="stat-lead">{status.headline}</p>
-                {n.statusMessage && n.noticeStatus !== 'OTHER' && <p className="muted">{n.statusMessage}</p>}
-              </div>
-              {status.next && (
-                <div className="stat-col">
-                  <h3>What happens next</h3>
-                  <p>{status.next}</p>
-                </div>
-              )}
-              <div className="stat-col">
-                <h3>Your options</h3>
-                <p>{status.options}</p>
-                <button type="button" className="btn-primary-sm" onClick={() => document.getElementById('step-options')?.scrollIntoView({ behavior: 'smooth' })}>See your options ↓</button>
-              </div>
+            /* Not paid: compact single-line with options link */
+            <div className="stat-compact">
+              <span className="stat-icon" aria-hidden="true">&#9432;</span>
+              <p className="stat-lead">{status.headline}</p>
+              <button type="button" className="stat-link" onClick={() => document.getElementById('step-options')?.scrollIntoView({ behavior: 'smooth' })}>My options ↓</button>
             </div>
           )
         ) : (

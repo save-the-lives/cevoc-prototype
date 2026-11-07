@@ -78,13 +78,14 @@ export function certificateAnswer(result) {
 }
 
 /** Headline for the notice status box. Only says what the data says. */
-export function statusSummary(notice) {
+export function statusSummary(notice, infringementNumber) {
   const owing = money(notice.amountOwing);
+  const num = infringementNumber || '';
   switch (notice.noticeStatus) {
-    case 'PAID': return { tone: 'info', stage: 'Paid', headline: 'This penalty has been paid.', sub: 'This penalty notice is paid. No need to take any further action.', resolved: true };
-    case 'CAUTION': return { tone: 'info', stage: 'Caution', headline: 'This penalty has been replaced with a caution.', sub: 'You no longer need to pay.', resolved: true };
-    case 'PAYABLE': return { tone: 'warn', stage: 'Payment due', headline: owing ? `${owing} is owing on this notice.` : 'Payment is due on this notice.', next: 'Nothing here changes your notice. See your options below.', options: 'You can pay, ask for a review or set up a payment plan.', resolved: false };
-    default: return { tone: 'info', stage: 'Notice status', headline: notice.statusMessage || 'Contact us about the current status of this notice.', next: '', options: 'You may still be able to pay, ask for a review or set up a payment plan.', resolved: false };
+    case 'PAID': return { tone: 'info', resolved: true, headline: `Penalty notice ${num} has been paid.`, sub: 'No further action needed.' };
+    case 'CAUTION': return { tone: 'info', resolved: true, headline: `Penalty notice ${num} — caution issued.`, sub: 'No further action needed.' };
+    case 'PAYABLE': return { tone: 'warn', resolved: false, headline: owing ? `${owing} owing · penalty notice ${num}` : `Payment due · penalty notice ${num}` };
+    default: return { tone: 'info', resolved: false, headline: notice.statusMessage || `Penalty notice ${num} · contact us for status` };
   }
 }
 

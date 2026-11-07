@@ -58,9 +58,12 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .stat h2, .stat h3 { margin: 0 0 4px; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
 .stat p { margin: 4px 0; }
 .stat-lead { font-weight: 700; font-size: 1.1rem; }
-.stat-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-@media (min-width: 640px) { .stat-grid { grid-template-columns: 1fr 1fr 1fr; gap: 24px; } }
-.stat-col { display: flex; flex-direction: column; }
+.stat-resolved { display: flex; align-items: flex-start; gap: 12px; }
+.stat-compact { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stat-compact .stat-lead { flex: 1; min-width: 0; margin: 0; }
+.stat-icon { flex-shrink: 0; width: 24px; height: 24px; background: var(--navy); color: #fff; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 700; line-height: 1; }
+.stat-link { flex-shrink: 0; padding: 0; background: none; border: 0; color: var(--link, #2E5299); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap; }
+.stat-link:hover { text-decoration-thickness: 2px; }
 .btn-primary-sm { display: inline-block; margin-top: 8px; padding: 8px 20px; background: var(--navy); color: #fff; border: 0; border-radius: 4px; font-size: .9rem; font-weight: 600; text-decoration: none; text-align: center; cursor: pointer; }
 .btn-primary-sm:hover { background: #001a4d; }
 
