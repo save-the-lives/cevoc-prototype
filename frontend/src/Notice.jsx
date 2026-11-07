@@ -393,37 +393,6 @@ export default function Notice({ result, query, sections = READY, registrationGi
             </ul>
           </Step>
 
-          {/* Bottom banner — "If you'd like to know more" */}
-          <section className="know-more" aria-labelledby="know-more-h">
-            <h2 id="know-more-h">If you'd like to know more</h2>
-            <ul className="know-more-list">
-              <li>
-                <a href="https://www.nsw.gov.au/money-and-taxes/fines-and-fees/fines" target="_blank" rel="noopener noreferrer">
-                  How fines work in NSW<span aria-hidden="true"> ↗</span>
-                </a>
-              </li>
-              <li>
-                <a href="https://www.nsw.gov.au/driving-boating-and-transport/driving-nsw/demerits-penalties-and-offences/how-demerit-points-work" target="_blank" rel="noopener noreferrer">
-                  How demerit points work<span aria-hidden="true"> ↗</span>
-                </a>
-              </li>
-              <li>
-                <a href="https://www.transport.nsw.gov.au/roadsafety/topics-tips/speeding/enforcement-cameras" target="_blank" rel="noopener noreferrer">
-                  Speed and red light cameras<span aria-hidden="true"> ↗</span>
-                </a>
-              </li>
-              <li>
-                <a href="https://www.nsw.gov.au/money-and-taxes/fines-and-fees/fines/request-a-review" target="_blank" rel="noopener noreferrer">
-                  Request a review of your fine<span aria-hidden="true"> ↗</span>
-                </a>
-              </li>
-              <li>
-                <a href="https://www.legalaid.nsw.gov.au/my-problem-is-about/fines" target="_blank" rel="noopener noreferrer">
-                  Free legal help with fines<span aria-hidden="true"> ↗</span>
-                </a>
-              </li>
-            </ul>
-          </section>
         </div>
       </div>
     </div>
