@@ -12,10 +12,10 @@ const EvidenceGrid = lazy(() => import('./EvidenceGrid.jsx'));
 const CertificateList = lazy(() => import('./CertificateList.jsx'));
 
 const OPTIONS = [
-  ['Pay', 'In full, or ask for a payment plan or more time if money is tight.'],
-  ['Ask for a review', 'If you think the fine is wrong or there were special circumstances.'],
-  ['Nominate the driver', 'If it wasn’t you.'],
-  ['Have a court decide', 'You can choose to have the matter heard in court.'],
+  { id: ‘pay’, title: ‘Pay’, text: ‘In full, or ask for a payment plan or more time if money is tight.’, cta: ‘Pay or set up a plan’, what: ‘Paying and payment plans’ },
+  { id: ‘review’, title: ‘Ask for a review’, text: ‘If you think the fine is wrong or there were special circumstances.’, cta: ‘Ask for a review’, what: ‘Asking for a review’ },
+  { id: ‘nominate’, title: ‘Nominate the driver’, text: ‘If it wasn’t you.’, cta: ‘Nominate the driver’, what: ‘Nominating the driver’ },
+  { id: ‘court’, title: ‘Have a court decide’, text: ‘You can choose to have the matter heard in court.’, cta: ‘Choose court’, what: ‘Choosing a court hearing’ },
 ];
 
 const Step = memo(function Step({ n, id, title, answer, tone, children }) {
@@ -243,11 +243,16 @@ export default function Notice({ result, query, sections = READY, registrationGi
             </Step>
           )}
 
-          <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, Revenue NSW handles it.">
+          <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, Revenue NSW handles it. Your notice details will be filled in for you.">
             <ul className="opts">
-              {OPTIONS.map(([t, d]) => <li key={t}><strong>{t}</strong><p>{d}</p></li>)}
+              {OPTIONS.map((o) => (
+                <li key={o.id}>
+                  <div><strong>{o.title}</strong><p>{o.text}</p></div>
+                  <button type="button" className="opt-cta" aria-label={`${o.cta} (opens Revenue NSW)`}><span className="u">{o.cta}</span><span aria-hidden="true"> ↗</span></button>
+                </li>
+              ))}
             </ul>
-            <p className="muted">These steps happen with Revenue NSW, not on this page. Have your penalty notice number to hand and call {HELP_PHONE}.</p>
+            <p className="muted">These steps happen on Revenue NSW's system. Your notice details are filled in for you, and you can come back here any time.</p>
           </Step>
         </div>
       </div>
