@@ -38,6 +38,9 @@ public final class CertificateProviders {
 
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviders.class);
 
+    /** Fixed maximum random delay (ms) between the form GET and the search POST inside one certificate lookup. */
+    private static final long INTRA_DELAY_MAX_MS = 1000L;
+
     private static final java.util.Set<String> KNOWN = java.util.Set.of(BROWSER, HTTP, CURL, API, HTTP_FORM, BROWSER_LINK);
 
     private CertificateProviders() {}
@@ -123,10 +126,9 @@ public final class CertificateProviders {
                 new CertificatePageParser(), ttl, Clock.systemUTC(), store);
         CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, s.userAgent(), s.minInterval(),
                 s.connectTimeout(), s.requestTimeout(), ttl, CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
-        long intraDelayMaxMs = env.getProperty("cevoc.certificates.intra-delay-max-ms", Long.class, 1000L);
         return new HttpFirstCertificateSource(store, Clock.systemUTC(),
                 cookies -> new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props, true, cs -> store.put(cs, Clock.systemUTC().instant())).withCookies(pageUrl, cookies), pageUrl,
-                        new CertificatePageParser(), intraDelayMaxMs, ttl, Clock.systemUTC()),
+                        new CertificatePageParser(), INTRA_DELAY_MAX_MS, ttl, Clock.systemUTC()),
                 browser);
     }
 
@@ -136,8 +138,7 @@ public final class CertificateProviders {
         Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
         String command = env.getProperty("cevoc.certificates.curl.command", "curl");
         Duration timeout = Duration.ofSeconds(env.getProperty("cevoc.certificates.curl.timeout-seconds", Long.class, 10L));
-        long intraDelayMaxMs = env.getProperty("cevoc.certificates.intra-delay-max-ms", Long.class, 1000L);
-        return new CurlCertificateSource(command.isBlank() ? "curl" : command.trim(), timeout, pageUrl, intraDelayMaxMs, ttl,
+        return new CurlCertificateSource(command.isBlank() ? "curl" : command.trim(), timeout, pageUrl, INTRA_DELAY_MAX_MS, ttl,
                 Clock.systemUTC(), CurlPageFetcher.processRunner());
     }
 
@@ -155,9 +156,8 @@ public final class CertificateProviders {
         // A fresh fetcher per lookup: the session cookie lives in memory for that one lookup only.
         // Browser headers (decision 0024): the bot management in front of the page refuses the identifying agent.
         boolean browserHeaders = env.getProperty("cevoc.certificates.search-page.http-browser-headers", Boolean.class, true);
-        long intraDelayMaxMs = env.getProperty("cevoc.certificates.intra-delay-max-ms", Long.class, 1000L);
         return new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props, browserHeaders), pageUrl, new CertificatePageParser(),
-                intraDelayMaxMs, ttl, Clock.systemUTC());
+                INTRA_DELAY_MAX_MS, ttl, Clock.systemUTC());
     }
 
     private static CertificateSourcePort httpForm(Environment env) {
