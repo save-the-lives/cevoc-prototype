@@ -285,24 +285,34 @@ export default function Notice({ result, query, sections = READY, registrationGi
 
       <section className={`stat is-${status?.tone || 'info'}`} aria-labelledby="stat-h" aria-live="polite" aria-busy={detailsLoading || undefined}>
         {status ? (
-          <div className="stat-grid">
-            <div className="stat-col stat-primary">
+          status.resolved ? (
+            /* Resolved state (paid, caution): simple confirmation, no actions needed */
+            <div>
               <h2 id="stat-h">{status.stage}</h2>
               <p className="stat-lead">{status.headline}</p>
-              {n.statusMessage && n.noticeStatus !== 'OTHER' && <p className="muted">{n.statusMessage}</p>}
+              {status.sub && <p className="muted">{status.sub}</p>}
             </div>
-            {status.next && (
+          ) : (
+            /* Actionable state (payable, other): three-column with next steps and options */
+            <div className="stat-grid">
               <div className="stat-col">
-                <h3>What happens next</h3>
-                <p>{status.next}</p>
+                <h2 id="stat-h">{status.stage}</h2>
+                <p className="stat-lead">{status.headline}</p>
+                {n.statusMessage && n.noticeStatus !== 'OTHER' && <p className="muted">{n.statusMessage}</p>}
               </div>
-            )}
-            <div className="stat-col">
-              <h3>Your options</h3>
-              <p>You can pay, ask for a review or set up a payment plan.</p>
-              <button type="button" className="btn-primary-sm" onClick={() => document.getElementById('step-options')?.scrollIntoView({ behavior: 'smooth' })}>See your options ↓</button>
+              {status.next && (
+                <div className="stat-col">
+                  <h3>What happens next</h3>
+                  <p>{status.next}</p>
+                </div>
+              )}
+              <div className="stat-col">
+                <h3>Your options</h3>
+                <p>{status.options}</p>
+                <button type="button" className="btn-primary-sm" onClick={() => document.getElementById('step-options')?.scrollIntoView({ behavior: 'smooth' })}>See your options ↓</button>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <>
             <h2 id="stat-h">Notice status</h2>
