@@ -22,6 +22,7 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Published URLs | Existing published URLs (the original mockup site on GitHub Pages) must not change | 0006 |
 | Information types, status and per-program switches | PROPOSED, not built: images, certificates, video (placeholder) with a status per item. Decided 2026-11-04: per-program switches live in a plain config file in the repo with date-ranged versions chosen by offence date. Program lookup recommended, awaiting owner answers. BUILT 2026-11-05 in the front end config: DEFAULT block, video default on, switch inheritance. Only red light is built now |  0007, 0013, 0014, 0015 |
 | Vendor-neutrality drift | Audit of 2026-11-04: no core leak into domain or application cloud-wise; a few leaks listed in record 0008 | 0008 |
+| Design system | NSW Design System visual patterns in plain CSS (Public Sans, NSW DS colour tokens, buttons, header/footer, steps, form inputs). Domain-specific components are custom. No `@nswds/ui` dependency | 0026 |
 | Privacy blurring of evidence video and images | PROPOSED, research only: fail closed, server-side burn-in, detect once into a timed region track and merge into one stream, verify by content, never release on failure. Paper: `docs/research/privacy-blurring.md` | 0017 |
 
 ## Three selectable routes for notice details and images (record 0010)
@@ -64,6 +65,16 @@ Open questions on all of this are listed in record 0007.
 - Video (0015): ON in the default block. Returned: played. Not returned: said plainly. Program sets it off or not applicable: not fetched, not rendered, plain message. Never a download, never in the PDF evidence pack. Video port and player kept.
 - Road safety messages (0016, 0012): ONE message by priority, per-program on/off switch, date range applies, none in the PDF pack, plain and informative tone, wording approval by the owner recorded in config, staff visibility of the fired rule deferred. The engine is NOT built.
 - STILL OPEN: bus lane and phone detection camera look, evidence pack design confirmation, date-ranged config design confirmation, next step for certificates returning 403.
+
+## Design system
+
+The frontend follows the [NSW Design System](https://designsystem.nsw.gov.au) for government brand alignment (record 0026).
+
+- **Typography**: Public Sans typeface.
+- **Colour tokens**: navy `#002664`, red `#D7153A`, link blue `#2E5299`, focus yellow `#FAAF05`.
+- **Components adopted**: NSW DS button patterns (primary / secondary / tertiary), header / masthead / footer, steps navigation, form inputs and focus indicators.
+- **Domain-specific components**: evidence gallery, traffic signal timeline, speed scale and certificate coverage are custom — no NSW DS equivalent exists.
+- **No runtime dependency**: the app does NOT use the `@nswds/ui` npm package. It follows the NSW DS visual patterns and tokens in plain CSS.
 
 ## Design principles
 
