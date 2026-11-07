@@ -27,6 +27,12 @@ export default function CertificateList({ certificates, coverage }) {
           </li>
         ))}
       </ul>
+      <p className="cert-see-all">
+        <a href="https://cevoc.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf"
+           target="_blank" rel="noopener noreferrer">
+          See all certificates for this camera
+        </a>
+      </p>
     </section>
   );
 }

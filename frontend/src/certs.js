@@ -47,7 +47,7 @@ export function coverageTone(coverage) {
 /** Short line above the cards. The server's message is the headline; this only says what the cards are. */
 export function certificateSummary(list, coverage) {
   const n = list.filter((c) => c.coversOffence === true).length;
-  if (n > 0) return n === 1 ? 'This is the certificate in force on the offence date.' : 'These are the certificates in force on the offence date.';
+  if (n > 0) return 'This camera was certified at the time of the offence.';
   if (coverage?.status === 'gap' && list.length === 2) return 'These are the certificates either side of the offence date.';
   if (coverage?.status === 'gap') return 'This is the nearest certificate to the offence date.';
   return 'None of these certificates was in force on the offence date.';

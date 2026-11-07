@@ -38,7 +38,7 @@ public record CertificateAssessment(List<CertificateItem> certificates, Certific
         if (!covering.isEmpty()) {
             return new CertificateAssessment(covering.stream().map(c -> CertificateItem.from(c, true)).toList(),
                     new CertificateCoverage(CertificateCoverage.Status.COVERED, null, null,
-                            "A certificate for this camera was in force on the offence date."));
+                            "This camera was certified at the time of the offence."));
         }
         CertificateRef before = usable.stream().filter(c -> c.periodTo().isBefore(offenceAt))
                 .max(Comparator.comparing(CertificateRef::periodTo)).orElse(null);
@@ -76,12 +76,9 @@ public record CertificateAssessment(List<CertificateItem> certificates, Certific
         return n == 1 ? "1 day" : n + " days";
     }
 
-    /** Key for deduplication: same description and overlapping or identical period are one certificate. */
+    /** Key for deduplication: same description means the same certificate type; keep only the newest per type. */
     private static String dedupKey(CertificateRef c) {
-        String desc = c.description() == null ? "" : c.description().trim().toLowerCase(java.util.Locale.ROOT);
-        String from = c.periodFrom() == null ? "" : c.periodFrom().toLocalDate().toString();
-        String to = c.periodTo() == null ? "" : c.periodTo().toLocalDate().toString();
-        return desc + "|" + from + "|" + to;
+        return c.description() == null ? "" : c.description().trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private static <T> java.util.function.Predicate<T> distinctByKey(java.util.function.Function<? super T, ?> keyFn) {

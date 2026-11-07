@@ -29,7 +29,7 @@ describe('certificate helpers', () => {
     expect(r).toMatchObject({ covers: true, label: 'In force on the offence date', certifiedText: '14 Mar 2026', expiryText: '13 Mar 2027' });
   });
   it('says what the cards are', () => {
-    expect(certificateSummary([c({ coversOffence: true })], { status: 'covered' })).toBe('This is the certificate in force on the offence date.');
+    expect(certificateSummary([c({ coversOffence: true })], { status: 'covered' })).toBe('This camera was certified at the time of the offence.');
     expect(certificateSummary([c(), c()], { status: 'gap', side: 'between', gapDays: 5 })).toMatch(/either side/);
     expect(certificateSummary([c()], { status: 'gap', side: 'before-only', gapDays: 5 })).toMatch(/nearest/);
     expect(certificateSummary([c()], null)).toMatch(/None of these/);

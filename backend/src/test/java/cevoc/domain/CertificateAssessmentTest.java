@@ -57,7 +57,7 @@ class CertificateAssessmentTest {
         assertThat(a.coverage().status()).isEqualTo(Status.COVERED);
         assertThat(a.coverage().side()).isNull();
         assertThat(a.coverage().gapDays()).isNull();
-        assertThat(a.coverage().message()).isEqualTo("A certificate for this camera was in force on the offence date.");
+        assertThat(a.coverage().message()).isEqualTo("This camera was certified at the time of the offence.");
     }
 
     @Test
