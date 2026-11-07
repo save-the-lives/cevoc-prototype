@@ -3,8 +3,11 @@
 body { background: #fff; font-size: 17px; }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
 .nsw-masthead { background: var(--navy); color: #fff; font-size: 13px; padding: 6px 0; font-weight: 600; }
-.nsw-header { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 0; }
-.nsw-header__title { margin: 0; color: var(--navy); font-weight: 700; font-size: 20px; }
+.nsw-header { background: #fff; border-bottom: 1px solid var(--line); padding: 12px 0; }
+.nsw-header__row { display: flex; align-items: center; justify-content: space-between; }
+.nsw-header__brand { display: flex; align-items: center; gap: 12px; }
+.nsw-header__logo { flex-shrink: 0; }
+.nsw-header__title { margin: 0; color: var(--navy); font-weight: 700; font-size: 22px; }
 main:focus { outline: none; }
 h1:focus, h2:focus { outline: none; }
 h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }

@@ -142,7 +142,12 @@ export default function App() {
     <>
       <a className="skip" href="#main">Skip to content</a>
       <div className="nsw-masthead"><div className="wrap">NSW Government{live?.details?.source === 'DEMO' && <DemoTag />}</div></div>
-      <header className="nsw-header"><div className="wrap"><div className="nsw-header__title">Check your camera fine</div></div></header>
+      <header className="nsw-header"><div className="wrap nsw-header__row">
+        <div className="nsw-header__brand">
+          <img src="https://www.nsw.gov.au/themes/custom/flavor/logo.svg" alt="NSW Government" className="nsw-header__logo" width="60" height="50" />
+          <div className="nsw-header__title">Road safety enforcement</div>
+        </div>
+      </div></header>
       <main id="main" tabIndex={-1}>
         {view.name === 'notice' && found
           ? <Notice result={foundResult} query={found.query}
