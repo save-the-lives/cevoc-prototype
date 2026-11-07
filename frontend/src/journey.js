@@ -59,6 +59,10 @@ export function evidenceState(result, registrationGiven) {
 
 /** The plain-language answer under "Was the camera working properly?". */
 export function certificateAnswer(result) {
+  // No-plate path: certificates need the registration number too.
+  if (result?.plateRequired === true && !hasCertificateList(result)) {
+    return { tone: 'neutral', text: 'The camera certificates also need the number plate.' };
+  }
   const cov = result?.certificateCoverage;
   if (cov && typeof cov.message === 'string' && cov.message) {
     return { tone: coverageTone(cov), text: cov.message };
