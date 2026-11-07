@@ -39,8 +39,14 @@ public final class CertificateProviderChain implements CertificateSourcePort {
     public List<CertificateRef> findCertificates(CertificateQuery query) {
         RuntimeException last = null;
         for (int i = 0; i < providers.size(); i++) {
+            CertificateSourcePort provider = providers.get(i);
+            if (provider instanceof Skippable s && s.shouldSkip()) {
+                LOG.info("Certificate provider skipped (backoff): provider={}", ids.get(i));
+                LookupDiagnostic.note("cert-provider-skipped=" + ids.get(i));
+                continue;
+            }
             try {
-                List<CertificateRef> found = providers.get(i).findCertificates(query);
+                List<CertificateRef> found = provider.findCertificates(query);
                 LOG.info("Certificate provider ok: provider={}, count={}", ids.get(i), found.size());
                 return found;
             } catch (RuntimeException e) {

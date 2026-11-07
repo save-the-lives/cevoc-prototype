@@ -22,8 +22,15 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
 COPY --from=deps /pw /pw
 # Tesseract OCR (Apache-2.0), English data and no recommended extras: the one engine behind BannerTextReaderPort.
 # curl: the `curl` certificates provider runs the curl command line program (record 0025); its TLS fingerprint is accepted where the JDK client is not.
+# curl-impersonate: the `curl-impersonate` provider uses a pre-built static binary (Chrome variant, BoringSSL TLS fingerprint).
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL -o /tmp/curl-impersonate.tar.gz \
+       https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz \
+    && tar -xzf /tmp/curl-impersonate.tar.gz -C /usr/local/bin/ curl_chrome116 \
+    && mv /usr/local/bin/curl_chrome116 /usr/local/bin/curl-impersonate \
+    && chmod +x /usr/local/bin/curl-impersonate \
+    && rm /tmp/curl-impersonate.tar.gz
 RUN java -cp "/pw/*" com.microsoft.playwright.CLI install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* /pw \
     && useradd --system --no-create-home app && chmod -R a+rX /ms-playwright
