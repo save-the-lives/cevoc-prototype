@@ -260,6 +260,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
     { id: 'step-what', label: 'What happened' }, { id: 'step-evidence', label: 'Was it my vehicle?' },
     { id: 'step-measure', label: 'How it was measured' }, { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
   ];
+  const prog = known ? pickProgram(result) : null;
   const status = known ? statusSummary(n, query?.infringementNumber) : null;
   const certAns = certLoading ? { tone: 'neutral', text: 'Checking the camera certificates…' } : certificateAnswer(result || {});
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
