@@ -41,6 +41,9 @@ public interface LookupSink {
         certificates(certificates, coverage);
     }
 
+    /** The direct certificate details URL (signed, from the evidence page). Default: ignored. */
+    default void certificateUrl(String url) {}
+
     void done();
 
     /** A fixed-vocabulary cause token (no values from the request or the page). */

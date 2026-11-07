@@ -159,6 +159,9 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
             } else {
                 withCerts = withCertificates(raw);
             }
+            if (raw.certificateUrl() != null) {
+                sink.certificateUrl(raw.certificateUrl());
+            }
             sink.certificates(withCerts.certificates(), withCerts.certificateCoverage(), withCerts.uncoveredTypes());
             sink.done();
         } catch (RuntimeException e) {

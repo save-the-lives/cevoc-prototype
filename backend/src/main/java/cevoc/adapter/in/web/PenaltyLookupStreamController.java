@@ -116,6 +116,7 @@ public class PenaltyLookupStreamController {
         ScheduledFuture<?> heart = beat.scheduleAtFixedRate(() -> comment(emitter, open, "ping"),
                 HEARTBEAT_SECONDS, HEARTBEAT_SECONDS, TimeUnit.SECONDS);
         boolean[] finished = new boolean[1];
+        String[] certUrl = new String[1];
         LookupSink sink = new LookupSink() {
             @Override
             public void details(PenaltyLookupResult d) {
@@ -138,19 +139,24 @@ public class PenaltyLookupStreamController {
             }
 
             @Override
+            public void certificateUrl(String url) {
+                certUrl[0] = url;
+            }
+
+            @Override
             public void certificates(List<CertificateItem> certificates) {
-                send(emitter, open, "certificates", new Certificates(certificates, null, List.of(), null));
+                send(emitter, open, "certificates", new Certificates(certificates, null, List.of(), certUrl[0]));
             }
 
             @Override
             public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage) {
-                send(emitter, open, "certificates", new Certificates(certificates, coverage, List.of(), null));
+                send(emitter, open, "certificates", new Certificates(certificates, coverage, List.of(), certUrl[0]));
             }
 
             @Override
             public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage,
                                      List<CertificateAssessment.UncoveredType> uncoveredTypes) {
-                send(emitter, open, "certificates", new Certificates(certificates, coverage, uncoveredTypes, null));
+                send(emitter, open, "certificates", new Certificates(certificates, coverage, uncoveredTypes, certUrl[0]));
             }
 
             @Override
