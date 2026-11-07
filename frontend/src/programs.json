@@ -17,6 +17,10 @@
           "details": [
             { "key": "timeSinceRed", "label": "Seconds after the light turned red", "unit": "seconds", "first": true },
             { "key": "speedLimit", "label": "Speed limit", "unit": "km/h" }
+          ],
+          "messages": [
+            { "condition": { "field": "timeSinceRed", "op": ">", "value": 3 }, "priority": 1, "text": "Running a red light at this stage is extremely dangerous. At three seconds or more after the light changed, crossing traffic may already be moving through the intersection." },
+            { "condition": { "field": "timeSinceRed", "op": ">", "value": 1 }, "priority": 2, "text": "The light had been red for more than a second before entry. Other road users may have begun to move into the intersection." }
           ]
         }
       ]
@@ -38,7 +42,11 @@
           "video": { "mode": "on", "messageNone": "Video is not available yet for this notice." },
           "evidence_pack": { "mode": "on" },
           "messages": { "mode": "on" }
-        }
+        },
+        "messages": [
+          { "condition": { "field": "speedKmh", "op": ">", "value": 30 }, "priority": 1, "text": "At speeds above 30 km/h the risk of serious injury in a collision rises sharply, for both vehicle occupants and anyone outside the vehicle." },
+          { "condition": { "field": "speedOverLimit", "op": ">", "value": 10 }, "priority": 2, "text": "Travelling more than 10 km/h over the limit significantly increases stopping distance and the severity of any impact." }
+        ]
       }
     ]
   }

@@ -74,6 +74,48 @@ export function detailRows(result, cfg = config) {
   return { state: 'rows', title: program.label, rows, message: null, version: version.version, types: version.types };
 }
 
+/** Evaluate one condition against a details map. Supported ops: >, >=, <, <=, ==, !=. */
+function evalCondition(cond, details) {
+  if (!cond || !details) return false;
+  const val = details[cond.field];
+  if (val === undefined || val === null) return false;
+  switch (cond.op) {
+    case '>': return val > cond.value;
+    case '>=': return val >= cond.value;
+    case '<': return val < cond.value;
+    case '<=': return val <= cond.value;
+    case '==': return val == cond.value; // eslint-disable-line eqeqeq
+    case '!=': return val != cond.value; // eslint-disable-line eqeqeq
+    default: return false;
+  }
+}
+
+/**
+ * The road-safety message for a result, or null. Evaluates the program's message rules against the result's details,
+ * picks the highest-priority match (lowest number wins), and returns { text, priority }. Falls back to the default
+ * block's messages when the program has none of its own. Returns null when the messages switch is off, when no rule
+ * matches, or when no messages are configured.
+ */
+export function pickMessage(result, cfg = config) {
+  const sw = resolveSwitches(result, cfg).types.messages || {};
+  if (sw.mode && sw.mode !== 'on') return null;
+
+  const details = result?.details || {};
+  const date = result?.notice?.offenceDate;
+  const program = pickProgram(result, cfg);
+  const version = program ? pickVersion(program, date) : null;
+
+  // Program's own messages, then default block's messages as fallback.
+  const rules = version?.messages || defaultVersion(date, cfg).messages || [];
+
+  let best = null;
+  for (const rule of rules) {
+    if (!evalCondition(rule.condition, details)) continue;
+    if (best === null || rule.priority < best.priority) best = rule;
+  }
+  return best ? { text: best.text, priority: best.priority } : null;
+}
+
 const SWITCH_OFF_TEXT = 'Video is not available for this program.';
 
 /** The default block's version for an offence date. It never fails: with no covering version the open (or latest) one is used. */

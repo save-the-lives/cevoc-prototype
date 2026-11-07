@@ -120,6 +120,11 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .media-frame { position: relative; aspect-ratio: 16 / 10; background: #0e1116; border-radius: 6px; overflow: hidden; }
 .media-frame .media-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .zoom-open { margin-top: 8px; }
+.zoom-overlay { position: absolute; right: 8px; bottom: 8px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 8px; border: 2px solid #fff; background: rgba(14, 17, 22, .8); color: #fff; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.media-wrap:hover .zoom-overlay, .zoom-overlay:focus-visible { opacity: 1; }
+.zoom-overlay:focus-visible { outline: 3px solid #8ab4ff; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .zoom-overlay { transition: none; } }
+.evidence-actions { margin: 12px 0 0; }
 .media-wrap { position: relative; }
 .media-wrap .media-frame { touch-action: manipulation; }
 .expand-open { position: absolute; right: 8px; bottom: 8px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border-radius: 8px; border: 2px solid #fff; background: rgba(14, 17, 22, .8); color: #fff; cursor: pointer; }
@@ -128,3 +133,5 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .media-progress { margin: 6px 0 0; min-height: 1.5em; color: var(--muted, #50596b); font-size: .9rem; }
 .prog-details { margin-top: 18px; }
 .prog-details h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.road-safety-msg { border: 1px solid var(--line); border-left: 4px solid var(--navy); border-radius: 6px; background: var(--soft); padding: 10px 14px; margin: 14px 0 0; font-size: .92rem; color: #333; }
+.road-safety-msg p { margin: 0; line-height: 1.45; }

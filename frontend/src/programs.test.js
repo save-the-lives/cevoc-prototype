@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkVersions, detailRows, pickProgram, pickVersion, resolveSwitches, videoView } from './programs.js';
+import { checkVersions, detailRows, pickMessage, pickProgram, pickVersion, resolveSwitches, videoView } from './programs.js';
 import config from './programs.json';
 import { applyEvent, eventsFromResult, initialLookup, toResult } from './lookupState.js';
 
@@ -139,6 +139,38 @@ describe('default block and switch inheritance', () => {
   it('a known program with no version for the offence date also uses the default block switches', () => {
     const r = { ...redLight({ notice: { offenceDescription: 'red light', offenceDate: '1990-01-01' } }), evidence: [] };
     expect(resolveSwitches(r).source).toBe('default');
+  });
+  it('pickMessage returns the highest-priority matching message', () => {
+    // timeSinceRed 4 matches both >3 (pri 1) and >1 (pri 2); pri 1 wins
+    const r = redLight({ details: { timeSinceRed: 4, speedLimit: 60 } });
+    const msg = pickMessage(r);
+    expect(msg.priority).toBe(1);
+    expect(msg.text).toMatch(/three seconds/);
+  });
+  it('pickMessage returns a lower-priority message when the top rule does not match', () => {
+    const r = redLight({ details: { timeSinceRed: 2, speedLimit: 60 } });
+    const msg = pickMessage(r);
+    expect(msg.priority).toBe(2);
+    expect(msg.text).toMatch(/more than a second/);
+  });
+  it('pickMessage returns null when no rule matches', () => {
+    const r = redLight({ details: { timeSinceRed: 0.5, speedLimit: 60 } });
+    expect(pickMessage(r)).toBeNull();
+  });
+  it('pickMessage returns null when the messages switch is off', () => {
+    const cfg = cfgWith({ messages: { mode: 'off' } });
+    const r = redLight({ details: { timeSinceRed: 4, speedLimit: 60 } });
+    expect(pickMessage(r, cfg)).toBeNull();
+  });
+  it('pickMessage falls back to default messages for an unknown program', () => {
+    const r = { notice: { offenceDescription: 'Unknown offence', offenceDate: '2026-01-15' }, details: { speedKmh: 50, speedOverLimit: 15 } };
+    const msg = pickMessage(r);
+    expect(msg).not.toBeNull();
+    expect(msg.text).toMatch(/risk of serious injury/);
+  });
+  it('pickMessage never throws on null input', () => {
+    expect(pickMessage(null)).toBeNull();
+    expect(pickMessage(undefined)).toBeNull();
   });
   it('the red light page behaves the same when its own block is missing', () => {
     const cfg = { ...config, programs: [] };

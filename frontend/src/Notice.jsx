@@ -5,6 +5,7 @@ import { hasCertificateList } from './certs.js';
 import { HELP_PHONE, certificateAnswer, evidenceState, isCamera, money, niceDate, niceTime, photosAnswer, statusSummary, stepsFor } from './journey.js';
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
 import ProgramDetails from './ProgramDetails.jsx';
+import RoadSafetyMessage from './RoadSafetyMessage.jsx';
 import { videoView } from './programs.js';
 
 // Heavier parts load on their own, after the notice details have painted.
@@ -211,6 +212,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                   </dl>
                 )}
             {!detailsLoading && !detailsFailed && <ProgramDetails result={result} />}
+            {!detailsLoading && !detailsFailed && <RoadSafetyMessage result={result} />}
           </Step>
 
           <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>

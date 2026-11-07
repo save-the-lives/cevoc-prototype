@@ -131,23 +131,19 @@ export default function EvidenceImage({ item }) {
                   if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) <= 10 && doubleTap(e.clientX, e.clientY, e.timeStamp)) openFull();
                 },
               } : {})}>{img}</div>
-            {phone && (
+            {phone ? (
               <button type="button" className="expand-open" ref={expandRef} onClick={openFull} onFocus={loadViewer}
                 aria-label={`Open photo ${(gallery?.index ?? 0) + 1} of ${gallery?.count ?? 1} full screen`}>
                 <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
+            ) : full === STATE.READY && !timedOut && (
+              <button type="button" className="zoom-overlay" onClick={() => setOpen(true)} onPointerEnter={loadViewer} onFocus={loadViewer}
+                aria-label={`Zoom in on photo ${(gallery?.index ?? 0) + 1}`}>
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M15 15l5 5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /><path d="M10.5 8v5M8 10.5h5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+              </button>
             )}
           </div>}
-      {!phone && !open && !timedOut && (
-        <button type="button" className="btn zoom-open" onClick={() => setOpen(true)} onPointerEnter={loadViewer} onFocus={loadViewer}>
-          Zoom in<span className="sr-only"> on {item.title}</span>
-        </button>
-      )}
-      {q && stages.length > 1 && !open && !timedOut && (
-        <p className="media-progress" aria-live="polite">
-          {full === STATE.READY ? 'Full size ready' : full === STATE.LOADING ? <><span className="spin" aria-hidden="true" />Loading full size…</> : full === STATE.ERROR ? 'Full size not loaded yet' : 'Full size waiting'}
-        </p>
-      )}
+      {/* "Full size ready" progress removed — internal state, not for users */}
       <p className="media-status" role="status">
         {open && status === 'loading' && <><span className="spin" aria-hidden="true" />Loading a sharper copy...</>}
         {!expired && (broken || (open && status === 'error')) && (
