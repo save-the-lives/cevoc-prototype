@@ -65,6 +65,12 @@ Open questions on all of this are listed in record 0007.
 - Road safety messages (0016, 0012): ONE message by priority, per-program on/off switch, date range applies, none in the PDF pack, plain and informative tone, wording approval by the owner recorded in config, staff visibility of the fired rule deferred. The engine is NOT built.
 - STILL OPEN: bus lane and phone detection camera look, evidence pack design confirmation, date-ranged config design confirmation, next step for certificates returning 403.
 
+## Design principles
+
+1. **Default behaviour always**: Every per-program setting (display rules, road safety messages, switches, detail fields) falls back to a configured default. A program without its own rules gets the default set. The default may legitimately be to show nothing, but it is still a configured default, never a gap.
+
+2. **Configuration over code**: Anything that differs by enforcement program is driven by configuration (`programs.json`), never hard-coded in JSX or Java. The visual rendering per program type (JSX/CSS) is code, but WHICH details to show, WHICH messages to display, and WHICH switches are on or off come from config.
+
 ## Contributor and process rules
 - Docs-only changes are raised on their own branch. This document and the records are updated in the same change as the decision.
 - Nothing in this repository may describe the owner or contributors by employer or role.
