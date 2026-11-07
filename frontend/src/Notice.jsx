@@ -210,7 +210,7 @@ function Failed({ what, onRetry }) {
  * still loading ('loading'), arrived ('ready') or failed ('error'); `result` is null until the notice details arrive.
  * Each section announces its own change politely. Options and help need no data, so they are always shown.
  */
-export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, plateBusy, onRetry, onRerun, onStartAgain, headingRef }) {
+export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, plateBusy, onRetry, onRerun, onEdit, onNew, headingRef }) {
   const [timedOut, setTimedOut] = useState(false); // any photo link has expired
   const report = useCallback(() => setTimedOut(true), []);
   const detailsLoading = sections.details === 'loading';
@@ -245,11 +245,13 @@ export default function Notice({ result, query, sections = READY, registrationGi
   return (
     <ExpiredContext.Provider value={expiredCtx}>
     <div className="wrap page-body">
-      <p className="crumb"><button type="button" className="linklike" onClick={onStartAgain}>← Look up a different notice</button></p>
+      <div className="top-nav">
+        <button type="button" className="linklike" onClick={onEdit}>← Edit</button>
+        <button type="button" className="linklike" onClick={onNew}>New lookup</button>
+      </div>
       {query && (
         <p className="query-line">
-          Notice {query.infringementNumber}, offence date {niceDate(query.offenceDate)}.{' '}
-          <button type="button" className="linklike" onClick={onStartAgain}>Edit<span className="sr-only"> the notice number or date</span></button>
+          Notice {query.infringementNumber}, offence date {niceDate(query.offenceDate)}.
         </p>
       )}
       {demo && <p className="banner" role="note"><strong>Demonstration data only.</strong> This is not a real notice.</p>}

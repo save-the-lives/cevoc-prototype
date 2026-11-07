@@ -129,6 +129,12 @@ export default function App() {
     if (window.history.state?.notice) window.history.back(); else { setFound(null); setView({ name: 'form', outcome: null, misses: 0 }); }
   };
 
+  // Edit: go back to the form with the notice number and date pre-filled (never the plate — it is asked for again).
+  const edit = () => { setDraft(draftFromQuery(found?.query)); startAgain(); };
+
+  // New lookup: go back to a blank form.
+  const newLookup = () => { setDraft(null); startAgain(); };
+
   const asResult = live ? toResult(live) : null;
   const foundResult = asResult && classify(asResult) === 'found' ? asResult : null;
 
@@ -141,7 +147,7 @@ export default function App() {
         {view.name === 'notice' && found
           ? <Notice result={foundResult} query={found.query}
             sections={{ details: foundResult ? 'ready' : live?.finished || live?.details ? 'error' : 'loading', evidence: live.evidence.state, certificates: live.certificates.state }}
-            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onRerun={rerun} onStartAgain={startAgain} headingRef={headingRef} />
+            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onRerun={rerun} onEdit={edit} onNew={newLookup} headingRef={headingRef} />
           : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit} draft={draft} reloadNote={reloadNote}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>

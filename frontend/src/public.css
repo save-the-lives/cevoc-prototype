@@ -15,8 +15,8 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .page-body { padding-top: 20px; padding-bottom: 56px; }
 .page-body h1 { color: var(--navy); font-size: 1.75rem; margin: 4px 0; }
 .lede { margin: 0 0 16px; color: var(--muted); }
-.crumb { margin: 0 0 4px; }
-.crumb .linklike { padding-left: 0; }
+.top-nav { display: flex; justify-content: space-between; align-items: center; margin: 0 0 4px; }
+.top-nav .linklike { padding: 0; font-size: .95rem; }
 
 .two { display: grid; gap: 24px; }
 .lookup { background: #f4f4f4; padding: 16px; border-radius: 6px; max-width: none; }
