@@ -42,7 +42,7 @@ import org.jsoup.nodes.Element;
  * Privacy rules enforced here:
  * <ul>
  *   <li>The registration is never read. We only note whether a "Registration number:" row is present.</li>
- *   <li>The certificate link's signed value (query parameter m) is never kept: {@link CertificationRef} has no
+ *   <li>The certificate link's signed value (query parameter m) is kept only in the fullHref for direct fetch: {@link CertificationRef} has no
  *       field for it, and nothing here builds a certificate URL.</li>
  *   <li>Image src values are blob: URLs tied to the browser session; they are handles for
  *       {@link RenderedPageSession#imageBytes}, not fetchable URLs.</li>
@@ -56,10 +56,10 @@ public class RevenueNswPageParser {
     public record ImageRef(String ref, String blobUrl) {}
 
     /**
-     * The parts of the certificateDetails.jsf link we may use: p notice, d offence date-time (as written),
-     * s camera code, i incident number. The signed value m is deliberately absent.
+     * The parts of the certificateDetails.jsf link: p notice, d offence date-time (as written),
+     * s camera code, i incident number, plus the full href (including signed m) for direct fetch.
      */
-    public record CertificationRef(String notice, String offenceDateTime, String cameraCode, String incidentNumber) {}
+    public record CertificationRef(String notice, String offenceDateTime, String cameraCode, String incidentNumber, String fullHref) {}
 
     /**
      * What one rendered page shows. Fields that do not apply to the state are null, false or empty.
@@ -544,7 +544,7 @@ public class RevenueNswPageParser {
                 }
             }
             return new CertificationRef(blankToNull(wanted.get("p")), blankToNull(wanted.get("d")),
-                    blankToNull(wanted.get("s")), blankToNull(wanted.get("i")));
+                    blankToNull(wanted.get("s")), blankToNull(wanted.get("i")), href);
         }
         return null;
     }

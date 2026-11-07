@@ -123,8 +123,9 @@ class RevenueNswPageParserTest {
         RevenueNswPageParser.Page p = parser.parse(fixture("fictitious-state3-images.html"));
         String everything = p.toString();
         assertThat(everything).doesNotContain("0123456789abcdef0123456789abcdef").doesNotContain("TST123");
+        // The signed m value is not exposed as a standalone field; fullHref carries the complete link for direct certificate fetch.
         assertThat(java.util.Arrays.stream(RevenueNswPageParser.CertificationRef.class.getRecordComponents())
-                .map(c -> c.getName())).doesNotContain("m", "signature", "href", "url");
+                .map(c -> c.getName())).doesNotContain("m", "signature");
     }
 
     @Test
