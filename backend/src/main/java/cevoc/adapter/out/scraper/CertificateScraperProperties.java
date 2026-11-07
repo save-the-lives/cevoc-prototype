@@ -19,7 +19,7 @@ public record CertificateScraperProperties(
     public static final String DEFAULT_PAGE_URL =
             "https://cevoc.transport.nsw.gov.au/cevoc/pages/sdro/searchCertificates.jsf";
     public static final String DEFAULT_USER_AGENT =
-            "CEVOC-prototype-certificate-check/0.1 (+https://github.com/save-the-lives/cevoc-prototype; contact: set cevoc.scraper.certificates.user-agent)";
+            "CEVOC/1.0 (+https://github.com/save-the-lives/cevoc-prototype; contact: set cevoc.scraper.certificates.user-agent)";
 
     /** windowMargin null = whole offence day (00:00 to 23:59). */
     public CertificateScraperProperties(String pageUrl, String userAgent, Duration minInterval, Duration connectTimeout,

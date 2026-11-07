@@ -257,7 +257,7 @@ class ScraperEvidenceTest {
 
     @Test
     void userAgentIdentifiesUs() {
-        assertThat(enabled().userAgent()).contains("cevoc-prototype/1.0").doesNotContain("NSW").contains("contact:");
+        assertThat(enabled().userAgent()).contains("CEVOC/1.0").doesNotContain("NSW").contains("contact:");
     }
 
     @Test

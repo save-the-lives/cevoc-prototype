@@ -193,7 +193,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
 
       <div className="story">
         <nav className="toc" aria-label="On this page">
-          <ol>{steps.map((s) => <li key={s.id}><a href={`#${s.id}`}>{s.label}</a></li>)}</ol>
+          <ol>{steps.map((s) => <li key={s.id}><a href={`#${s.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' }); }}>{s.label}</a></li>)}</ol>
         </nav>
         <div>
           <Step n={stepNo('step-what')} id="step-what" title="What happened" answer={detailsLoading ? 'Looking up your notice…' : undefined}>

@@ -84,7 +84,7 @@ public record RevenueNswHttpSettings(
 
     /** Identifies us honestly so the site owner can see who is calling and contact us. */
     public String userAgent() {
-        return "cevoc-prototype/1.0 (contact: " + contact + ")";
+        return "CEVOC/1.0 (contact: " + contact + ")";
     }
 
     private static boolean present(String s) {

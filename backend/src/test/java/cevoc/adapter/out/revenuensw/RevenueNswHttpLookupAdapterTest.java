@@ -436,7 +436,7 @@ class RevenueNswHttpLookupAdapterTest {
         FakeTransport t = new FakeTransport(happy("summary-camera.json"));
         adapter(t, plate()).find(REQ);
         for (FakeTransport.Seen s : t.seen) {
-            assertThat(s.headers().get("user-agent")).startsWith("cevoc-prototype/1.0 (contact: test-contact@example.invalid)");
+            assertThat(s.headers().get("user-agent")).startsWith("CEVOC/1.0 (contact: test-contact@example.invalid)");
             assertThat(s.headers()).containsEntry("pnnum", NOTICE).doesNotContainKeys("origin", "referer", "cookie");
             assertThat(s.uri()).startsWith("https://api.osr.nsw.gov.au/TEST_PREFIX_AAAA/rest/api/v2/fines");
         }

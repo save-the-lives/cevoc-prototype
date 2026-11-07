@@ -42,7 +42,7 @@ class PoliteHttpFetcherHeadersTest {
     }
 
     private CertificateScraperProperties props() {
-        return new CertificateScraperProperties(base, "cevoc-prototype/1.0 (contact: test@example.invalid)", Duration.ofSeconds(2),
+        return new CertificateScraperProperties(base, "CEVOC/1.0 (contact: test@example.invalid)", Duration.ofSeconds(2),
                 Duration.ofSeconds(2), Duration.ofSeconds(5), Duration.ofSeconds(60), CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
     }
 
@@ -66,7 +66,7 @@ class PoliteHttpFetcherHeadersTest {
     @Test
     void theDefaultFetcherStillIdentifiesItself() {
         new PoliteHttpFetcher(props()).get(base);
-        assertThat(seen.get(0).getFirst("User-Agent")).contains("cevoc-prototype");
+        assertThat(seen.get(0).getFirst("User-Agent")).contains("CEVOC/1.0");
         assertThat(seen.get(0).getFirst("Sec-Fetch-Mode")).isNull();
     }
 
