@@ -83,8 +83,8 @@ export function statusSummary(notice) {
   switch (notice.noticeStatus) {
     case 'PAID': return { tone: 'info', stage: 'Paid', headline: 'This penalty has been paid.', next: 'There is nothing more to pay.' };
     case 'CAUTION': return { tone: 'info', stage: 'Caution', headline: 'This penalty has been replaced with a caution.', next: 'You no longer need to pay.' };
-    case 'PAYABLE': return { tone: 'warn', stage: 'Payment due', headline: owing ? `${owing} is owing on this notice.` : 'Payment is due on this notice.', next: 'Nothing here changes your notice. Paying, asking for a review, nominating the driver or going to court are all done with Revenue NSW.' };
-    default: return { tone: 'info', stage: 'Notice status', headline: notice.statusMessage || 'Contact Revenue NSW about the current status of this notice.', next: '' };
+    case 'PAYABLE': return { tone: 'warn', stage: 'Payment due', headline: owing ? `${owing} is owing on this notice.` : 'Payment is due on this notice.', next: 'Nothing here changes your notice. See your options below.' };
+    default: return { tone: 'info', stage: 'Notice status', headline: notice.statusMessage || 'Contact us about the current status of this notice.', next: '' };
   }
 }
 

@@ -127,16 +127,17 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .opts { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 10px; }
 .opts li { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
 .opts p { margin: 2px 0 0; font-size: 15px; color: var(--muted); }
-/* opts2: flat divider style matching the prototype */
-.opts2 { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 0; }
-.opts2 li { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 10px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
-.opts2 li:first-child { border-top: 0; }
-.opts2 p { margin: 2px 0 0; font-size: 15px; color: var(--muted); }
-.opt-cta { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 2px; background: none; border: 0; color: #2E5299; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; text-align: left; white-space: nowrap; }
-.opt-cta .u { text-decoration: underline; text-underline-offset: 3px; }
-.opt-cta:hover .u { text-decoration-thickness: 2px; }
-.opt-cta:focus-visible { outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 3px; }
-@media (max-width: 640px) { .opts2 li { display: block; } .opts2 p { margin-bottom: 0; } }
+/* Option list — NSW DS row pattern: title+desc left, CTA link right, bottom border */
+.option-list { list-style: none; margin: 0 0 14px; padding: 0; }
+.option-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.option-row:first-child { border-top: 1px solid var(--line); }
+.option-info { flex: 1; min-width: 0; }
+.option-info strong { font-size: 1rem; color: var(--navy); }
+.option-info p { margin: 2px 0 0; font-size: .9rem; color: var(--muted); }
+.option-cta { flex-shrink: 0; font-weight: 600; font-size: .9rem; color: var(--link); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.option-cta:hover { text-decoration-thickness: 2px; }
+.option-cta:focus-visible { outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 3px; }
+@media (max-width: 640px) { .option-row { flex-direction: column; align-items: flex-start; gap: 6px; } }
 .nsw-footer { background: #f4f4f7; border-top: 4px solid var(--navy); padding: 24px 0; font-size: .9rem; color: #333; }
 .nsw-footer p { margin: 4px 0; }
 .nsw-footer__info { color: #6a7078; font-size: .85rem; }

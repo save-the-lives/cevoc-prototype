@@ -134,7 +134,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
           <TimedOut />
           {!timedOut && <p className="hint">Zoom in to read plates and signs: scroll wheel or pinch on the photo, or click it to open full size.</p>}
           <Suspense fallback={<PhotoSkeleton count={media.length} />}><EvidenceGrid items={media} /></Suspense>
-          <p className="muted">If someone else was driving, you can nominate them with Revenue NSW (see Your options).</p>
+          <p className="muted">If someone else was driving, you can nominate them (see Your options).</p>
         </>
       );
     case 'needs-plate':
@@ -299,7 +299,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
             )}
             <div className="stat-col">
               <h3>Your options</h3>
-              <p>You may still be able to pay, ask for a review or set up a payment plan.</p>
+              <p>You can pay, ask for a review or set up a payment plan.</p>
               <a href="#step-options" className="btn-primary-sm">See your options ↓</a>
             </div>
           </div>
@@ -379,16 +379,19 @@ export default function Notice({ result, query, sections = READY, registrationGi
             </Step>
           )}
 
-          <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, Revenue NSW handles it. Your notice details will be filled in for you.">
-            <ul className="opts2">
+          <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, your notice details will be filled in for you.">
+            <ul className="option-list">
               {OPTIONS.map((o) => (
-                <li key={o.id}>
-                  <div><strong>{o.title}</strong><p>{o.text}</p></div>
-                  <button type="button" className="opt-cta" aria-label={`${o.cta} (opens Revenue NSW)`}><span className="u">{o.cta}</span><span aria-hidden="true"> ↗</span></button>
+                <li key={o.id} className="option-row">
+                  <div className="option-info">
+                    <strong>{o.title}</strong>
+                    <p>{o.text}</p>
+                  </div>
+                  <a href="#" className="option-cta" aria-label={o.cta}>{o.cta}<span aria-hidden="true"> ↗</span></a>
                 </li>
               ))}
             </ul>
-            <p className="muted">These steps happen on Revenue NSW's system. Your notice details are filled in for you, and you can come back here any time.</p>
+            <p className="muted">Your notice details are filled in for you. You can come back here any time.</p>
           </Step>
         </div>
       </div>
