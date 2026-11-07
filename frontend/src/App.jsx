@@ -152,7 +152,7 @@ export default function App() {
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
       <footer className="nsw-footer"><div className="wrap">
-        <p>Need help? Call {HELP_PHONE}</p>
+        <p>Need help? Call <a href="tel:1300138118">{HELP_PHONE}</a></p>
         <p className="nsw-footer__info">&copy; State of New South Wales. Interim service.</p>
       </div></footer>
     </>

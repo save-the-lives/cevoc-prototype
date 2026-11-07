@@ -2,7 +2,7 @@
 import { coverageTone, hasCertificateList } from './certs.js';
 import { detailRows, pickProgram } from './programs.js';
 
-export const HELP_PHONE = 'Revenue NSW on 1300 138 118';
+export const HELP_PHONE = '1300 138 118';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
