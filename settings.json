@@ -1,7 +1,7 @@
 {
   "_comment": "Shared settings file: version-controlled defaults used by frontend and backend. See docs/CONFIG-REFERENCE.md section 14.",
 
-  "maxOffenceAgeYears": 7,
+  "maxOffenceAgeYears": 30,
   "certificates.intraDelayMaxMs": 1000,
   "certificates.cacheTtlSeconds": 300,
   "certificates.curl.timeoutSeconds": 10,
