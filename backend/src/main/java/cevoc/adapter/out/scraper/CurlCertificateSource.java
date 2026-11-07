@@ -35,7 +35,9 @@ public final class CurlCertificateSource implements CertificateSourcePort {
             List<CertificateRef> rows = delegate.findCertificates(query);
             LookupDiagnostic.note("cert-provider=curl");
             long withPeriod = rows.stream().filter(r -> r.periodFrom() != null).count();
-            LOG.info("Certificate curl lookup ok: count={}, with-period={}, ms={}", rows.size(), withPeriod, (System.nanoTime() - started) / 1_000_000);
+            // Log distinct descriptions (fixed vocabulary, no personal data) so we can map certificate types.
+            long distinct = rows.stream().map(r -> r.description() == null ? "" : r.description().trim().toLowerCase(java.util.Locale.ROOT)).distinct().count();
+            LOG.info("Certificate curl lookup ok: count={}, with-period={}, distinct-descriptions={}, ms={}", rows.size(), withPeriod, distinct, (System.nanoTime() - started) / 1_000_000);
             if (withPeriod == 0 && !rows.isEmpty()) {
                 // Log the format shape of the first period text (day separators only, no values) so we can fix the parser.
                 String sample = rows.get(0).periodText();

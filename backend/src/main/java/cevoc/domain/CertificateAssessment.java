@@ -32,7 +32,9 @@ public record CertificateAssessment(List<CertificateItem> certificates, Certific
             return new CertificateAssessment(List.of(), new CertificateCoverage(CertificateCoverage.Status.NONE, null, null, msg));
         }
         List<CertificateRef> covering = usable.stream().filter(c -> c.covers(offenceAt))
-                .sorted(Comparator.comparing(CertificateRef::periodFrom).reversed()).limit(MAX_SHOWN).toList();
+                .sorted(Comparator.comparing(CertificateRef::periodFrom).reversed())
+                .filter(distinctByKey(c -> dedupKey(c)))
+                .limit(MAX_SHOWN).toList();
         if (!covering.isEmpty()) {
             return new CertificateAssessment(covering.stream().map(c -> CertificateItem.from(c, true)).toList(),
                     new CertificateCoverage(CertificateCoverage.Status.COVERED, null, null,
@@ -72,5 +74,18 @@ public record CertificateAssessment(List<CertificateItem> certificates, Certific
 
     private static String days(long n) {
         return n == 1 ? "1 day" : n + " days";
+    }
+
+    /** Key for deduplication: same description and overlapping or identical period are one certificate. */
+    private static String dedupKey(CertificateRef c) {
+        String desc = c.description() == null ? "" : c.description().trim().toLowerCase(java.util.Locale.ROOT);
+        String from = c.periodFrom() == null ? "" : c.periodFrom().toLocalDate().toString();
+        String to = c.periodTo() == null ? "" : c.periodTo().toLocalDate().toString();
+        return desc + "|" + from + "|" + to;
+    }
+
+    private static <T> java.util.function.Predicate<T> distinctByKey(java.util.function.Function<? super T, ?> keyFn) {
+        java.util.Set<Object> seen = new java.util.HashSet<>();
+        return t -> seen.add(keyFn.apply(t));
     }
 }
