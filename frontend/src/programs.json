@@ -19,6 +19,11 @@
             { "key": "timeSinceRed", "label": "Seconds after the light turned red", "unit": "seconds", "first": true },
             { "key": "speedLimit", "label": "Speed limit", "unit": "km/h" }
           ],
+          "explainer": [
+            { "icon": "sensor", "heading": "Sensors in the road", "body": "Piezoelectric sensors embedded at the stop line detect when a vehicle crosses after the light turns red. A second sensor confirms the vehicle continued through." },
+            { "icon": "check", "heading": "Checked before every session", "body": "The operator checks the camera before every session. That check is recorded, and a reading is only used if it was done.", "link": { "text": "See the check for this session", "step": "step-camera" } },
+            { "icon": "camera", "heading": "Two photographs", "body": "The camera takes two photos — one as the vehicle crosses the stop line and one as it moves through the intersection — recording position, speed and time since the light changed." }
+          ],
           "messages": [
             { "condition": { "field": "timeSinceRed", "op": ">", "value": 3 }, "priority": 1, "text": "Running a red light at this stage is extremely dangerous. At three seconds or more after the light changed, crossing traffic may already be moving through the intersection." },
             { "condition": { "field": "timeSinceRed", "op": ">", "value": 1 }, "priority": 2, "text": "The light had been red for more than a second before entry. Other road users may have begun to move into the intersection." }
@@ -44,6 +49,11 @@
           "evidence_pack": { "mode": "on" },
           "messages": { "mode": "on" }
         },
+        "explainer": [
+          { "icon": "sensor", "heading": "Calibrated sensors", "body": "The camera system records vehicle speed using calibrated sensors and photographs the vehicle at the time of the offence." },
+          { "icon": "check", "heading": "Checked before every session", "body": "The operator checks the camera before every session. That check is recorded, and a reading is only used if it was done.", "link": { "text": "See the check for this session", "step": "step-camera" } },
+          { "icon": "person", "heading": "A person is there", "body": "An operator sets up and runs the camera, and can be asked about what they did." }
+        ],
         "messages": [
           { "condition": { "field": "speedKmh", "op": ">", "value": 30 }, "priority": 1, "text": "At speeds above 30 km/h the risk of serious injury in a collision rises sharply, for both vehicle occupants and anyone outside the vehicle." },
           { "condition": { "field": "speedOverLimit", "op": ">", "value": 10 }, "priority": 2, "text": "Travelling more than 10 km/h over the limit significantly increases stopping distance and the severity of any impact." }

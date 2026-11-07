@@ -125,6 +125,16 @@ export function defaultVersion(offenceDate, cfg = config) {
   return pickVersion(d, offenceDate) || [...list].sort((a, b) => b.from.localeCompare(a.from))[0] || { types: {} };
 }
 
+/** Explainer cards for a result — from the matched program version, or the default. */
+export function pickExplainer(result, cfg = config) {
+  const date = result?.notice?.offenceDate;
+  const program = pickProgram(result, cfg);
+  const version = program ? pickVersion(program, date) : null;
+  if (version?.explainer) return version.explainer;
+  const dv = defaultVersion(date, cfg);
+  return dv?.explainer || [];
+}
+
 /**
  * The effective switches for a result (images, certificates, video, evidence_pack, messages). A program's own block always wins;
  * a switch the program does not set is inherited from the default block. An unknown program, or a program with no version for the

@@ -50,11 +50,25 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .aside ul { margin: 0; padding-left: 18px; }
 .aside li { margin-bottom: 6px; }
 
-.stat { border: 1px solid var(--line); border-left: 8px solid var(--navy); border-radius: 6px; background: var(--soft); padding: 12px 16px; margin: 8px 0 8px; }
+.stat { border: 1px solid var(--line); border-left: 8px solid var(--navy); border-radius: 6px; background: var(--soft); padding: 16px 20px; margin: 8px 0 8px; }
 .stat.is-warn { border-left-color: var(--amber); background: #fffaf6; }
-.stat h2 { margin: 0 0 4px; font-size: .9rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.stat h2, .stat h3 { margin: 0 0 4px; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
 .stat p { margin: 4px 0; }
 .stat-lead { font-weight: 700; font-size: 1.1rem; }
+.stat-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 640px) { .stat-grid { grid-template-columns: 1fr 1fr 1fr; gap: 24px; } }
+.stat-col { display: flex; flex-direction: column; }
+.btn-primary-sm { display: inline-block; margin-top: 8px; padding: 8px 20px; background: var(--navy); color: #fff; border-radius: 4px; font-size: .9rem; font-weight: 600; text-decoration: none; text-align: center; }
+.btn-primary-sm:hover { background: #001a4d; }
+
+/* Explainer cards — config-driven per program */
+.explainer-cards { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 12px 0; }
+@media (min-width: 640px) { .explainer-cards { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); } }
+.explainer-card { border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; background: #fff; }
+.explainer-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--soft); border-radius: 50%; color: var(--navy); margin-bottom: 8px; }
+.explainer-card h4 { margin: 0 0 4px; font-size: 1rem; font-weight: 700; color: var(--navy); }
+.explainer-card p { margin: 0; font-size: .9rem; color: var(--text); }
+.explainer-link { display: inline-block; margin-top: 8px; font-size: .9rem; font-weight: 600; color: var(--link); text-decoration: underline; }
 
 .story { display: grid; gap: 8px; margin-top: 8px; }
 /* Step navigation — mobile-first mini bar, desktop vertical rail */

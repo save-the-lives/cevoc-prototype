@@ -6,24 +6,50 @@ import { HELP_PHONE, certificateAnswer, evidenceState, hasMeasureData, isCamera,
 import { checkRegistration, cleanRegistration } from './lookupValidation.js';
 import ProgramDetails from './ProgramDetails.jsx';
 import RoadSafetyMessage from './RoadSafetyMessage.jsx';
-import { detailRows, pickMessage, pickProgram, videoView } from './programs.js';
+import { detailRows, pickExplainer, pickMessage, pickProgram, videoView } from './programs.js';
 
 // Heavier parts load on their own, after the notice details have painted.
 const EvidenceGrid = lazy(() => import('./EvidenceGrid.jsx'));
 const CertificateList = lazy(() => import('./CertificateList.jsx'));
 
-/** Coded explainer per camera program — not config-driven. */
-function CameraExplainer({ programId }) {
-  switch (programId) {
-    case 'RED_LIGHT_SPEED':
-      return (
-        <p>Red light cameras use sensors embedded in the road at the stop line. When the traffic light turns red, the system arms.
-          If a vehicle crosses the sensors after the light is red, the camera photographs the vehicle — typically twice — recording
-          the position, speed and time since the light changed. A second sensor confirms the vehicle continued through the intersection.</p>
-      );
-    default:
-      return <p>The camera system records vehicle speed using calibrated sensors and photographs the vehicle at the time of the offence.</p>;
-  }
+const EXPLAINER_ICONS = {
+  sensor: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="8" rx="2" /><line x1="7" y1="11" x2="7" y2="7" /><line x1="12" y1="11" x2="12" y2="5" /><line x1="17" y1="11" x2="17" y2="7" />
+    </svg>
+  ),
+  check: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><polyline points="9 12 11 14 15 10" />
+    </svg>
+  ),
+  camera: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" /><circle cx="12" cy="13" r="4" />
+    </svg>
+  ),
+  person: (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="7" r="4" /><path d="M5.5 21a6.5 6.5 0 0113 0" />
+    </svg>
+  ),
+};
+
+/** Config-driven explainer cards — icon, heading, body, optional anchor link. */
+function ExplainerCards({ cards }) {
+  if (!cards || cards.length === 0) return null;
+  return (
+    <div className="explainer-cards">
+      {cards.map((c, i) => (
+        <div key={i} className="explainer-card">
+          {EXPLAINER_ICONS[c.icon] && <div className="explainer-icon">{EXPLAINER_ICONS[c.icon]}</div>}
+          <h4>{c.heading}</h4>
+          <p>{c.body}</p>
+          {c.link && <a href={`#${c.link.step}`} className="explainer-link">{c.link.text} ↓</a>}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** Collapsed accordion. */
@@ -259,12 +285,24 @@ export default function Notice({ result, query, sections = READY, registrationGi
 
       <section className={`stat is-${status?.tone || 'info'}`} aria-labelledby="stat-h" aria-live="polite" aria-busy={detailsLoading || undefined}>
         {status ? (
-          <>
-            <h2 id="stat-h">{status.stage}</h2>
-            <p className="stat-lead">{status.headline}</p>
-            {status.next && <p>{status.next}</p>}
-            {n.statusMessage && n.noticeStatus !== 'OTHER' && <p className="muted">{n.statusMessage}</p>}
-          </>
+          <div className="stat-grid">
+            <div className="stat-col stat-primary">
+              <h2 id="stat-h">{status.stage}</h2>
+              <p className="stat-lead">{status.headline}</p>
+              {n.statusMessage && n.noticeStatus !== 'OTHER' && <p className="muted">{n.statusMessage}</p>}
+            </div>
+            {status.next && (
+              <div className="stat-col">
+                <h3>What happens next</h3>
+                <p>{status.next}</p>
+              </div>
+            )}
+            <div className="stat-col">
+              <h3>Your options</h3>
+              <p>You may still be able to pay, ask for a review or set up a payment plan.</p>
+              <a href="#step-options" className="btn-primary-sm">See your options ↓</a>
+            </div>
+          </div>
         ) : (
           <>
             <h2 id="stat-h">Notice status</h2>
@@ -318,7 +356,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                   </Accordion>
                 )}
                 <Accordion title={`How does this ${(prog?.label || 'camera').toLowerCase()} work?`}>
-                  <CameraExplainer programId={prog?.id} />
+                  <ExplainerCards cards={pickExplainer(result)} />
                 </Accordion>
               </Step>
             );
