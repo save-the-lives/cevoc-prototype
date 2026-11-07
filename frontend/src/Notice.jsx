@@ -277,12 +277,11 @@ export default function Notice({ result, query, sections = READY, registrationGi
         <button type="button" className="linklike" onClick={onNew}>New lookup</button>
       </div>
       {query && (
-        <p className="query-line">
+        <p className="query-line" ref={headingRef} tabIndex={-1}>
           Penalty notice {query.infringementNumber}, {niceDate(query.offenceDate)}.
         </p>
       )}
       {demo && <p className="banner" role="note"><strong>Demonstration data only.</strong> This is not a real notice.</p>}
-      <h1 ref={headingRef} tabIndex={-1}>What happened</h1>
 
       <section className={`stat is-${status?.tone || 'info'}`} aria-labelledby="stat-h" aria-live="polite" aria-busy={detailsLoading || undefined}>
         {status ? (
