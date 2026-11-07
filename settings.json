@@ -1,0 +1,20 @@
+{
+  "_comment": "Shared settings file: version-controlled defaults used by frontend and backend. See docs/CONFIG-REFERENCE.md section 14.",
+
+  "maxOffenceAgeYears": 7,
+  "certificates.intraDelayMaxMs": 1000,
+  "certificates.cacheTtlSeconds": 300,
+  "certificates.curl.timeoutSeconds": 10,
+
+  "_candidates": [
+    "SSE heartbeat interval (currently 8s in PenaltyLookupStreamController.HEARTBEAT_SECONDS)",
+    "Max images per lookup (currently 20 in RevenueNswSummaryMapper.MAX_IMAGES)",
+    "Max detail fields per lookup (currently 40 in RevenueNswSummaryMapper.MAX_DETAILS)",
+    "Max cache entries for evidence lookups (currently 100 in ScraperEvidenceLookupAdapter.MAX_CACHE_ENTRIES)",
+    "Host reachability timeout (currently 6000ms in HostReachability.LIMIT_MS)",
+    "Evidence scraper cache TTL (currently 120s, already configurable via CEVOC_SCRAPER_EVIDENCE_CACHE_TTL_SECONDS)",
+    "Banner OCR timeout (currently 30s, already configurable via CEVOC_BANNER_OCR_TIMEOUT_SECONDS)",
+    "Notice number length (currently 10 digits, validated in lookupValidation.js)",
+    "Registration max length (currently 8 chars, validated in lookupValidation.js)"
+  ]
+}

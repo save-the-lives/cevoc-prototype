@@ -257,3 +257,23 @@ Record 0022: the defaults are the real adapters, so the container app needs only
 - **CAUTION:** if `CEVOC_PENALTY_LOOKUP_ADAPTER` holds `stub`, `manifest` or `scraper-evidence`, the app stays on `stub` (fictitious data, nothing contacted) until the variable is deleted or set to `browser`. If `CEVOC_CERTIFICATES_PROVIDERS` holds `search-page` (retired name), it is ignored and no certificate source exists until the variable is deleted or set to `browser`.
 - **DELETE (read by nothing):** `CEVOC_SCRAPER_ENABLED`, `CEVOC_SCRAPER_EVIDENCE_ENABLED`, `CEVOC_SCRAPER_CERTIFICATES_ENABLED`, `CEVOC_SCRAPER_EVIDENCE_BROWSER`, `CEVOC_SCRAPER_EVIDENCE_BASE_URL`, `CEVOC_LIVECHECK_TOKEN`, and if present `CEVOC_SCRAPER_CERTIFICATES_APPROVAL_REFERENCE`, `CEVOC_REVENUE_NSW_HTTP_ENABLED`, `CEVOC_EVIDENCE_SCRAPER_ENABLED`, `CEVOC_CERTIFICATE_SCRAPER_ENABLED`, `CEVOC_DEMO_DATA`. Also delete the GitHub secret `LIVE_CHECK_TOKEN`.
 - **Size:** Chromium needs about 2 CPU / 4 GiB. Set it once in the portal; no normal deploy changes it and a live deploy only raises a smaller app (record 0021). Do that before setting the contact on a smaller app.
+
+## 14. Shared settings file (`settings.json`)
+
+`settings.json` at the repo root holds version-controlled defaults shared by the frontend and the backend. It is not for secrets or per-environment overrides (those stay as environment variables). It is for values that are the same in every environment, change rarely, and were previously hardcoded in source files.
+
+**How each side reads it:**
+
+- **Frontend (Vite):** imported as a JSON module (`import settings from '../../settings.json'`). Vite bundles it at build time.
+- **Backend (Spring Boot):** the settings file documents the authoritative default values. The backend continues to read its own Spring properties (with the same defaults), so the file is the single place to check what the intended default is. A `SettingsLoader` can be added later if the backend should read the file directly at start-up.
+
+**Current keys:**
+
+| Key | Type | Default | Where used | Notes |
+|---|---|---|---|---|
+| `maxOffenceAgeYears` | integer | `7` | `frontend/src/lookupValidation.js` | How far back an offence date is accepted |
+| `certificates.intraDelayMaxMs` | integer | `1000` | `CertificateProviders.java` | Max random delay (ms) between GET and POST in a certificate lookup |
+| `certificates.cacheTtlSeconds` | integer | `300` | `CertificateProviders.java` | Certificate cache TTL; overridable via `CEVOC_CERTIFICATES_CACHE_TTL_SECONDS` |
+| `certificates.curl.timeoutSeconds` | integer | `10` | `CertificateProviders.java` | Curl connect/total timeout; overridable via `CEVOC_CERTIFICATES_CURL_TIMEOUT_SECONDS` |
+
+**Candidates for future externalization** (listed in `settings.json` under `_candidates`): SSE heartbeat interval, max images per lookup, max detail fields, max evidence cache entries, host reachability timeout, notice number length, registration max length.

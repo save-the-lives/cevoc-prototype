@@ -1,6 +1,7 @@
 // Validation for the details that find a notice. Messages say what is wrong and how to fix it, in plain words.
+import settings from '../../settings.json';
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-export const MAX_OFFENCE_AGE_YEARS = 7;
+export const MAX_OFFENCE_AGE_YEARS = settings.maxOffenceAgeYears;
 export const YEARS_BACK = MAX_OFFENCE_AGE_YEARS;
 
 const pad = (n) => String(n).padStart(2, '0');
