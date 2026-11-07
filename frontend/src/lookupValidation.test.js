@@ -41,7 +41,7 @@ describe('offence date', () => {
     expect(checkDate(p('14', '3', '2026'), NOW)).toBeNull();
     expect(partsToIso(p('4', '3', '2026'))).toBe('2026-03-04');
     expect(todayIso(NOW)).toBe('2026-11-04');
-    expect(earliestIso(NOW)).toBe('2019-11-04');
+    expect(earliestIso(NOW)).toBe('1996-11-04');
   });
 });
 
