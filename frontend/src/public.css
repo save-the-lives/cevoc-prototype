@@ -196,14 +196,14 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 
 /* Evidence gallery */
 .mg { outline: none; scroll-margin-top: 72px; }
-.mg-stage { position: relative; background: #11161c; border-radius: 6px; overflow: hidden; aspect-ratio: 3 / 2; display: flex; align-items: center; justify-content: center; }
-.mg-media { width: 100%; height: 100%; object-fit: contain; background: #11161c; display: block; }
+.mg-stage { position: relative; background: var(--soft, #f4f7fa); border: 1px solid var(--line, #dee3e8); border-radius: 6px; overflow: hidden; aspect-ratio: 3 / 2; display: flex; align-items: center; justify-content: center; }
+.mg-media { width: 100%; height: 100%; object-fit: contain; background: var(--soft, #f4f7fa); display: block; }
 .mg-state { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #dfe5ea; text-align: center; padding: 24px; font-size: 15px; }
 .mg-state strong { font-size: 17px; color: #fff; }
 .mg-state.is-err strong { color: #ffd0d8; }
 .mg-state.is-loading { color: #b9c3cc; }
-.mg-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; border: 0; background: rgba(0,0,0,.45); color: #fff; font-size: 34px; cursor: pointer; z-index: 2; }
-.mg-nav:hover { background: rgba(0,0,0,.7); }
+.mg-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; border: 1px solid var(--line, #dee3e8); background: rgba(255,255,255,.85); color: var(--navy, #002664); font-size: 34px; cursor: pointer; z-index: 2; }
+.mg-nav:hover { background: #fff; }
 .mg-nav:focus-visible { outline: 3px solid var(--focus, #8ab4ff); outline-offset: -3px; }
 .mg-nav.is-prev { left: 0; border-radius: 0 6px 6px 0; }
 .mg-nav.is-next { right: 0; border-radius: 6px 0 0 6px; }
@@ -227,18 +227,18 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .mg-zoom-wrap { will-change: transform; transition: transform .1s ease-out; }
 
 /* Full-size popup */
-.mg-popup { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.88); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+.mg-popup { position: fixed; inset: 0; z-index: 1000; background: rgba(255,255,255,.95); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
 .mg-popup__inner { position: relative; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; width: 100%; max-height: calc(100vh - 80px); }
-.mg-popup__img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
-.mg-popup__close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255,255,255,.9); color: #1b1f24; font-size: 24px; cursor: pointer; display: grid; place-items: center; z-index: 1001; }
-.mg-popup__close:hover { background: #fff; }
-.mg-popup__close:focus-visible { outline: 3px solid var(--focus, #8ab4ff); outline-offset: 2px; }
-.mg-popup__cap { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; color: #ccc; font-size: 14px; margin: 0; }
+.mg-popup__img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; box-shadow: 0 2px 16px rgba(0,0,0,.12); }
+.mg-popup__close { position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border: 1px solid var(--line, #dee3e8); border-radius: 50%; background: #fff; color: var(--navy, #002664); font-size: 24px; cursor: pointer; display: grid; place-items: center; z-index: 1001; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+.mg-popup__close:hover { background: var(--soft, #f4f7fa); }
+.mg-popup__close:focus-visible { outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 2px; }
+.mg-popup__cap { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; color: var(--muted, #6a7585); font-size: 14px; margin: 0; }
 
 /* Video inside gallery stage */
 .mg-stage .media-body { width: 100%; height: 100%; }
 .mg-stage .zp { width: 100%; height: 100%; }
 .mg-stage .zp-viewport { width: 100%; height: 100%; }
 .mg-stage .media-video { width: 100%; height: 100%; object-fit: contain; }
-.mg-stage .media-status { position: absolute; bottom: 4px; left: 8px; color: #ccc; }
+.mg-stage .media-status { position: absolute; bottom: 4px; left: 8px; color: var(--muted, #6a7585); }
 .mg-stage .media-overlay { border-radius: 0; }
