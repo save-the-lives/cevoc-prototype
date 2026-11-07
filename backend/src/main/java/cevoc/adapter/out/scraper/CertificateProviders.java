@@ -123,10 +123,10 @@ public final class CertificateProviders {
                 new CertificatePageParser(), ttl, Clock.systemUTC(), store);
         CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, s.userAgent(), s.minInterval(),
                 s.connectTimeout(), s.requestTimeout(), ttl, CertificateKeyStrategy.VIA_ENFORCEMENT_SITE);
-        EvidenceRateLimiter limiter = EvidenceRateLimiter.system(s.minInterval());
+        long intraDelayMaxMs = env.getProperty("cevoc.certificates.intra-delay-max-ms", Long.class, 1000L);
         return new HttpFirstCertificateSource(store, Clock.systemUTC(),
                 cookies -> new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props, true, cs -> store.put(cs, Clock.systemUTC().instant())).withCookies(pageUrl, cookies), pageUrl,
-                        new CertificatePageParser(), limiter, ttl, Clock.systemUTC()),
+                        new CertificatePageParser(), intraDelayMaxMs, ttl, Clock.systemUTC()),
                 browser);
     }
 
@@ -136,7 +136,8 @@ public final class CertificateProviders {
         Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
         String command = env.getProperty("cevoc.certificates.curl.command", "curl");
         Duration timeout = Duration.ofSeconds(env.getProperty("cevoc.certificates.curl.timeout-seconds", Long.class, 10L));
-        return new CurlCertificateSource(command.isBlank() ? "curl" : command.trim(), timeout, pageUrl, EvidenceRateLimiter.system(s.minInterval()), ttl,
+        long intraDelayMaxMs = env.getProperty("cevoc.certificates.intra-delay-max-ms", Long.class, 1000L);
+        return new CurlCertificateSource(command.isBlank() ? "curl" : command.trim(), timeout, pageUrl, intraDelayMaxMs, ttl,
                 Clock.systemUTC(), CurlPageFetcher.processRunner());
     }
 
@@ -154,8 +155,9 @@ public final class CertificateProviders {
         // A fresh fetcher per lookup: the session cookie lives in memory for that one lookup only.
         // Browser headers (decision 0024): the bot management in front of the page refuses the identifying agent.
         boolean browserHeaders = env.getProperty("cevoc.certificates.search-page.http-browser-headers", Boolean.class, true);
+        long intraDelayMaxMs = env.getProperty("cevoc.certificates.intra-delay-max-ms", Long.class, 1000L);
         return new SearchPageHttpCertificateSource(() -> new PoliteHttpFetcher(props, browserHeaders), pageUrl, new CertificatePageParser(),
-                EvidenceRateLimiter.system(s.minInterval()), ttl, Clock.systemUTC());
+                intraDelayMaxMs, ttl, Clock.systemUTC());
     }
 
     private static CertificateSourcePort httpForm(Environment env) {

@@ -142,6 +142,7 @@ final class CurlPageFetcher implements PageFetcher, AutoCloseable {
         int status = parseStatus(r.stdout());
         LOG.info("Certificate curl request: method={}, status={}, exit=0, ms={}", method, status, ms);
         if (status == 401 || status == 403 || status == 429) {
+            LOG.warn("Certificate request blocked: status={}, method={}, ms={}", status, method, ms);
             throw new ScrapeException("blocked-" + status);
         }
         if (status / 100 != 2) {

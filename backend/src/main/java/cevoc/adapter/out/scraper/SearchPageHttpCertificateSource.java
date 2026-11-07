@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
 /**
@@ -32,13 +33,13 @@ public class SearchPageHttpCertificateSource implements CertificateSourcePort {
     private final Supplier<PageFetcher> fetchers;
     private final String pageUrl;
     private final CertificatePageParser parser;
-    private final EvidenceRateLimiter limiter;
+    private final long maxDelayMs;
     private final Duration cacheTtl;
     private final Clock clock;
     private final Map<String, Cached> cache = new HashMap<>();
 
     public SearchPageHttpCertificateSource(Supplier<PageFetcher> fetchers, String pageUrl, CertificatePageParser parser,
-                                           EvidenceRateLimiter limiter, Duration cacheTtl, Clock clock) {
+                                           long maxDelayMs, Duration cacheTtl, Clock clock) {
         URI u = URI.create(pageUrl);
         if (!"https".equalsIgnoreCase(u.getScheme()) || u.getHost() == null) {
             throw new IllegalArgumentException("the certificates search page address must be https");
@@ -49,7 +50,7 @@ public class SearchPageHttpCertificateSource implements CertificateSourcePort {
         this.fetchers = fetchers;
         this.pageUrl = pageUrl;
         this.parser = parser;
-        this.limiter = limiter;
+        this.maxDelayMs = maxDelayMs;
         this.cacheTtl = cacheTtl;
         this.clock = clock;
     }
@@ -69,7 +70,6 @@ public class SearchPageHttpCertificateSource implements CertificateSourcePort {
         List<CertificateRef> rows;
         try {
             PageFetcher fetcher = fetchers.get();
-            limiter.acquire();
             String form = fetcher.get(pageUrl);
             LookupDiagnostic.note("srch-http-form: " + SearchPageDiagnostic.structureOf(form));
             if (SearchPageDiagnostic.hasCaptcha(form)) {
@@ -83,7 +83,7 @@ public class SearchPageHttpCertificateSource implements CertificateSourcePort {
                 throw e;
             }
             LookupDiagnostic.note("srch-http-found: " + plan.how() + "; post-fields=" + Math.min(plan.body().size(), 99));
-            limiter.acquire();
+            intraDelay();
             String result = fetcher.postForm(plan.actionUrl(), plan.body());
             LookupDiagnostic.note("srch-http-result: " + SearchPageDiagnostic.structureOf(result));
             if (SearchPageDiagnostic.hasCaptcha(result)) {
@@ -108,5 +108,18 @@ public class SearchPageHttpCertificateSource implements CertificateSourcePort {
         LookupDiagnostic.note("cert-provider=search-page-http");
         cache.put(key, new Cached(now, rows));
         return rows;
+    }
+
+    private void intraDelay() {
+        if (maxDelayMs <= 0) return;
+        long ms = ThreadLocalRandom.current().nextLong(maxDelayMs + 1);
+        if (ms > 0) {
+            try {
+                Thread.sleep(ms);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("interrupted during intra-delay", e);
+            }
+        }
     }
 }

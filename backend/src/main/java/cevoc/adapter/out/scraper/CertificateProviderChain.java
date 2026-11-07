@@ -50,6 +50,7 @@ public final class CertificateProviderChain implements CertificateSourcePort {
                 LOG.warn("Certificate provider failed: provider={}, cause={}, refusal={}, chain-stopped={}", ids.get(i),
                         cause(e), refusal, refusal);
                 if (refusal) {
+                    LOG.warn("Certificate provider blocked: provider={}, cause={}", ids.get(i), cause(e));
                     throw e;
                 }
                 last = e;

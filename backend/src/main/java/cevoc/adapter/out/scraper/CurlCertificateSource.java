@@ -20,12 +20,12 @@ public final class CurlCertificateSource implements CertificateSourcePort {
     private final SearchPageHttpCertificateSource delegate;
     private CurlPageFetcher current;
 
-    CurlCertificateSource(String curl, Duration timeout, String pageUrl, EvidenceRateLimiter limiter, Duration cacheTtl, Clock clock,
+    CurlCertificateSource(String curl, Duration timeout, String pageUrl, long maxDelayMs, Duration cacheTtl, Clock clock,
                           CurlPageFetcher.Runner runner) {
         this.delegate = new SearchPageHttpCertificateSource(() -> {
             current = new CurlPageFetcher(curl, timeout, runner);
             return current;
-        }, pageUrl, new CertificatePageParser(), limiter, cacheTtl, clock);
+        }, pageUrl, new CertificatePageParser(), maxDelayMs, cacheTtl, clock);
     }
 
     @Override

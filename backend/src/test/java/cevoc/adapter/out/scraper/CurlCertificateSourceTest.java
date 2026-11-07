@@ -59,7 +59,7 @@ class CurlCertificateSourceTest {
     }
 
     private static CurlCertificateSource source(FakeCurl fake) {
-        return new CurlCertificateSource("curl", Duration.ofSeconds(10), URL, new EvidenceRateLimiter(Duration.ZERO, () -> 0L, n -> { }),
+        return new CurlCertificateSource("curl", Duration.ofSeconds(10), URL, 0L,
                 Duration.ofMinutes(5), Clock.fixed(Instant.parse("2030-01-01T00:00:00Z"), ZoneOffset.UTC), fake);
     }
 

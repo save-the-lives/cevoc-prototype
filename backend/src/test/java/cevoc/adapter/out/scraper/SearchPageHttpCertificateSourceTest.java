@@ -58,7 +58,7 @@ class SearchPageHttpCertificateSourceTest {
 
     static SearchPageHttpCertificateSource source(PageFetcher f) {
         return new SearchPageHttpCertificateSource(() -> f, URL, new CertificatePageParser(),
-                new EvidenceRateLimiter(Duration.ZERO, () -> 0L, n -> { }), Duration.ofMinutes(5),
+                0L, Duration.ofMinutes(5),
                 Clock.fixed(Instant.parse("2030-01-01T00:00:00Z"), ZoneOffset.UTC));
     }
 
@@ -92,7 +92,7 @@ class SearchPageHttpCertificateSourceTest {
             FormFetcher f = new FormFetcher(CertificatePageParserTest.fixture("results-certificates.html"));
             made.add(f);
             return f;
-        }, URL, new CertificatePageParser(), new EvidenceRateLimiter(Duration.ZERO, () -> 0L, n -> { }), Duration.ofMinutes(5),
+        }, URL, new CertificatePageParser(), 0L, Duration.ofMinutes(5),
                 Clock.fixed(Instant.parse("2030-01-01T00:00:00Z"), ZoneOffset.UTC));
         s.findCertificates(Q);
         s.findCertificates(Q);
