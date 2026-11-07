@@ -45,7 +45,7 @@ function ExplainerCards({ cards }) {
           {EXPLAINER_ICONS[c.icon] && <div className="explainer-icon">{EXPLAINER_ICONS[c.icon]}</div>}
           <h4>{c.heading}</h4>
           <p>{c.body}</p>
-          {c.link && <a href={`#${c.link.step}`} className="explainer-link">{c.link.text} ↓</a>}
+          {c.link && <button type="button" className="explainer-link" onClick={() => document.getElementById(c.link.step)?.scrollIntoView({ behavior: 'smooth' })}>{c.link.text} ↓</button>}
         </div>
       ))}
     </div>
@@ -300,7 +300,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
             <div className="stat-col">
               <h3>Your options</h3>
               <p>You can pay, ask for a review or set up a payment plan.</p>
-              <a href="#step-options" className="btn-primary-sm">See your options ↓</a>
+              <button type="button" className="btn-primary-sm" onClick={() => document.getElementById('step-options')?.scrollIntoView({ behavior: 'smooth' })}>See your options ↓</button>
             </div>
           </div>
         ) : (
