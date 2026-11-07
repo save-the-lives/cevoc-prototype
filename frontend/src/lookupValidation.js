@@ -1,6 +1,7 @@
 // Validation for the details that find a notice. Messages say what is wrong and how to fix it, in plain words.
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-export const YEARS_BACK = 3;
+export const MAX_OFFENCE_AGE_YEARS = 7;
+export const YEARS_BACK = MAX_OFFENCE_AGE_YEARS;
 
 const pad = (n) => String(n).padStart(2, '0');
 export const toIso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;

@@ -34,14 +34,14 @@ describe('offence date', () => {
   it('rejects impossible, future and old dates', () => {
     expect(checkDate(p('31', '2', '2026'), NOW).msg).toMatch(/February 2026 doesn’t have a day 31/);
     expect(checkDate(p('5', '11', '2026'), NOW).msg).toMatch(/must be in the past/);
-    expect(checkDate(p('1', '1', '2020'), NOW).msg).toMatch(/within the last 3 years/);
+    expect(checkDate(p('1', '1', '2019'), NOW).msg).toMatch(/within the last 7 years/);
     expect(checkDate(p('1', '1', '26'), NOW).msg).toMatch(/4 digits/);
   });
   it('accepts a real recent date and converts it to ISO', () => {
     expect(checkDate(p('14', '3', '2026'), NOW)).toBeNull();
     expect(partsToIso(p('4', '3', '2026'))).toBe('2026-03-04');
     expect(todayIso(NOW)).toBe('2026-11-04');
-    expect(earliestIso(NOW)).toBe('2023-11-04');
+    expect(earliestIso(NOW)).toBe('2019-11-04');
   });
 });
 
