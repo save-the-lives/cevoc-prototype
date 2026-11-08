@@ -68,15 +68,21 @@ function findEvent(events, name) {
 function loadCases(envName) {
   const raw = process.env[envName];
   if (!raw) return [];
-  // Secret is stored as plain JSON. GitHub masks secret substrings in logs
-  // but process.env receives the real value.
+  // Secret is stored as plain JSON.
+  // Diagnostic: log length and first two characters (safe — just structural chars).
+  const first2 = raw.substring(0, 2);
+  console.log(`[diag] ${envName}: len=${raw.length} first2=${JSON.stringify(first2)}`);
   let parsed;
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    // Report position only — never echo the raw value (it contains notice numbers).
+    // Report position and first char only — never echo the raw value.
     const pos = e.message.match(/position (\d+)/)?.[1];
-    throw new Error(`${envName}: JSON parse failed at position ${pos ?? '?'}. Ensure the secret is a valid JSON array starting with [.`);
+    throw new Error(
+      `${envName}: JSON parse failed at position ${pos ?? '?'}. ` +
+      `Length=${raw.length}, starts with ${JSON.stringify(first2)}. ` +
+      `Ensure the secret is a valid JSON array starting with [.`
+    );
   }
   // Accept either a bare array or an object whose matching key holds the array.
   if (Array.isArray(parsed)) return parsed;
