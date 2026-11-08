@@ -91,6 +91,10 @@ const skip = skipPass && skipFail;
 
 describe('Smoke test config', () => {
   it('cases loaded', () => {
+    const rawPass = process.env.LIVE_CASES_PASS;
+    console.log(`[diag] LIVE_CASES_PASS: type=${typeof rawPass}, len=${rawPass?.length}, starts=${rawPass?.substring(0,2)}, ends=${rawPass?.substring(rawPass.length-2)}`);
+    console.log(`[diag] PDVT_BASE_URL: ${baseUrl ? 'set' : 'unset'}`);
+    console.log(`[diag] passCases: ${passCases.length}, failCases: ${failCases.length}`);
     expect(Array.isArray(passCases)).toBe(true);
     expect(Array.isArray(failCases)).toBe(true);
     if (passCases.length) expect(baseUrl).toBeTruthy();
