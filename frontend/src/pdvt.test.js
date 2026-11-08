@@ -76,11 +76,15 @@ function loadCases(envName) {
   } catch (e) {
     // Extract only the error type and position — never echo raw values.
     const pos = e.message.match(/position (\d+)/)?.[1];
-    const charCode = pos != null ? `charCode=${raw.charCodeAt(Number(pos))}` : '';
+    const at0 = raw.charCodeAt(0);
+    const atPos = pos != null ? raw.charCodeAt(Number(pos)) : undefined;
     throw new Error(
-      `${envName}: JSON parse failed at position ${pos ?? '?'} ${charCode}. ` +
-      `Length=${raw.length}. Check for curly quotes, trailing commas, or ` +
-      `a wrapper object instead of a bare array.`
+      `${envName}: JSON parse failed. ` +
+      `Length=${raw.length}, char[0]=${at0}` +
+      (atPos !== undefined ? `, char[${pos}]=${atPos}` : '') + `. ` +
+      `Expected char[0]=91 (opening bracket). ` +
+      `If char[0]=42, GitHub is masking the value — store as base64: ` +
+      `base64 -w0 < cases.json | gh secret set ${envName}`
     );
   }
   // Accept either a bare array or an object whose matching key holds the array.
