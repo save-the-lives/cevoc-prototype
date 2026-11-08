@@ -75,21 +75,20 @@ function loadCases(envName) {
   // Try plain JSON first, then base64 decode as fallback.
   // To store as base64: base64 -w0 < cases.json | gh secret set LIVE_CASES_PASS
   let parsed;
-  // Attempt 1: plain JSON
   try {
     parsed = JSON.parse(trimmed);
-  } catch {
-    // Attempt 2: base64 decode then JSON parse
-    try {
-      const decoded = Buffer.from(trimmed, 'base64').toString('utf-8');
-      parsed = JSON.parse(decoded);
-    } catch (e2) {
-      throw new Error(
-        `${envName}: cannot parse as JSON or base64-encoded JSON (len=${trimmed.length}). ` +
-        `GitHub masks secret substrings in process.env, corrupting plain JSON. ` +
-        `Fix: base64 -w0 < cases.json | gh secret set ${envName}`
-      );
-    }
+  } catch (e) {
+    // Show the real parse error — position and type, not raw values.
+    const msg = e.message || '';
+    const posMatch = msg.match(/position\s+(\d+)/i) || msg.match(/column\s+(\d+)/i);
+    const pos = posMatch ? Number(posMatch[1]) : null;
+    const hint = pos != null
+      ? `. char at ${pos}=${trimmed.charCodeAt(pos)} (${trimmed[pos] === ',' ? 'trailing comma?' : trimmed[pos] === '“' || trimmed[pos] === '”' ? 'curly quote?' : 'check this position'})`
+      : '';
+    throw new Error(
+      `${envName}: JSON parse error — ${msg.replace(/\n.*/s, '').substring(0, 120)}${hint}. ` +
+      `Length=${trimmed.length}.`
+    );
   }
   // Accept either a bare array or an object whose matching key holds the array.
   if (Array.isArray(parsed)) return parsed;
