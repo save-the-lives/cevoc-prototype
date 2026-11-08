@@ -167,9 +167,10 @@ describe.skipIf(skipPass)('Smoke pass cases', () => {
       }
       if (c.expect.certificates) {
         if (c.expect.certificates === 'covered') {
-          expect(certificates?.coverage?.tone, `case ${id}: certificates coverage`).toBe('covered');
+          expect(certificates?.coverage?.status, `case ${id}: certificates coverage`).toBe('COVERED');
         } else if (c.expect.certificates === 'none') {
-          expect(certificates?.certificates?.length || 0, `case ${id}: certificates should be empty`).toBe(0);
+          const hasCov = certificates?.coverage?.status;
+          expect(hasCov === 'NONE' || hasCov === undefined, `case ${id}: certificates should be none/absent`).toBe(true);
         }
       }
     } finally {
