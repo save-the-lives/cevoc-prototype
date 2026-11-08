@@ -4,7 +4,7 @@ export default defineConfig({
   plugins: [react()],
   server: { host: '127.0.0.1', port: 5174, proxy: { '/api': 'http://127.0.0.1:8080' } },
   test: {
-    // Smoke tests need process.env for secrets passed via GitHub Actions.
-    server: { deps: { inline: true } },
+    passWithNoTests: true,
+    pool: 'forks', // Use child_process forks so process.env is available natively.
   },
 });
