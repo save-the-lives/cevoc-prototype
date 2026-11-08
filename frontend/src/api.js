@@ -57,12 +57,13 @@ export async function lookupPenalty({ infringementNumber, offenceDate, registrat
  * If the stream endpoint is not available (an older backend, a proxy that does not stream) it falls back to the single JSON
  * answer, delivered as the same events. Resolves when the stream is over; rejects with LookupError, or AbortError when aborted.
  */
-export async function streamLookup({ infringementNumber, offenceDate, registration, familyName, givenNames }, onEvent, signal) {
+export async function streamLookup({ infringementNumber, offenceDate, registration, familyName, givenNames, organisation }, onEvent, signal) {
   if (mockEnabled) return (await import('./mock.js')).mockStream({ infringementNumber, offenceDate, registration }, onEvent, signal);
   const body = { infringementNumber, offenceDate };
   if (registration) body.registration = registration;
   if (familyName) body.familyName = familyName;
   if (givenNames) body.givenNames = givenNames;
+  if (organisation) body.organisation = organisation;
   let res;
   try {
     res = await fetch(`${API_BASE}/api/penalty-lookups/stream`, {

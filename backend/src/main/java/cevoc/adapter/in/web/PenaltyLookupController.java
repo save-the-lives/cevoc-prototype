@@ -37,14 +37,15 @@ public class PenaltyLookupController {
             @NotNull @PastOrPresent LocalDate offenceDate,
             String registration,
             String familyName,
-            String givenNames) {
+            String givenNames,
+            String organisation) {
 
         public LookupBody(String infringementNumber, LocalDate offenceDate) {
-            this(infringementNumber, offenceDate, null, null, null);
+            this(infringementNumber, offenceDate, null, null, null, null);
         }
 
         public LookupBody(String infringementNumber, LocalDate offenceDate, String registration) {
-            this(infringementNumber, offenceDate, registration, null, null);
+            this(infringementNumber, offenceDate, registration, null, null, null);
         }
 
         @Override
@@ -65,7 +66,7 @@ public class PenaltyLookupController {
         }
         if (body.familyName() != null && !body.familyName().isBlank()) {
             var inner = action;
-            var identity = new IdentityScope.Identity(body.familyName().trim(), body.givenNames() != null ? body.givenNames().trim() : "");
+            var identity = new IdentityScope.Identity(body.familyName().trim(), body.givenNames() != null ? body.givenNames().trim() : "", body.organisation() != null ? body.organisation().trim() : null);
             action = () -> IdentityScope.with(identity, inner);
         }
         return action.get();

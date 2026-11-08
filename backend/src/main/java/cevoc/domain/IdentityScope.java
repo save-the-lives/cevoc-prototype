@@ -10,7 +10,11 @@ import java.util.function.Supplier;
  */
 public final class IdentityScope {
 
-    public record Identity(String familyName, String givenNames) {}
+    public record Identity(String familyName, String givenNames, String organisation) {
+        public Identity(String familyName, String givenNames) {
+            this(familyName, givenNames, null);
+        }
+    }
 
     private static final ThreadLocal<Identity> CURRENT = new ThreadLocal<>();
 

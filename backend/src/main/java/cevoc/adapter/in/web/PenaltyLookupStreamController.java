@@ -100,7 +100,7 @@ public class PenaltyLookupStreamController {
         PenaltyLookupRequest request = new PenaltyLookupRequest(body.infringementNumber().trim(), body.offenceDate());
         String plate = PenaltyLookupController.cleanRegistration(body.registration());
         IdentityScope.Identity identity = body.familyName() != null && !body.familyName().isBlank()
-                ? new IdentityScope.Identity(body.familyName().trim(), body.givenNames() != null ? body.givenNames().trim() : "")
+                ? new IdentityScope.Identity(body.familyName().trim(), body.givenNames() != null ? body.givenNames().trim() : "", body.organisation() != null ? body.organisation().trim() : null)
                 : null;
         SseEmitter emitter = new SseEmitter(TIMEOUT_MS);
         AtomicBoolean open = new AtomicBoolean(true);
