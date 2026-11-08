@@ -70,7 +70,9 @@ function loadCases(envName) {
   if (!raw) return [];
   // Secret is stored as plain JSON. The workflow masks sensitive input values
   // (notice, date, plate) with ::add-mask:: so they don't appear in logs.
-  const trimmed = raw.trim();
+  let trimmed = raw.trim();
+  // Fix curly quotes that sneak in when pasting from rich-text editors.
+  trimmed = trimmed.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
   let parsed;
   try {
     parsed = JSON.parse(trimmed);
