@@ -89,6 +89,13 @@ const skip = skipPass && skipFail;
 
 // ---- Tests ----
 
+it('smoke test config', () => {
+  // Sentinel: ensures Vitest always finds at least one test in this file.
+  expect(Array.isArray(passCases)).toBe(true);
+  expect(Array.isArray(failCases)).toBe(true);
+  if (passCases.length) expect(baseUrl).toBeTruthy();
+});
+
 describe.skipIf(skipPass)('Smoke pass cases', () => {
 
   it.each(passCases.map((c) => [c.id, c]))('%s', async (id, c) => {
