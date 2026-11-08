@@ -77,19 +77,18 @@ function loadCases(envName) {
   try {
     parsed = JSON.parse(trimmed);
   } catch (e) {
-    // Extract only the error type and position — never echo raw values.
-    const pos = e.message.match(/position (\d+)/)?.[1];
-    const at0raw = raw.charCodeAt(0);
-    const at0trim = trimmed.charCodeAt(0);
-    // Show first 5 charCodes of trimmed value for diagnosis (structural chars only)
-    const codes = Array.from(trimmed.substring(0, 5)).map(c => c.charCodeAt(0));
+    // Find position from error message (varies by Node version).
+    const posMatch = e.message.match(/position\s+(\d+)/i) || e.message.match(/column\s+(\d+)/i);
+    const pos = posMatch ? Number(posMatch[1]) : null;
+    // Show charCodes around the failure point (structural only, no string values).
+    const around = pos != null
+      ? Array.from(trimmed.substring(Math.max(0, pos - 2), pos + 3)).map(c => c.charCodeAt(0))
+      : Array.from(trimmed.substring(0, 8)).map(c => c.charCodeAt(0));
     throw new Error(
       `${envName}: JSON parse failed. ` +
-      `rawLen=${raw.length}, trimLen=${trimmed.length}, ` +
-      `rawFirst=${at0raw}, trimFirst=${at0trim}, ` +
-      `trimCodes5=${JSON.stringify(codes)}. ` +
-      `Expected trimFirst=91 ([). ` +
-      `42=masking, 123=wrapper object, 91=malformed array.`
+      `len=${trimmed.length}, pos=${pos ?? '?'}, ` +
+      `codes=${JSON.stringify(around)}. ` +
+      `Err: ${e.message.replace(/[\s\S]*?(Unexpected|Expected)/, '$1').substring(0, 80)}`
     );
   }
   // Accept either a bare array or an object whose matching key holds the array.
