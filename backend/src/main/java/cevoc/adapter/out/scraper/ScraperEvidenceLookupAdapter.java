@@ -179,29 +179,34 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         String loginHtml = trace.run(LookupStep.OPEN_LOGIN, session::loginPage);
         RevenueNswPageParser.Page login = parser.parse(loginHtml);
         if (login.state() != RevenueNswPageParser.State.LOGIN) {
-            LOG.warn("evidence lookup: login page not recognised");
+            String struct = LookupDiagnostic.structureOf(loginHtml);
+            LOG.warn("evidence lookup: login page not recognised, state={}, structure={}", login.state(), struct);
             trace.fail(LookupStep.OPEN_LOGIN, StepCause.PAGE_NOT_RECOGNISED);
             LookupDiagnostic.set(LookupDiagnostic.fromUnreadablePage("login", loginHtml));
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
-        if (!login.unexpectedLoginFields().isEmpty()) {
-            var identity = IdentityScope.current();
-            if (identity == null || identity.familyName() == null || identity.familyName().isBlank()) {
-                LOG.info("evidence lookup: login page asks for extra details, prompting user");
-                trace.fail(LookupStep.OPEN_LOGIN, StepCause.EXTRA_LOGIN_FIELDS);
-                return result(Status.UNAVAILABLE, number, "This kind of notice needs your name as shown on the penalty notice.")
-                        .withRequiredFields(login.unexpectedLoginFields());
-            }
-            LOG.info("evidence lookup: filling identity fields");
-        }
-        // State 2: summary. Still on the login page means the pair was not matched (OPEN QUESTION: the real wording).
-        var identity = IdentityScope.current();
+        // The identity fields on the login page are always disabled (the Angular app enables them on a DIFFERENT
+        // page after clicking Next). So we just submit login normally — if the notice type needs identity,
+        // Revenue NSW redirects to the "Additional penalty information" page, which is handled below.
         String summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
-                () -> identity != null && identity.familyName() != null
-                        ? session.submitLogin(number, request.offenceDate().format(LOGIN_DATE), identity.familyName(), identity.givenNames(), identity.organisation())
-                        : session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
+                () -> session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
         long readStart = System.nanoTime();
         RevenueNswPageParser.Page page = parser.parse(summaryHtml);
+        // After the initial login, certain notice types redirect to an "Additional penalty information" page
+        // that asks for the customer's name. If identity is available, fill the fields and submit (Skip or Next).
+        if (page.state() == RevenueNswPageParser.State.IDENTITY) {
+            var idScope = IdentityScope.current();
+            if (idScope == null || idScope.familyName() == null || idScope.familyName().isBlank()) {
+                LOG.info("evidence lookup: identity page detected, prompting user");
+                return result(Status.UNAVAILABLE, number, "This type of notice needs your name before we can show the evidence.")
+                        .withRequiredFields(page.unexpectedLoginFields());
+            }
+            LOG.info("evidence lookup: filling identity fields on additional page");
+            summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
+                    () -> session.submitIdentity(idScope.familyName(), idScope.givenNames()));
+            readStart = System.nanoTime();
+            page = parser.parse(summaryHtml);
+        }
         // The Angular summary can render late (its GET sometimes hangs): keep reading until a recognised state or the bound.
         if (page.state() == RevenueNswPageParser.State.LOGIN || page.state() == RevenueNswPageParser.State.UNRECOGNISED) {
             boolean unrecognised = page.state() == RevenueNswPageParser.State.UNRECOGNISED;

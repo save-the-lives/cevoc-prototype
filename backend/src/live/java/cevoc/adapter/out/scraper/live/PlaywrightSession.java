@@ -825,6 +825,38 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     @Override
+    public String submitIdentity(String familyName, String givenNames) throws IOException, InterruptedException {
+        if (familyName != null) redactor.add(familyName);
+        if (givenNames != null) redactor.add(givenNames);
+        return step("submit-identity", () -> {
+            tag("submit-identity");
+            var lastNameInput = page.locator("input[name='lastName'], input#lastName");
+            if (lastNameInput.count() > 0 && lastNameInput.isVisible()) {
+                lastNameInput.fill(familyName != null ? familyName : "");
+            }
+            var firstNameInput = page.locator("input[name='firstName'], input#firstName");
+            if (firstNameInput.count() > 0 && firstNameInput.isVisible()) {
+                firstNameInput.fill(givenNames != null ? givenNames : "");
+            }
+            pace();
+            // The identity page has both "Skip" and "Next" buttons. Click Next to submit.
+            var nextBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next").setExact(true));
+            if (nextBtn.count() > 0) {
+                click(nextBtn, page.locator(NEXT_CSS));
+            } else {
+                // Fall back to Skip if Next is not present
+                var skipBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Skip"));
+                if (skipBtn.count() > 0) click(skipBtn, page.locator(NEXT_CSS));
+            }
+            markAfterClick();
+            waitUntil(() -> page.locator(PLATE).count() > 0 || page.getByText(SUMMARY_HEADING).count() > 0
+                    || visibleAlerts() > 0);
+            tag("read-after-identity");
+            return snapshot("2b-after-identity");
+        });
+    }
+
+    @Override
     public java.util.Optional<String> currentPage() throws IOException, InterruptedException {
         return step("read-summary", () -> java.util.Optional.of(snapshot("2-after-login")));
     }

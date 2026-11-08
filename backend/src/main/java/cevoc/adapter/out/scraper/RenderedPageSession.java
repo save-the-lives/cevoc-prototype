@@ -64,6 +64,14 @@ public interface RenderedPageSession extends AutoCloseable {
     }
 
     /**
+     * Fills identity fields on the "Additional penalty information" page and submits.
+     * This page appears AFTER the initial login for certain notice types (seatbelt, nomination).
+     */
+    default String submitIdentity(String familyName, String givenNames) throws IOException, InterruptedException {
+        throw new UnsupportedOperationException("submitIdentity not supported by this session");
+    }
+
+    /**
      * The rendered DOM as it is right now, without acting on the page. Used to keep reading after
      * {@link #submitLogin} until the summary has rendered. Empty when the session cannot re-read (default).
      */

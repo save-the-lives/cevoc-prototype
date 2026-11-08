@@ -50,7 +50,7 @@ import org.jsoup.nodes.Element;
  */
 public class RevenueNswPageParser {
 
-    public enum State { LOGIN, SUMMARY, IMAGES, UNRECOGNISED }
+    public enum State { LOGIN, IDENTITY, SUMMARY, IMAGES, UNRECOGNISED }
 
     /** One distinct evidence image: its ref (700-1-...) and the session-bound blob: handle. */
     public record ImageRef(String ref, String blobUrl) {}
@@ -151,6 +151,13 @@ public class RevenueNswPageParser {
             return new Page(State.LOGIN, null, null, false, false, false, unexpectedLoginFields(doc),
                     List.of(), false, null, null, null, alertText(doc));
         }
+        // The "Additional penalty information" page appears after clicking Next on certain notice types
+        // (seatbelt, nomination). It has identity fields (lastName, firstName) but no pnn/dateOfOffence.
+        boolean identityPage = !loginForm && (field(doc, "lastName") != null || field(doc, "firstName") != null);
+        if (identityPage) {
+            return new Page(State.IDENTITY, null, null, false, false, false, identityFields(doc),
+                    List.of(), false, null, null, null, alertText(doc));
+        }
         boolean summaryValues = value(doc, L_DATE) != null || value(doc, L_PENALTY) != null;
         // The login page labels its own field "Penalty notice number", so a heading alone never makes a summary there.
         boolean detailsPresent = summaryValues || (heading != null && !loginForm);
@@ -185,6 +192,16 @@ public class RevenueNswPageParser {
                 images.isEmpty() ? notice.enforcementMethod() : EnforcementMethod.CAMERA);
         return new Page(State.IMAGES, heading, camera, false, false, registrationRow, List.of(), images, download, code, cert,
                 bannerDetails(doc), null);
+    }
+
+    /** Identity fields present on the Additional penalty information page. */
+    private static List<String> identityFields(Document doc) {
+        List<String> out = new ArrayList<>();
+        for (String name : OPTIONAL_LOGIN_FIELDS) {
+            Element input = field(doc, name);
+            if (input != null) out.add(name);
+        }
+        return out;
     }
 
     /** Visible alert or error text on the page (first non-empty one), or null. */
