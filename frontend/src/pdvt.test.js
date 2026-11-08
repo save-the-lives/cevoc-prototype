@@ -97,6 +97,18 @@ const skip = skipPass && skipFail;
 
 describe('Smoke test config', () => {
   it('cases loaded', () => {
+    const raw = process.env.LIVE_CASES_PASS;
+    if (raw) {
+      const isB64 = !raw.trimStart().startsWith('[');
+      console.log(`[diag] raw len=${raw.length} isB64=${isB64} first2=${raw.substring(0,2)}`);
+      if (isB64) {
+        try {
+          const dec = Buffer.from(raw, 'base64').toString('utf-8');
+          console.log(`[diag] decoded len=${dec.length} starts=${dec.substring(0,2)}`);
+        } catch (e) { console.log(`[diag] b64 decode failed: ${e.message}`); }
+      }
+    }
+    console.log(`[diag] passCases=${passCases.length} skipPass=${skipPass}`);
     expect(Array.isArray(passCases)).toBe(true);
     expect(Array.isArray(failCases)).toBe(true);
     if (passCases.length) expect(baseUrl).toBeTruthy();
