@@ -292,7 +292,9 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE' && (video.render || e.kind !== 'VIDEO'));
   const oldCerts = (result?.evidence || []).filter((e) => e.kind === 'CERTIFICATE');
   const ev = known ? evidenceState({ ...result, evidence: [...media, ...(result.evidence || []).filter((e) => e.kind === 'CERTIFICATE')] }, registrationGiven) : 'show';
-  const steps = known ? stepsFor(result, ev) : [
+  const steps = needsIdentity
+    ? [{ id: 'step-what', label: 'What happened' }]
+    : known ? stepsFor(result, ev) : [
     { id: 'step-what', label: 'What happened' }, { id: 'step-evidence', label: 'Was it my vehicle?' },
     { id: 'step-measure', label: 'How it was measured' }, { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
   ];
@@ -378,7 +380,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                 )}
           </Step>
 
-          <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
+          {!needsIdentity && <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
             {detailsLoading || evLoading
               ? <PhotoSkeleton label="Fetching the camera photos. This can take up to half a minute." />
               : evFailed || detailsFailed
@@ -393,9 +395,9 @@ export default function Notice({ result, query, sections = READY, registrationGi
                     {camera && ev !== 'needs-plate' && video.message && <p className="notice-box" role="status" data-testid="video-note">{video.message}</p>}
                   </>
                 )}
-          </Step>
+          </Step>}
 
-          {camera && known && hasMeasureData(result) && (() => {
+          {!needsIdentity && camera && known && hasMeasureData(result) && (() => {
             const prog = pickProgram(result);
             const safetyMsg = pickMessage(result);
             return (
@@ -414,7 +416,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
             );
           })()}
 
-          {camera && (
+          {!needsIdentity && camera && (
             <Step n={stepNo('step-camera')} id="step-camera" title="Was the camera working properly?" tone={certAns.tone === 'warn' ? 'warn' : ''}
               answer={detailsLoading ? 'Checking the camera certificates…' : certFailed || detailsFailed ? "We couldn't load the certificates." : certAns.text}>
               {detailsLoading || certLoading
@@ -437,7 +439,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
             </Step>
           )}
 
-          <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, your notice details will be filled in for you.">
+          {!needsIdentity && <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, your notice details will be filled in for you.">
             <ul className="option-list">
               {OPTIONS.map((o) => (
                 <li key={o.id} className="option-row">
@@ -449,7 +451,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
                 </li>
               ))}
             </ul>
-          </Step>
+          </Step>}
 
         </div>
       </div>
