@@ -68,4 +68,12 @@ jobs:
           LIVE_CASES_FAIL: ${{ secrets.LIVE_CASES_FAIL }}
           PDVT_BASE_URL: ${{ steps.prep.outputs.base_url }}
           PDVT_TAGS: ${{ inputs.tags }}
-        run: npx vitest run src/pdvt.test.js --reporter=verbose
+        run: |
+          # Write env vars to .env.test so Vitest picks them up in forked workers.
+          node -e "
+            const fs = require('fs');
+            const vars = ['LIVE_CASES_PASS','LIVE_CASES_FAIL','PDVT_BASE_URL','PDVT_TAGS'];
+            const lines = vars.filter(k => process.env[k]).map(k => k + '=' + JSON.stringify(process.env[k]));
+            fs.writeFileSync('.env.test', lines.join('\n'));
+          "
+          npx vitest run src/pdvt.test.js --reporter=verbose

@@ -66,13 +66,14 @@ function findEvent(events, name) {
 // ---- Load cases ----
 
 function loadCases(envName) {
-  const raw = process.env[envName];
+  // Vitest loads .env.test into import.meta.env; process.env is the fallback.
+  const raw = (typeof import.meta !== 'undefined' && import.meta.env?.[envName]) || process.env[envName];
   if (!raw) return [];
   try { return JSON.parse(raw); } catch { return []; }
 }
 
 function filterByTags(cases) {
-  const tagFilter = process.env.PDVT_TAGS;
+  const tagFilter = (typeof import.meta !== 'undefined' && import.meta.env?.PDVT_TAGS) || process.env.PDVT_TAGS;
   if (!tagFilter) return cases;
   const wanted = tagFilter.split(',').map((t) => t.trim()).filter(Boolean);
   if (wanted.length === 0) return cases;
@@ -81,7 +82,7 @@ function filterByTags(cases) {
 
 const passCases = filterByTags(loadCases('LIVE_CASES_PASS'));
 const failCases = filterByTags(loadCases('LIVE_CASES_FAIL'));
-const baseUrl = process.env.PDVT_BASE_URL;
+const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.PDVT_BASE_URL) || process.env.PDVT_BASE_URL;
 const noBase = !baseUrl;
 const skipPass = noBase || !passCases.length;
 const skipFail = noBase || !failCases.length;
