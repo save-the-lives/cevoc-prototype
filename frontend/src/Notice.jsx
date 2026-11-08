@@ -395,6 +395,12 @@ export default function Notice({ result, query, sections = READY, registrationGi
                       : oldCerts.length > 0
                         ? <Suspense fallback={<PhotoSkeleton count={oldCerts.length} />}><EvidenceGrid items={oldCerts} /></Suspense>
                         : <p className="notice-box" role="status">Certificate information is not available to show yet. Everything else on this page is still correct.</p>}
+              {result?.certificateUrl && (
+                <div className="cert-action">
+                  <a href={result.certificateUrl} className="nsw-button nsw-button--dark-outline-solid" target="_blank" rel="noopener noreferrer">View certificate ↗</a>
+                  <p className="cert-note">Opens on the Transport for NSW website. You may be asked to sign in.</p>
+                </div>
+              )}
             </Step>
           )}
 

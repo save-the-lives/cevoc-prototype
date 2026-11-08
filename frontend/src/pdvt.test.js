@@ -68,30 +68,19 @@ function findEvent(events, name) {
 function loadCases(envName) {
   const raw = process.env[envName];
   if (!raw) return [];
-  // GitHub replaces substrings of secret values with '***' in process.env.
-  // Support both plain JSON and base64-encoded JSON:
-  //   Plain JSON:  gh secret set LIVE_CASES_PASS < cases.json
-  //   Base64:      base64 -w0 < cases.json | gh secret set LIVE_CASES_PASS
-  let text = raw;
-  // Try base64 decode first — if the input is valid base64 and decodes to
-  // something starting with [ or {, use the decoded version.
-  try {
-    const decoded = Buffer.from(raw, 'base64').toString('utf-8');
-    if (decoded.trimStart().startsWith('[') || decoded.trimStart().startsWith('{')) {
-      text = decoded;
-    }
-  } catch { /* not base64, use raw */ }
+  // Secret is stored as plain JSON. The workflow masks sensitive input values
+  // (notice, date, plate) with ::add-mask:: so they don't appear in logs.
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(raw);
   } catch (e) {
+    // Extract only the error type and position — never echo raw values.
     const pos = e.message.match(/position (\d+)/)?.[1];
-    const first2 = raw.substring(0, 2);
+    const charCode = pos != null ? `charCode=${raw.charCodeAt(Number(pos))}` : '';
     throw new Error(
-      `${envName}: JSON parse failed at position ${pos ?? '?'}. ` +
-      `Length=${raw.length}, starts with ${JSON.stringify(first2)}. ` +
-      `If GitHub is masking the value (starts with "***"), store the secret ` +
-      `as base64: base64 -w0 < cases.json | gh secret set ${envName}`
+      `${envName}: JSON parse failed at position ${pos ?? '?'} ${charCode}. ` +
+      `Length=${raw.length}. Check for curly quotes, trailing commas, or ` +
+      `a wrapper object instead of a bare array.`
     );
   }
   // Accept either a bare array or an object whose matching key holds the array.

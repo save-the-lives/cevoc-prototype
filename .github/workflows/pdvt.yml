@@ -46,10 +46,34 @@ jobs:
         run: |
           set +x
           [ -n "$LIVE_CASES_PASS" ] || [ -n "$LIVE_CASES_FAIL" ] || { echo "::error::Neither LIVE_CASES_PASS nor LIVE_CASES_FAIL is set."; exit 1; }
-          # GitHub already masks the full secret value. Individual field masking
-          # was corrupting the JSON inside process.env, so it's been removed.
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           echo "base_url=https://$fqdn" >> "$GITHUB_OUTPUT"
+
+      - name: Mask sensitive input values
+        env:
+          LIVE_CASES_PASS: ${{ secrets.LIVE_CASES_PASS }}
+          LIVE_CASES_FAIL: ${{ secrets.LIVE_CASES_FAIL }}
+        run: |
+          # Register each notice number, date and plate as a masked value so
+          # they are hidden in all subsequent log lines, even if test code
+          # accidentally prints them. Masking is log-only — process.env is
+          # unaffected.
+          node -e '
+            function mask(envName) {
+              const raw = process.env[envName];
+              if (!raw) return;
+              let cases;
+              try { cases = JSON.parse(raw); } catch { return; }
+              if (!Array.isArray(cases)) return;
+              for (const c of cases) {
+                if (c.input?.notice) console.log("::add-mask::" + c.input.notice);
+                if (c.input?.date)   console.log("::add-mask::" + c.input.date);
+                if (c.input?.plate)  console.log("::add-mask::" + c.input.plate);
+              }
+            }
+            mask("LIVE_CASES_PASS");
+            mask("LIVE_CASES_FAIL");
+          '
 
       - name: Install frontend dependencies
         working-directory: frontend

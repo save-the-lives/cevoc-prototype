@@ -263,3 +263,10 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .mg-stage .media-video { width: 100%; height: 100%; object-fit: contain; }
 .mg-stage .media-status { position: absolute; bottom: 4px; left: 8px; color: var(--muted, #6a7585); }
 .mg-stage .media-overlay { border-radius: 0; }
+
+/* View certificate button */
+.cert-action { margin-top: 16px; }
+.cert-action .nsw-button { display: inline-block; padding: 10px 20px; font-size: .95rem; font-weight: 600; border: 2px solid var(--navy); color: var(--navy); background: #fff; border-radius: 4px; text-decoration: none; cursor: pointer; }
+.cert-action .nsw-button:hover { background: var(--soft); }
+.cert-action .nsw-button:focus-visible { outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 3px; }
+.cert-note { margin-top: 6px; font-size: .85rem; color: #6a7585; }

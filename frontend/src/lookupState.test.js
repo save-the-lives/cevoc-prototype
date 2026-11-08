@@ -33,7 +33,15 @@ describe('lookup state', () => {
   it('a single JSON answer keeps the coverage summary', () => {
     const coverage = { status: 'covered', message: 'x' };
     const ev = eventsFromResult({ ...details, evidence: [], certificates: [{}], certificateCoverage: coverage }).find((e) => e[0] === 'certificates');
-    expect(ev[1]).toEqual({ certificates: [{}], coverage, uncoveredTypes: [] });
+    expect(ev[1]).toEqual({ certificates: [{}], coverage, uncoveredTypes: [], certificateUrl: null });
+  });
+
+  it('carries certificateUrl from the certificates event into the result', () => {
+    const url = 'https://cevoc.transport.nsw.gov.au/cevoc/pages/public/certificateDetails.jsf?p=123';
+    const s = run([['details', details], ['evidence', { evidence: [], plateRequired: false }], ['certificates', { certificates: [], certificateUrl: url }], ['done', {}]]);
+    expect(toResult(s).certificateUrl).toBe(url);
+    const noUrl = run([['details', details], ['evidence', { evidence: [], plateRequired: false }], ['certificates', { certificates: [] }], ['done', {}]]);
+    expect(toResult(noUrl).certificateUrl).toBeNull();
   });
 
   it('carries the plate-required flag into the result', () => {
