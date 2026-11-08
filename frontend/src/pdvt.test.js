@@ -68,16 +68,16 @@ function findEvent(events, name) {
 function loadCases(envName) {
   const raw = process.env[envName];
   if (!raw) return [];
-  // The secret MUST be stored as base64 to avoid GitHub's secret masking
-  // corrupting the JSON. Encode with: echo '<json>' | base64 -w0
+  // The workflow base64-encodes the plain-JSON secret on the fly
+  // so GitHub's secret masking doesn't corrupt the JSON in process.env.
   let json;
   try {
     json = Buffer.from(raw, 'base64').toString('utf-8');
   } catch {
-    throw new Error(`${envName}: failed to base64-decode. Store the secret as base64.`);
+    throw new Error(`${envName}: failed to base64-decode.`);
   }
   if (!json.trimStart().startsWith('[')) {
-    throw new Error(`${envName}: decoded value is not a JSON array. Store the secret as: echo '<json array>' | base64 -w0`);
+    throw new Error(`${envName}: decoded value is not a JSON array.`);
   }
   return JSON.parse(json);
 }
