@@ -67,11 +67,7 @@ function findEvent(events, name) {
 
 function loadCases(envName) {
   const raw = import.meta.env?.[envName] || process.env?.[envName];
-  if (!raw) {
-    console.log(`[pdvt] ${envName}: not found (import.meta.env keys: ${Object.keys(import.meta.env || {}).filter(k => k.startsWith('LIVE') || k.startsWith('PDVT')).join(',') || 'none'}, process.env: ${process.env?.[envName] ? 'set' : 'unset'})`);
-    return [];
-  }
-  console.log(`[pdvt] ${envName}: loaded ${raw.length} chars`);
+  if (!raw) return [];
   try { return JSON.parse(raw); } catch { return []; }
 }
 
@@ -86,12 +82,14 @@ function filterByTags(cases) {
 const passCases = filterByTags(loadCases('LIVE_CASES_PASS'));
 const failCases = filterByTags(loadCases('LIVE_CASES_FAIL'));
 const baseUrl = import.meta.env.PDVT_BASE_URL || process.env.PDVT_BASE_URL;
-const skip = (!passCases.length && !failCases.length) || !baseUrl;
+const noBase = !baseUrl;
+const skipPass = noBase || !passCases.length;
+const skipFail = noBase || !failCases.length;
+const skip = skipPass && skipFail;
 
 // ---- Tests ----
 
-describe.skipIf(skip)('PDVT pass cases', () => {
-  if (!passCases.length) return;
+describe.skipIf(skipPass)('Smoke pass cases', () => {
 
   it.each(passCases.map((c) => [c.id, c]))('%s', async (id, c) => {
     const ac = new AbortController();
@@ -144,8 +142,7 @@ describe.skipIf(skip)('PDVT pass cases', () => {
   }, 130_000);
 });
 
-describe.skipIf(skip)('PDVT fail cases', () => {
-  if (!failCases.length) return;
+describe.skipIf(skipFail)('Smoke fail cases', () => {
 
   it.each(failCases.map((c) => [c.id, c]))('%s', async (id, c) => {
     const ac = new AbortController();
