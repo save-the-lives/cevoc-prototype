@@ -115,6 +115,7 @@ public final class LiveCheckSummary {
             case LIVE_LOOKUP_OFF, LIVE_LOOKUP_DISABLED -> "none (lookup switched off or not configured)";
             case NOT_FOUND -> "1 login (notice and date not matched)";
             case UNAVAILABLE -> "failed (browser or page not readable; see backend console)";
+            case INPUT_REQUIRED -> "input required (notice type needs identity fields)";
             case FOUND -> r.evidence() != null && !r.evidence().isEmpty() ? "3 images"
                     : "2 summary (no images: no plate given, plate not accepted, or none shown)";
         };
