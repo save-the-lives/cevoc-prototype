@@ -58,22 +58,22 @@ jobs:
           # they are hidden in all subsequent log lines, even if test code
           # accidentally prints them. Masking is log-only — process.env is
           # unaffected.
-          node -e '
-            function mask(envName) {
-              const raw = (process.env[envName] || '').trim();
-              if (!raw) return;
-              let cases;
-              try { cases = JSON.parse(raw); } catch { return; }
-              if (!Array.isArray(cases)) return;
-              for (const c of cases) {
-                if (c.input?.notice) console.log("::add-mask::" + c.input.notice);
-                if (c.input?.date)   console.log("::add-mask::" + c.input.date);
-                if (c.input?.plate)  console.log("::add-mask::" + c.input.plate);
-              }
+          node <<'MASK_SCRIPT'
+          function mask(envName) {
+            const raw = (process.env[envName] || "").trim();
+            if (!raw) return;
+            let cases;
+            try { cases = JSON.parse(raw); } catch { return; }
+            if (!Array.isArray(cases)) return;
+            for (const c of cases) {
+              if (c.input && c.input.notice) console.log("::add-mask::" + c.input.notice);
+              if (c.input && c.input.date)   console.log("::add-mask::" + c.input.date);
+              if (c.input && c.input.plate)  console.log("::add-mask::" + c.input.plate);
             }
-            mask("LIVE_CASES_PASS");
-            mask("LIVE_CASES_FAIL");
-          '
+          }
+          mask("LIVE_CASES_PASS");
+          mask("LIVE_CASES_FAIL");
+          MASK_SCRIPT
 
       - name: Install frontend dependencies
         working-directory: frontend
