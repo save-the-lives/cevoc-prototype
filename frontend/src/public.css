@@ -280,3 +280,13 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .identity-fields label { display: block; font-weight: 600; margin-bottom: 4px; }
 .identity-fields input { width: 100%; max-width: 400px; padding: 8px 12px; border: 2px solid #ccc; border-radius: 4px; font-size: 1rem; }
 .identity-fields input:focus { border-color: var(--navy); outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 1px; }
+
+/* Identity prompt (inline on Notice page) */
+.identity-ask { padding: 20px; background: var(--soft, #f4f7fa); border-radius: 8px; border-left: 4px solid var(--navy); }
+.identity-ask h3 { margin: 0 0 8px; font-size: 1.1rem; color: var(--navy); }
+.identity-ask p { margin: 0 0 16px; color: #333; }
+.identity-ask .field { margin-bottom: 12px; }
+.identity-ask label { display: block; font-weight: 600; margin-bottom: 4px; }
+.identity-ask input { width: 100%; max-width: 400px; padding: 8px 12px; border: 2px solid #ccc; border-radius: 4px; font-size: 1rem; }
+.identity-ask input:focus { border-color: var(--navy); outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 1px; }
+.identity-ask .btn { margin-top: 8px; }

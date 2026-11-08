@@ -237,7 +237,36 @@ function Failed({ what, note, onRetry }) {
  * still loading ('loading'), arrived ('ready') or failed ('error'); `result` is null until the notice details arrive.
  * Each section announces its own change politely. Options and help need no data, so they are always shown.
  */
-export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, plateBusy, onRetry, onRerun, onEdit, onNew, headingRef }) {
+/** Inline prompt for family name / given names when the notice type requires them. */
+function IdentityAsk({ onSubmit, busy }) {
+  const [familyName, setFamilyName] = useState('');
+  const [givenNames, setGivenNames] = useState('');
+  const ok = familyName.trim().length > 0;
+  return (
+    <div className="identity-ask">
+      <h3>We need your name to show this notice</h3>
+      <p>This type of penalty notice requires your name before the evidence can be shown.
+        Enter it exactly as it appears on your penalty notice or driver licence.</p>
+      <form onSubmit={(e) => { e.preventDefault(); if (ok && !busy) onSubmit(familyName.trim(), givenNames.trim()); }}>
+        <div className="field">
+          <label htmlFor="id-family">Family name</label>
+          <input id="id-family" autoComplete="family-name" value={familyName}
+            onChange={(e) => setFamilyName(e.target.value)} required />
+        </div>
+        <div className="field">
+          <label htmlFor="id-given">Given names</label>
+          <input id="id-given" autoComplete="given-name" value={givenNames}
+            onChange={(e) => setGivenNames(e.target.value)} />
+        </div>
+        <button type="submit" className="btn primary" disabled={!ok || busy}>
+          {busy ? 'Looking up…' : 'Continue'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, onIdentity, identityGiven, plateBusy, onRetry, onRerun, onEdit, onNew, headingRef }) {
   const [timedOut, setTimedOut] = useState(false); // any photo link has expired
   const report = useCallback(() => setTimedOut(true), []);
   const detailsLoading = sections.details === 'loading';
@@ -248,6 +277,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
     return () => clearTimeout(t);
   }, [detailsLoading]);
   const detailsFailed = sections.details === 'error' || (!detailsLoading && !result);
+  const needsIdentity = !identityGiven && result?.requiredFields?.length > 0;
   const n = result?.notice;
   const evLoading = sections.evidence === 'loading';
   const certLoading = sections.certificates === 'loading';
@@ -317,7 +347,8 @@ export default function Notice({ result, query, sections = READY, registrationGi
         ) : (
           <>
             <h2 id="stat-h">Notice status</h2>
-            {detailsFailed ? <p className="stat-lead">We couldn't load your notice.</p>
+            {needsIdentity ? <p className="stat-lead">This notice needs a few more details.</p>
+              : detailsFailed ? <p className="stat-lead">We couldn't load your notice.</p>
               : loadingTooLong ? <p className="stat-lead">This is taking longer than expected. Check the notice number and offence date.</p>
               : <p className="stat-lead">Looking up your notice…</p>}
           </>
@@ -332,7 +363,9 @@ export default function Notice({ result, query, sections = READY, registrationGi
               ? loadingTooLong
                 ? <Failed what="your notice" note="This is taking longer than expected. Check the penalty notice number and offence date are correct." onRetry={onRetry} />
                 : <ListSkeleton rows={1} label="Looking up your notice. This can take up to half a minute." />
-              : detailsFailed
+              : needsIdentity
+                ? <IdentityAsk onSubmit={onIdentity} busy={plateBusy} />
+                : detailsFailed
                 ? <Failed what="your notice" onRetry={onRetry} />
                 : (
                   <dl className="facts">
