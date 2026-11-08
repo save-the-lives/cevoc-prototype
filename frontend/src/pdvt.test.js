@@ -66,8 +66,12 @@ function findEvent(events, name) {
 // ---- Load cases ----
 
 function loadCases(envName) {
-  const raw = import.meta.env[envName] || process.env[envName];
-  if (!raw) return [];
+  const raw = import.meta.env?.[envName] || process.env?.[envName];
+  if (!raw) {
+    console.log(`[pdvt] ${envName}: not found (import.meta.env keys: ${Object.keys(import.meta.env || {}).filter(k => k.startsWith('LIVE') || k.startsWith('PDVT')).join(',') || 'none'}, process.env: ${process.env?.[envName] ? 'set' : 'unset'})`);
+    return [];
+  }
+  console.log(`[pdvt] ${envName}: loaded ${raw.length} chars`);
   try { return JSON.parse(raw); } catch { return []; }
 }
 

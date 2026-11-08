@@ -4,7 +4,7 @@ export default defineConfig({
   plugins: [react()],
   server: { host: '127.0.0.1', port: 5174, proxy: { '/api': 'http://127.0.0.1:8080' } },
   test: {
-    // Expose all env vars to import.meta.env (default is VITE_ prefix only).
-    envPrefix: '',
+    // Smoke tests need process.env for secrets passed via GitHub Actions.
+    server: { deps: { inline: true } },
   },
 });
