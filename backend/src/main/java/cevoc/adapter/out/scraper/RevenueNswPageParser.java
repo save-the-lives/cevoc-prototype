@@ -86,12 +86,12 @@ public class RevenueNswPageParser {
             details = details == null ? Map.of() : Map.copyOf(details);
         }
 
-        /** Without banner details (every state except the images state). */
+        /** Without banner details or alert text (every state except the images state). */
         public Page(State state, String noticeNumber, NoticeDetails notice, boolean plateFormPresent,
                     boolean registrationRequiredShown, boolean registrationRowPresent, List<String> unexpectedLoginFields,
                     List<ImageRef> images, boolean downloadImagesPresent, String cameraCode, CertificationRef certification) {
             this(state, noticeNumber, notice, plateFormPresent, registrationRequiredShown, registrationRowPresent,
-                    unexpectedLoginFields, images, downloadImagesPresent, cameraCode, certification, Map.of());
+                    unexpectedLoginFields, images, downloadImagesPresent, cameraCode, certification, Map.of(), null);
         }
 
         static Page unrecognised() {
