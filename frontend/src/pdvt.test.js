@@ -68,18 +68,19 @@ function findEvent(events, name) {
 function loadCases(envName) {
   const raw = process.env[envName];
   if (!raw) return [];
-  // The workflow base64-encodes the plain-JSON secret on the fly
-  // so GitHub's secret masking doesn't corrupt the JSON in process.env.
-  let json;
+  let parsed;
   try {
-    json = Buffer.from(raw, 'base64').toString('utf-8');
-  } catch {
-    throw new Error(`${envName}: failed to base64-decode.`);
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new Error(`${envName}: JSON parse failed — ${e.message}`);
   }
-  if (!json.trimStart().startsWith('[')) {
-    throw new Error(`${envName}: decoded value is not a JSON array.`);
+  // Accept either a bare array or an object whose matching key holds the array
+  // (covers the case where the whole template object was pasted as the secret).
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed[envName])) {
+    return parsed[envName];
   }
-  return JSON.parse(json);
+  throw new Error(`${envName}: expected a JSON array (or an object with a "${envName}" key).`);
 }
 
 function filterByTags(cases) {
@@ -98,10 +99,22 @@ const skipPass = noBase || !passCases.length;
 const skipFail = noBase || !failCases.length;
 const skip = skipPass && skipFail;
 
+/** Safe summary for logs — no notice numbers, plates or dates. */
+function caseSummary(c) {
+  return { id: c.id, description: c.description, tags: c.tags, program: c.program };
+}
+
+/** Label for it.each — "<id> — <description>". */
+function caseLabel(c) {
+  return c.description ? `${c.id} — ${c.description}` : c.id;
+}
+
 // ---- Tests ----
 
 describe('Smoke test config', () => {
   it('cases loaded', () => {
+    console.log(`pass cases (${passCases.length}):`, passCases.map(caseSummary));
+    console.log(`fail cases (${failCases.length}):`, failCases.map(caseSummary));
     expect(Array.isArray(passCases)).toBe(true);
     expect(Array.isArray(failCases)).toBe(true);
     if (passCases.length) expect(baseUrl).toBeTruthy();
@@ -110,7 +123,8 @@ describe('Smoke test config', () => {
 
 describe.skipIf(skipPass)('Smoke pass cases', () => {
 
-  it.each(passCases.map((c) => [c.id, c]))('%s', async (id, c) => {
+  it.each(passCases.map((c) => [caseLabel(c), c]))('%s', async (_label, c) => {
+    const id = c.id;
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 120_000);
     try {
@@ -163,7 +177,8 @@ describe.skipIf(skipPass)('Smoke pass cases', () => {
 
 describe.skipIf(skipFail)('Smoke fail cases', () => {
 
-  it.each(failCases.map((c) => [c.id, c]))('%s', async (id, c) => {
+  it.each(failCases.map((c) => [caseLabel(c), c]))('%s', async (_label, c) => {
+    const id = c.id;
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 120_000);
     try {
