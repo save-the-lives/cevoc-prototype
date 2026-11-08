@@ -79,7 +79,8 @@ public class RevenueNswPageParser {
             boolean downloadImagesPresent,
             String cameraCode,
             CertificationRef certification,
-            Map<String, Object> details) {
+            Map<String, Object> details,
+            String alertText) {
 
         public Page {
             details = details == null ? Map.of() : Map.copyOf(details);
@@ -94,7 +95,7 @@ public class RevenueNswPageParser {
         }
 
         static Page unrecognised() {
-            return new Page(State.UNRECOGNISED, null, null, false, false, false, List.of(), List.of(), false, null, null);
+            return new Page(State.UNRECOGNISED, null, null, false, false, false, List.of(), List.of(), false, null, null, null, null);
         }
     }
 
@@ -148,7 +149,7 @@ public class RevenueNswPageParser {
         if (loginForm && !plateForm) {
             // Both login inputs exist only on the login page; its labels look like summary labels, so decide here.
             return new Page(State.LOGIN, null, null, false, false, false, unexpectedLoginFields(doc),
-                    List.of(), false, null, null);
+                    List.of(), false, null, null, null, alertText(doc));
         }
         boolean summaryValues = value(doc, L_DATE) != null || value(doc, L_PENALTY) != null;
         // The login page labels its own field "Penalty notice number", so a heading alone never makes a summary there.
@@ -157,7 +158,7 @@ public class RevenueNswPageParser {
         if (!detailsPresent) {
             if (loginForm) {
                 return new Page(State.LOGIN, null, null, false, false, false, unexpectedLoginFields(doc),
-                        List.of(), false, null, null);
+                        List.of(), false, null, null, null, alertText(doc));
             }
             return Page.unrecognised();
         }
@@ -171,7 +172,7 @@ public class RevenueNswPageParser {
         boolean imagesState = !plateForm && (!images.isEmpty() || registrationRow);
         boolean required = doc.text().toLowerCase(Locale.ROOT).contains("registration number is required");
         if (!imagesState) {
-            return new Page(State.SUMMARY, heading, notice, plateForm, required, false, List.of(), List.of(), false, null, null);
+            return new Page(State.SUMMARY, heading, notice, plateForm, required, false, List.of(), List.of(), false, null, null, null, null);
         }
         CertificationRef cert = certification(doc);
         String code = bannerCameraCode(doc);
@@ -183,7 +184,16 @@ public class RevenueNswPageParser {
                 notice.location(), notice.penaltyAmount(), notice.amountOwing(), notice.noticeStatus(), notice.statusMessage(),
                 images.isEmpty() ? notice.enforcementMethod() : EnforcementMethod.CAMERA);
         return new Page(State.IMAGES, heading, camera, false, false, registrationRow, List.of(), images, download, code, cert,
-                bannerDetails(doc));
+                bannerDetails(doc), null);
+    }
+
+    /** Visible alert or error text on the page (first non-empty one), or null. */
+    private static String alertText(Document doc) {
+        for (Element el : doc.select("[role=alert]:not([hidden]), .alert:not([hidden]), .error-message, .validation-message")) {
+            String t = clean(el.text());
+            if (!t.isEmpty() && t.length() < 500) return t;
+        }
+        return null;
     }
 
     /** An input identified by name, id or formcontrolname (the markup was inferred, so all three are accepted). */

@@ -221,8 +221,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         switch (page.state()) {
             case LOGIN -> {
                 trace.fail(LookupStep.READ_SUMMARY, StepCause.NOT_MATCHED);
+                String alert = page.alertText();
+                LOG.info("evidence lookup: login rejected, alert={}", alert != null ? alert : "(none)");
                 LookupDiagnostic.note("after-next " + LookupDiagnostic.structureOf(summaryHtml));
-                return result(Status.NOT_FOUND, number, "We could not match that notice number and offence date.");
+                String message = alert != null ? alert : "We could not match that notice number and offence date.";
+                return result(Status.NOT_FOUND, number, message);
             }
             case UNRECOGNISED -> {
                 LOG.warn("evidence lookup: summary page not recognised");
