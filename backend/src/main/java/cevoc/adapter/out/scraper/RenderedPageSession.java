@@ -56,6 +56,14 @@ public interface RenderedPageSession extends AutoCloseable {
     }
 
     /**
+     * Overload that also fills organisation. Default delegates to the name-only version.
+     */
+    default String submitLogin(String noticeNumber, String offenceDate, String familyName, String givenNames, String organisation)
+            throws IOException, InterruptedException {
+        return submitLogin(noticeNumber, offenceDate, familyName, givenNames);
+    }
+
+    /**
      * The rendered DOM as it is right now, without acting on the page. Used to keep reading after
      * {@link #submitLogin} until the summary has rendered. Empty when the session cannot re-read (default).
      */

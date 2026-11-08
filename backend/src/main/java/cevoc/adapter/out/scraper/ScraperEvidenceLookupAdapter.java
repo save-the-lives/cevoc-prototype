@@ -198,7 +198,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         var identity = IdentityScope.current();
         String summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
                 () -> identity != null && identity.familyName() != null
-                        ? session.submitLogin(number, request.offenceDate().format(LOGIN_DATE), identity.familyName(), identity.givenNames())
+                        ? session.submitLogin(number, request.offenceDate().format(LOGIN_DATE), identity.familyName(), identity.givenNames(), identity.organisation())
                         : session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
         long readStart = System.nanoTime();
         RevenueNswPageParser.Page page = parser.parse(summaryHtml);

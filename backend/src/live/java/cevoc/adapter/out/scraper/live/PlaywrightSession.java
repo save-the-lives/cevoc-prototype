@@ -770,12 +770,46 @@ final class PlaywrightSession implements RenderedPageSession {
 
     @Override
     public String submitLogin(String noticeNumber, String offenceDate) throws IOException, InterruptedException {
+        return submitLogin(noticeNumber, offenceDate, null, null);
+    }
+
+    @Override
+    public String submitLogin(String noticeNumber, String offenceDate, String familyName, String givenNames)
+            throws IOException, InterruptedException {
+        return submitLogin(noticeNumber, offenceDate, familyName, givenNames, null);
+    }
+
+    @Override
+    public String submitLogin(String noticeNumber, String offenceDate, String familyName, String givenNames, String organisation)
+            throws IOException, InterruptedException {
         redactor.add(noticeNumber);
         redactor.add(offenceDate);
+        if (familyName != null) redactor.add(familyName);
+        if (givenNames != null) redactor.add(givenNames);
+        if (organisation != null) redactor.add(organisation);
         return step("submit-login", () -> {
             tag("submit-login");
             fill(PNN, noticeNumber);
             fill(DATE, offenceDate);
+            // Identity fields: fill when provided and the input is visible (enabled).
+            if (familyName != null && !familyName.isBlank()) {
+                var lastNameInput = page.locator("input[name='lastName']");
+                if (lastNameInput.count() > 0 && lastNameInput.isVisible()) {
+                    lastNameInput.fill(familyName);
+                }
+            }
+            if (givenNames != null && !givenNames.isBlank()) {
+                var firstNameInput = page.locator("input[name='firstName']");
+                if (firstNameInput.count() > 0 && firstNameInput.isVisible()) {
+                    firstNameInput.fill(givenNames);
+                }
+            }
+            if (organisation != null && !organisation.isBlank()) {
+                var orgInput = page.locator("input[name='organisation']");
+                if (orgInput.count() > 0 && orgInput.isVisible()) {
+                    orgInput.fill(organisation);
+                }
+            }
             pace();
             markFilled(noticeNumber, offenceDate);
             click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next").setExact(true)),
