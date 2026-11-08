@@ -68,13 +68,18 @@ function findEvent(events, name) {
 function loadCases(envName) {
   const raw = process.env[envName];
   if (!raw) return [];
-  // The secret may be stored as base64 (recommended to avoid GitHub mask corruption)
-  // or as plain JSON. Try base64 first, fall back to plain.
+  // The secret MUST be stored as base64 to avoid GitHub's secret masking
+  // corrupting the JSON. Encode with: echo '<json>' | base64 -w0
+  let json;
   try {
-    const decoded = Buffer.from(raw, 'base64').toString('utf-8');
-    if (decoded.startsWith('[')) return JSON.parse(decoded);
-  } catch { /* not base64 */ }
-  try { return JSON.parse(raw); } catch { return []; }
+    json = Buffer.from(raw, 'base64').toString('utf-8');
+  } catch {
+    throw new Error(`${envName}: failed to base64-decode. Store the secret as base64.`);
+  }
+  if (!json.trimStart().startsWith('[')) {
+    throw new Error(`${envName}: decoded value is not a JSON array. Store the secret as: echo '<json array>' | base64 -w0`);
+  }
+  return JSON.parse(json);
 }
 
 function filterByTags(cases) {
@@ -97,18 +102,6 @@ const skip = skipPass && skipFail;
 
 describe('Smoke test config', () => {
   it('cases loaded', () => {
-    const raw = process.env.LIVE_CASES_PASS;
-    if (raw) {
-      const isB64 = !raw.trimStart().startsWith('[');
-      console.log(`[diag] raw len=${raw.length} isB64=${isB64} first2=${raw.substring(0,2)}`);
-      if (isB64) {
-        try {
-          const dec = Buffer.from(raw, 'base64').toString('utf-8');
-          console.log(`[diag] decoded len=${dec.length} starts=${dec.substring(0,2)}`);
-        } catch (e) { console.log(`[diag] b64 decode failed: ${e.message}`); }
-      }
-    }
-    console.log(`[diag] passCases=${passCases.length} skipPass=${skipPass}`);
     expect(Array.isArray(passCases)).toBe(true);
     expect(Array.isArray(failCases)).toBe(true);
     if (passCases.length) expect(baseUrl).toBeTruthy();
