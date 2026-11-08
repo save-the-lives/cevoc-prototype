@@ -220,8 +220,17 @@ describe.skipIf(skipFail)('Smoke fail cases', () => {
           ).toBe(true);
         }
       }
+      // Log actual response for diagnosis (safe fields only).
+      console.log(`[case ${id}] status=${details?.status}, summary=${details?.summary?.substring(0, 100)}, requiredFields=${JSON.stringify(details?.requiredFields)}`);
+
       if (c.expect.status) {
         expect(details?.status, `case ${id}: expected status ${c.expect.status}`).toBe(c.expect.status);
+      }
+      if (c.expect.requiredFields) {
+        expect(details?.requiredFields, `case ${id}: requiredFields`).toBeDefined();
+        for (const field of c.expect.requiredFields) {
+          expect(details.requiredFields, `case ${id}: requiredFields should include ${field}`).toContain(field);
+        }
       }
     } finally {
       clearTimeout(timer);

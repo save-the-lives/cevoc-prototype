@@ -63,9 +63,8 @@ export default function App() {
         first = false;
         const r = toResult(liveRef.current);
         const kind = classify(r);
-        if (kind === 'input-required') {
-          onFail('input-required', r?.requiredFields);
-        } else if (kind !== 'found' && kind !== 'unavailable') {
+        // input-required stays on the Notice page — the inline identity prompt handles it
+        if (kind !== 'found' && kind !== 'unavailable' && kind !== 'input-required') {
           onFail(kind);
         }
       }

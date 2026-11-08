@@ -55,12 +55,12 @@
 
   "LIVE_CASES_FAIL": [
     {
-      "id": "seat-belt-unavailable",
-      "description": "Seat belt offence — notice unavailable (not a camera offence)",
+      "id": "seat-belt-no-identity",
+      "description": "Seat belt offence without name — should prompt for identity",
       "program": "DEFAULT",
       "tags": ["smoke"],
-      "input": { "notice": "<10-digit notice number>", "date": "<yyyy-mm-dd>" },
-      "expect": { "status": "UNAVAILABLE" }
+      "input": { "notice": "<same seatbelt notice number>", "date": "<yyyy-mm-dd>" },
+      "expect": { "status": "INPUT_REQUIRED", "requiredFields": ["lastName", "firstName"] }
     },
     {
       "id": "not-found",
