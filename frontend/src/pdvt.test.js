@@ -154,6 +154,9 @@ describe.skipIf(skipPass)('Smoke pass cases', () => {
       const done = findEvent(events, 'done');
       const error = findEvent(events, 'error');
 
+      // Log actual response for diagnosis (safe fields only).
+      console.log(`[case ${id}] status=${details?.status}, summary=${details?.summary?.substring(0, 100)}, requiredFields=${JSON.stringify(details?.requiredFields)}`);
+
       expect(error, `case ${id}: unexpected error event`).toBeFalsy();
       expect(done, `case ${id}: no done event`).toBeTruthy();
 
