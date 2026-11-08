@@ -68,14 +68,23 @@ function findEvent(events, name) {
 function loadCases(envName) {
   const raw = process.env[envName];
   if (!raw) return [];
+  // GitHub's secret masking replaces substrings of secret values with '***'
+  // even inside process.env (not just logs). Storing the secret as base64
+  // avoids this because the encoded string doesn't contain the original
+  // substrings. Encode with: cat cases.json | base64 -w0 | gh secret set <NAME>
+  let json;
+  try {
+    json = Buffer.from(raw, 'base64').toString('utf-8');
+  } catch {
+    throw new Error(`${envName}: base64 decode failed. Store the secret as base64: cat cases.json | base64 -w0`);
+  }
   let parsed;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(json);
   } catch (e) {
-    throw new Error(`${envName}: JSON parse failed — ${e.message}`);
+    throw new Error(`${envName}: JSON parse failed after base64 decode — ${e.message}`);
   }
-  // Accept either a bare array or an object whose matching key holds the array
-  // (covers the case where the whole template object was pasted as the secret).
+  // Accept either a bare array or an object whose matching key holds the array.
   if (Array.isArray(parsed)) return parsed;
   if (parsed && typeof parsed === 'object' && Array.isArray(parsed[envName])) {
     return parsed[envName];

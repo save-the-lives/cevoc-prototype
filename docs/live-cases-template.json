@@ -1,5 +1,5 @@
 {
-  "_comment": "Template for LIVE_CASES_PASS and LIVE_CASES_FAIL secrets. Replace <placeholder> values with real data. Program values must match programs.json (RED_LIGHT_SPEED or DEFAULT). Do not commit this file with real values.",
+  "_comment": "Template for LIVE_CASES_PASS and LIVE_CASES_FAIL secrets. Replace <placeholder> values with real data. Program values must match programs.json (RED_LIGHT_SPEED or DEFAULT). Do not commit this file with real values. IMPORTANT: store each secret as base64 — GitHub masks secret substrings even in process.env. Encode: cat pass-cases.json | base64 -w0 | gh secret set LIVE_CASES_PASS",
 
   "LIVE_CASES_PASS": [
     {
