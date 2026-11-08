@@ -77,15 +77,17 @@ function loadCases(envName) {
   } catch (e) {
     // Extract only the error type and position — never echo raw values.
     const pos = e.message.match(/position (\d+)/)?.[1];
-    const at0 = raw.charCodeAt(0);
-    const atPos = pos != null ? raw.charCodeAt(Number(pos)) : undefined;
+    const at0raw = raw.charCodeAt(0);
+    const at0trim = trimmed.charCodeAt(0);
+    // Show first 5 charCodes of trimmed value for diagnosis (structural chars only)
+    const codes = Array.from(trimmed.substring(0, 5)).map(c => c.charCodeAt(0));
     throw new Error(
       `${envName}: JSON parse failed. ` +
-      `Length=${raw.length}, char[0]=${at0}` +
-      (atPos !== undefined ? `, char[${pos}]=${atPos}` : '') + `. ` +
-      `Expected char[0]=91 (opening bracket). ` +
-      `If char[0]=42, GitHub is masking the value — store as base64: ` +
-      `base64 -w0 < cases.json | gh secret set ${envName}`
+      `rawLen=${raw.length}, trimLen=${trimmed.length}, ` +
+      `rawFirst=${at0raw}, trimFirst=${at0trim}, ` +
+      `trimCodes5=${JSON.stringify(codes)}. ` +
+      `Expected trimFirst=91 ([). ` +
+      `42=masking, 123=wrapper object, 91=malformed array.`
     );
   }
   // Accept either a bare array or an object whose matching key holds the array.
