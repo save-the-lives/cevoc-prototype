@@ -70,9 +70,10 @@ function loadCases(envName) {
   if (!raw) return [];
   // Secret is stored as plain JSON. The workflow masks sensitive input values
   // (notice, date, plate) with ::add-mask:: so they don't appear in logs.
+  const trimmed = raw.trim();
   let parsed;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(trimmed);
   } catch (e) {
     // Extract only the error type and position — never echo raw values.
     const pos = e.message.match(/position (\d+)/)?.[1];

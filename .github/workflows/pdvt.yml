@@ -60,7 +60,7 @@ jobs:
           # unaffected.
           node -e '
             function mask(envName) {
-              const raw = process.env[envName];
+              const raw = (process.env[envName] || '').trim();
               if (!raw) return;
               let cases;
               try { cases = JSON.parse(raw); } catch { return; }
