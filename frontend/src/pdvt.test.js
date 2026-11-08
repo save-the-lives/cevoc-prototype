@@ -20,11 +20,15 @@ import { describe, it, expect } from 'vitest';
 /** POST to the streaming endpoint and collect all SSE events as [{event, data}]. */
 async function readSSE(baseUrl, input, signal) {
   const url = `${baseUrl}/api/penalty-lookups/stream`;
-  const body = JSON.stringify({
+  const req = {
     infringementNumber: input.notice,
     offenceDate: input.date,
     registration: input.plate || null,
-  });
+  };
+  if (input.familyName) req.familyName = input.familyName;
+  if (input.givenNames) req.givenNames = input.givenNames;
+  if (input.organisation) req.organisation = input.organisation;
+  const body = JSON.stringify(req);
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },

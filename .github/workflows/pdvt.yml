@@ -66,9 +66,12 @@ jobs:
             try { cases = JSON.parse(raw); } catch { return; }
             if (!Array.isArray(cases)) return;
             for (const c of cases) {
-              if (c.input && c.input.notice) console.log("::add-mask::" + c.input.notice);
-              if (c.input && c.input.date)   console.log("::add-mask::" + c.input.date);
-              if (c.input && c.input.plate)  console.log("::add-mask::" + c.input.plate);
+              if (c.input && c.input.notice)      console.log("::add-mask::" + c.input.notice);
+              if (c.input && c.input.date)         console.log("::add-mask::" + c.input.date);
+              if (c.input && c.input.plate)        console.log("::add-mask::" + c.input.plate);
+              if (c.input && c.input.familyName)   console.log("::add-mask::" + c.input.familyName);
+              if (c.input && c.input.givenNames)   console.log("::add-mask::" + c.input.givenNames);
+              if (c.input && c.input.organisation) console.log("::add-mask::" + c.input.organisation);
             }
           }
           mask("LIVE_CASES_PASS");
