@@ -70,26 +70,26 @@ function loadCases(envName) {
   if (!raw) return [];
   // Secret is stored as plain JSON. The workflow masks sensitive input values
   // (notice, date, plate) with ::add-mask:: so they don't appear in logs.
-  let trimmed = raw.trim();
-  // Fix curly quotes that sneak in when pasting from rich-text editors.
-  trimmed = trimmed.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+  const trimmed = raw.trim();
+  // GitHub masks substrings of secret values inside process.env (not just logs).
+  // Try plain JSON first, then base64 decode as fallback.
+  // To store as base64: base64 -w0 < cases.json | gh secret set LIVE_CASES_PASS
   let parsed;
+  // Attempt 1: plain JSON
   try {
     parsed = JSON.parse(trimmed);
-  } catch (e) {
-    // Find position from error message (varies by Node version).
-    const posMatch = e.message.match(/position\s+(\d+)/i) || e.message.match(/column\s+(\d+)/i);
-    const pos = posMatch ? Number(posMatch[1]) : null;
-    // Show charCodes around the failure point (structural only, no string values).
-    const around = pos != null
-      ? Array.from(trimmed.substring(Math.max(0, pos - 2), pos + 3)).map(c => c.charCodeAt(0))
-      : Array.from(trimmed.substring(0, 8)).map(c => c.charCodeAt(0));
-    throw new Error(
-      `${envName}: JSON parse failed. ` +
-      `len=${trimmed.length}, pos=${pos ?? '?'}, ` +
-      `codes=${JSON.stringify(around)}. ` +
-      `Err: ${e.message.replace(/[\s\S]*?(Unexpected|Expected)/, '$1').substring(0, 80)}`
-    );
+  } catch {
+    // Attempt 2: base64 decode then JSON parse
+    try {
+      const decoded = Buffer.from(trimmed, 'base64').toString('utf-8');
+      parsed = JSON.parse(decoded);
+    } catch (e2) {
+      throw new Error(
+        `${envName}: cannot parse as JSON or base64-encoded JSON (len=${trimmed.length}). ` +
+        `GitHub masks secret substrings in process.env, corrupting plain JSON. ` +
+        `Fix: base64 -w0 < cases.json | gh secret set ${envName}`
+      );
+    }
   }
   // Accept either a bare array or an object whose matching key holds the array.
   if (Array.isArray(parsed)) return parsed;
