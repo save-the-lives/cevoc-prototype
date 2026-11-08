@@ -68,6 +68,12 @@ function findEvent(events, name) {
 function loadCases(envName) {
   const raw = process.env[envName];
   if (!raw) return [];
+  // The secret may be stored as base64 (recommended to avoid GitHub mask corruption)
+  // or as plain JSON. Try base64 first, fall back to plain.
+  try {
+    const decoded = Buffer.from(raw, 'base64').toString('utf-8');
+    if (decoded.startsWith('[')) return JSON.parse(decoded);
+  } catch { /* not base64 */ }
   try { return JSON.parse(raw); } catch { return []; }
 }
 
@@ -91,10 +97,6 @@ const skip = skipPass && skipFail;
 
 describe('Smoke test config', () => {
   it('cases loaded', () => {
-    const rawPass = process.env.LIVE_CASES_PASS;
-    console.log(`[diag] LIVE_CASES_PASS: type=${typeof rawPass}, len=${rawPass?.length}, starts=${rawPass?.substring(0,2)}, ends=${rawPass?.substring(rawPass.length-2)}`);
-    console.log(`[diag] PDVT_BASE_URL: ${baseUrl ? 'set' : 'unset'}`);
-    console.log(`[diag] passCases: ${passCases.length}, failCases: ${failCases.length}`);
     expect(Array.isArray(passCases)).toBe(true);
     expect(Array.isArray(failCases)).toBe(true);
     if (passCases.length) expect(baseUrl).toBeTruthy();
