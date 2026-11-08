@@ -47,6 +47,15 @@ public interface RenderedPageSession extends AutoCloseable {
     String submitLogin(String noticeNumber, String offenceDate) throws IOException, InterruptedException;
 
     /**
+     * Fills pnn, dateOfOffence and the identity fields (lastName, firstName), presses Next.
+     * Default delegates to {@link #submitLogin(String, String)} for sessions that don't support identity fields.
+     */
+    default String submitLogin(String noticeNumber, String offenceDate, String familyName, String givenNames)
+            throws IOException, InterruptedException {
+        return submitLogin(noticeNumber, offenceDate);
+    }
+
+    /**
      * The rendered DOM as it is right now, without acting on the page. Used to keep reading after
      * {@link #submitLogin} until the summary has rendered. Empty when the session cannot re-read (default).
      */

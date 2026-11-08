@@ -61,8 +61,13 @@ export default function App() {
       setLive(liveRef.current);
       if (name === 'details' && first) {
         first = false;
-        const kind = classify(toResult(liveRef.current));
-        if (kind !== 'found' && kind !== 'unavailable') onFail(kind);
+        const r = toResult(liveRef.current);
+        const kind = classify(r);
+        if (kind === 'input-required') {
+          onFail('input-required', r?.requiredFields);
+        } else if (kind !== 'found' && kind !== 'unavailable') {
+          onFail(kind);
+        }
       }
     };
     try {
@@ -86,12 +91,12 @@ export default function App() {
       window.scrollTo(0, 0);
       setView({ name: 'notice', outcome: null, misses: 0 });
     }
-    await stream(plain, registration, (kind) => {
+    await stream(plain, registration, (kind, requiredFields) => {
       // Not matched / switched off: back to the form with its message, undoing the history entry we added.
       popSkip.current = !!window.history.state?.notice;
       if (popSkip.current) window.history.back();
       setFound(null);
-      setView((v) => ({ name: 'form', outcome: kind, misses: kind === 'not-found' ? v.misses + 1 : v.misses }));
+      setView((v) => ({ name: 'form', outcome: kind, misses: kind === 'not-found' ? v.misses + 1 : v.misses, requiredFields: requiredFields || null }));
     });
   };
 
@@ -124,6 +129,14 @@ export default function App() {
     await stream(found.query, registration, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
   };
 
+  // Identity fields (family name, given names) asked inline when the notice type requires them.
+  const retryWithIdentity = async (familyName, givenNames) => {
+    liveRef.current = restartSections(liveRef.current);
+    setLive(liveRef.current);
+    setFound((f) => ({ ...f, identityGiven: true }));
+    await stream({ ...found.query, familyName, givenNames }, undefined, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
+  };
+
   const startAgain = () => {
     cancel(); setBusy(false); setReloadNote(false);
     if (window.history.state?.notice) window.history.back(); else { setFound(null); setView({ name: 'form', outcome: null, misses: 0 }); }
@@ -149,8 +162,9 @@ export default function App() {
         {view.name === 'notice' && found
           ? <Notice result={foundResult} query={found.query}
             sections={{ details: foundResult ? 'ready' : live?.finished || live?.details ? 'error' : 'loading', evidence: live.evidence.state, certificates: live.certificates.state }}
-            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} plateBusy={busy} onRetry={retry} onRerun={rerun} onEdit={edit} onNew={newLookup} headingRef={headingRef} />
+            registrationGiven={found.registrationGiven} onPlate={retryWithPlate} onIdentity={retryWithIdentity} identityGiven={found.identityGiven} plateBusy={busy} onRetry={retry} onRerun={rerun} onEdit={edit} onNew={newLookup} headingRef={headingRef} />
           : <LookupForm busy={busy} outcome={view.outcome} misses={view.misses} onSubmit={submit} draft={draft} reloadNote={reloadNote}
+            requiredFields={view.requiredFields}
             scenarios={mockEnabled ? SCENARIOS : null} onPickDefaultDate={() => '2026-03-14'} />}
       </main>
       <footer className="nsw-footer">

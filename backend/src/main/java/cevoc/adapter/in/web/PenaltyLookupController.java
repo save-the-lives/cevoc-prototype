@@ -3,6 +3,7 @@ package cevoc.adapter.in.web;
 import cevoc.application.port.in.LookupPenaltyUseCase;
 import cevoc.domain.PenaltyLookupRequest;
 import cevoc.domain.PenaltyLookupResult;
+import cevoc.domain.IdentityScope;
 import cevoc.domain.RegistrationScope;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -34,10 +35,16 @@ public class PenaltyLookupController {
     public record LookupBody(
             @NotBlank @Pattern(regexp = "^[A-Za-z0-9 -]{4,20}$", message = "Check the notice number") String infringementNumber,
             @NotNull @PastOrPresent LocalDate offenceDate,
-            String registration) {
+            String registration,
+            String familyName,
+            String givenNames) {
 
         public LookupBody(String infringementNumber, LocalDate offenceDate) {
-            this(infringementNumber, offenceDate, null);
+            this(infringementNumber, offenceDate, null, null, null);
+        }
+
+        public LookupBody(String infringementNumber, LocalDate offenceDate, String registration) {
+            this(infringementNumber, offenceDate, registration, null, null);
         }
 
         @Override
@@ -50,12 +57,18 @@ public class PenaltyLookupController {
     public PenaltyLookupResult lookup(@Valid @RequestBody LookupBody body) {
         PenaltyLookupRequest request = new PenaltyLookupRequest(body.infringementNumber().trim(), body.offenceDate());
         String plate = cleanRegistration(body.registration());
-        if (plate == null) {
-            return useCase.lookup(request);
-        }
         // Request-scoped: held in a thread-local for this call only, removed in a finally block, never stored, cached or logged.
-        // Only the evidence scraper (off by default, env-gated) ever reads it; the stub and manifest adapters ignore it.
-        return RegistrationScope.with(plate, () -> useCase.lookup(request));
+        java.util.function.Supplier<PenaltyLookupResult> action = () -> useCase.lookup(request);
+        if (plate != null) {
+            var inner = action;
+            action = () -> RegistrationScope.with(plate, inner);
+        }
+        if (body.familyName() != null && !body.familyName().isBlank()) {
+            var inner = action;
+            var identity = new IdentityScope.Identity(body.familyName().trim(), body.givenNames() != null ? body.givenNames().trim() : "");
+            action = () -> IdentityScope.with(identity, inner);
+        }
+        return action.get();
     }
 
     /** Letters and digits only (spaces and dashes dropped), 1 to 8 characters; anything else is treated as not given. */

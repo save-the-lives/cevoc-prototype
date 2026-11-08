@@ -5,6 +5,7 @@ import cevoc.application.port.out.BannerTextReaderPort;
 import cevoc.application.port.out.MediaStoragePort;
 import cevoc.application.port.out.PenaltyLookupPort;
 import cevoc.domain.EnforcementMethod;
+import cevoc.domain.IdentityScope;
 import cevoc.domain.EvidenceItem;
 import cevoc.domain.ImageSize;
 import cevoc.domain.LookupStep;
@@ -184,14 +185,21 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
         if (!login.unexpectedLoginFields().isEmpty()) {
-            LOG.warn("evidence lookup: login page asks for extra details");
-            trace.fail(LookupStep.OPEN_LOGIN, StepCause.EXTRA_LOGIN_FIELDS);
-            LookupDiagnostic.set("step=login; cause=extra-login-fields");
-            return result(Status.UNAVAILABLE, number, "This kind of notice needs details we do not collect.");
+            var identity = IdentityScope.current();
+            if (identity == null || identity.familyName() == null || identity.familyName().isBlank()) {
+                LOG.info("evidence lookup: login page asks for extra details, prompting user");
+                trace.fail(LookupStep.OPEN_LOGIN, StepCause.EXTRA_LOGIN_FIELDS);
+                return result(Status.UNAVAILABLE, number, "This kind of notice needs your name as shown on the penalty notice.")
+                        .withRequiredFields(login.unexpectedLoginFields());
+            }
+            LOG.info("evidence lookup: filling identity fields");
         }
         // State 2: summary. Still on the login page means the pair was not matched (OPEN QUESTION: the real wording).
+        var identity = IdentityScope.current();
         String summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
-                () -> session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
+                () -> identity != null && identity.familyName() != null
+                        ? session.submitLogin(number, request.offenceDate().format(LOGIN_DATE), identity.familyName(), identity.givenNames())
+                        : session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
         long readStart = System.nanoTime();
         RevenueNswPageParser.Page page = parser.parse(summaryHtml);
         // The Angular summary can render late (its GET sometimes hangs): keep reading until a recognised state or the bound.

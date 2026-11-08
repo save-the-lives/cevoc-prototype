@@ -3,11 +3,14 @@ import DateField from './DateField.jsx';
 import { checkDate, checkNotice, checkRegistration, cleanNotice, cleanRegistration, isoToParts, partsToIso } from './lookupValidation.js';
 import { HELP_PHONE } from './journey.js';
 
-export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios, onPickDefaultDate, draft, reloadNote }) {
+export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios, onPickDefaultDate, draft, reloadNote, requiredFields }) {
   useEffect(() => { if (reloadNote) document.getElementById('rego')?.focus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [num, setNum] = useState(draft?.num || '');
   const [reg, setReg] = useState('');
   const [parts, setParts] = useState(draft?.parts || { d: '', m: '', y: '' });
+  const [familyName, setFamilyName] = useState(draft?.familyName || '');
+  const [givenNames, setGivenNames] = useState(draft?.givenNames || '');
+  const needsIdentity = requiredFields?.includes('lastName') || requiredFields?.includes('firstName');
   const [fe, setFe] = useState({});
   const [bad, setBad] = useState([]);
   const sumRef = useRef(null);
@@ -33,7 +36,10 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
     if (Object.keys(x).length) { setTimeout(() => sumRef.current?.focus(), 0); return; }
     const registration = cleanRegistration(reg);
     setReg(''); // the registration number is sent once and not kept
-    onSubmit({ infringementNumber: cleanNotice(num), offenceDate: partsToIso(parts), registration: registration || undefined });
+    onSubmit({
+      infringementNumber: cleanNotice(num), offenceDate: partsToIso(parts), registration: registration || undefined,
+      familyName: familyName.trim() || undefined, givenNames: givenNames.trim() || undefined,
+    });
   };
 
   const problems = [fe.num && { id: 'pn', msg: fe.num }, fe.date && { id: 'od-d', msg: fe.date }, fe.reg && { id: 'rego', msg: fe.reg }].filter(Boolean);
@@ -68,6 +74,12 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
               <div className="errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="un-h">
                 <h3 id="un-h">We can’t check this right now</h3>
                 <p>The problem is on our side, not with your details. Please try again in a few minutes. If it keeps happening, call {HELP_PHONE}.</p>
+              </div>
+            )}
+            {!problems.length && outcome === 'input-required' && (
+              <div className="errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="ir-h">
+                <h3 id="ir-h">We need a few more details for this notice</h3>
+                <p>This type of penalty notice requires your name before the evidence can be shown. Enter it below exactly as it appears on your penalty notice or driver licence, then try again.</p>
               </div>
             )}
             {!problems.length && outcome === 'lookup-off' && (
@@ -108,6 +120,21 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
                 onBlur={() => reg && leave('reg')}
                 onChange={(e) => { setReg(e.target.value); clear('reg'); }} />
             </div>
+            <details className="identity-fields" open={needsIdentity || !!familyName || !!givenNames}>
+              <summary>Your name <span className="opt">(some notice types need this)</span></summary>
+              <p className="hint">Some penalties — such as seatbelt offences — require your name to show the evidence. Enter it exactly as shown on your penalty notice or driver licence.</p>
+              {needsIdentity && <p className="field-err" role="alert"><span aria-hidden="true">⚠ </span>This notice needs your name to continue.</p>}
+              <div className="field">
+                <label htmlFor="familyName">Family name</label>
+                <input id="familyName" autoComplete="family-name" value={familyName}
+                  onChange={(e) => setFamilyName(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="givenNames">Given names</label>
+                <input id="givenNames" autoComplete="given-name" value={givenNames}
+                  onChange={(e) => setGivenNames(e.target.value)} />
+              </div>
+            </details>
             <button type="submit" className="btn primary big" disabled={busy}>{busy ? 'Finding your notice…' : 'Show me what happened'}</button>
             <p className="sr-only" role="status">{busy ? 'Finding your notice' : ''}</p>
           </form>

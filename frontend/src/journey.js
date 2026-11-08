@@ -32,6 +32,7 @@ export function classify(result) {
   if (!result) return 'unavailable';
   switch (result.status) {
     case 'FOUND': return result.notice ? 'found' : 'unavailable';
+    case 'INPUT_REQUIRED': return 'input-required';
     case 'NOT_FOUND': return 'not-found';
     case 'LIVE_LOOKUP_OFF':
     case 'LIVE_LOOKUP_DISABLED': return 'lookup-off';

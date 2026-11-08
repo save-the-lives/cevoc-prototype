@@ -4,6 +4,7 @@ import cevoc.adapter.in.web.PenaltyLookupController.LookupBody;
 import cevoc.application.port.in.LookupPenaltyUseCase;
 import cevoc.application.port.in.LookupSink;
 import cevoc.domain.CertificateAssessment;
+import cevoc.domain.IdentityScope;
 import cevoc.domain.CertificateCoverage;
 import cevoc.domain.CertificateItem;
 import cevoc.domain.EvidenceItem;
@@ -69,7 +70,13 @@ public class PenaltyLookupStreamController {
 
     /** Event payloads. Fixed shapes; none holds a request value. */
     public record Details(PenaltyLookupResult.Status status, String infringementNumber, String summary, NoticeDetails notice,
-                          String source) {}
+                          String source,
+                          @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+                          java.util.List<String> requiredFields) {
+        public Details(PenaltyLookupResult.Status status, String infringementNumber, String summary, NoticeDetails notice, String source) {
+            this(status, infringementNumber, summary, notice, source, java.util.List.of());
+        }
+    }
 
     public record Evidence(List<EvidenceItem> evidence, boolean plateRequired) {}
 
@@ -92,13 +99,16 @@ public class PenaltyLookupStreamController {
     public ResponseEntity<SseEmitter> stream(@Valid @RequestBody LookupBody body) {
         PenaltyLookupRequest request = new PenaltyLookupRequest(body.infringementNumber().trim(), body.offenceDate());
         String plate = PenaltyLookupController.cleanRegistration(body.registration());
+        IdentityScope.Identity identity = body.familyName() != null && !body.familyName().isBlank()
+                ? new IdentityScope.Identity(body.familyName().trim(), body.givenNames() != null ? body.givenNames().trim() : "")
+                : null;
         SseEmitter emitter = new SseEmitter(TIMEOUT_MS);
         AtomicBoolean open = new AtomicBoolean(true);
         emitter.onCompletion(() -> open.set(false));
         emitter.onTimeout(() -> open.set(false));
         emitter.onError(e -> open.set(false));
         try {
-            workers.execute(() -> run(emitter, open, request, plate));
+            workers.execute(() -> run(emitter, open, request, plate, identity));
         } catch (RejectedExecutionException busy) {
             send(emitter, open, "error", new Failure("busy"));
             emitter.complete();
@@ -110,7 +120,7 @@ public class PenaltyLookupStreamController {
                 .body(emitter);
     }
 
-    private void run(SseEmitter emitter, AtomicBoolean open, PenaltyLookupRequest request, String plate) {
+    private void run(SseEmitter emitter, AtomicBoolean open, PenaltyLookupRequest request, String plate, IdentityScope.Identity identity) {
         // Opens the stream at once (headers and a first line reach the browser before the slow part starts).
         comment(emitter, open, "open");
         ScheduledFuture<?> heart = beat.scheduleAtFixedRate(() -> comment(emitter, open, "ping"),
@@ -120,7 +130,7 @@ public class PenaltyLookupStreamController {
         LookupSink sink = new LookupSink() {
             @Override
             public void details(PenaltyLookupResult d) {
-                send(emitter, open, "details", new Details(d.status(), d.infringementNumber(), d.summary(), d.notice(), d.source()));
+                send(emitter, open, "details", new Details(d.status(), d.infringementNumber(), d.summary(), d.notice(), d.source(), d.requiredFields()));
                 if (d.status() != PenaltyLookupResult.Status.FOUND) {
                     // The stream carries "evidence": [] for the unhappy cases so the page can settle every section.
                     send(emitter, open, "evidence", new Evidence(List.of(), false));
@@ -173,14 +183,16 @@ public class PenaltyLookupStreamController {
         };
         try {
             // Request-scoped: set for this call on this thread only and removed in a finally block; never stored or logged.
-            if (plate == null) {
-                useCase.lookup(request, sink);
-            } else {
-                RegistrationScope.with(plate, () -> {
-                    useCase.lookup(request, sink);
-                    return null;
-                });
+            Runnable action = () -> useCase.lookup(request, sink);
+            if (plate != null) {
+                var inner = action;
+                action = () -> RegistrationScope.with(plate, () -> { inner.run(); return null; });
             }
+            if (identity != null) {
+                var inner = action;
+                action = () -> IdentityScope.with(identity, () -> { inner.run(); return null; });
+            }
+            action.run();
         } catch (RuntimeException e) {
             if (!finished[0]) {
                 send(emitter, open, "error", new Failure("source-failed"));

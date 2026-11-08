@@ -35,12 +35,14 @@ public record PenaltyLookupResult(
         @JsonInclude(JsonInclude.Include.NON_EMPTY) Map<String, Object> details,
         @JsonInclude(JsonInclude.Include.NON_NULL) CertificateCoverage certificateCoverage,
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<CertificateAssessment.UncoveredType> uncoveredTypes,
-        @JsonInclude(JsonInclude.Include.NON_NULL) String certificateUrl) {
+        @JsonInclude(JsonInclude.Include.NON_NULL) String certificateUrl,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<String> requiredFields) {
 
     public PenaltyLookupResult {
         certificates = certificates == null ? List.of() : List.copyOf(certificates);
         details = details == null ? Map.of() : Map.copyOf(details);
         uncoveredTypes = uncoveredTypes == null ? List.of() : List.copyOf(uncoveredTypes);
+        requiredFields = requiredFields == null ? List.of() : List.copyOf(requiredFields);
     }
 
     /** Without a coverage summary. */
@@ -49,7 +51,7 @@ public record PenaltyLookupResult(
                                List<CertificateItem> certificates, String certificatesNote, boolean plateRequired,
                                Map<String, Object> details) {
         this(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates, certificatesNote,
-                plateRequired, details, null, List.of(), null);
+                plateRequired, details, null, List.of(), null, List.of());
     }
 
     /** Without details (the common case until a route fills the map). */
@@ -69,24 +71,30 @@ public record PenaltyLookupResult(
     /** A copy with the evidence list replaced (for example linked, or emptied for the early "details" part). */
     public PenaltyLookupResult withEvidence(List<EvidenceItem> items) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, items, source, cameraCode, certificates,
-                certificatesNote, plateRequired, details, certificateCoverage, uncoveredTypes, certificateUrl);
+                certificatesNote, plateRequired, details, certificateCoverage, uncoveredTypes, certificateUrl, requiredFields);
     }
 
     public PenaltyLookupResult withPlateRequired(boolean required) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates,
-                certificatesNote, required, details, certificateCoverage, uncoveredTypes, certificateUrl);
+                certificatesNote, required, details, certificateCoverage, uncoveredTypes, certificateUrl, requiredFields);
     }
 
     /** A copy carrying the flexible details map (null or empty clears it). */
     public PenaltyLookupResult withDetails(Map<String, Object> extra) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates,
-                certificatesNote, plateRequired, extra, certificateCoverage, uncoveredTypes, certificateUrl);
+                certificatesNote, plateRequired, extra, certificateCoverage, uncoveredTypes, certificateUrl, requiredFields);
     }
 
     /** A copy with a certificate download URL. */
     public PenaltyLookupResult withCertificateUrl(String url) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, certificates,
-                certificatesNote, plateRequired, details, certificateCoverage, uncoveredTypes, url);
+                certificatesNote, plateRequired, details, certificateCoverage, uncoveredTypes, url, requiredFields);
+    }
+
+    /** A copy with required fields for INPUT_REQUIRED status. */
+    public PenaltyLookupResult withRequiredFields(List<String> fields) {
+        return new PenaltyLookupResult(Status.INPUT_REQUIRED, infringementNumber, summary, notice, evidence, source, cameraCode,
+                certificates, certificatesNote, plateRequired, details, certificateCoverage, uncoveredTypes, certificateUrl, fields);
     }
 
     /** With a camera code but no certificates yet. */
@@ -109,7 +117,7 @@ public record PenaltyLookupResult(
     public PenaltyLookupResult withCertificates(List<CertificateItem> items, CertificateCoverage coverage,
                                                 List<CertificateAssessment.UncoveredType> uncovered, String note) {
         return new PenaltyLookupResult(status, infringementNumber, summary, notice, evidence, source, cameraCode, items, note,
-                plateRequired, details, coverage, uncovered, certificateUrl);
+                plateRequired, details, coverage, uncovered, certificateUrl, requiredFields);
     }
 
     /** Without a camera code (all adapters except the evidence scraper). */
@@ -118,5 +126,5 @@ public record PenaltyLookupResult(
         this(status, infringementNumber, summary, notice, evidence, source, null, List.of(), null);
     }
 
-    public enum Status { FOUND, NOT_FOUND, UNAVAILABLE, LIVE_LOOKUP_OFF, LIVE_LOOKUP_DISABLED }
+    public enum Status { FOUND, NOT_FOUND, UNAVAILABLE, INPUT_REQUIRED, LIVE_LOOKUP_OFF, LIVE_LOOKUP_DISABLED }
 }

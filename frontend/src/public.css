@@ -270,3 +270,13 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .cert-action .nsw-button:hover { background: var(--soft); }
 .cert-action .nsw-button:focus-visible { outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 3px; }
 .cert-note { margin-top: 6px; font-size: .85rem; color: #6a7585; }
+
+/* Identity fields (collapsible) */
+.identity-fields { margin: 16px 0; }
+.identity-fields summary { cursor: pointer; font-weight: 600; font-size: .95rem; color: var(--navy); }
+.identity-fields summary .opt { font-weight: 400; color: #6a7585; font-size: .85rem; }
+.identity-fields .hint { margin: 8px 0; font-size: .85rem; color: #6a7585; }
+.identity-fields .field { margin-top: 12px; }
+.identity-fields label { display: block; font-weight: 600; margin-bottom: 4px; }
+.identity-fields input { width: 100%; max-width: 400px; padding: 8px 12px; border: 2px solid #ccc; border-radius: 4px; font-size: 1rem; }
+.identity-fields input:focus { border-color: var(--navy); outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 1px; }
