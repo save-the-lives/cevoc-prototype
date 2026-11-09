@@ -815,10 +815,20 @@ final class PlaywrightSession implements RenderedPageSession {
             click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next").setExact(true)),
                     page.locator(NEXT_CSS));
             markAfterClick();
-            // Hidden alert templates exist on the login page from the start, so only a VISIBLE alert counts, and the
-            // login inputs disappearing (the app moved on) counts too.
+            // Wait for the next page to render meaningful content: plate form, summary heading, identity fields
+            // (lastName/firstName on the "Additional penalty information" page), or visible alerts.
+            // DO NOT use PNN-gone alone — Angular may have removed the login form but not yet rendered the
+            // identity page inputs, causing the snapshot to miss identity fields the parser needs.
             waitUntil(() -> page.locator(PLATE).count() > 0 || page.getByText(SUMMARY_HEADING).count() > 0
-                    || page.locator(PNN).count() == 0 || visibleAlerts() > 0);
+                    || page.locator("input[name='lastName'], input#lastName").count() > 0
+                    || page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Skip")).count() > 0
+                    || visibleAlerts() > 0
+                    || (page.locator(PNN).count() == 0 && page.locator("input").count() == 0));
+            // If PNN is gone but nothing else appeared, give Angular a moment to render.
+            if (page.locator(PLATE).count() == 0 && page.getByText(SUMMARY_HEADING).count() == 0
+                    && page.locator("input[name='lastName'], input#lastName").count() == 0) {
+                page.waitForTimeout(2000);
+            }
             tag("read-summary");
             return snapshot("2-after-login");
         });
