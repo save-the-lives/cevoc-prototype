@@ -176,8 +176,7 @@ export default function App() {
             <a href="https://www.nsw.gov.au/nsw-government/copyright" target="_blank" rel="noopener noreferrer">Copyright</a>
             <a href="https://www.nsw.gov.au/departments-and-agencies/transport-for-nsw" target="_blank" rel="noopener noreferrer">About</a>
           </nav>
-          <p className="nsw-footer__ack">We acknowledge the Traditional Custodians of the lands where we work and live. We pay our respects to Elders past, present and emerging.</p>
-          <p className="nsw-footer__info">&copy; State of New South Wales. Interim service.</p>
+          <p className="nsw-footer__info">(working prototype)</p>
         </div>
       </footer>
     </>

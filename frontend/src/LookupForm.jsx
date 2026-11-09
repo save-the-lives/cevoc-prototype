@@ -105,8 +105,8 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
               onChange={(p) => { setParts(p); clear('date'); }}
               onBlurField={() => setTimeout(() => { if (!document.getElementById('od')?.contains(document.activeElement) && (parts.d || parts.m || parts.y)) leave('date'); }, 0)} />
             <div className="field">
-              <label htmlFor="rego">Number plate of the vehicle</label>
-              <p className="hint" id="rego-hint">The number plate from your penalty notice letter. We use it for this check only and don't keep it.</p>
+              <label htmlFor="rego">Vehicle registration</label>
+              <p className="hint" id="rego-hint">The registration from your penalty notice letter. We use it for this check only and don't keep it.</p>
               {fe.reg && <p className="field-err" id="rego-err" role="alert"><span aria-hidden="true">⚠ </span><span className="sr-only">Error: </span>{fe.reg}</p>}
               <input id="rego" className={`rego${fe.reg ? ' is-bad' : ''}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
                 value={reg} aria-describedby={`rego-hint${fe.reg ? ' rego-err' : ''}`} aria-invalid={!!fe.reg || undefined}
@@ -120,9 +120,10 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
           <aside className="aside" aria-labelledby="aside-h">
             <h2 id="aside-h">Before you start</h2>
             <ul>
-              <li>We ask for three details from your letter: the penalty notice number, the offence date, and the number plate.</li>
+              <li>We ask for three details from your letter: the penalty notice number, the offence date, and the vehicle registration.</li>
+              <li>For some notices, we may also need your name or your organisation's details. We only ask when needed.</li>
               <li>We never ask for card or bank details on this page.</li>
-              <li>Paying, reviews and nominating the driver stay with Revenue NSW.</li>
+              <li>If you want to pay, request a review or nominate the driver, we'll give you links to do that.</li>
             </ul>
           </aside>
         </div>
