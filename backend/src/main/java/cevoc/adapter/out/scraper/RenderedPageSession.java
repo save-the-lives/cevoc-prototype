@@ -72,6 +72,14 @@ public interface RenderedPageSession extends AutoCloseable {
     }
 
     /**
+     * Clicks Skip on the "Additional penalty information" page to bypass identity entry.
+     * The evidence is still accessible without providing the name.
+     */
+    default String skipIdentity() throws IOException, InterruptedException {
+        throw new UnsupportedOperationException("skipIdentity not supported by this session");
+    }
+
+    /**
      * The rendered DOM as it is right now, without acting on the page. Used to keep reading after
      * {@link #submitLogin} until the summary has rendered. Empty when the session cannot re-read (default).
      */

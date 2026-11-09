@@ -192,18 +192,20 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 () -> session.submitLogin(number, request.offenceDate().format(LOGIN_DATE)));
         long readStart = System.nanoTime();
         RevenueNswPageParser.Page page = parser.parse(summaryHtml);
-        // After the initial login, certain notice types redirect to an "Additional penalty information" page
-        // that asks for the customer's name. If identity is available, fill the fields and submit (Skip or Next).
+        // After the initial login, certain notice types (seatbelt, nomination) redirect to an
+        // "Additional penalty information" page (/login/notifications/can-skip) that asks for the
+        // customer's name. This page is OPTIONAL — it has a Skip button. If identity is available,
+        // fill the fields; otherwise skip past it. Either way the evidence is accessible.
         if (page.state() == RevenueNswPageParser.State.IDENTITY) {
             var idScope = IdentityScope.current();
-            if (idScope == null || idScope.familyName() == null || idScope.familyName().isBlank()) {
-                LOG.info("evidence lookup: identity page detected, prompting user");
-                return result(Status.UNAVAILABLE, number, "This type of notice needs your name before we can show the evidence.")
-                        .withRequiredFields(page.unexpectedLoginFields());
+            if (idScope != null && idScope.familyName() != null && !idScope.familyName().isBlank()) {
+                LOG.info("evidence lookup: filling identity fields on additional page");
+                summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
+                        () -> session.submitIdentity(idScope.familyName(), idScope.givenNames()));
+            } else {
+                LOG.info("evidence lookup: skipping optional identity page");
+                summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN, session::skipIdentity);
             }
-            LOG.info("evidence lookup: filling identity fields on additional page");
-            summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
-                    () -> session.submitIdentity(idScope.familyName(), idScope.givenNames()));
             readStart = System.nanoTime();
             page = parser.parse(summaryHtml);
         }

@@ -857,6 +857,26 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     @Override
+    public String skipIdentity() throws IOException, InterruptedException {
+        return step("skip-identity", () -> {
+            tag("skip-identity");
+            var skipBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Skip"));
+            if (skipBtn.count() > 0) {
+                click(skipBtn, page.locator(NEXT_CSS));
+            } else {
+                // Fall back to Next if Skip is not present
+                click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next").setExact(true)),
+                        page.locator(NEXT_CSS));
+            }
+            markAfterClick();
+            waitUntil(() -> page.locator(PLATE).count() > 0 || page.getByText(SUMMARY_HEADING).count() > 0
+                    || visibleAlerts() > 0);
+            tag("read-after-skip");
+            return snapshot("2c-after-skip");
+        });
+    }
+
+    @Override
     public java.util.Optional<String> currentPage() throws IOException, InterruptedException {
         return step("read-summary", () -> java.util.Optional.of(snapshot("2-after-login")));
     }
