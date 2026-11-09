@@ -111,7 +111,7 @@ export default function DemoHub() {
       </main>
       <footer className="nsw-footer">
         <div className="wrap nsw-footer__inner">
-          <p><a href="/">← Back to the lookup</a></p>
+          <p>Need help? Call <a href="tel:1300138118">1300 138 118</a> · <a href="/">← Back to the lookup</a></p>
           <nav className="nsw-footer__links" aria-label="Footer links">
             <a href="https://www.nsw.gov.au/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
             <a href="https://www.nsw.gov.au/accessibility-statement" target="_blank" rel="noopener noreferrer">Accessibility</a>
