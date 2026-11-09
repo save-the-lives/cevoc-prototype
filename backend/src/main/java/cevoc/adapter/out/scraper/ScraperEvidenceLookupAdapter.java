@@ -339,14 +339,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         // cameraCode is internal (@JsonIgnore): input for the certificate lookup, banner first, then the s= value.
         PenaltyLookupResult result = new PenaltyLookupResult(Status.FOUND, number, summary, notice, evidence, SOURCE, page.cameraCode(),
                 List.of(), null, plateRequired && evidence.isEmpty(), mergedDetails(page.details(), ocrDetails));
-        // Certificate download URL: resolve the signed href to an absolute URL.
-        if (page.certification() != null && page.certification().fullHref() != null) {
-            String certUrl = resolveCertificateUrl(page.certification().fullHref());
-            LookupDiagnostic.note("certificate-url-available=yes");
-            result = result.withCertificateUrl(certUrl);
-        } else {
-            LookupDiagnostic.note("certificate-url-available=no");
-        }
+        // Certificate PDF download removed — legacy site does not allow PDF download (HTML only, Akamai WAF blocks).
         return result;
     }
 
@@ -522,16 +515,6 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
     }
 
     private static final String CEVOC_BASE = "https://cevoc.transport.nsw.gov.au/cevoc/pages/public/";
-
-    /** Resolve a possibly-relative certificateDetails.jsf href to an absolute URL. */
-    private static String resolveCertificateUrl(String href) {
-        if (href.startsWith("http://") || href.startsWith("https://")) return href;
-        // Strip leading slashes or path components
-        if (href.startsWith("/")) {
-            return "https://cevoc.transport.nsw.gov.au" + href;
-        }
-        return CEVOC_BASE + href;
-    }
 
     /** True when {@code items} contains a larger image with the same aspect ratio (within 5%). */
     private static boolean hasLargerWithSameRatio(EvidenceItem small, List<EvidenceItem> items) {

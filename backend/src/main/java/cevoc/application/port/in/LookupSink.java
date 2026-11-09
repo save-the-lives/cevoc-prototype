@@ -41,8 +41,6 @@ public interface LookupSink {
         certificates(certificates, coverage);
     }
 
-    /** The direct certificate details URL (signed, from the evidence page). Default: ignored. */
-    default void certificateUrl(String url) {}
 
     void done();
 

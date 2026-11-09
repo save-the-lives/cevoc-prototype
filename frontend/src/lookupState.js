@@ -29,7 +29,7 @@ export function applyEvent(state, name, data) {
     case 'extra':
       return data && data.details && typeof data.details === 'object' ? { ...state, extra: { ...data.details } } : state;
     case 'certificates':
-      return { ...state, certificates: { state: SECTION.READY, items: data.certificates || [], coverage: data.coverage || null, uncoveredTypes: data.uncoveredTypes || [], certificateUrl: data.certificateUrl || null } };
+      return { ...state, certificates: { state: SECTION.READY, items: data.certificates || [], coverage: data.coverage || null, uncoveredTypes: data.uncoveredTypes || [] } };
     case 'done':
       return settle({ ...state, finished: true });
     case 'error':
@@ -53,7 +53,7 @@ export function eventsFromResult(result) {
   if (result.status === 'FOUND') {
     events.push(['evidence', { evidence: result.evidence || [], plateRequired: !!result.plateRequired }]);
     if (result.details && Object.keys(result.details).length) events.push(['extra', { details: result.details }]);
-    events.push(['certificates', { certificates: result.certificates || [], coverage: result.certificateCoverage || null, uncoveredTypes: result.uncoveredTypes || [], certificateUrl: result.certificateUrl || null }]);
+    events.push(['certificates', { certificates: result.certificates || [], coverage: result.certificateCoverage || null, uncoveredTypes: result.uncoveredTypes || [] }]);
   } else {
     events.push(['evidence', { evidence: [], plateRequired: false }], ['certificates', { certificates: [] }]);
   }
@@ -71,7 +71,6 @@ export function toResult(state) {
     certificates: state.certificates.items,
     certificateCoverage: state.certificates.coverage,
     uncoveredTypes: state.certificates.uncoveredTypes || [],
-    certificateUrl: state.certificates.certificateUrl || null,
     plateRequired: state.evidence.plateRequired,
     ...(state.extra ? { details: state.extra } : {}), // flexible details map (record 0009); keys the page does not know are ignored
   };

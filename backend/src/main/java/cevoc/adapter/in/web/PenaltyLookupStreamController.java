@@ -85,8 +85,7 @@ public class PenaltyLookupStreamController {
                                CertificateCoverage coverage,
                                @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
                                List<CertificateAssessment.UncoveredType> uncoveredTypes,
-                               @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-                               String certificateUrl) {}
+) {}
 
     /** The flexible details map (record 0009); sent only when a route returned any. */
     public record Extra(java.util.Map<String, Object> details) {}
@@ -126,7 +125,6 @@ public class PenaltyLookupStreamController {
         ScheduledFuture<?> heart = beat.scheduleAtFixedRate(() -> comment(emitter, open, "ping"),
                 HEARTBEAT_SECONDS, HEARTBEAT_SECONDS, TimeUnit.SECONDS);
         boolean[] finished = new boolean[1];
-        String[] certUrl = new String[1];
         LookupSink sink = new LookupSink() {
             @Override
             public void details(PenaltyLookupResult d) {
@@ -134,7 +132,7 @@ public class PenaltyLookupStreamController {
                 if (d.status() != PenaltyLookupResult.Status.FOUND) {
                     // The stream carries "evidence": [] for the unhappy cases so the page can settle every section.
                     send(emitter, open, "evidence", new Evidence(List.of(), false));
-                    send(emitter, open, "certificates", new Certificates(List.of(), null, List.of(), null));
+                    send(emitter, open, "certificates", new Certificates(List.of(), null, List.of()));
                 }
             }
 
@@ -149,24 +147,19 @@ public class PenaltyLookupStreamController {
             }
 
             @Override
-            public void certificateUrl(String url) {
-                certUrl[0] = url;
-            }
-
-            @Override
             public void certificates(List<CertificateItem> certificates) {
-                send(emitter, open, "certificates", new Certificates(certificates, null, List.of(), certUrl[0]));
+                send(emitter, open, "certificates", new Certificates(certificates, null, List.of()));
             }
 
             @Override
             public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage) {
-                send(emitter, open, "certificates", new Certificates(certificates, coverage, List.of(), certUrl[0]));
+                send(emitter, open, "certificates", new Certificates(certificates, coverage, List.of()));
             }
 
             @Override
             public void certificates(List<CertificateItem> certificates, CertificateCoverage coverage,
                                      List<CertificateAssessment.UncoveredType> uncoveredTypes) {
-                send(emitter, open, "certificates", new Certificates(certificates, coverage, uncoveredTypes, certUrl[0]));
+                send(emitter, open, "certificates", new Certificates(certificates, coverage, uncoveredTypes));
             }
 
             @Override
