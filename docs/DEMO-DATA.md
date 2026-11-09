@@ -1,6 +1,6 @@
 # Demo data (fictitious notices; temporary: delete at cutover)
 
-Everything here is invented: ten-digit notice numbers, places, amounts, plate `TST123`, camera codes `DEMO-RL-1` to `DEMO-CAM-5`, and the sample images. No real notice, person, vehicle or place is used, and by default nothing is fetched from any network (only if an optional demo content bundle URL is configured, see below). Decision records: 0007 (information types and status), 0009 (flexible details map), 0010 (route providers), 0013 to 0016 (red light first, default block, video default on).
+Everything here is invented: ten-digit notice numbers, places, amounts, plate `ABC123`, camera codes `DEMO-RL-1` to `DEMO-CAM-5`, and the sample images. No real notice, person, vehicle or place is used, and by default nothing is fetched from any network (only if an optional demo content bundle URL is configured, see below). Decision records: 0007 (information types and status), 0009 (flexible details map), 0010 (route providers), 0013 to 0016 (red light first, default block, video default on).
 
 ## The switch (one setting, OFF by default)
 
@@ -78,7 +78,7 @@ Status words in the table: *Shown* (all of it returned), *Shown in part*, *Not r
 | `0000000102` | Partial | **Certificate does not cover the date.** A certificate is listed but none was in force on the offence date. | Shown | Shown in part | Shown | No display rules, default message |
 | `0000000103` | Partial | **No video returned.** Images and a covering certificate; no video. | Shown | Shown | Not returned, said plainly | No display rules, default message |
 | `0000000105` | Partial | **One image only.** A single image instead of three; no video. | Shown in part | Shown | Not returned, said plainly | No display rules, default message |
-| `0000000106` | Partial | **Images need the number plate.** Images and video are held back until the plate TST123 is given. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000106` | Partial | **Images need the number plate.** Images and video are held back until the plate ABC123 is given. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
 | `0000000107` | Partial | **Notice already paid.** Everything returned; the notice is paid and nothing is owing. | Shown | Shown | Shown | No display rules, default message |
 | `0000000108` | Partial | **Notice in review.** Everything returned; the notice is under review. | Shown | Shown | Shown | No display rules, default message |
 | `0000000201` | Sad | **Certificate lookup failed.** Images and video are there; the certificate lookup has a technical failure. | Shown | Technical failure, said plainly | Shown | No display rules, default message |
@@ -101,7 +101,7 @@ Status words in the table: *Shown* (all of it returned), *Shown in part*, *Not r
 | `1000000103` | Partial | **No video returned.** Images and a covering certificate; no video. | Shown | Shown | Not returned, said plainly | Shown |
 | `1000000104` | Partial | **Some red light details not returned.** The seconds after red are there; the speed limit is not. | Shown | Shown | Shown | Shown in part |
 | `1000000105` | Partial | **One image only.** A single image instead of three; no video. | Shown in part | Shown | Not returned, said plainly | Shown |
-| `1000000106` | Partial | **Images need the number plate.** Images and video are held back until the plate TST123 is given. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000106` | Partial | **Images need the number plate.** Images and video are held back until the plate ABC123 is given. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
 | `1000000107` | Partial | **Notice already paid.** Everything returned; the notice is paid and nothing is owing. | Shown | Shown | Shown | Shown |
 | `1000000108` | Partial | **Notice in review.** Everything returned; the notice is under review. | Shown | Shown | Shown | Shown |
 | `1000000201` | Sad | **Certificate lookup failed.** Images and video are there; the certificate lookup has a technical failure. | Shown | Technical failure, said plainly | Shown | Shown |
@@ -181,7 +181,7 @@ Optional tuning (properties `cevoc.demo-bundle.timeout-seconds`, default 60, and
 
 ## The demo hub
 
-`/demo-cases` (alias `/test-cases`) lists the cases grouped by program, then happy, partial, sad and edge, each with its ten-digit number, a one-line description, the status per information type, a link that opens the case in the real result page through the demo adapter, and a copy-number button. Reserved programs are listed as "not built yet". The list is served by `GET /api/demo/cases`, which exists only while the switch is on, so the hub and the checks use one list. For cases that need the plate, type `TST123` (or any other plate to see the refusal).
+`/demo-cases` (alias `/test-cases`) lists the cases grouped by program, then happy, partial, sad and edge, each with its ten-digit number, a one-line description, the status per information type, a link that opens the case in the real result page through the demo adapter, and a copy-number button. Reserved programs are listed as "not built yet". The list is served by `GET /api/demo/cases`, which exists only while the switch is on, so the hub and the checks use one list. For cases that need the plate, type `ABC123` (or any other plate to see the refusal).
 
 ## Visual check
 

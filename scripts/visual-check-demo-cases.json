@@ -3215,9 +3215,9 @@
         }, {
           "number" : "0000000106",
           "title" : "Images need the number plate",
-          "description" : "Images and video are held back until the plate TST123 is given.",
+          "description" : "Images and video are held back until the plate ABC123 is given.",
           "offenceDate" : "2026-03-14",
-          "plate" : "TST123",
+          "plate" : "ABC123",
           "transparency" : {
             "certificates" : "available",
             "details" : "no_rules",
@@ -3566,9 +3566,9 @@
         }, {
           "number" : "1000000106",
           "title" : "Images need the number plate",
-          "description" : "Images and video are held back until the plate TST123 is given.",
+          "description" : "Images and video are held back until the plate ABC123 is given.",
           "offenceDate" : "2026-03-14",
-          "plate" : "TST123",
+          "plate" : "ABC123",
           "transparency" : {
             "certificates" : "available",
             "details" : "available",

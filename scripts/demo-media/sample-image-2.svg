@@ -8,6 +8,6 @@
 <circle cx="430" cy="362" r="24" fill="#212121"/>
 <circle cx="560" cy="362" r="24" fill="#212121"/>
 <rect x="460" y="318" width="70" height="26" fill="#ffffff" stroke="#212121"/>
-<text x="495" y="337" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#212121">TST123</text>
+<text x="495" y="337" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#212121">ABC123</text>
 <rect x="800" y="90" width="40" height="110" rx="8" fill="#212121"/><circle cx="820" cy="120" r="14" fill="#e53935"/><circle cx="820" cy="170" r="14" fill="#424242"/>
 </svg>

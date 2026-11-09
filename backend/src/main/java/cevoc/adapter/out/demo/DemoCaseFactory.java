@@ -21,7 +21,7 @@ import java.util.Optional;
 public final class DemoCaseFactory {
 
     /** The fictitious number plate that releases held-back images. */
-    public static final String PLATE = "TST123";
+    public static final String PLATE = "ABC123";
     /** The {@code source} value of every demo result; the page uses it to show the demo banner. */
     public static final String SOURCE = "DEMO";
 

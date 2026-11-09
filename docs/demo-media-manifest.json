@@ -16,8 +16,8 @@
       "licenceUrl": "https://github.com/save-the-lives/cevoc-prototype",
       "credit": "CEVOC project",
       "retrieved": "2026-11-05",
-      "shows": "Flat illustration of a car on a road. Plate text TST123 (fictitious).",
-      "privacy": { "status": "checked", "method": "Synthetic vector drawing, no photograph. Viewed as source text; the only plate is the fictitious TST123." },
+      "shows": "Flat illustration of a car on a road. Plate text ABC123 (fictitious).",
+      "privacy": { "status": "checked", "method": "Synthetic vector drawing, no photograph. Viewed as source text; the only plate is the fictitious ABC123." },
       "banner": ["Camera Code: 7109", "Location: SAMPLE ROAD AND EXAMPLE STREET, SAMPLETOWN", "Direction: Northbound", "Date: 2026-03-14 Time: 08:15:42"]
     },
     {
@@ -33,23 +33,38 @@
       "licenceUrl": "https://github.com/save-the-lives/cevoc-prototype",
       "credit": "CEVOC project",
       "retrieved": "2026-11-05",
-      "shows": "Flat illustration of a car at a red traffic light. Plate text TST123 (fictitious).",
-      "privacy": { "status": "checked", "method": "Synthetic vector drawing, no photograph. Viewed as source text; the only plate is the fictitious TST123." },
+      "shows": "Flat illustration of a car at a red traffic light. Plate text ABC123 (fictitious).",
+      "privacy": { "status": "checked", "method": "Synthetic vector drawing, no photograph. Viewed as source text; the only plate is the fictitious ABC123." },
       "banner": ["Camera Code: 7109", "Location: TEST AVENUE AND DEMO LANE, EXAMPLEVILLE", "Direction: Northbound", "Date: 2026-03-14 Time: 08:15:44"]
     },
     {
       "path": "media/sample-video-1.mp4",
       "kind": "video",
       "contentType": "video/mp4",
-      "source": "repo:frontend/public/samples/video-1.mp4",
-      "sourceUrl": "https://github.com/save-the-lives/cevoc-prototype/blob/main/frontend/public/samples/video-1.mp4",
-      "author": "CEVOC project (generated with ffmpeg testsrc2 and a sine tone)",
-      "licence": "Project-original, no third-party material (owner to confirm the release licence)",
+      "source": "AI-generated synthetic scene (ChatGPT/Sora)",
+      "sourceUrl": "n/a — generated on request, not from a public URL",
+      "author": "CEVOC project (AI-generated synthetic traffic scene)",
+      "licence": "Project-original, AI-generated synthetic content. No real person, vehicle or location.",
       "licenceUrl": "https://github.com/save-the-lives/cevoc-prototype",
       "credit": "CEVOC project",
-      "retrieved": "2026-11-05",
-      "shows": "ffmpeg test pattern with a tone. No road, vehicle or person.",
-      "privacy": { "status": "checked", "method": "Machine-generated test pattern (see frontend/public/samples/ATTRIBUTION.md); no camera footage." },
+      "retrieved": "2026-11-10",
+      "shows": "Busy traffic scene: silver Toyota sedan (plate ABC123) centered, blue Mazda (XT2482), red Mazda (LMN761), white Hyundai (KYZ455), bus (MS2 City), background vehicles. Two faces visible through windscreen. Synthetic — all plates, faces and vehicles are AI-generated.",
+      "privacy": { "status": "checked", "method": "AI-generated synthetic scene. No real person or vehicle. Plates ABC123, XT2482, LMN761, KYZ455 are fictitious. Faces are AI-generated, not photographs of real people. Suitable as blurring pipeline baseline." },
+      "banner": []
+    },
+    {
+      "path": "media/sample-video-2.mp4",
+      "kind": "video",
+      "contentType": "video/mp4",
+      "source": "AI-generated synthetic scene (ChatGPT/Sora)",
+      "sourceUrl": "n/a — generated on request, not from a public URL",
+      "author": "CEVOC project (AI-generated synthetic traffic scene)",
+      "licence": "Project-original, AI-generated synthetic content. No real person, vehicle or location.",
+      "licenceUrl": "https://github.com/save-the-lives/cevoc-prototype",
+      "credit": "CEVOC project",
+      "retrieved": "2026-11-10",
+      "shows": "Three-car scene: silver Toyota sedan (plate ABC123) centered, white Hyundai (KYZ455) left, blue Mazda (LMN761) right. Two faces visible through windscreen. Marked SYNTHETIC TEST FOOTAGE. All AI-generated.",
+      "privacy": { "status": "checked", "method": "AI-generated synthetic scene. No real person or vehicle. Plates ABC123, KYZ455, LMN761 are fictitious. Suitable as blurring pipeline baseline." },
       "banner": []
     }
   ]
