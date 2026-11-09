@@ -203,8 +203,11 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
                         () -> session.submitIdentity(idScope.familyName(), idScope.givenNames()));
             } else {
-                LOG.info("evidence lookup: skipping optional identity page");
-                summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN, session::skipIdentity);
+                // No identity provided: tell the caller which fields the source wants so the frontend can prompt.
+                LOG.info("evidence lookup: identity page detected, no identity provided — returning INPUT_REQUIRED");
+                trace.ok(LookupStep.READ_SUMMARY, (System.nanoTime() - readStart) / 1_000_000);
+                return result(Status.FOUND, number, "This notice needs a few more details.")
+                        .withRequiredFields(page.unexpectedLoginFields());
             }
             readStart = System.nanoTime();
             page = parser.parse(summaryHtml);

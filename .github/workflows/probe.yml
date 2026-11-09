@@ -136,6 +136,13 @@ jobs:
                 console.log(`\nIdentity page detected: ${hasSkip}`);
 
                 if (hasSkip) {
+                  // Report identity page field names before skipping
+                  const idFields = await page.evaluate(() => {
+                    return [...document.querySelectorAll('input')].filter(i => i.offsetParent !== null)
+                      .map(i => ({ name: i.name, id: i.id, formcontrolname: i.getAttribute('formcontrolname'), type: i.type }));
+                  });
+                  console.log(`Identity page fields: ${JSON.stringify(idFields)}`);
+
                   // Try Skip path first
                   await skipBtn.click();
                   await page.waitForTimeout(5000);
@@ -150,7 +157,14 @@ jobs:
 
                 if (hasPlate && c.input.plate) {
                   await page.fill('#vehicleNumber', c.input.plate);
-                  await page.click('button:has-text("Next")');
+                  // The plate page has a "View images" button, not "Next"
+                  const viewBtn = page.locator('button:has-text("View images")');
+                  const nextBtn2 = page.locator('button:has-text("Next")');
+                  if (await viewBtn.count() > 0) {
+                    await viewBtn.click();
+                  } else if (await nextBtn2.count() > 0) {
+                    await nextBtn2.click();
+                  }
                   await page.waitForTimeout(8000);
                   console.log('\n--- STEP 4: After plate submission ---');
                   shape = await pageShape(page);
