@@ -135,6 +135,10 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .facts small { color: var(--muted); font-size: .9rem; }
 .muted { color: var(--muted); font-size: .95rem; }
 .notice-box { border: 1px solid var(--line); border-left: 6px solid var(--navy); background: var(--soft); border-radius: 6px; padding: 12px 16px; margin: 0; }
+.notice-fail { text-align: center; padding: 48px 24px; max-width: 480px; margin: 32px auto; }
+.notice-fail h2 { margin: 0 0 12px; font-size: 1.3rem; }
+.notice-fail p { margin: 0 0 16px; }
+.notice-fail .btn { margin-bottom: 8px; }
 .notice-box h3 { margin: 0 0 6px; font-size: 1.1rem; }
 .notice-box p { margin: 0 0 10px; }
 .plate-ask { display: grid; gap: 4px; }

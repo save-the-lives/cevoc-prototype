@@ -388,25 +388,35 @@ export default function Notice({ result, query, sections = READY, registrationGi
           <>
             <h2 id="stat-h">Notice status</h2>
             {needsIdentity ? <p className="stat-lead">This notice needs a few more details.</p>
-              : detailsFailed ? <p className="stat-lead">We couldn't load your notice.</p>
-              : loadingTooLong ? <p className="stat-lead">This is taking longer than expected. Check the notice number and offence date.</p>
               : <p className="stat-lead">Looking up your notice…</p>}
           </>
         )}
       </section>
 
+      {/* When the notice itself fails or takes too long, show one clear error instead of empty sections */}
+      {detailsFailed ? (
+        <section className="notice-fail" role="alert">
+          <h2>Something went wrong</h2>
+          <p>We couldn't load your notice. The problem is on our side, not with your details.</p>
+          <p><button type="button" className="btn primary" onClick={onRetry}>Try again</button></p>
+          <p className="muted">If it keeps happening, call {HELP_PHONE}.</p>
+        </section>
+      ) : detailsLoading && loadingTooLong ? (
+        <section className="notice-fail" role="status">
+          <h2>This is taking longer than expected</h2>
+          <p>Check the penalty notice number and offence date are correct. If they are, the service might be busy.</p>
+          <p><button type="button" className="btn primary" onClick={onRetry}>Try again</button></p>
+          <p className="muted">You can also call {HELP_PHONE}.</p>
+        </section>
+      ) : (
       <div className="story">
         <StepNav steps={steps} />
         <div>
           <Step n={stepNo('step-what')} id="step-what" title="What happened" answer={detailsLoading ? 'Looking up your notice…' : undefined}>
             {detailsLoading
-              ? loadingTooLong
-                ? <Failed what="your notice" note="This is taking longer than expected. Check the penalty notice number and offence date are correct." onRetry={onRetry} />
-                : <ListSkeleton rows={1} label="Looking up your notice. This can take up to half a minute." />
+              ? <ListSkeleton rows={1} label="Looking up your notice. This can take up to half a minute." />
               : needsIdentity
                 ? <IdentityAsk onSubmit={onIdentity} busy={plateBusy} />
-                : detailsFailed
-                ? <Failed what="your notice" onRetry={onRetry} />
                 : (
                   <dl className="facts">
                     {n.offenceTime && <div><dt>Time</dt><dd><strong>{niceTime(n.offenceTime)}</strong></dd></div>}
@@ -421,7 +431,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
           {!needsIdentity && <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
             {detailsLoading || evLoading
               ? <PhotoSkeleton label="Fetching the camera images. This can take up to half a minute." />
-              : evFailed || detailsFailed
+              : evFailed
                 ? <Failed what="the photos" onRetry={onRetry} />
               : ev === 'not-applicable'
                 ? <p className="muted">This notice was issued by an officer, not a camera. There are no camera images to show.</p>
@@ -459,7 +469,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
               answer={detailsLoading ? 'Checking the camera certificates…' : certFailed || detailsFailed ? "We couldn't load the certificates." : certAns.text}>
               {detailsLoading || certLoading
                 ? <ListSkeleton label="Checking the camera certificates" />
-                : certFailed || detailsFailed
+                : certFailed
                   ? <Failed what="the camera certificates" onRetry={onRetry} />
                   : hasCertificateList(result)
                     ? <Suspense fallback={<ListSkeleton label="Loading the certificates" />}><CertificateList certificates={result.certificates} coverage={result.certificateCoverage} uncoveredTypes={result.uncoveredTypes} /></Suspense>
@@ -493,6 +503,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
 
         </div>
       </div>
+      )}
     </div>
     </ExpiredContext.Provider>
   );
