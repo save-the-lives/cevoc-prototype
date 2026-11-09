@@ -5,6 +5,36 @@ import { usePhone } from './phone.js';
 import { createLoadQueue, jobsFor, saveDataOn, STATE } from './loadQueue.js';
 import { ExpiredContext } from './expired.js';
 
+async function downloadAllAsZip(photoDownloads, setZipping) {
+  setZipping(true);
+  try {
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    const results = await Promise.allSettled(
+      photoDownloads.map(async (href, i) => {
+        const res = await fetch(href);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+        zip.file(`photo-${i + 1}.${ext}`, blob);
+      })
+    );
+    const added = results.filter((r) => r.status === 'fulfilled').length;
+    if (added === 0) { alert('Could not download any images. The links may have expired.'); return; }
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'evidence-photos.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Zip download failed:', e);
+    alert('Download failed. The photo links may have expired.');
+  } finally {
+    setZipping(false);
+  }
+}
+
 const EvidenceVideo = lazy(() => import('./EvidenceVideo.jsx'));
 const loadViewer = () => import('./ZoomPan.jsx');
 
@@ -308,6 +338,7 @@ export default function EvidenceGrid({ items }) {
     return ctx.queue.subscribe(sync);
   }, [ctx, media]);
 
+  const [zipping, setZipping] = useState(false);
   const item = media[selected];
   const photoDownloads = media.filter((e) => e.kind === 'IMAGE').map((e) => downloadHref(e)).filter(Boolean);
   const hasNonDownloadableVideo = media.some((e) => e.kind === 'VIDEO' && !downloadHref(e));
@@ -357,9 +388,10 @@ export default function EvidenceGrid({ items }) {
                 <a className="mg-btn" href={currentHref} download>Download this image</a>
               )}
               {photoDownloads.length > 1 && (
-                <button type="button" className="mg-btn" onClick={() => photoDownloads.forEach((href) => {
-                  const a = document.createElement('a'); a.href = href; a.download = ''; document.body.appendChild(a); a.click(); a.remove();
-                })}>Download all images</button>
+                <button type="button" className="mg-btn" disabled={zipping}
+                  onClick={() => downloadAllAsZip(photoDownloads, setZipping)}>
+                  {zipping ? 'Preparing zip…' : 'Download all images'}
+                </button>
               )}
             </div>
           </div>
