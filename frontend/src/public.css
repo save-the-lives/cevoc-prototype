@@ -218,7 +218,8 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 /* Evidence gallery */
 .mg { outline: none; scroll-margin-top: 72px; }
 .mg-stage { position: relative; background: var(--soft, #f4f7fa); border: 1px solid var(--line, #dee3e8); border-radius: 6px; overflow: hidden; aspect-ratio: 3 / 2; display: flex; align-items: center; justify-content: center; }
-.mg-media { width: 100%; height: 100%; object-fit: contain; background: var(--soft, #f4f7fa); display: block; }
+.mg-media { width: 100%; height: 100%; object-fit: contain; background: var(--soft, #f4f7fa); display: block; opacity: 0; transition: opacity .3s ease-in; }
+.mg-media.is-loaded { opacity: 1; }
 .mg-state { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #dfe5ea; text-align: center; padding: 24px; font-size: 15px; }
 .mg-state strong { font-size: 17px; color: #fff; }
 .mg-state.is-err strong { color: #ffd0d8; }

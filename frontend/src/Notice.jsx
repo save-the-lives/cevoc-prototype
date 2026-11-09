@@ -471,7 +471,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
             </Step>
           )}
 
-          {!needsIdentity && <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="Whatever you decide, your notice details will be filled in for you.">
+          {!needsIdentity && <Step n={stepNo('step-options')} id="step-options" title="Your options" answer="If you want to pay, request a review or nominate someone else, you'll be redirected.">
             <ul className="option-list">
               {OPTIONS.map((o) => (
                 <li key={o.id} className="option-row">

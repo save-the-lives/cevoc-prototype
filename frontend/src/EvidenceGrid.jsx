@@ -57,6 +57,10 @@ function StageImage({ item, queueState, onZoom }) {
   const stages = stagesFor(item);
   const [level, setLevel] = useState(0);
   const [broken, setBroken] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Reset loaded state when switching images
+  useEffect(() => { setLoaded(false); }, [item.url]);
 
   useEffect(() => {
     if (queueState === STATE.READY) {
@@ -97,8 +101,8 @@ function StageImage({ item, queueState, onZoom }) {
 
   return (
     <button type="button" className="mg-zoom" onClick={onZoom} aria-label={`View larger: ${alt}`}>
-      <img className="mg-media" src={src} alt={alt} draggable="false" decoding="async"
-        onError={() => setBroken(true)} onLoad={() => setBroken(false)} />
+      <img className={`mg-media${loaded ? ' is-loaded' : ''}`} src={src} alt={alt} draggable="false" decoding="async"
+        onError={() => setBroken(true)} onLoad={() => { setBroken(false); setLoaded(true); }} />
     </button>
   );
 }
