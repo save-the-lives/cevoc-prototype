@@ -257,16 +257,18 @@ function IdentityAsk({ onSubmit, busy }) {
       <h3>We need a few more details to show this notice</h3>
       <p>This type of penalty notice requires your details before the evidence can be shown.</p>
       <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <fieldset className="identity-type">
-          <legend className="sr-only">Who is the recipient?</legend>
-          <label className={`toggle-option${mode === 'person' ? ' active' : ''}`}>
-            <input type="radio" name="recipientType" value="person" checked={mode === 'person'}
-              onChange={() => setMode('person')} /> Person
-          </label>
-          <label className={`toggle-option${mode === 'org' ? ' active' : ''}`}>
-            <input type="radio" name="recipientType" value="org" checked={mode === 'org'}
-              onChange={() => setMode('org')} /> Organisation
-          </label>
+        <fieldset className="nsw-form__fieldset">
+          <legend className="nsw-form__legend">Who is the recipient?</legend>
+          <div className="nsw-form__radio">
+            <input className="nsw-form__radio-input" type="radio" name="recipientType" id="rt-person"
+              value="person" checked={mode === 'person'} onChange={() => setMode('person')} />
+            <label className="nsw-form__radio-label" htmlFor="rt-person">Person</label>
+          </div>
+          <div className="nsw-form__radio">
+            <input className="nsw-form__radio-input" type="radio" name="recipientType" id="rt-org"
+              value="org" checked={mode === 'org'} onChange={() => setMode('org')} />
+            <label className="nsw-form__radio-label" htmlFor="rt-org">Organisation</label>
+          </div>
         </fieldset>
         {mode === 'person' ? (
           <>

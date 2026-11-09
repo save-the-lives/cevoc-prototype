@@ -14,6 +14,10 @@ on:
         description: "Comma-separated tags to filter (e.g. 'smoke'). Empty = all cases."
         type: string
         default: ""
+      route:
+        description: "Expected lookup route (source field). Empty = any. 'REVENUE_NSW' = browser, 'REVENUE_NSW_HTTP' = HTTP."
+        type: string
+        default: ""
 permissions:
   contents: read
   id-token: write

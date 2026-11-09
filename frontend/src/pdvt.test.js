@@ -158,7 +158,7 @@ describe.skipIf(skipPass)('Smoke pass cases', () => {
       const photoCount = evidence?.evidence?.length ?? 0;
       const certCount = certificates?.certificates?.length ?? 0;
       const covStatus = certificates?.coverage?.status;
-      console.log(`[case ${id}] status=${details?.status}, photos=${photoCount}, certs=${certCount}, coverage=${covStatus}, requiredFields=${JSON.stringify(details?.requiredFields)}`);
+      console.log(`[case ${id}] status=${details?.status}, photos=${photoCount}, certs=${certCount}, coverage=${covStatus}, requiredFields=${JSON.stringify(details?.requiredFields)}, source=${details?.source}`);
 
       expect(error, `case ${id}: unexpected error event`).toBeFalsy();
       expect(done, `case ${id}: no done event`).toBeTruthy();
@@ -224,7 +224,7 @@ describe.skipIf(skipFail)('Smoke fail cases', () => {
         }
       }
       // Log actual response for diagnosis (safe fields only).
-      console.log(`[case ${id}] status=${details?.status}, summary=${details?.summary?.substring(0, 100)}, requiredFields=${JSON.stringify(details?.requiredFields)}`);
+      console.log(`[case ${id}] status=${details?.status}, summary=${details?.summary?.substring(0, 100)}, requiredFields=${JSON.stringify(details?.requiredFields)}, source=${details?.source}`);
 
       if (c.expect.status) {
         expect(details?.status, `case ${id}: expected status ${c.expect.status}`).toBe(c.expect.status);

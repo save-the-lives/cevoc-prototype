@@ -8,11 +8,8 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
   const [num, setNum] = useState(draft?.num || '');
   const [reg, setReg] = useState('');
   const [parts, setParts] = useState(draft?.parts || { d: '', m: '', y: '' });
-  const [familyName, setFamilyName] = useState(draft?.familyName || '');
-  const [givenNames, setGivenNames] = useState(draft?.givenNames || '');
-  const [organisation, setOrganisation] = useState(draft?.organisation || '');
-  const [idMode, setIdMode] = useState(draft?.organisation ? 'org' : 'person'); // person vs org — mutually exclusive
-  const needsIdentity = requiredFields?.includes('lastName') || requiredFields?.includes('firstName') || requiredFields?.includes('organisation');
+  // Identity (person name / organisation) is collected inline by IdentityAsk when the adapter returns INPUT_REQUIRED.
+  // It is NOT collected upfront — the adapter determines informational need.
   const [fe, setFe] = useState({});
   const [bad, setBad] = useState([]);
   const sumRef = useRef(null);
@@ -40,10 +37,7 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
     setReg(''); // the registration number is sent once and not kept
     onSubmit({
       infringementNumber: cleanNotice(num), offenceDate: partsToIso(parts), registration: registration || undefined,
-      // Person and organisation are mutually exclusive — only send the active mode's fields
-      familyName: idMode === 'person' ? (familyName.trim() || undefined) : undefined,
-      givenNames: idMode === 'person' ? (givenNames.trim() || undefined) : undefined,
-      organisation: idMode === 'org' ? (organisation.trim() || undefined) : undefined,
+      // Identity fields are NOT sent from the initial form — collected inline by IdentityAsk when the adapter needs them.
     });
   };
 
@@ -81,12 +75,6 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
                 <p>The problem is on our side, not with your details. Please try again in a few minutes. If it keeps happening, call {HELP_PHONE}.</p>
               </div>
             )}
-            {!problems.length && outcome === 'input-required' && (
-              <div className="errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="ir-h">
-                <h3 id="ir-h">We need a few more details for this notice</h3>
-                <p>This type of penalty notice requires your name before the evidence can be shown. Enter it below exactly as it appears on your penalty notice or driver licence, then try again.</p>
-              </div>
-            )}
             {!problems.length && outcome === 'lookup-off' && (
               <div className="errsum is-info" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="off-h">
                 <h3 id="off-h">This check isn’t available for that notice yet</h3>
@@ -117,50 +105,15 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
               onChange={(p) => { setParts(p); clear('date'); }}
               onBlurField={() => setTimeout(() => { if (!document.getElementById('od')?.contains(document.activeElement) && (parts.d || parts.m || parts.y)) leave('date'); }, 0)} />
             <div className="field">
-              <label htmlFor="rego">Number plate of the vehicle <span className="opt">(optional)</span></label>
-              <p className="hint" id="rego-hint">Some notices only release the photos once the number plate is given. Add it now to see them straight away. We use it for this check only and don’t keep it.</p>
+              <label htmlFor="rego">Number plate of the vehicle</label>
+              <p className="hint" id="rego-hint">The number plate from your penalty notice letter. We use it for this check only and don’t keep it.</p>
               {fe.reg && <p className="field-err" id="rego-err" role="alert"><span aria-hidden="true">⚠ </span><span className="sr-only">Error: </span>{fe.reg}</p>}
-              <input id="rego" className={`rego${fe.reg ? ' is-bad' : ''}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
-                value={reg} aria-describedby={`rego-hint${fe.reg ? ' rego-err' : ''}`} aria-invalid={!!fe.reg || undefined}
-                onBlur={() => reg && leave('reg')}
-                onChange={(e) => { setReg(e.target.value); clear('reg'); }} />
+              <input id="rego" className={`rego${fe.reg ? ‘ is-bad’ : ‘’}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
+                value={reg} aria-describedby={`rego-hint${fe.reg ? ‘ rego-err’ : ‘’}`} aria-invalid={!!fe.reg || undefined}
+                required
+                onBlur={() => reg && leave(‘reg’)}
+                onChange={(e) => { setReg(e.target.value); clear(‘reg’); }} />
             </div>
-            <details className="identity-fields" open={needsIdentity || !!familyName || !!givenNames || !!organisation}>
-              <summary>Your details <span className="opt">(some notice types need this)</span></summary>
-              <p className="hint">Some penalties — such as seatbelt offences — require your name or company name to show the evidence. Enter it exactly as shown on your penalty notice or driver licence.</p>
-              {needsIdentity && <p className="field-err" role="alert"><span aria-hidden="true">⚠ </span>This notice needs your details to continue.</p>}
-              <fieldset className="identity-type">
-                <legend className="sr-only">Who is the recipient?</legend>
-                <label className={`toggle-option${idMode === 'person' ? ' active' : ''}`}>
-                  <input type="radio" name="idMode" value="person" checked={idMode === 'person'}
-                    onChange={() => setIdMode('person')} /> Person
-                </label>
-                <label className={`toggle-option${idMode === 'org' ? ' active' : ''}`}>
-                  <input type="radio" name="idMode" value="org" checked={idMode === 'org'}
-                    onChange={() => setIdMode('org')} /> Organisation
-                </label>
-              </fieldset>
-              {idMode === 'person' ? (
-                <>
-                  <div className="field">
-                    <label htmlFor="familyName">Family name</label>
-                    <input id="familyName" autoComplete="family-name" value={familyName}
-                      onChange={(e) => setFamilyName(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="givenNames">Given names</label>
-                    <input id="givenNames" autoComplete="given-name" value={givenNames}
-                      onChange={(e) => setGivenNames(e.target.value)} />
-                  </div>
-                </>
-              ) : (
-                <div className="field">
-                  <label htmlFor="organisation">Organisation name</label>
-                  <input id="organisation" autoComplete="organization" value={organisation}
-                    onChange={(e) => setOrganisation(e.target.value)} />
-                </div>
-              )}
-            </details>
             <button type="submit" className="btn primary big" disabled={busy}>{busy ? 'Finding your notice…' : 'Show me what happened'}</button>
             <p className="sr-only" role="status">{busy ? 'Finding your notice' : ''}</p>
           </form>
