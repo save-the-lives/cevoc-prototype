@@ -6,7 +6,7 @@ import { HELP_PHONE } from './journey.js';
 export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios, onPickDefaultDate, draft, reloadNote, requiredFields }) {
   useEffect(() => { if (reloadNote) document.getElementById('rego')?.focus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [num, setNum] = useState(draft?.num || '');
-  const [reg, setReg] = useState('');
+  const [reg, setReg] = useState(draft?.reg || '');
   const [parts, setParts] = useState(draft?.parts || { d: '', m: '', y: '' });
   // Identity (person name / organisation) is collected inline by IdentityAsk when the adapter returns INPUT_REQUIRED.
   // It is NOT collected upfront — the adapter determines informational need.
@@ -34,7 +34,6 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
     setFe(x); setBad(b);
     if (Object.keys(x).length) { setTimeout(() => sumRef.current?.focus(), 0); return; }
     const registration = cleanRegistration(reg);
-    setReg(''); // the registration number is sent once and not kept
     onSubmit({
       infringementNumber: cleanNotice(num), offenceDate: partsToIso(parts), registration: registration || undefined,
       // Identity fields are NOT sent from the initial form — collected inline by IdentityAsk when the adapter needs them.

@@ -84,7 +84,7 @@ export default function App() {
   const begin = async (plain, registration, { fresh }) => {
     liveRef.current = initialLookup();
     setLive(liveRef.current);
-    setFound({ query: plain, registrationGiven: !!registration });
+    setFound({ query: plain, registrationGiven: !!registration, registration: registration || null });
     if (fresh) {
       window.history.pushState({ notice: true }, '');
       window.scrollTo(0, 0);
@@ -134,7 +134,8 @@ export default function App() {
     liveRef.current = restartSections(liveRef.current);
     setLive(liveRef.current);
     setFound((f) => ({ ...f, identityGiven: true }));
-    await stream({ ...found.query, familyName, givenNames, organisation }, undefined, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
+    // Re-send with the stored registration (needed for plate submission after identity) plus the identity fields.
+    await stream({ ...found.query, familyName, givenNames, organisation }, found.registration, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
   };
 
   const startAgain = () => {
@@ -143,7 +144,7 @@ export default function App() {
   };
 
   // Edit: go back to the form with the notice number and date pre-filled (never the plate — it is asked for again).
-  const edit = () => { setDraft(draftFromQuery(found?.query)); startAgain(); };
+  const edit = () => { setDraft(draftFromQuery({ ...found?.query, registration: found?.registration })); startAgain(); };
 
   // New lookup: go back to a blank form.
   const newLookup = () => { setDraft(null); startAgain(); };

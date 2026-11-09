@@ -58,4 +58,4 @@ export const partsToIso = ({ d, m, y }) => `${y.trim()}-${pad(Number(m))}-${pad(
 export const isoToParts = (iso) => (iso ? { d: String(Number(iso.slice(8, 10))), m: String(Number(iso.slice(5, 7))), y: iso.slice(0, 4) } : { d: '', m: '', y: '' });
 
 /** What the form shows again after Edit or Back: the notice number and date only. The plate is never part of a draft. */
-export const draftFromQuery = (q) => (q ? { num: q.infringementNumber || '', parts: isoToParts(q.offenceDate) } : { num: '', parts: { d: '', m: '', y: '' } });
+export const draftFromQuery = (q) => (q ? { num: q.infringementNumber || '', parts: isoToParts(q.offenceDate), reg: q.registration || '' } : { num: '', parts: { d: '', m: '', y: '' }, reg: '' });
