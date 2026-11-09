@@ -173,37 +173,148 @@ jobs:
                   console.log('Plate form present but no plate in input — skipping plate step.');
                 }
 
-                // --- STEP 5: Certificate link probe ---
-                console.log('\n--- STEP 5: Certificate link ---');
+                // --- STEP 5: Deep certificate probe ---
+                console.log('\n--- STEP 5: Certificate deep probe ---');
                 const certLink = await page.evaluate(() => {
                   const links = [...document.querySelectorAll('a')];
                   const cert = links.find(a => a.href && a.href.includes('certificateDetails'));
                   if (cert) return { href: cert.href, text: cert.textContent.trim() };
-                  // Also check for "View certification details" text
                   const byText = links.find(a => /certif/i.test(a.textContent));
                   if (byText) return { href: byText.href, text: byText.textContent.trim() };
                   return null;
                 });
                 if (certLink) {
                   console.log(`Certificate link found: text="${certLink.text}"`);
-                  console.log(`Certificate URL (masked): ${certLink.href.replace(/m=[^&]+/, 'm=***')}`);
                   try {
-                    // Follow the link IN THE SAME SESSION (has Revenue NSW cookies)
+                    // Follow the link IN THE SAME SESSION
                     await page.click(`a[href*="certificateDetails"], a:has-text("${certLink.text}")`);
                     await page.waitForTimeout(8000);
-                    const certUrl = page.url();
-                    console.log(`After click URL: ${certUrl.replace(/m=[^&]+/, 'm=***')}`);
-                    const certShape = await pageShape(page);
-                    console.log(`Certificate page headings: ${JSON.stringify(certShape.headings)}`);
-                    console.log(`Certificate page content length: ${await page.evaluate(() => document.body.innerText.length)}`);
-                    // Check for access denied
-                    const bodyText = await page.evaluate(() => document.body.innerText.substring(0, 500));
-                    const denied = /access denied|permission|403|forbidden/i.test(bodyText);
-                    console.log(`Access denied: ${denied}`);
-                    if (denied) console.log(`Page text (first 200): ${bodyText.substring(0, 200)}`);
-                    else console.log(`Certificate page has content (not blocked)`);
+
+                    // (1) Camera Certification section structure: field labels only
+                    const certSection = await page.evaluate(() => {
+                      const headings = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(h => h.textContent.trim());
+                      const certIdx = headings.findIndex(h => /certif/i.test(h));
+                      // Find labels/keys in the cert section
+                      const labels = [...document.querySelectorAll('dt, th, label, .label, strong')]
+                        .filter(el => el.offsetParent !== null)
+                        .map(el => el.textContent.trim())
+                        .filter(t => t.length > 0 && t.length < 100);
+                      return { headings, certIdx, labels: [...new Set(labels)] };
+                    });
+                    console.log(`Cert section headings: ${JSON.stringify(certSection.headings)}`);
+                    console.log(`Cert section labels: ${JSON.stringify(certSection.labels)}`);
+
+                    // (2) Every link, button, embed on the cert page
+                    const controls = await page.evaluate(() => {
+                      const items = [];
+                      for (const a of document.querySelectorAll('a[href]')) {
+                        if (a.offsetParent === null) continue;
+                        const href = a.href;
+                        const masked = href.replace(/[?&](m|p|pnnum|token)=[^&]*/gi, (m, k) => `${k}=***`);
+                        items.push({ type: 'link', text: a.textContent.trim().substring(0, 60), href: masked, target: a.target || '_self' });
+                      }
+                      for (const btn of document.querySelectorAll('button, input[type="submit"], input[type="button"]')) {
+                        if (btn.offsetParent === null) continue;
+                        items.push({ type: 'button', text: (btn.textContent || btn.value || '').trim().substring(0, 60) });
+                      }
+                      for (const em of document.querySelectorAll('embed, object, iframe')) {
+                        if (em.offsetParent === null) continue;
+                        const src = (em.src || em.data || '').replace(/[?&](m|p)=[^&]*/gi, (m, k) => `${k}=***`);
+                        items.push({ type: em.tagName.toLowerCase(), src: src.substring(0, 200) });
+                      }
+                      return items;
+                    });
+                    console.log(`Controls on cert page: ${JSON.stringify(controls)}`);
+
+                    // (3) Look for PDF/download controls and try to fetch
+                    const pdfLinks = controls.filter(c =>
+                      /pdf|download|view.*cert|print/i.test(c.text) ||
+                      (c.href && /\.pdf|download|blob:/i.test(c.href))
+                    );
+                    console.log(`PDF/download controls: ${JSON.stringify(pdfLinks)}`);
+
+                    // Try intercepting download responses
+                    const downloadResults = [];
+                    page.on('download', async (download) => {
+                      const path = await download.path();
+                      const fs = require('fs');
+                      const bytes = path ? fs.readFileSync(path) : null;
+                      downloadResults.push({
+                        suggestedFilename: download.suggestedFilename(),
+                        size: bytes ? bytes.length : 0,
+                        isPdf: bytes && bytes.length > 4 && bytes.toString('utf8', 0, 4) === '%PDF'
+                      });
+                    });
+
+                    // Also intercept network responses for PDF content
+                    const pdfResponses = [];
+                    page.on('response', async (resp) => {
+                      const ct = resp.headers()['content-type'] || '';
+                      if (/pdf|octet-stream/i.test(ct) || resp.url().includes('.pdf')) {
+                        let size = 0;
+                        let isPdf = false;
+                        try {
+                          const body = await resp.body();
+                          size = body.length;
+                          isPdf = size > 4 && body.toString('utf8', 0, 4) === '%PDF';
+                        } catch {}
+                        pdfResponses.push({ url: resp.url().replace(/[?&](m|p)=[^&]*/gi, '$1=***').substring(0, 200), contentType: ct, size, isPdf });
+                      }
+                    });
+
+                    // Click any PDF/download button
+                    for (const ctrl of pdfLinks) {
+                      try {
+                        if (ctrl.type === 'link') {
+                          console.log(`Clicking PDF link: "${ctrl.text}"`);
+                          await page.click(`a:has-text("${ctrl.text}")`);
+                        } else if (ctrl.type === 'button') {
+                          console.log(`Clicking PDF button: "${ctrl.text}"`);
+                          await page.click(`button:has-text("${ctrl.text}"), input[value="${ctrl.text}"]`);
+                        }
+                        await page.waitForTimeout(5000);
+                      } catch (e) {
+                        console.log(`Click failed: ${e.message}`);
+                      }
+                    }
+                    console.log(`Download results: ${JSON.stringify(downloadResults)}`);
+                    console.log(`PDF responses intercepted: ${JSON.stringify(pdfResponses)}`);
+
+                    // (4) Test plain HTTP fetch with session cookies
+                    const cookies = await page.context().cookies();
+                    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+                    // Mask cookie values in logs
+                    console.log(`Session cookies count: ${cookies.length}`);
+                    // Try HTTP fetch of the cert page URL with cookies
+                    const http = require('http');
+                    const https = require('https');
+                    const certPageUrl = page.url();
+                    try {
+                      const httpResult = await new Promise((resolve, reject) => {
+                        const req = https.get(certPageUrl, { headers: { 'Cookie': cookieHeader, 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+                          const chunks = [];
+                          res.on('data', d => chunks.push(d));
+                          res.on('end', () => {
+                            const body = Buffer.concat(chunks);
+                            resolve({
+                              status: res.statusCode,
+                              contentType: res.headers['content-type'],
+                              size: body.length,
+                              isPdf: body.length > 4 && body.toString('utf8', 0, 4) === '%PDF',
+                              hasHtml: body.toString('utf8', 0, 100).includes('<html') || body.toString('utf8', 0, 100).includes('<!DOCTYPE')
+                            });
+                          });
+                        });
+                        req.on('error', reject);
+                        req.setTimeout(15000, () => { req.destroy(); reject(new Error('timeout')); });
+                      });
+                      console.log(`HTTP fetch of cert page: ${JSON.stringify(httpResult)}`);
+                    } catch (httpErr) {
+                      console.log(`HTTP fetch failed: ${httpErr.message}`);
+                    }
+
                   } catch (certErr) {
-                    console.log(`Certificate click error: ${certErr.message}`);
+                    console.log(`Certificate probe error: ${certErr.message}`);
                   }
                 } else {
                   console.log('No certificate link found on this page.');
