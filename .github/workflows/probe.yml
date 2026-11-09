@@ -173,6 +173,42 @@ jobs:
                   console.log('Plate form present but no plate in input — skipping plate step.');
                 }
 
+                // --- STEP 5: Certificate link probe ---
+                console.log('\n--- STEP 5: Certificate link ---');
+                const certLink = await page.evaluate(() => {
+                  const links = [...document.querySelectorAll('a')];
+                  const cert = links.find(a => a.href && a.href.includes('certificateDetails'));
+                  if (cert) return { href: cert.href, text: cert.textContent.trim() };
+                  // Also check for "View certification details" text
+                  const byText = links.find(a => /certif/i.test(a.textContent));
+                  if (byText) return { href: byText.href, text: byText.textContent.trim() };
+                  return null;
+                });
+                if (certLink) {
+                  console.log(`Certificate link found: text="${certLink.text}"`);
+                  console.log(`Certificate URL (masked): ${certLink.href.replace(/m=[^&]+/, 'm=***')}`);
+                  try {
+                    // Follow the link IN THE SAME SESSION (has Revenue NSW cookies)
+                    await page.click(`a[href*="certificateDetails"], a:has-text("${certLink.text}")`);
+                    await page.waitForTimeout(8000);
+                    const certUrl = page.url();
+                    console.log(`After click URL: ${certUrl.replace(/m=[^&]+/, 'm=***')}`);
+                    const certShape = await pageShape(page);
+                    console.log(`Certificate page headings: ${JSON.stringify(certShape.headings)}`);
+                    console.log(`Certificate page content length: ${await page.evaluate(() => document.body.innerText.length)}`);
+                    // Check for access denied
+                    const bodyText = await page.evaluate(() => document.body.innerText.substring(0, 500));
+                    const denied = /access denied|permission|403|forbidden/i.test(bodyText);
+                    console.log(`Access denied: ${denied}`);
+                    if (denied) console.log(`Page text (first 200): ${bodyText.substring(0, 200)}`);
+                    else console.log(`Certificate page has content (not blocked)`);
+                  } catch (certErr) {
+                    console.log(`Certificate click error: ${certErr.message}`);
+                  }
+                } else {
+                  console.log('No certificate link found on this page.');
+                }
+
                 // Summary
                 console.log('\n--- SUMMARY ---');
                 console.log(`Final URL: ${page.url()}`);
