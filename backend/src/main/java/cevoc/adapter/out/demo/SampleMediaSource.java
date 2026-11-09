@@ -11,10 +11,10 @@ import java.util.regex.Pattern;
 /**
  * Generates simple fictitious sample images as SVG text (no fonts or graphics libraries needed, no files, no network).
  * Every image says in words that it is a sample, so it cannot be mistaken for evidence. Deterministic: the same case
- * and image number always give the same bytes. The sample video is the pre-blurred version that ships with the front
- * end ({@code frontend/public/samples/video-1.mp4}). It was processed by {@code scripts/blur-demo-video.sh}: faces
- * and non-offending plates are blurred; the offending plate (ABC123) stays visible. The raw original is kept at
- * {@code video-1-raw.mp4}. Re-run the script after changing the source video.
+ * and image number always give the same bytes. The sample video at {@code frontend/public/samples/video-1.mp4} is the
+ * raw (unblurred) source. It is served through the backend's blur pipeline ({@link cevoc.application.port.out.BlurPort})
+ * which blurs faces and non-offending plates at request time, keeping the offending plate (ABC123) visible. When blur
+ * is not enabled ({@code CEVOC_BLUR_ENABLED=false}, the default), video returns a 503 (fail-closed, ADR 0017).
  */
 public final class SampleMediaSource implements DemoMediaSource {
 

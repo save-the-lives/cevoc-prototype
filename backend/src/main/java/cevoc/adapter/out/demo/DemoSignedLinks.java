@@ -42,6 +42,11 @@ public final class DemoSignedLinks implements SignedLinkPort {
         if (key.startsWith("demo/")) {
             return MEDIA_PATH + key.substring("demo/".length());
         }
+        // Route sample videos through the demo media endpoint for server-side blur.
+        // Static images still go direct.
+        if (key.startsWith("samples/") && key.endsWith(".mp4")) {
+            return MEDIA_PATH + "video/" + key.substring("samples/".length());
+        }
         return key.startsWith("samples/") ? "/" + key : null;
     }
 }

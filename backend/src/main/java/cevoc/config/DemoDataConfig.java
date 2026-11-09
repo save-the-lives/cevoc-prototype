@@ -1,11 +1,16 @@
 package cevoc.config;
 
 import cevoc.adapter.in.web.DemoRoutes;
+import cevoc.adapter.out.blur.DenyAllBlurAdapter;
+import cevoc.adapter.out.blur.ProcessBlurAdapter;
+import cevoc.adapter.out.demo.ClasspathVideoSource;
 import cevoc.adapter.out.demo.DemoCaseFactory;
 import cevoc.adapter.out.demo.DemoCertificateSource;
 import cevoc.adapter.out.demo.DemoContentGate;
 import cevoc.adapter.out.httpbundle.HttpsDemoBundleSource;
+import cevoc.application.port.out.BlurPort;
 import cevoc.application.port.out.DemoBundleSourcePort;
+import java.nio.file.Path;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import cevoc.adapter.out.demo.DemoCatalog;
@@ -57,7 +62,17 @@ public class DemoDataConfig {
     }
 
     @Bean
-    RouterFunction<ServerResponse> demoRoutes(DemoCatalog catalog) {
-        return DemoRoutes.routes(catalog, catalog);
+    BlurPort blurPort(@Value("${cevoc.blur.enabled:false}") String blurEnabled,
+                      @Value("${cevoc.blur.scripts-dir:scripts/blur-spike}") String scriptsDir) {
+        if ("true".equalsIgnoreCase(blurEnabled)) {
+            return new ProcessBlurAdapter(Path.of(scriptsDir));
+        }
+        return new DenyAllBlurAdapter();
+    }
+
+    @Bean
+    RouterFunction<ServerResponse> demoRoutes(DemoCatalog catalog, BlurPort blur,
+            @Value("${cevoc.blur.samples-dir:frontend/public/samples}") String samplesDir) {
+        return DemoRoutes.routes(catalog, catalog, blur, new ClasspathVideoSource(Path.of(samplesDir)));
     }
 }
