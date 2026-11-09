@@ -13,12 +13,17 @@ import './public.css';
 const TITLE = 'Check your camera fine evidence';
 
 // The journey is one page with two views: the form, and the notice. The notice number, date and number plate
-// are never put in the address bar, in storage or in a log. The plate is held only while the request is sent.
+// are never put in the address bar or in a log. The query is held in sessionStorage (per-tab, cleared on tab
+// close) so that a browser refresh re-runs the lookup instead of losing the user's place.
+const SESSION_KEY = 'cevoc_q';
+const saveSession = (query, registration) => { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ query, registration })); } catch {} };
+const clearSession = () => { try { sessionStorage.removeItem(SESSION_KEY); } catch {} };
+const loadSession = () => { try { const s = sessionStorage.getItem(SESSION_KEY); return s ? JSON.parse(s) : null; } catch { return null; } };
 export default function App() {
   const [view, setView] = useState({ name: 'form', outcome: null, misses: 0 });
   const [busy, setBusy] = useState(false);
   const [found, setFound] = useState(null); // { query, registrationGiven }
-  const [draft, setDraft] = useState(null); // last notice number and date typed, in memory only, so Edit and Back do not make people retype (never the plate)
+  const [draft, setDraft] = useState(null); // last notice number and date typed, in memory only, so Edit and Back do not make people retype
   const [live, setLive] = useState(null); // the progressive state of the lookup, see lookupState.js
   const headingRef = useRef(null);
   const firstRender = useRef(true);
@@ -92,6 +97,7 @@ export default function App() {
     }
     await stream(plain, registration, (kind, requiredFields) => {
       // Not matched / switched off: back to the form with its message, undoing the history entry we added.
+      clearSession();
       popSkip.current = !!window.history.state?.notice;
       if (popSkip.current) window.history.back();
       setFound(null);
@@ -112,7 +118,22 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const submit = (query) => { setDraft(draftFromQuery(query)); setReloadNote(false); return begin({ infringementNumber: query.infringementNumber, offenceDate: query.offenceDate }, query.registration, { fresh: true }); };
+  // Restore from sessionStorage on refresh: re-run the last lookup so the user stays where they were.
+  useEffect(() => {
+    if (demoCaseParam(window.location.search)) return; // demo link takes priority
+    const saved = loadSession();
+    if (saved?.query?.infringementNumber && saved?.query?.offenceDate) {
+      begin(saved.query, saved.registration || undefined, { fresh: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const submit = (query) => {
+    const plain = { infringementNumber: query.infringementNumber, offenceDate: query.offenceDate };
+    saveSession(plain, query.registration);
+    setDraft(draftFromQuery(query)); setReloadNote(false);
+    return begin(plain, query.registration, { fresh: true });
+  };
 
   // Re-runs the whole lookup (no number plate is kept, so a plate is asked for again inline if the source needs it).
   const retry = () => begin(found.query, undefined, { fresh: false });
@@ -147,7 +168,7 @@ export default function App() {
   const edit = () => { setDraft(draftFromQuery({ ...found?.query, registration: found?.registration })); startAgain(); };
 
   // New lookup: go back to a blank form.
-  const newLookup = () => { setDraft(null); startAgain(); };
+  const newLookup = () => { clearSession(); setDraft(null); startAgain(); };
 
   const asResult = live ? toResult(live) : null;
   const foundResult = asResult && classify(asResult) === 'found' ? asResult : null;
