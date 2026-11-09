@@ -4,3 +4,4 @@ dist/
 target/
 live-capture/
 visual-check-output/
+.claude/
