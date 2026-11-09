@@ -89,8 +89,10 @@ export default function DemoHub() {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <div className="masthead"><div className="wrap">NSW Government<DemoTag /></div></div>
-      <header className="site-head"><div className="wrap"><p className="sitename">Road safety enforcement</p></div></header>
+      <div className="nsw-masthead"><div className="wrap">NSW Government<DemoTag /></div></div>
+      <header className="nsw-header"><div className="wrap">
+        <div className="nsw-header__title">Road safety enforcement</div>
+      </div></header>
       <main id="main" tabIndex={-1}>
         <div className="wrap page-body demo-hub">
           <h1>Demo cases</h1>
@@ -107,7 +109,18 @@ export default function DemoHub() {
           )}
         </div>
       </main>
-      <footer className="site-foot"><div className="wrap foot-in"><span>(working prototype)</span><a href="/">Back to the lookup</a></div></footer>
+      <footer className="nsw-footer">
+        <div className="wrap nsw-footer__inner">
+          <p><a href="/">← Back to the lookup</a></p>
+          <nav className="nsw-footer__links" aria-label="Footer links">
+            <a href="https://www.nsw.gov.au/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
+            <a href="https://www.nsw.gov.au/accessibility-statement" target="_blank" rel="noopener noreferrer">Accessibility</a>
+            <a href="https://www.nsw.gov.au/nsw-government/copyright" target="_blank" rel="noopener noreferrer">Copyright</a>
+            <a href="https://www.nsw.gov.au/departments-and-agencies/transport-for-nsw" target="_blank" rel="noopener noreferrer">About</a>
+          </nav>
+          <p className="nsw-footer__info">(working prototype)</p>
+        </div>
+      </footer>
     </>
   );
 }
