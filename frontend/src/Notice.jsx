@@ -324,11 +324,17 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE' && (video.render || e.kind !== 'VIDEO'));
   const oldCerts = (result?.evidence || []).filter((e) => e.kind === 'CERTIFICATE');
   const ev = known ? evidenceState({ ...result, evidence: [...media, ...(result.evidence || []).filter((e) => e.kind === 'CERTIFICATE')] }, registrationGiven) : 'show';
+  // Steps are built dynamically — only sections that will actually render appear.
+  // During loading (!known), we show step-what plus the sections that are loading.
+  // Once known, stepsFor() decides based on the actual data.
   const steps = needsIdentity
     ? [{ id: 'step-what', label: 'What happened' }]
     : known ? stepsFor(result, ev) : [
-    { id: 'step-what', label: 'What happened' }, { id: 'step-evidence', label: 'Was it my vehicle?' },
-    { id: 'step-measure', label: 'How it was measured' }, { id: 'step-camera', label: 'Was the camera working?' }, { id: 'step-options', label: 'Your options' },
+    { id: 'step-what', label: 'What happened' },
+    { id: 'step-evidence', label: 'Was it my vehicle?' },
+    // step-measure omitted during loading — we don't know yet if it applies
+    { id: 'step-camera', label: 'Was the camera working?' },
+    { id: 'step-options', label: 'Your options' },
   ];
   const prog = known ? pickProgram(result) : null;
   const status = known ? statusSummary(n, query?.infringementNumber) : null;
