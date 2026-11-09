@@ -3,6 +3,7 @@
 body { background: #fff; font-size: 17px; }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
 .nsw-masthead { background: var(--navy); color: #fff; font-size: 13px; padding: 6px 0; font-weight: 600; }
+.nsw-masthead .wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .nsw-header { background: #fff; border-bottom: 1px solid var(--line); padding: 12px 0; }
 .nsw-header__row { display: flex; align-items: center; justify-content: space-between; }
 .nsw-header__brand { display: flex; align-items: center; gap: 12px; }
