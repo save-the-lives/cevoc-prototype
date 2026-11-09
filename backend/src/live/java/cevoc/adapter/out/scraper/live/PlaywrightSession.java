@@ -822,13 +822,7 @@ final class PlaywrightSession implements RenderedPageSession {
             waitUntil(() -> page.locator(PLATE).count() > 0 || page.getByText(SUMMARY_HEADING).count() > 0
                     || page.locator("input[name='lastName'], input#lastName").count() > 0
                     || page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Skip")).count() > 0
-                    || visibleAlerts() > 0
-                    || (page.locator(PNN).count() == 0 && page.locator("input").count() == 0));
-            // If PNN is gone but nothing else appeared, give Angular a moment to render.
-            if (page.locator(PLATE).count() == 0 && page.getByText(SUMMARY_HEADING).count() == 0
-                    && page.locator("input[name='lastName'], input#lastName").count() == 0) {
-                page.waitForTimeout(2000);
-            }
+                    || visibleAlerts() > 0);
             tag("read-summary");
             return snapshot("2-after-login");
         });
