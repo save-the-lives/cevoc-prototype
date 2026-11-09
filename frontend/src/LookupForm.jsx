@@ -49,7 +49,7 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
       <section className="hero" aria-labelledby="hero-h">
         <div className="wrap">
           <h1 id="hero-h" tabIndex={-1}>Check the evidence for a camera-detected offence</h1>
-          <p>Getting a fine is stressful. Here you can see what the camera recorded and check that it was working properly. It takes a few minutes and you don’t need to sign in.</p>
+          <p>Getting a fine is stressful. Here you can see what the camera recorded and check that it was working properly. It takes a few minutes and you don't need to sign in.</p>
         </div>
       </section>
       <div className="wrap page-body">
@@ -64,27 +64,27 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
             )}
             {!problems.length && outcome === 'not-found' && (
               <div className="errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="nm-h">
-                <h3 id="nm-h">We couldn’t find that notice</h3>
-                <p>Check both details match your letter. For your privacy we don’t say which one didn’t match.</p>
+                <h3 id="nm-h">We couldn't find that notice</h3>
+                <p>Check both details match your letter. For your privacy we don't say which one didn't match.</p>
                 {misses >= 2 && <p>Still stuck? The penalty notice number is on your letter, and the offence date is in the section that says what happened. You can also call {HELP_PHONE}.</p>}
               </div>
             )}
             {!problems.length && outcome === 'unavailable' && (
               <div className="errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="un-h">
-                <h3 id="un-h">We can’t check this right now</h3>
+                <h3 id="un-h">We can't check this right now</h3>
                 <p>The problem is on our side, not with your details. Please try again in a few minutes. If it keeps happening, call {HELP_PHONE}.</p>
               </div>
             )}
             {!problems.length && outcome === 'lookup-off' && (
               <div className="errsum is-info" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="off-h">
-                <h3 id="off-h">This check isn’t available for that notice yet</h3>
-                <p>We’re still building this service, so we can only show some notices at the moment. For any notice you can call {HELP_PHONE}.</p>
+                <h3 id="off-h">This check isn't available for that notice yet</h3>
+                <p>We're still building this service, so we can only show some notices at the moment. For any notice you can call {HELP_PHONE}.</p>
               </div>
             )}
             {reloadNote && (
               <div className="errsum is-info" role="status">
                 <h3>Your photos timed out</h3>
-                <p>Your notice number and offence date are filled in. We don’t keep your number plate, so type it again below, then choose “Show me what happened” to see fresh photos.</p>
+                <p>Your notice number and offence date are filled in. We don't keep your number plate, so type it again below, then choose “Show me what happened” to see fresh photos.</p>
               </div>
             )}
             <div className="field">
@@ -106,13 +106,13 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
               onBlurField={() => setTimeout(() => { if (!document.getElementById('od')?.contains(document.activeElement) && (parts.d || parts.m || parts.y)) leave('date'); }, 0)} />
             <div className="field">
               <label htmlFor="rego">Number plate of the vehicle</label>
-              <p className="hint" id="rego-hint">The number plate from your penalty notice letter. We use it for this check only and don’t keep it.</p>
+              <p className="hint" id="rego-hint">The number plate from your penalty notice letter. We use it for this check only and don't keep it.</p>
               {fe.reg && <p className="field-err" id="rego-err" role="alert"><span aria-hidden="true">⚠ </span><span className="sr-only">Error: </span>{fe.reg}</p>}
-              <input id="rego" className={`rego${fe.reg ? ‘ is-bad’ : ‘’}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
-                value={reg} aria-describedby={`rego-hint${fe.reg ? ‘ rego-err’ : ‘’}`} aria-invalid={!!fe.reg || undefined}
+              <input id="rego" className={`rego${fe.reg ? ' is-bad' : ''}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
+                value={reg} aria-describedby={`rego-hint${fe.reg ? ' rego-err' : ''}`} aria-invalid={!!fe.reg || undefined}
                 required
-                onBlur={() => reg && leave(‘reg’)}
-                onChange={(e) => { setReg(e.target.value); clear(‘reg’); }} />
+                onBlur={() => reg && leave('reg')}
+                onChange={(e) => { setReg(e.target.value); clear('reg'); }} />
             </div>
             <button type="submit" className="btn primary big" disabled={busy}>{busy ? 'Finding your notice…' : 'Show me what happened'}</button>
             <p className="sr-only" role="status">{busy ? 'Finding your notice' : ''}</p>
@@ -120,7 +120,7 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
           <aside className="aside" aria-labelledby="aside-h">
             <h2 id="aside-h">Before you start</h2>
             <ul>
-              <li>We ask for two details from your letter, and the number plate if you want to see photos.</li>
+              <li>We ask for three details from your letter: the penalty notice number, the offence date, and the number plate.</li>
               <li>We never ask for card or bank details on this page.</li>
               <li>Paying, reviews and nominating the driver stay with Revenue NSW.</li>
             </ul>
