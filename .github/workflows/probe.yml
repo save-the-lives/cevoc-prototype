@@ -1,0 +1,180 @@
+# TEMPORARY — diagnostic probe for Revenue NSW page shape discovery.
+# Walks through each case in LIVE_CASES_PASS with Playwright, masks all values,
+# and reports only the page structure: URLs, headings, field names, buttons,
+# image counts, parser state. Delete once all enforcement programs are covered
+# and the parser handles every page shape.
+name: "Probe: Revenue NSW page shape"
+on:
+  workflow_dispatch:
+    inputs:
+      case_id:
+        description: "Run only this case ID (blank = all pass cases)"
+        required: false
+        type: string
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: npx playwright install chromium --with-deps
+
+      - name: Mask sensitive values
+        env:
+          LIVE_CASES_PASS: ${{ secrets.LIVE_CASES_PASS }}
+        run: |
+          node <<'MASK_SCRIPT'
+          const raw = (process.env.LIVE_CASES_PASS || "").trim();
+          if (!raw) { console.log("No LIVE_CASES_PASS secret"); process.exit(0); }
+          let cases;
+          try { cases = JSON.parse(raw); } catch { console.log("::error::LIVE_CASES_PASS is not valid JSON"); process.exit(1); }
+          if (!Array.isArray(cases)) { console.log("::error::LIVE_CASES_PASS is not an array"); process.exit(1); }
+          for (const c of cases) {
+            if (c.input && c.input.notice) console.log("::add-mask::" + c.input.notice);
+            if (c.input && c.input.date)   console.log("::add-mask::" + c.input.date);
+            if (c.input && c.input.plate)  console.log("::add-mask::" + c.input.plate);
+            if (c.input && c.input.familyName)   console.log("::add-mask::" + c.input.familyName);
+            if (c.input && c.input.givenNames)   console.log("::add-mask::" + c.input.givenNames);
+            if (c.input && c.input.organisation) console.log("::add-mask::" + c.input.organisation);
+          }
+          MASK_SCRIPT
+
+      - name: Run probe
+        env:
+          LIVE_CASES_PASS: ${{ secrets.LIVE_CASES_PASS }}
+          CASE_FILTER: ${{ inputs.case_id }}
+        run: |
+          node <<'PROBE_SCRIPT'
+          const { chromium } = require('playwright');
+
+          const LOGIN_URL = 'https://www.apps09.revenue.nsw.gov.au/customer_service/finesonline/';
+
+          function loadCases() {
+            const raw = (process.env.LIVE_CASES_PASS || "").trim();
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            const cases = Array.isArray(parsed) ? parsed : (parsed.LIVE_CASES_PASS || []);
+            const filter = (process.env.CASE_FILTER || "").trim();
+            return filter ? cases.filter(c => c.id === filter) : cases;
+          }
+
+          async function pageShape(page) {
+            return page.evaluate(() => {
+              const inputs = [...document.querySelectorAll('input')].map(i => ({
+                name: i.name || i.id || '(unnamed)',
+                type: i.type,
+                disabled: i.disabled,
+                visible: i.offsetParent !== null
+              }));
+              const buttons = [...document.querySelectorAll('button')].map(b => ({
+                text: b.textContent.trim().substring(0, 30),
+                visible: b.offsetParent !== null
+              }));
+              const headings = [...document.querySelectorAll('h1,h2,h3')].map(h => h.textContent.trim().substring(0, 60));
+              const images = [...document.querySelectorAll('img')].filter(i => i.offsetParent !== null);
+              const alerts = [...document.querySelectorAll('[role=alert]:not([hidden]), .alert, .error-message')]
+                .map(e => e.textContent.trim()).filter(t => t.length > 0 && t.length < 200);
+              const links = [...document.querySelectorAll('a[href]')].filter(a => a.offsetParent !== null)
+                .map(a => ({ text: a.textContent.trim().substring(0, 40), href: a.href.substring(0, 120) }));
+              return {
+                url: location.href,
+                title: document.title,
+                headings,
+                visibleInputs: inputs.filter(i => i.visible),
+                hiddenInputs: inputs.filter(i => !i.visible),
+                buttons: buttons.filter(b => b.visible),
+                imageCount: images.length,
+                alerts,
+                linkCount: links.length
+              };
+            });
+          }
+
+          (async () => {
+            const cases = loadCases();
+            if (!cases.length) { console.log("No cases to probe."); return; }
+            console.log(`Probing ${cases.length} case(s)...\n`);
+
+            const browser = await chromium.launch();
+
+            for (const c of cases) {
+              console.log(`\n${'='.repeat(60)}`);
+              console.log(`CASE: ${c.id} — ${c.description || '(no description)'}`);
+              console.log(`${'='.repeat(60)}`);
+
+              const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+              try {
+                // Step 1: Login
+                await page.goto(LOGIN_URL, { waitUntil: 'networkidle', timeout: 30000 });
+                await page.fill('#pnn', c.input.notice);
+                await page.fill('#dateOfOffence', c.input.date.replace(/(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1'));
+                console.log('\n--- STEP 1: Login page (filled) ---');
+                let shape = await pageShape(page);
+                console.log(JSON.stringify(shape, null, 2));
+
+                // Click Next
+                await page.click('button:has-text("Next")');
+                await page.waitForTimeout(5000);
+
+                console.log('\n--- STEP 2: After first Next ---');
+                shape = await pageShape(page);
+                console.log(JSON.stringify(shape, null, 2));
+
+                // Check for identity page (Skip button present)
+                const skipBtn = page.locator('button:has-text("Skip")');
+                const hasSkip = await skipBtn.count() > 0;
+                console.log(`\nIdentity page detected: ${hasSkip}`);
+
+                if (hasSkip) {
+                  // Try Skip path first
+                  await skipBtn.click();
+                  await page.waitForTimeout(5000);
+                  console.log('\n--- STEP 3a: After Skip ---');
+                  shape = await pageShape(page);
+                  console.log(JSON.stringify(shape, null, 2));
+                }
+
+                // Check for plate form
+                const hasPlate = await page.locator('#vehicleNumber').count() > 0;
+                console.log(`\nPlate form present: ${hasPlate}`);
+
+                if (hasPlate && c.input.plate) {
+                  await page.fill('#vehicleNumber', c.input.plate);
+                  await page.click('button:has-text("Next")');
+                  await page.waitForTimeout(8000);
+                  console.log('\n--- STEP 4: After plate submission ---');
+                  shape = await pageShape(page);
+                  console.log(JSON.stringify(shape, null, 2));
+                } else if (hasPlate) {
+                  console.log('Plate form present but no plate in input — skipping plate step.');
+                }
+
+                // Summary
+                console.log('\n--- SUMMARY ---');
+                console.log(`Final URL: ${page.url()}`);
+                const finalShape = await pageShape(page);
+                console.log(`Images on page: ${finalShape.imageCount}`);
+                console.log(`Headings: ${JSON.stringify(finalShape.headings)}`);
+                console.log(`Visible inputs: ${finalShape.visibleInputs.map(i => i.name).join(', ') || '(none)'}`);
+                console.log(`Buttons: ${finalShape.buttons.map(b => b.text).join(', ') || '(none)'}`);
+                console.log(`Alerts: ${finalShape.alerts.length > 0 ? JSON.stringify(finalShape.alerts) : '(none)'}`);
+
+              } catch (err) {
+                console.log(`\nERROR: ${err.message}`);
+              } finally {
+                await page.close();
+              }
+            }
+
+            await browser.close();
+            console.log('\nProbe complete.');
+          })().catch(e => { console.error(e.message); process.exit(1); });
+          PROBE_SCRIPT
