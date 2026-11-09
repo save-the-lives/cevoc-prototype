@@ -11,7 +11,10 @@ import java.util.regex.Pattern;
 /**
  * Generates simple fictitious sample images as SVG text (no fonts or graphics libraries needed, no files, no network).
  * Every image says in words that it is a sample, so it cannot be mistaken for evidence. Deterministic: the same case
- * and image number always give the same bytes. The sample video is the one that ships with the front end.
+ * and image number always give the same bytes. The sample video is the pre-blurred version that ships with the front
+ * end ({@code frontend/public/samples/video-1.mp4}). It was processed by {@code scripts/blur-demo-video.sh}: faces
+ * and non-offending plates are blurred; the offending plate (ABC123) stays visible. The raw original is kept at
+ * {@code video-1-raw.mp4}. Re-run the script after changing the source video.
  */
 public final class SampleMediaSource implements DemoMediaSource {
 
