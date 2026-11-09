@@ -170,7 +170,7 @@ describe.skipIf(skipPass)('Smoke pass cases', () => {
         expect(details?.notice?.noticeStatus, `case ${id}: noticeStatus`).toBe(c.expect.noticeStatus);
       }
       if (c.expect.plateRequired !== undefined) {
-        expect(details?.plateRequired ?? false, `case ${id}: plateRequired`).toBe(c.expect.plateRequired);
+        expect(evidence?.plateRequired ?? false, `case ${id}: plateRequired`).toBe(c.expect.plateRequired);
       }
       if (c.expect.minPhotos !== undefined) {
         const photos = (evidence?.evidence || []).filter((e) => e.kind === 'IMAGE');
