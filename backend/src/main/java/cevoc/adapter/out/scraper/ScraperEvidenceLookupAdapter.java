@@ -213,6 +213,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             page = parser.parse(summaryHtml);
         }
         // The Angular summary can render late (its GET sometimes hangs): keep reading until a recognised state or the bound.
+        // Also re-check for IDENTITY — the identity page's Angular form may not have rendered its inputs yet.
         if (page.state() == RevenueNswPageParser.State.LOGIN || page.state() == RevenueNswPageParser.State.UNRECOGNISED) {
             boolean unrecognised = page.state() == RevenueNswPageParser.State.UNRECOGNISED;
             long deadline = readStart + (unrecognised ? summaryWait : loginWait).toNanos();
@@ -226,6 +227,23 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 summaryHtml = again.get();
                 page = parser.parse(summaryHtml);
             }
+        }
+        // Re-check for IDENTITY after the retry loop: the page may have been UNRECOGNISED initially (Angular
+        // hadn't rendered the lastName/firstName inputs yet) but is now recognised as the identity page.
+        if (page.state() == RevenueNswPageParser.State.IDENTITY) {
+            var idScope = IdentityScope.current();
+            if (idScope != null && idScope.familyName() != null && !idScope.familyName().isBlank()) {
+                LOG.info("evidence lookup: filling identity fields on additional page (detected after retry)");
+                summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
+                        () -> session.submitIdentity(idScope.familyName(), idScope.givenNames()));
+            } else {
+                LOG.info("evidence lookup: identity page detected after retry, no identity — returning INPUT_REQUIRED");
+                trace.ok(LookupStep.READ_SUMMARY, (System.nanoTime() - readStart) / 1_000_000);
+                return result(Status.FOUND, number, "This notice needs a few more details.")
+                        .withRequiredFields(page.unexpectedLoginFields());
+            }
+            readStart = System.nanoTime();
+            page = parser.parse(summaryHtml);
         }
         trace.ok(LookupStep.READ_SUMMARY, (System.nanoTime() - readStart) / 1_000_000);
         switch (page.state()) {
