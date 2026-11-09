@@ -159,7 +159,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
         <p className="notice-box" role="status">
           {result.notice.enforcementMethod === 'OFFICER_ISSUED'
             ? 'No camera evidence applies to this notice. It was issued by an officer, not detected by a camera.'
-            : "We can't show camera evidence for this notice. That may mean no camera was involved, or it isn't available to show yet."}
+            : "Photos for this notice aren't accessible through this platform."}
         </p>
       );
   }
@@ -339,7 +339,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
     : evFailed ? "We couldn't load the photos."
     : ev === 'show' ? photosAnswer({ hasVideo: media.some((m) => m.kind === 'VIDEO'), timedOut })
     : ev === 'not-applicable' ? 'This notice was not issued by a camera. There are no camera photos.'
-    : ev === 'plate-no-images' ? 'No photos are available for this notice.'
+    : ev === 'plate-no-images' ? 'Photos for this notice aren’t accessible through this platform.'
     : ev === 'needs-plate' ? 'Enter your registration number to see the photos.'
     : "We can't show the photos yet.";
 
@@ -418,7 +418,7 @@ export default function Notice({ result, query, sections = READY, registrationGi
               : ev === 'not-applicable'
                 ? <p className="muted">This notice was issued by an officer, not a camera. There are no camera photos to show.</p>
               : ev === 'plate-no-images'
-                ? <p className="muted">No photos are available for this notice. They may have been removed after the retention period.</p>
+                ? <p className="muted">Photos for this notice aren't accessible through this platform.</p>
                 : (
                   <>
                     <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} timedOut={timedOut} />

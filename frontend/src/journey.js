@@ -44,7 +44,7 @@ export function classify(result) {
  * Which evidence message applies.
  *  show            at least one photo or video
  *  needs-plate     the backend flagged plateRequired, or a camera offence with no images and no registration number given
- *  plate-no-images camera offence, no images, although a registration number was given (not accepted, or none held)
+ *  plate-no-images camera offence, no images through this platform, although a registration number was given
  *  not-yet         camera offence, nothing to show and we cannot tell why
  *  not-applicable  not a camera notice
  */
@@ -56,6 +56,8 @@ export function evidenceState(result, registrationGiven) {
   const method = result?.notice?.enforcementMethod;
   if (method === 'OFFICER_ISSUED') return 'not-applicable';
   if (method !== 'CAMERA') return 'not-applicable';
+  // plateRequired === false means the source didn't offer a plate form — don't ask the user for one.
+  if (result?.plateRequired === false) return 'plate-no-images';
   return registrationGiven ? 'plate-no-images' : 'needs-plate';
 }
 
