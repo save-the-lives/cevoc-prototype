@@ -829,18 +829,36 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     @Override
-    public String submitIdentity(String familyName, String givenNames) throws IOException, InterruptedException {
+    public String submitIdentity(String familyName, String givenNames, String organisation) throws IOException, InterruptedException {
         if (familyName != null) redactor.add(familyName);
         if (givenNames != null) redactor.add(givenNames);
+        if (organisation != null) redactor.add(organisation);
         return step("submit-identity", () -> {
             tag("submit-identity");
-            var lastNameInput = page.locator("input[name='lastName'], input#lastName");
-            if (lastNameInput.count() > 0 && lastNameInput.isVisible()) {
-                lastNameInput.fill(familyName != null ? familyName : "");
+            // Revenue NSW identity page has radio buttons (recipientTypeList): person vs organisation.
+            // Person and organisation are mutually exclusive.
+            boolean orgMode = organisation != null && !organisation.isBlank()
+                    && (familyName == null || familyName.isBlank());
+            var radios = page.locator("input[name='recipientTypeList']");
+            if (radios.count() >= 2) {
+                // Click the appropriate radio: index 0 = person, index 1 = organisation (typical order)
+                radios.nth(orgMode ? 1 : 0).click();
+                page.waitForTimeout(500);
             }
-            var firstNameInput = page.locator("input[name='firstName'], input#firstName");
-            if (firstNameInput.count() > 0 && firstNameInput.isVisible()) {
-                firstNameInput.fill(givenNames != null ? givenNames : "");
+            if (orgMode) {
+                var orgInput = page.locator("input[name='organisation'], input#organisation");
+                if (orgInput.count() > 0 && orgInput.isVisible()) {
+                    orgInput.fill(organisation);
+                }
+            } else {
+                var lastNameInput = page.locator("input[name='lastName'], input#lastName");
+                if (lastNameInput.count() > 0 && lastNameInput.isVisible()) {
+                    lastNameInput.fill(familyName != null ? familyName : "");
+                }
+                var firstNameInput = page.locator("input[name='firstName'], input#firstName");
+                if (firstNameInput.count() > 0 && firstNameInput.isVisible()) {
+                    firstNameInput.fill(givenNames != null ? givenNames : "");
+                }
             }
             pace();
             // The identity page has both "Skip" and "Next" buttons. Click Next to submit.

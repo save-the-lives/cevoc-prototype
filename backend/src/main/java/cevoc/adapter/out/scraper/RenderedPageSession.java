@@ -68,6 +68,14 @@ public interface RenderedPageSession extends AutoCloseable {
      * This page appears AFTER the initial login for certain notice types (seatbelt, nomination).
      */
     default String submitIdentity(String familyName, String givenNames) throws IOException, InterruptedException {
+        return submitIdentity(familyName, givenNames, null);
+    }
+
+    /**
+     * Fills the identity page fields and submits. Person (familyName/givenNames) and organisation are
+     * mutually exclusive — Revenue NSW uses radio buttons to select the recipient type.
+     */
+    default String submitIdentity(String familyName, String givenNames, String organisation) throws IOException, InterruptedException {
         throw new UnsupportedOperationException("submitIdentity not supported by this session");
     }
 

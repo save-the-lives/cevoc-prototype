@@ -11,6 +11,7 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
   const [familyName, setFamilyName] = useState(draft?.familyName || '');
   const [givenNames, setGivenNames] = useState(draft?.givenNames || '');
   const [organisation, setOrganisation] = useState(draft?.organisation || '');
+  const [idMode, setIdMode] = useState(draft?.organisation ? 'org' : 'person'); // person vs org — mutually exclusive
   const needsIdentity = requiredFields?.includes('lastName') || requiredFields?.includes('firstName') || requiredFields?.includes('organisation');
   const [fe, setFe] = useState({});
   const [bad, setBad] = useState([]);
@@ -39,8 +40,10 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
     setReg(''); // the registration number is sent once and not kept
     onSubmit({
       infringementNumber: cleanNotice(num), offenceDate: partsToIso(parts), registration: registration || undefined,
-      familyName: familyName.trim() || undefined, givenNames: givenNames.trim() || undefined,
-      organisation: organisation.trim() || undefined,
+      // Person and organisation are mutually exclusive — only send the active mode's fields
+      familyName: idMode === 'person' ? (familyName.trim() || undefined) : undefined,
+      givenNames: idMode === 'person' ? (givenNames.trim() || undefined) : undefined,
+      organisation: idMode === 'org' ? (organisation.trim() || undefined) : undefined,
     });
   };
 
@@ -122,25 +125,41 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
                 onBlur={() => reg && leave('reg')}
                 onChange={(e) => { setReg(e.target.value); clear('reg'); }} />
             </div>
-            <details className="identity-fields" open={needsIdentity || !!familyName || !!givenNames}>
-              <summary>Your name <span className="opt">(some notice types need this)</span></summary>
+            <details className="identity-fields" open={needsIdentity || !!familyName || !!givenNames || !!organisation}>
+              <summary>Your details <span className="opt">(some notice types need this)</span></summary>
               <p className="hint">Some penalties — such as seatbelt offences — require your name or company name to show the evidence. Enter it exactly as shown on your penalty notice or driver licence.</p>
               {needsIdentity && <p className="field-err" role="alert"><span aria-hidden="true">⚠ </span>This notice needs your details to continue.</p>}
-              <div className="field">
-                <label htmlFor="familyName">Family name</label>
-                <input id="familyName" autoComplete="family-name" value={familyName}
-                  onChange={(e) => setFamilyName(e.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="givenNames">Given names</label>
-                <input id="givenNames" autoComplete="given-name" value={givenNames}
-                  onChange={(e) => setGivenNames(e.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="organisation">Company or organisation name <span className="opt">(if the fine is for a company vehicle)</span></label>
-                <input id="organisation" autoComplete="organization" value={organisation}
-                  onChange={(e) => setOrganisation(e.target.value)} />
-              </div>
+              <fieldset className="identity-type">
+                <legend className="sr-only">Who is the recipient?</legend>
+                <label className={`toggle-option${idMode === 'person' ? ' active' : ''}`}>
+                  <input type="radio" name="idMode" value="person" checked={idMode === 'person'}
+                    onChange={() => setIdMode('person')} /> Person
+                </label>
+                <label className={`toggle-option${idMode === 'org' ? ' active' : ''}`}>
+                  <input type="radio" name="idMode" value="org" checked={idMode === 'org'}
+                    onChange={() => setIdMode('org')} /> Organisation
+                </label>
+              </fieldset>
+              {idMode === 'person' ? (
+                <>
+                  <div className="field">
+                    <label htmlFor="familyName">Family name</label>
+                    <input id="familyName" autoComplete="family-name" value={familyName}
+                      onChange={(e) => setFamilyName(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="givenNames">Given names</label>
+                    <input id="givenNames" autoComplete="given-name" value={givenNames}
+                      onChange={(e) => setGivenNames(e.target.value)} />
+                  </div>
+                </>
+              ) : (
+                <div className="field">
+                  <label htmlFor="organisation">Organisation name</label>
+                  <input id="organisation" autoComplete="organization" value={organisation}
+                    onChange={(e) => setOrganisation(e.target.value)} />
+                </div>
+              )}
             </details>
             <button type="submit" className="btn primary big" disabled={busy}>{busy ? 'Finding your notice…' : 'Show me what happened'}</button>
             <p className="sr-only" role="status">{busy ? 'Finding your notice' : ''}</p>

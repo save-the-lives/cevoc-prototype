@@ -128,12 +128,13 @@ export default function App() {
     await stream(found.query, registration, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
   };
 
-  // Identity fields (family name, given names) asked inline when the notice type requires them.
-  const retryWithIdentity = async (familyName, givenNames) => {
+  // Identity fields asked inline when the notice type requires them.
+  // Person (familyName/givenNames) and organisation are mutually exclusive.
+  const retryWithIdentity = async (familyName, givenNames, organisation) => {
     liveRef.current = restartSections(liveRef.current);
     setLive(liveRef.current);
     setFound((f) => ({ ...f, identityGiven: true }));
-    await stream({ ...found.query, familyName, givenNames }, undefined, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
+    await stream({ ...found.query, familyName, givenNames, organisation }, undefined, (kind) => setView({ name: 'form', outcome: kind, misses: 0 }));
   };
 
   const startAgain = () => {

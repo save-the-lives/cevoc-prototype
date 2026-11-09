@@ -198,10 +198,12 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         // fill the fields; otherwise skip past it. Either way the evidence is accessible.
         if (page.state() == RevenueNswPageParser.State.IDENTITY) {
             var idScope = IdentityScope.current();
-            if (idScope != null && idScope.familyName() != null && !idScope.familyName().isBlank()) {
-                LOG.info("evidence lookup: filling identity fields on additional page");
+            boolean hasPerson = idScope != null && idScope.familyName() != null && !idScope.familyName().isBlank();
+            boolean hasOrg = idScope != null && idScope.organisation() != null && !idScope.organisation().isBlank();
+            if (hasPerson || hasOrg) {
+                LOG.info("evidence lookup: filling identity fields on additional page (mode={})", hasOrg && !hasPerson ? "org" : "person");
                 summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
-                        () -> session.submitIdentity(idScope.familyName(), idScope.givenNames()));
+                        () -> session.submitIdentity(idScope.familyName(), idScope.givenNames(), idScope.organisation()));
             } else {
                 // No identity provided: tell the caller which fields the source wants so the frontend can prompt.
                 LOG.info("evidence lookup: identity page detected, no identity provided — returning INPUT_REQUIRED");
@@ -232,10 +234,12 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         // hadn't rendered the lastName/firstName inputs yet) but is now recognised as the identity page.
         if (page.state() == RevenueNswPageParser.State.IDENTITY) {
             var idScope = IdentityScope.current();
-            if (idScope != null && idScope.familyName() != null && !idScope.familyName().isBlank()) {
-                LOG.info("evidence lookup: filling identity fields on additional page (detected after retry)");
+            boolean hasPerson = idScope != null && idScope.familyName() != null && !idScope.familyName().isBlank();
+            boolean hasOrg = idScope != null && idScope.organisation() != null && !idScope.organisation().isBlank();
+            if (hasPerson || hasOrg) {
+                LOG.info("evidence lookup: filling identity fields on additional page after retry (mode={})", hasOrg && !hasPerson ? "org" : "person");
                 summaryHtml = trace.run(LookupStep.SUBMIT_LOGIN,
-                        () -> session.submitIdentity(idScope.familyName(), idScope.givenNames()));
+                        () -> session.submitIdentity(idScope.familyName(), idScope.givenNames(), idScope.organisation()));
             } else {
                 LOG.info("evidence lookup: identity page detected after retry, no identity — returning INPUT_REQUIRED");
                 trace.ok(LookupStep.READ_SUMMARY, (System.nanoTime() - readStart) / 1_000_000);

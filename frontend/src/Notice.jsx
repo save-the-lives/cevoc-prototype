@@ -237,27 +237,57 @@ function Failed({ what, note, onRetry }) {
  * still loading ('loading'), arrived ('ready') or failed ('error'); `result` is null until the notice details arrive.
  * Each section announces its own change politely. Options and help need no data, so they are always shown.
  */
-/** Inline prompt for family name / given names when the notice type requires them. */
+/** Inline prompt for identity when the notice type requires it. Person and organisation are mutually exclusive. */
 function IdentityAsk({ onSubmit, busy }) {
+  const [mode, setMode] = useState('person'); // 'person' or 'org'
   const [familyName, setFamilyName] = useState('');
   const [givenNames, setGivenNames] = useState('');
-  const ok = familyName.trim().length > 0;
+  const [organisation, setOrganisation] = useState('');
+  const ok = mode === 'person' ? familyName.trim().length > 0 : organisation.trim().length > 0;
+  const submit = () => {
+    if (!ok || busy) return;
+    if (mode === 'person') {
+      onSubmit(familyName.trim(), givenNames.trim(), undefined);
+    } else {
+      onSubmit(undefined, undefined, organisation.trim());
+    }
+  };
   return (
     <div className="identity-ask">
-      <h3>We need your name to show this notice</h3>
-      <p>This type of penalty notice requires your name before the evidence can be shown.
-        Enter it exactly as it appears on your penalty notice or driver licence.</p>
-      <form onSubmit={(e) => { e.preventDefault(); if (ok && !busy) onSubmit(familyName.trim(), givenNames.trim()); }}>
-        <div className="field">
-          <label htmlFor="id-family">Family name</label>
-          <input id="id-family" autoComplete="family-name" value={familyName}
-            onChange={(e) => setFamilyName(e.target.value)} required />
-        </div>
-        <div className="field">
-          <label htmlFor="id-given">Given names</label>
-          <input id="id-given" autoComplete="given-name" value={givenNames}
-            onChange={(e) => setGivenNames(e.target.value)} />
-        </div>
+      <h3>We need a few more details to show this notice</h3>
+      <p>This type of penalty notice requires your details before the evidence can be shown.</p>
+      <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <fieldset className="identity-type">
+          <legend className="sr-only">Who is the recipient?</legend>
+          <label className={`toggle-option${mode === 'person' ? ' active' : ''}`}>
+            <input type="radio" name="recipientType" value="person" checked={mode === 'person'}
+              onChange={() => setMode('person')} /> Person
+          </label>
+          <label className={`toggle-option${mode === 'org' ? ' active' : ''}`}>
+            <input type="radio" name="recipientType" value="org" checked={mode === 'org'}
+              onChange={() => setMode('org')} /> Organisation
+          </label>
+        </fieldset>
+        {mode === 'person' ? (
+          <>
+            <div className="field">
+              <label htmlFor="id-family">Family name</label>
+              <input id="id-family" autoComplete="family-name" value={familyName}
+                onChange={(e) => setFamilyName(e.target.value)} required />
+            </div>
+            <div className="field">
+              <label htmlFor="id-given">Given names</label>
+              <input id="id-given" autoComplete="given-name" value={givenNames}
+                onChange={(e) => setGivenNames(e.target.value)} />
+            </div>
+          </>
+        ) : (
+          <div className="field">
+            <label htmlFor="id-org">Organisation name</label>
+            <input id="id-org" autoComplete="organization" value={organisation}
+              onChange={(e) => setOrganisation(e.target.value)} required />
+          </div>
+        )}
         <button type="submit" className="btn primary" disabled={!ok || busy}>
           {busy ? 'Looking up…' : 'Continue'}
         </button>

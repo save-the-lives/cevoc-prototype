@@ -290,3 +290,8 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .identity-ask input { width: 100%; max-width: 400px; padding: 8px 12px; border: 2px solid #ccc; border-radius: 4px; font-size: 1rem; }
 .identity-ask input:focus { border-color: var(--navy); outline: 3px solid var(--focus-yellow, #FAAF05); outline-offset: 1px; }
 .identity-ask .btn { margin-top: 8px; }
+.identity-type { border: none; padding: 0; margin: 0 0 12px; display: flex; gap: 12px; }
+.identity-type legend { margin-bottom: 8px; }
+.toggle-option { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 2px solid #ccc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: .95rem; transition: border-color .15s, background .15s; }
+.toggle-option.active { border-color: var(--navy); background: var(--soft, #f4f7fa); }
+.toggle-option input[type="radio"] { accent-color: var(--navy); }
