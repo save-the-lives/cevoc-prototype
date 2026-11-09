@@ -904,6 +904,29 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     @Override
+    public String viewImages() throws IOException, InterruptedException {
+        return step("view-images-direct", () -> {
+            tag("view-images-direct");
+            cevoc.adapter.out.scraper.LookupDiagnostic.note("view-buttons=" + Math.min(page.locator(VIEW_CSS).count(), 9));
+            click(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("View images")),
+                    page.locator(VIEW_CSS));
+            cevoc.adapter.out.scraper.LookupDiagnostic.note("view-direct-clicked=yes");
+            waitUntil(() -> page.locator(BLOB_IMG).count() > 0 || visibleAlerts() > 0);
+            int last = -1;
+            int same = 0;
+            for (int i = 0; i < 30 && same < 2; i++) {
+                int now = page.locator(BLOB_IMG).count();
+                same = now == last ? same + 1 : 0;
+                last = now;
+                if (same < 2) page.waitForTimeout(250);
+            }
+            tag("capture-images-direct");
+            page.waitForTimeout(1500);
+            return snapshot("3-direct-view");
+        });
+    }
+
+    @Override
     public String submitPlate(String registration) throws IOException, InterruptedException {
         redactor.add(registration);
         return step("submit-plate", () -> {

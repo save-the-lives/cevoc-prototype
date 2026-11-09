@@ -88,6 +88,15 @@ public interface RenderedPageSession extends AutoCloseable {
     }
 
     /**
+     * Clicks a "View images" button or link on the current page, without filling any plate field.
+     * Used when the summary page offers a direct images path without a plate form.
+     * Returns the HTML after the click.
+     */
+    default String viewImages() throws IOException, InterruptedException {
+        throw new UnsupportedOperationException("viewImages not supported by this session");
+    }
+
+    /**
      * The rendered DOM as it is right now, without acting on the page. Used to keep reading after
      * {@link #submitLogin} until the summary has rendered. Empty when the session cannot re-read (default).
      */

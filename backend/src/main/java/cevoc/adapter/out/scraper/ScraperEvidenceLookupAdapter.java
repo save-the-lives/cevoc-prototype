@@ -301,6 +301,21 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 trace.fail(LookupStep.VIEW_IMAGES, StepCause.PLATE_NOT_ACCEPTED);
                 summary = "Notice details found. The registration number was not accepted, so no images are shown.";
             }
+        } else if (page.state() == RevenueNswPageParser.State.SUMMARY && !page.plateFormPresent()) {
+            // No plate form on this page. Try clicking "View images" directly — some programs skip the plate step.
+            try {
+                LOG.info("evidence lookup: no plate form, attempting direct View images");
+                String afterHtml = trace.run(LookupStep.VIEW_IMAGES, session::viewImages);
+                RevenueNswPageParser.Page after = parser.parse(afterHtml);
+                if (after.state() == RevenueNswPageParser.State.IMAGES) {
+                    page = after;
+                    LOG.info("evidence lookup: direct View images succeeded, {} photos", page.images().size());
+                }
+            } catch (Exception e) {
+                // No "View images" button found — this program genuinely doesn't expose images here.
+                LOG.info("evidence lookup: no View images button available ({})", e.getMessage());
+                trace.skip(LookupStep.GIVE_PLATE, StepCause.NO_PLATE_FORM);
+            }
         } else if (page.state() != RevenueNswPageParser.State.IMAGES) {
             trace.skip(LookupStep.GIVE_PLATE, plate == null ? StepCause.NO_PLATE : StepCause.NO_PLATE_FORM);
             trace.skip(LookupStep.VIEW_IMAGES, plate == null ? StepCause.NO_PLATE : StepCause.NO_PLATE_FORM);
