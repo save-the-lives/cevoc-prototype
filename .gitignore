@@ -7,3 +7,4 @@ visual-check-output/
 .claude/
 node_modules
 scripts/blur-spike/blurred-output.mp4
+scripts/blur-spike/*.mp4
