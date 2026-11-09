@@ -24,7 +24,7 @@ export const SCENARIOS = [
   { number: '9000000002', label: 'Officer-issued caution (no evidence)' },
   { number: '9000000003', label: 'Ticketless camera (image, certificate)' },
   { number: '9000000009', label: 'Camera with a broken video' },
-  { number: '9000000004', label: 'Images need a registration number' },
+  { number: '9000000004', label: 'Images need a vehicle registration number' },
   { number: '9000000005', label: 'Camera offence, evidence not available yet' },
   { number: '9000000006', label: 'Not found' },
   { number: '9000000007', label: 'Service unavailable' },

@@ -83,7 +83,7 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
             {reloadNote && (
               <div className="errsum is-info" role="status">
                 <h3>Your photos timed out</h3>
-                <p>Your notice number and offence date are filled in. We don't keep your number plate, so type it again below, then choose “Show me what happened” to see fresh photos.</p>
+                <p>Your notice number and offence date are filled in. We don't keep your vehicle registration number, so type it again below, then choose “Show me what happened” to see fresh photos.</p>
               </div>
             )}
             <div className="field">
@@ -104,8 +104,8 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
               onChange={(p) => { setParts(p); clear('date'); }}
               onBlurField={() => setTimeout(() => { if (!document.getElementById('od')?.contains(document.activeElement) && (parts.d || parts.m || parts.y)) leave('date'); }, 0)} />
             <div className="field">
-              <label htmlFor="rego">Vehicle registration</label>
-              <p className="hint" id="rego-hint">The registration from your penalty notice letter. We use it for this check only and don't keep it.</p>
+              <label htmlFor="rego">Vehicle registration number</label>
+              <p className="hint" id="rego-hint">The registration number from your penalty notice letter. We use it for this check only and don't keep it.</p>
               {fe.reg && <p className="field-err" id="rego-err" role="alert"><span aria-hidden="true">⚠ </span><span className="sr-only">Error: </span>{fe.reg}</p>}
               <input id="rego" className={`rego${fe.reg ? ' is-bad' : ''}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
                 value={reg} aria-describedby={`rego-hint${fe.reg ? ' rego-err' : ''}`} aria-invalid={!!fe.reg || undefined}
@@ -119,10 +119,10 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
           <aside className="aside" aria-labelledby="aside-h">
             <h2 id="aside-h">Before you start</h2>
             <ul>
-              <li>We ask for three details from your letter: the penalty notice number, the offence date, and the vehicle registration.</li>
+              <li>We ask for three details from your letter: the penalty notice number, the offence date, and the vehicle registration number.</li>
               <li>For some notices, we may also need your name or your organisation's details. We only ask when needed.</li>
               <li>We never ask for card or bank details on this page.</li>
-              <li>If you want to pay, request a review or nominate the driver, we'll give you links to do that.</li>
+              <li>If you want to pay, request a review or nominate someone else, you'll be redirected.</li>
             </ul>
           </aside>
         </div>

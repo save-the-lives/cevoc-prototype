@@ -39,9 +39,9 @@ describe('photos that have timed out (UI-03)', () => {
     expect(timedOutLabel(0, 1)).toBe('Photo timed out');
   });
   it('the answer line only sends people to the photos when they can be shown', () => {
-    expect(photosAnswer({ hasVideo: false, timedOut: false })).toBe('Check the number plate and the vehicle in the photos.');
+    expect(photosAnswer({ hasVideo: false, timedOut: false })).toBe('Check the vehicle registration number and the vehicle in the photos.');
     expect(photosAnswer({ hasVideo: true, timedOut: false })).toMatch(/photos and video/);
-    expect(photosAnswer({ hasVideo: true, timedOut: true })).toBe('Your photos have timed out, so we can’t show them right now.');
-    expect(photosAnswer({ hasVideo: false, timedOut: true })).not.toMatch(/Check the number plate/);
+    expect(photosAnswer({ hasVideo: true, timedOut: true })).toBe("Your photos have timed out, so we can’t show them right now.");
+    expect(photosAnswer({ hasVideo: false, timedOut: true })).not.toMatch(/Check the vehicle registration number/);
   });
 });

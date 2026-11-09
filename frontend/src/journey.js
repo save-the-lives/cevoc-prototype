@@ -43,8 +43,8 @@ export function classify(result) {
 /**
  * Which evidence message applies.
  *  show            at least one photo or video
- *  needs-plate     the backend flagged plateRequired, or a camera offence with no images and no registration number given
- *  plate-no-images camera offence, no images through this platform, although a registration number was given
+ *  needs-plate     the backend flagged plateRequired, or a camera offence with no images and no vehicle registration number given
+ *  plate-no-images camera offence, no images through this platform, although a vehicle registration number was given
  *  not-yet         camera offence, nothing to show and we cannot tell why
  *  not-applicable  not a camera notice
  */
@@ -63,9 +63,9 @@ export function evidenceState(result, registrationGiven) {
 
 /** The plain-language answer under "Was the camera working properly?". */
 export function certificateAnswer(result) {
-  // No-plate path: certificates need the registration number too.
+  // No-plate path: certificates need the vehicle registration number too.
   if (result?.plateRequired === true && !hasCertificateList(result)) {
-    return { tone: 'neutral', text: 'The camera certificates also need the number plate.' };
+    return { tone: 'neutral', text: 'The camera certificates also need the vehicle registration number.' };
   }
   const cov = result?.certificateCoverage;
   if (cov && typeof cov.message === 'string' && cov.message) {
@@ -119,5 +119,5 @@ export function hasMeasureData(result) {
 /** The line under "Was it my vehicle?" once the photos are available. It must not send people to photos they cannot see. */
 export function photosAnswer({ hasVideo, timedOut }) {
   if (timedOut) return 'Your photos have timed out, so we can’t show them right now.';
-  return `Check the number plate and the vehicle in the ${hasVideo ? 'photos and video' : 'photos'}.`;
+  return `Check the vehicle registration number and the vehicle in the ${hasVideo ? 'photos and video' : 'photos'}.`;
 }

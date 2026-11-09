@@ -65,8 +65,8 @@ function Accordion({ title, children }) {
 const FINES_BASE = 'https://www.nsw.gov.au/money-and-taxes/fines-and-fees/fines';
 const OPTIONS = [
   { id: 'pay', title: 'Pay', text: 'In full, or ask for a payment plan or more time if money is tight.', cta: 'Pay or set up a plan', href: `${FINES_BASE}/pay-your-fine` },
-  { id: 'review', title: 'Ask for a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Ask for a review', href: `${FINES_BASE}/request-a-review` },
-  { id: 'nominate', title: 'Nominate the driver', text: "If it wasn't you.", cta: 'Nominate the driver', href: `${FINES_BASE}/nominate-someone-else-for-a-fine` },
+  { id: 'review', title: 'Request a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Request a review', href: `${FINES_BASE}/request-a-review` },
+  { id: 'nominate', title: 'Nominate someone else', text: "If it wasn't you.", cta: 'Nominate someone else', href: `${FINES_BASE}/nominate-someone-else-for-a-fine` },
   { id: 'court', title: 'Have a court decide', text: 'You can choose to have the matter heard in court.', cta: 'Choose court', href: `${FINES_BASE}/apply-to-go-to-court-for-a-fine` },
 ];
 
@@ -90,7 +90,7 @@ function PlateAsk({ onSubmit, busy, again }) {
   const [err, setErr] = useState(null);
   const send = (e) => {
     e.preventDefault();
-    const m = !cleanRegistration(reg) ? 'Enter the number plate' : checkRegistration(reg);
+    const m = !cleanRegistration(reg) ? 'Enter the vehicle registration number' : checkRegistration(reg);
     if (m) { setErr(m); return; }
     const value = cleanRegistration(reg);
     setReg(''); // sent once, not kept
@@ -98,14 +98,14 @@ function PlateAsk({ onSubmit, busy, again }) {
   };
   return (
     <form className="plate-ask" onSubmit={send} noValidate>
-      <label htmlFor="rego2">Number plate of the vehicle</label>
+      <label htmlFor="rego2">Vehicle registration number</label>
       <p className="hint" id="rego2-hint">Used for this check only. We don't keep it.</p>
       {err && <p className="field-err" id="rego2-err" role="alert"><span aria-hidden="true">⚠ </span><span className="sr-only">Error: </span>{err}</p>}
       <div className="plate-row">
         <input id="rego2" className={`rego${err ? ' is-bad' : ''}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
           value={reg} aria-describedby={`rego2-hint${err ? ' rego2-err' : ''}`} aria-invalid={!!err || undefined}
           onChange={(e) => { setReg(e.target.value); setErr(null); }} />
-        <button type="submit" className="btn primary" disabled={busy}>{busy ? 'Looking…' : again ? 'Try this number plate' : 'Show the photos'}</button>
+        <button type="submit" className="btn primary" disabled={busy}>{busy ? 'Looking…' : again ? 'Try this registration' : 'Show the photos'}</button>
       </div>
     </form>
   );
@@ -119,7 +119,7 @@ function TimedOut() {
       {expired && (
         <div className="notice-box">
           <h3>Your photos have timed out</h3>
-          <p>Photo links stop working after a short time, to keep them private. To see them again, reload them: we'll take you back to the form with your notice number and date filled in. We don't keep your number plate, so you'll need to type it again.</p>
+          <p>Photo links stop working after a short time, to keep them private. To see them again, reload them: we'll take you back to the form with your notice number and date filled in. We don't keep your vehicle registration number, so you'll need to type it again.</p>
           {rerun && <p><button type="button" className="btn primary" onClick={rerun}>Reload the photos</button></p>}
         </div>
       )}
@@ -141,8 +141,8 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
     case 'needs-plate':
       return (
         <div className="notice-box" role="status">
-          <h3>The photos need your number plate</h3>
-          <p>For this notice the photos are only shown once the number plate is given. Enter it below and we'll look again.</p>
+          <h3>The photos need your vehicle registration number</h3>
+          <p>For this notice the photos are only shown once the vehicle registration number is given. Enter it below and we'll look again.</p>
           <PlateAsk onSubmit={onPlate} busy={plateBusy} />
         </div>
       );
@@ -150,7 +150,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
       return (
         <div className="notice-box" role="status">
           <h3>We couldn't show the photos</h3>
-          <p>Either the number plate didn't match the notice, or the photos aren't available to show yet. Check the plate on your letter and try again. If it still doesn't work, call {HELP_PHONE}.</p>
+          <p>Either the vehicle registration number didn't match the notice, or the photos aren't available to show yet. Check the plate on your letter and try again. If it still doesn't work, call {HELP_PHONE}.</p>
           <PlateAsk onSubmit={onPlate} busy={plateBusy} again />
         </div>
       );
@@ -336,13 +336,13 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const stepNo = (id) => steps.findIndex((s) => s.id === id) + 1;
   const expiredCtx = useMemo(() => ({ rerun: onRerun || null, expired: timedOut, report }), [onRerun, timedOut, report]);
   const demo = result?.source === 'STUB' || result?.source === 'MANIFEST';
-  const evAnswer = detailsLoading ? 'Fetching the camera photos…'
-    : evLoading ? 'Fetching the camera photos…'
+  const evAnswer = detailsLoading ? 'Fetching the camera images…'
+    : evLoading ? 'Fetching the camera images…'
     : evFailed ? "We couldn't load the photos."
     : ev === 'show' ? photosAnswer({ hasVideo: media.some((m) => m.kind === 'VIDEO'), timedOut })
-    : ev === 'not-applicable' ? 'This notice was not issued by a camera. There are no camera photos.'
+    : ev === 'not-applicable' ? 'This notice was not issued by a camera. There are no camera images.'
     : ev === 'plate-no-images' ? 'Photos for this notice aren’t accessible through this platform.'
-    : ev === 'needs-plate' ? 'Enter your registration number to see the photos.'
+    : ev === 'needs-plate' ? 'Enter your vehicle registration number to see the photos.'
     : "We can't show the photos yet.";
 
   return (
@@ -414,11 +414,11 @@ export default function Notice({ result, query, sections = READY, registrationGi
 
           {!needsIdentity && <Step n={stepNo('step-evidence')} id="step-evidence" title={ev === 'not-applicable' ? 'Camera evidence' : 'Was it my vehicle?'} answer={evAnswer}>
             {detailsLoading || evLoading
-              ? <PhotoSkeleton label="Fetching the camera photos. This can take up to half a minute." />
+              ? <PhotoSkeleton label="Fetching the camera images. This can take up to half a minute." />
               : evFailed || detailsFailed
                 ? <Failed what="the photos" onRetry={onRetry} />
               : ev === 'not-applicable'
-                ? <p className="muted">This notice was issued by an officer, not a camera. There are no camera photos to show.</p>
+                ? <p className="muted">This notice was issued by an officer, not a camera. There are no camera images to show.</p>
               : ev === 'plate-no-images'
                 ? <p className="muted">Photos for this notice aren't accessible through this platform.</p>
                 : (

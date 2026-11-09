@@ -26,9 +26,9 @@ export function checkNotice(raw) {
 /** Optional. Returns a message when something is typed that cannot be a registration number, else null. */
 export function checkRegistration(raw) {
   const r = cleanRegistration(raw);
-  if (!r) return 'Enter the vehicle registration from your penalty notice';
-  if (!/^[A-Z0-9]+$/.test(r)) return 'The vehicle registration can only contain letters and numbers';
-  if (r.length > 8) return 'The vehicle registration can have up to 8 characters';
+  if (!r) return 'Enter the vehicle registration number from your penalty notice';
+  if (!/^[A-Z0-9]+$/.test(r)) return 'The vehicle registration number can only contain letters and numbers';
+  if (r.length > 8) return 'The vehicle registration number can have up to 8 characters';
   return null;
 }
 

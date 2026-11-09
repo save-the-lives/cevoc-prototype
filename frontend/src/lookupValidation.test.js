@@ -13,10 +13,10 @@ describe('notice number', () => {
   });
 });
 
-describe('registration number', () => {
-  it('is optional and tolerant of spaces and dashes', () => {
-    expect(checkRegistration('')).toBeNull();
-    expect(checkRegistration('  ')).toBeNull();
+describe('vehicle registration number', () => {
+  it('requires a value and is tolerant of spaces and dashes', () => {
+    expect(checkRegistration('')).toMatch(/Enter the vehicle registration number/);
+    expect(checkRegistration('  ')).toMatch(/Enter the vehicle registration number/);
     expect(checkRegistration('tst-123')).toBeNull();
     expect(cleanRegistration(' tst 123 ')).toBe('TST123');
   });
@@ -46,12 +46,11 @@ describe('offence date', () => {
 });
 
 describe('draftFromQuery (Edit and Back keep the notice number and date)', () => {
-  it('returns the number and date parts and nothing else', () => {
+  it('returns the number, date parts and registration', () => {
     const d = draftFromQuery({ infringementNumber: '9000000001', offenceDate: '2026-03-04', registration: 'ABC123' });
-    expect(d).toEqual({ num: '9000000001', parts: { d: '4', m: '3', y: '2026' } });
-    expect(JSON.stringify(d)).not.toContain('ABC123');
+    expect(d).toEqual({ num: '9000000001', parts: { d: '4', m: '3', y: '2026' }, reg: 'ABC123' });
   });
   it('is empty with no query', () => {
-    expect(draftFromQuery(null)).toEqual({ num: '', parts: { d: '', m: '', y: '' } });
+    expect(draftFromQuery(null)).toEqual({ num: '', parts: { d: '', m: '', y: '' }, reg: '' });
   });
 });

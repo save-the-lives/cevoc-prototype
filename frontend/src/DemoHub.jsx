@@ -45,7 +45,7 @@ function CaseCard({ c }) {
           </div>
         ))}
       </dl>
-      {c.plate && <p className="demo-plate">Number plate to type when asked: <code>{c.plate}</code>. Any other plate shows the refusal.</p>}
+      {c.plate && <p className="demo-plate">Vehicle registration number to type when asked: <code>{c.plate}</code>. Any other registration shows the refusal.</p>}
       <p className="demo-open">
         <a className="btn primary" href={`/?demo=${c.number}`}>Open this case<span className="sr-only"> {c.number}: {c.title}</span></a>
       </p>
@@ -107,7 +107,7 @@ export default function DemoHub() {
           )}
         </div>
       </main>
-      <footer className="site-foot"><div className="wrap foot-in"><span>Interim service</span><a href="/">Back to the lookup</a></div></footer>
+      <footer className="site-foot"><div className="wrap foot-in"><span>(working prototype)</span><a href="/">Back to the lookup</a></div></footer>
     </>
   );
 }
