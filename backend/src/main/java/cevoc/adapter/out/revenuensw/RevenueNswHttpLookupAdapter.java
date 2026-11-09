@@ -12,6 +12,7 @@ import cevoc.domain.CapturePath;
 import cevoc.domain.LookupStep;
 import cevoc.domain.LookupTrace;
 import cevoc.domain.PenaltyLookupRequest;
+import cevoc.domain.IdentityScope;
 import cevoc.domain.PenaltyLookupResult;
 import cevoc.domain.PenaltyLookupResult.Status;
 import cevoc.domain.StepCause;
@@ -160,8 +161,13 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
             throws Stop, IOException, InterruptedException {
         long wallStart = System.nanoTime();
 
+        // ---- Identity: read from scope, same as the browser route ----
+        IdentityScope.Identity identity = IdentityScope.current();
+        boolean hasPerson = identity != null && identity.familyName() != null && !identity.familyName().isBlank();
+        boolean hasOrg = identity != null && identity.organisation() != null && !identity.organisation().isBlank();
+
         // ---- Call A: token + summary (no plate) → stream details immediately ----
-        RevenueNswSummaryMapper.Summary summary = callA(call, request);
+        RevenueNswSummaryMapper.Summary summary = callA(call, request, identity);
         long detailsMs = (System.nanoTime() - wallStart) / 1_000_000;
 
         LookupTrace trace = LookupTrace.current();
@@ -223,13 +229,26 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
      * Call A: token (no plate) + summary. Returns the parsed summary and streams details to the caller.
      * When no plate is given, this is the only call made.
      */
-    private RevenueNswSummaryMapper.Summary callA(Call call, PenaltyLookupRequest request)
+    private RevenueNswSummaryMapper.Summary callA(Call call, PenaltyLookupRequest request, IdentityScope.Identity identity)
             throws Stop, IOException, InterruptedException {
         LookupTrace trace = LookupTrace.current();
         String offenceDate = request.offenceDate().format(dateFormat);
 
         // Token call: identify the notice. The token comes back in the body; the server may also rotate it in a header.
         ObjectNode body = JSON.createObjectNode().put("offenceDate", offenceDate);
+        // Pass identity fields when provided (person and organisation are mutually exclusive).
+        if (identity != null) {
+            boolean orgMode = identity.organisation() != null && !identity.organisation().isBlank()
+                    && (identity.familyName() == null || identity.familyName().isBlank());
+            if (orgMode) {
+                body.put("organisation", identity.organisation());
+            } else if (identity.familyName() != null && !identity.familyName().isBlank()) {
+                body.put("lastName", identity.familyName());
+                if (identity.givenNames() != null && !identity.givenNames().isBlank()) {
+                    body.put("firstName", identity.givenNames());
+                }
+            }
+        }
         HttpTransport.Response tokenResp = exchange(call, LookupStep.SUBMIT_LOGIN, "POST", "/token", body.toString(), MAX_JSON_BYTES);
         if (isNoMatch(tokenResp.status())) {
             trace.ok(LookupStep.SUBMIT_LOGIN, call.lastMillis);
