@@ -10,7 +10,7 @@ import { HELP_PHONE, classify } from './journey.js';
 import './styles.css';
 import './public.css';
 
-const TITLE = 'See what the camera recorded';
+const TITLE = 'Understanding your road safety camera fine';
 
 // The journey is one page with two views: the form, and the notice. The notice number, date and vehicle registration number
 // are never put in the address bar or in a log. The query is held in sessionStorage (per-tab, cleared on tab

@@ -47,7 +47,7 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
     <>
       <section className="hero" aria-labelledby="hero-h">
         <div className="wrap">
-          <h1 id="hero-h" tabIndex={-1}>See what the camera recorded</h1>
+          <h1 id="hero-h" tabIndex={-1}>Understanding your road safety camera fine</h1>
           <p>Getting a fine is stressful. Here you can see what the camera recorded and check that it was working properly. It takes a few minutes and you don't need to sign in.</p>
         </div>
       </section>
