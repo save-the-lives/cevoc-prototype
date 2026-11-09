@@ -33,15 +33,15 @@ describe('media helpers', () => {
   });
 });
 
-describe('photos that have timed out (UI-03)', () => {
-  it('names each expired photo for people who cannot see the placeholder', () => {
-    expect(timedOutLabel(1, 3)).toBe('Photo 2 of 3, timed out');
-    expect(timedOutLabel(0, 1)).toBe('Photo timed out');
+describe('images that have timed out (UI-03)', () => {
+  it('names each expired image for people who cannot see the placeholder', () => {
+    expect(timedOutLabel(1, 3)).toBe('Image 2 of 3, timed out');
+    expect(timedOutLabel(0, 1)).toBe('Image timed out');
   });
-  it('the answer line only sends people to the photos when they can be shown', () => {
-    expect(photosAnswer({ hasVideo: false, timedOut: false })).toBe('Check the vehicle registration number and the vehicle in the photos.');
-    expect(photosAnswer({ hasVideo: true, timedOut: false })).toMatch(/photos and video/);
-    expect(photosAnswer({ hasVideo: true, timedOut: true })).toBe("Your photos have timed out, so we can’t show them right now.");
+  it('the answer line only sends people to the images when they can be shown', () => {
+    expect(photosAnswer({ hasVideo: false, timedOut: false })).toBe('Check the vehicle registration number and the vehicle in the images.');
+    expect(photosAnswer({ hasVideo: true, timedOut: false })).toMatch(/images and video/);
+    expect(photosAnswer({ hasVideo: true, timedOut: true })).toMatch(/Your images have timed out/);
     expect(photosAnswer({ hasVideo: false, timedOut: true })).not.toMatch(/Check the vehicle registration number/);
   });
 });

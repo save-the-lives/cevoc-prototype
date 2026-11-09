@@ -47,7 +47,7 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
     <>
       <section className="hero" aria-labelledby="hero-h">
         <div className="wrap">
-          <h1 id="hero-h" tabIndex={-1}>Check the evidence for a camera-detected offence</h1>
+          <h1 id="hero-h" tabIndex={-1}>See what the camera recorded</h1>
           <p>Getting a fine is stressful. Here you can see what the camera recorded and check that it was working properly. It takes a few minutes and you don't need to sign in.</p>
         </div>
       </section>
@@ -82,8 +82,8 @@ export default function LookupForm({ busy, outcome, misses, onSubmit, scenarios,
             )}
             {reloadNote && (
               <div className="errsum is-info" role="status">
-                <h3>Your photos timed out</h3>
-                <p>Your notice number and offence date are filled in. We don't keep your vehicle registration number, so type it again below, then choose “Show me what happened” to see fresh photos.</p>
+                <h3>Your images timed out</h3>
+                <p>Your notice number and offence date are filled in. We don't keep your vehicle registration number, so type it again below, then choose “Show me what happened” to see fresh images.</p>
               </div>
             )}
             <div className="field">

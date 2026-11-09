@@ -67,7 +67,7 @@ const OPTIONS = [
   { id: 'pay', title: 'Pay', text: 'In full, or ask for a payment plan or more time if money is tight.', cta: 'Pay or set up a plan', href: `${FINES_BASE}/pay-your-fine` },
   { id: 'review', title: 'Request a review', text: 'If you think the fine is wrong or there were special circumstances.', cta: 'Request a review', href: `${FINES_BASE}/request-a-review` },
   { id: 'nominate', title: 'Nominate someone else', text: "If it wasn't you.", cta: 'Nominate someone else', href: `${FINES_BASE}/nominate-someone-else-for-a-fine` },
-  { id: 'court', title: 'Have a court decide', text: 'You can choose to have the matter heard in court.', cta: 'Choose court', href: `${FINES_BASE}/apply-to-go-to-court-for-a-fine` },
+  { id: 'court', title: 'Take it to court', text: 'You can choose to have the matter heard in court.', cta: 'Take it to court', href: `${FINES_BASE}/apply-to-go-to-court-for-a-fine` },
 ];
 
 const Step = memo(function Step({ n, id, title, answer, tone, children }) {
@@ -105,22 +105,22 @@ function PlateAsk({ onSubmit, busy, again }) {
         <input id="rego2" className={`rego${err ? ' is-bad' : ''}`} autoComplete="off" autoCapitalize="characters" spellCheck="false" maxLength={12}
           value={reg} aria-describedby={`rego2-hint${err ? ' rego2-err' : ''}`} aria-invalid={!!err || undefined}
           onChange={(e) => { setReg(e.target.value); setErr(null); }} />
-        <button type="submit" className="btn primary" disabled={busy}>{busy ? 'Looking…' : again ? 'Try this registration' : 'Show the photos'}</button>
+        <button type="submit" className="btn primary" disabled={busy}>{busy ? 'Looking…' : again ? 'Try this registration' : 'Show the images'}</button>
       </div>
     </form>
   );
 }
 
-/** One message for the whole set of photos. The status region is always on the page so that a screen reader announces the text when it appears. */
+/** One message for the whole set of images. The status region is always on the page so that a screen reader announces the text when it appears. */
 function TimedOut() {
   const { expired, rerun } = useContext(ExpiredContext);
   return (
     <div role="status" data-testid="photos-timed-out">
       {expired && (
         <div className="notice-box">
-          <h3>Your photos have timed out</h3>
+          <h3>Your images have timed out</h3>
           <p>Photo links stop working after a short time, to keep them private. To see them again, reload them: we'll take you back to the form with your notice number and date filled in. We don't keep your vehicle registration number, so you'll need to type it again.</p>
-          {rerun && <p><button type="button" className="btn primary" onClick={rerun}>Reload the photos</button></p>}
+          {rerun && <p><button type="button" className="btn primary" onClick={rerun}>Reload the images</button></p>}
         </div>
       )}
     </div>
@@ -133,7 +133,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
       return (
         <>
           <TimedOut />
-          {!timedOut && <p className="hint">Zoom in to read plates and signs: scroll wheel or pinch on the photo, or click it to open full size.</p>}
+          {!timedOut && <p className="hint">Zoom in to read registration numbers and signs: scroll wheel or pinch on the image, or click it to open full size.</p>}
           <Suspense fallback={<PhotoSkeleton count={media.length} />}><EvidenceGrid items={media} /></Suspense>
           <p className="muted">If someone else was driving, you can nominate them (see Your options).</p>
         </>
@@ -141,16 +141,16 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
     case 'needs-plate':
       return (
         <div className="notice-box" role="status">
-          <h3>The photos need your vehicle registration number</h3>
-          <p>For this notice the photos are only shown once the vehicle registration number is given. Enter it below and we'll look again.</p>
+          <h3>The images need your vehicle registration number</h3>
+          <p>For this notice the images are only shown once the vehicle registration number is given. Enter it below and we'll look again.</p>
           <PlateAsk onSubmit={onPlate} busy={plateBusy} />
         </div>
       );
     case 'plate-no-images':
       return (
         <div className="notice-box" role="status">
-          <h3>We couldn't show the photos</h3>
-          <p>Either the vehicle registration number didn't match the notice, or the photos aren't available to show yet. Check the plate on your letter and try again. If it still doesn't work, call {HELP_PHONE}.</p>
+          <h3>We couldn't show the images</h3>
+          <p>Either the vehicle registration number didn't match the notice, or the images aren't available to show yet. Check the vehicle registration number on your letter and try again. If it still doesn't work, call {HELP_PHONE}.</p>
           <PlateAsk onSubmit={onPlate} busy={plateBusy} again />
         </div>
       );
@@ -299,7 +299,7 @@ function IdentityAsk({ onSubmit, busy }) {
 }
 
 export default function Notice({ result, query, sections = READY, registrationGiven, onPlate, onIdentity, identityGiven, plateBusy, onRetry, onRerun, onEdit, onNew, headingRef }) {
-  const [timedOut, setTimedOut] = useState(false); // any photo link has expired
+  const [timedOut, setTimedOut] = useState(false); // any image link has expired
   const report = useCallback(() => setTimedOut(true), []);
   const detailsLoading = sections.details === 'loading';
   const [loadingTooLong, setLoadingTooLong] = useState(false);
@@ -344,12 +344,12 @@ export default function Notice({ result, query, sections = READY, registrationGi
   const demo = result?.source === 'STUB' || result?.source === 'MANIFEST';
   const evAnswer = detailsLoading ? 'Fetching the camera images…'
     : evLoading ? 'Fetching the camera images…'
-    : evFailed ? "We couldn't load the photos."
+    : evFailed ? "We couldn't load the images."
     : ev === 'show' ? photosAnswer({ hasVideo: media.some((m) => m.kind === 'VIDEO'), timedOut })
     : ev === 'not-applicable' ? 'This notice was not issued by a camera. There are no camera images.'
     : ev === 'plate-no-images' ? 'Photos for this notice aren’t accessible through this platform.'
-    : ev === 'needs-plate' ? 'Enter your vehicle registration number to see the photos.'
-    : "We can't show the photos yet.";
+    : ev === 'needs-plate' ? 'Enter your vehicle registration number to see the images.'
+    : "We can't show the images yet.";
 
   return (
     <ExpiredContext.Provider value={expiredCtx}>
@@ -432,11 +432,11 @@ export default function Notice({ result, query, sections = READY, registrationGi
             {detailsLoading || evLoading
               ? <PhotoSkeleton label="Fetching the camera images. This can take up to half a minute." />
               : evFailed
-                ? <Failed what="the photos" onRetry={onRetry} />
+                ? <Failed what="the images" onRetry={onRetry} />
               : ev === 'not-applicable'
                 ? <p className="muted">This notice was issued by an officer, not a camera. There are no camera images to show.</p>
               : ev === 'plate-no-images'
-                ? <p className="muted">Photos for this notice aren't accessible through this platform.</p>
+                ? <p className="muted">Images for this notice aren't accessible through this platform.</p>
                 : (
                   <>
                     <EvidenceBody result={result} state={ev} media={media} onPlate={onPlate} plateBusy={plateBusy} timedOut={timedOut} />

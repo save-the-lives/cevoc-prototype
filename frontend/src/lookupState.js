@@ -13,7 +13,7 @@ export function initialLookup() {
   };
 }
 
-/** Same lookup again (for example with a number plate): keep the notice, show the other sections as loading again. */
+/** Same lookup again (for example with a vehicle registration number): keep the notice, show the other sections as loading again. */
 export function restartSections(state) {
   const fresh = initialLookup();
   return { ...fresh, details: state.details };

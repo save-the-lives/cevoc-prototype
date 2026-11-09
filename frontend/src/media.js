@@ -43,8 +43,8 @@ export function pickLevels(levels, { small, poor }) {
   return { startLevel: -1, capLevel: -1 };
 }
 
-/** Accessible name and visible text of a photo whose link has timed out, e.g. "Photo 2 of 3, timed out". */
-export const timedOutLabel = (index, count) => (count > 1 ? `Photo ${index + 1} of ${count}, timed out` : 'Photo timed out');
+/** Accessible name and visible text of an image whose link has timed out, e.g. "Image 2 of 3, timed out". */
+export const timedOutLabel = (index, count) => (count > 1 ? `Image ${index + 1} of ${count}, timed out` : 'Image timed out');
 
 /** Distinguishes an expired link (404/410) from other failures: the browser's own image error carries no status. */
 export async function linkExpired(url) {

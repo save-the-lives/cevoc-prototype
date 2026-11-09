@@ -5,3 +5,4 @@ target/
 live-capture/
 visual-check-output/
 .claude/
+node_modules

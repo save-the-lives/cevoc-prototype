@@ -16,7 +16,7 @@ async function downloadAllAsZip(photoDownloads, setZipping) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const blob = await res.blob();
         const ext = blob.type === 'image/png' ? 'png' : 'jpg';
-        zip.file(`photo-${i + 1}.${ext}`, blob);
+        zip.file(`image-${i + 1}.${ext}`, blob);
       })
     );
     const added = results.filter((r) => r.status === 'fulfilled').length;
@@ -24,12 +24,12 @@ async function downloadAllAsZip(photoDownloads, setZipping) {
     const content = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(content);
     const a = document.createElement('a');
-    a.href = url; a.download = 'evidence-photos.zip';
+    a.href = url; a.download = 'evidence-images.zip';
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   } catch (e) {
     console.error('Zip download failed:', e);
-    alert('Download failed. The photo links may have expired.');
+    alert('Download failed. The image links may have expired.');
   } finally {
     setZipping(false);
   }
@@ -46,7 +46,7 @@ function numbered(items) {
 }
 
 function photoLabel(item) {
-  if (item.photoNumber != null) return `Photo ${item.photoNumber}`;
+  if (item.photoNumber != null) return `Image ${item.photoNumber}`;
   return item.title;
 }
 

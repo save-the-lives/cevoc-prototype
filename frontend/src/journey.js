@@ -51,7 +51,7 @@ export function classify(result) {
 export function evidenceState(result, registrationGiven) {
   const media = (result?.evidence || []).filter((e) => e.kind !== 'CERTIFICATE');
   if (media.length > 0) return 'show';
-  // The backend says so directly: the source holds images for this notice but releases them only with the number plate.
+  // The backend says so directly: the source holds images for this notice but releases them only with the vehicle registration number.
   if (result?.plateRequired === true && !registrationGiven) return 'needs-plate';
   const method = result?.notice?.enforcementMethod;
   if (method === 'OFFICER_ISSUED') return 'not-applicable';
@@ -92,7 +92,7 @@ export function statusSummary(notice, infringementNumber) {
   }
 }
 
-/** A camera notice: marked so by the data, or the source is holding camera images back until the plate is given. */
+/** A camera notice: marked so by the data, or the source is holding camera images back until the vehicle registration number is given. */
 export function isCamera(result) {
   return result?.notice?.enforcementMethod === 'CAMERA' || result?.plateRequired === true;
 }
@@ -116,8 +116,8 @@ export function hasMeasureData(result) {
   return view.state === 'rows' && view.rows.some((r) => !r.missing);
 }
 
-/** The line under "Was it my vehicle?" once the photos are available. It must not send people to photos they cannot see. */
+/** The line under "Was it my vehicle?" once the images are available. It must not send people to images they cannot see. */
 export function photosAnswer({ hasVideo, timedOut }) {
-  if (timedOut) return 'Your photos have timed out, so we can’t show them right now.';
-  return `Check the vehicle registration number and the vehicle in the ${hasVideo ? 'photos and video' : 'photos'}.`;
+  if (timedOut) return "Your images have timed out, so we can't show them right now.";
+  return `Check the vehicle registration number and the vehicle in the ${hasVideo ? 'images and video' : 'images'}.`;
 }

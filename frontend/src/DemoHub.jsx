@@ -82,7 +82,7 @@ export default function DemoHub() {
     return () => { live = false; };
   }, []);
   useEffect(() => {
-    if (catalog) document.title = 'Demo cases | Check your camera fine evidence';
+    if (catalog) document.title = 'Demo cases | See what the camera recorded';
   }, [catalog]);
   if (catalog === undefined) return null;
   if (catalog === null) return <App />;
