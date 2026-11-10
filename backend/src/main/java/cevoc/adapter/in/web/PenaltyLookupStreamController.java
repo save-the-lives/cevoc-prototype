@@ -84,8 +84,7 @@ public class PenaltyLookupStreamController {
                                @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
                                CertificateCoverage coverage,
                                @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
-                               List<CertificateAssessment.UncoveredType> uncoveredTypes,
-) {}
+                               List<CertificateAssessment.UncoveredType> uncoveredTypes) {}
 
     /** The flexible details map (record 0009); sent only when a route returned any. */
     public record Extra(java.util.Map<String, Object> details) {}
