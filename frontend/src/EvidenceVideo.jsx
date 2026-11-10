@@ -120,8 +120,33 @@ export default function EvidenceVideo({ item }) {
 
   const fsFallback = () => videoRef.current?.webkitEnterFullscreen?.(); // iPhone Safari: video only
 
+  // Auto-retry: when the video is being prepared (blur running server-side), poll every 5s
+  const retryTimer = useRef(null);
+  useEffect(() => {
+    if (preparing && status === 'error') {
+      retryTimer.current = setTimeout(() => setTries((t) => t + 1), 5000);
+    }
+    return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
+  }, [preparing, status, tries]);
+
   return (
     <div ref={boxRef} className="media-body">
+      {/* Error/preparing message ABOVE the video so it's always visible */}
+      {status === 'error' && (
+        <div className="notice-box" role="alert" style={{ marginBottom: 12 }}>
+          {preparing ? (
+            <>
+              <h3>Preparing video for safe viewing</h3>
+              <p>Faces and registration numbers of other vehicles are being blurred. This can take a moment. The video will appear automatically when ready.</p>
+            </>
+          ) : (
+            <>
+              <h3>This video could not be loaded</h3>
+              <p>{errorText} <button type="button" className="linklike" onClick={() => setTries((t) => t + 1)}>Try again</button></p>
+            </>
+          )}
+        </div>
+      )}
       <ZoomPan label={`${item.title}, video`} controlsAtRest renderTools={tools} onFullscreenFallback={fsFallback}>
         <video
           ref={videoRef}
@@ -136,12 +161,13 @@ export default function EvidenceVideo({ item }) {
           onTimeUpdate={(e) => setTime({ t: e.currentTarget.currentTime, d: e.currentTarget.duration || 0 })}
           onError={() => {
             if (hlsRef.current || !videoRef.current?.getAttribute('src')) return;
-            // The <video> error doesn't give us the HTTP status. Try a fetch to distinguish blur-preparing from other failures.
+            // Try a fetch to distinguish blur-preparing (451) from other failures.
+            // This may fail due to CORS — that's OK, we show a generic message.
             fetch(item.url, { method: 'GET', mode: 'cors' }).then(res => {
-              if (res.status === 451) { fail('This video is being prepared for safe viewing. It may take a moment — try again shortly.'); setPreparing(true); }
-              else if (res.status === 503) fail('The video service is temporarily unavailable. Try again in a moment.');
-              else fail('This video could not be loaded. Try again shortly.');
-            }).catch(() => fail('This video could not be loaded. Try again shortly.'));
+              if (res.status === 451) { fail('The server is blurring this video for privacy.'); setPreparing(true); }
+              else if (res.status === 503) fail('The video service is temporarily unavailable.');
+              else fail('');
+            }).catch(() => { fail(''); setPreparing(true); }); // CORS error = likely blur in progress, auto-retry
           }}
         >
           {item.captionsUrl && <track kind="captions" src={item.captionsUrl} srcLang={item.captionsLang || 'en'} label="English captions" />}
@@ -149,21 +175,6 @@ export default function EvidenceVideo({ item }) {
         </video>
         {status === 'loading' && <div className="media-overlay" aria-hidden="true">Loading video…</div>}
       </ZoomPan>
-      <p className="media-status" role={status === 'error' ? 'alert' : 'status'}>
-        {status === 'loading' && 'Loading video…'}
-        {status === 'error' && preparing && (
-          <>
-            {errorText}{' '}
-            <button type="button" className="linklike" onClick={() => { setPreparing(false); setTries((t) => t + 1); }}>Refresh</button>
-          </>
-        )}
-        {status === 'error' && !preparing && (
-          <>
-            {errorText}{' '}
-            <button type="button" className="linklike" onClick={() => setTries((t) => t + 1)}>Try again</button>
-          </>
-        )}
-      </p>
       {href && <a className="dl" href={href} download>Download original<span className="sr-only"> of {item.title}</span></a>}
     </div>
   );
