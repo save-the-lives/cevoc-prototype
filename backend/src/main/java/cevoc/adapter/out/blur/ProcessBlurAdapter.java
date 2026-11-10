@@ -6,7 +6,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -16,28 +20,42 @@ import org.slf4j.LoggerFactory;
 /**
  * Blur adapter that calls the Python blur pipeline as a subprocess (ADR 0017).
  * Steps: detect faces (YuNet) → detect plates (contour + OCR) → merge → render.
- * Caches by content hash so the same video is processed only once.
- * Fail-closed: any subprocess failure means the video is not released.
+ * Caches by content hash with a 20-minute TTL (aligned with evidence link expiry)
+ * and a 96 MB size bound. Fail-closed: any subprocess failure means the video is not released.
  */
 public final class ProcessBlurAdapter implements BlurPort {
 
     private static final Logger log = LoggerFactory.getLogger(ProcessBlurAdapter.class);
     private static final long TIMEOUT_SECONDS = 120;
+    /** Cache TTL aligned with evidence link expiry in InMemoryMediaAdapter. */
+    private static final Duration CACHE_TTL = Duration.ofMinutes(20);
+    /** Max total cached bytes (same as InMemoryMediaAdapter default). */
+    private static final long CACHE_MAX_BYTES = 96 * 1024 * 1024;
 
     private final Path scriptsDir;
-    private final Map<String, CachedResult> cache = new ConcurrentHashMap<>();
+    private final Map<String, CachedEntry> cache = new ConcurrentHashMap<>();
+    private final Clock clock;
 
     public ProcessBlurAdapter(Path scriptsDir) {
+        this(scriptsDir, Clock.systemUTC());
+    }
+
+    ProcessBlurAdapter(Path scriptsDir, Clock clock) {
         this.scriptsDir = scriptsDir;
+        this.clock = clock;
     }
 
     @Override
     public Result blurVideo(byte[] videoBytes, String offendingPlate) {
         String hash = sha256(videoBytes) + "-" + (offendingPlate != null ? offendingPlate : "NONE");
-        CachedResult cached = cache.get(hash);
-        if (cached != null) {
+        evictExpired();
+        CachedEntry cached = cache.get(hash);
+        if (cached != null && cached.expiresAt.isAfter(clock.instant())) {
             log.info("Blur cache hit for video hash {}", hash.substring(0, 12));
             return cached.result;
+        }
+        if (cached != null) {
+            cache.remove(hash); // expired
         }
 
         try {
@@ -84,8 +102,9 @@ public final class ProcessBlurAdapter implements BlurPort {
 
             byte[] blurred = Files.readAllBytes(output);
             Result result = Result.ok(blurred, "video/mp4");
-            cache.put(hash, new CachedResult(result));
-            log.info("Blurred video: {} -> {} bytes, cached as {}", videoBytes.length, blurred.length, hash.substring(0, 12));
+            evictIfOverSize(blurred.length);
+            cache.put(hash, new CachedEntry(result, clock.instant().plus(CACHE_TTL), blurred.length));
+            log.info("Blurred video: {} -> {} bytes, cached as {} (TTL {}min)", videoBytes.length, blurred.length, hash.substring(0, 12), CACHE_TTL.toMinutes());
 
             cleanup(tmpDir);
             return result;
@@ -151,5 +170,22 @@ public final class ProcessBlurAdapter implements BlurPort {
         }
     }
 
-    private record CachedResult(Result result) {}
+    private record CachedEntry(Result result, Instant expiresAt, long sizeBytes) {}
+
+    private void evictExpired() {
+        Instant now = clock.instant();
+        cache.entrySet().removeIf(e -> e.getValue().expiresAt.isBefore(now));
+    }
+
+    private void evictIfOverSize(long incoming) {
+        long total = cache.values().stream().mapToLong(CachedEntry::sizeBytes).sum() + incoming;
+        if (total <= CACHE_MAX_BYTES) return;
+        // Evict oldest entries until under budget
+        cache.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(java.util.Comparator.comparing(CachedEntry::expiresAt)))
+                .limit(Math.max(1, cache.size() / 2))
+                .map(Map.Entry::getKey)
+                .toList()
+                .forEach(cache::remove);
+    }
 }
