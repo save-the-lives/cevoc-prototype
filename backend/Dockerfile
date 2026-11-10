@@ -28,7 +28,7 @@ COPY --from=deps /pw /pw
 # curl/curl-impersonate: certificate fetch (record 0025).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr curl python3 python3-pip \
-    libgl1-mesa-glx libglib2.0-0 \
+    libgl1-mesa-glx libglib2.0-0 ffmpeg \
     && pip3 install --no-cache-dir opencv-contrib-python-headless pytesseract numpy \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /tmp/curl-impersonate.tar.gz \
