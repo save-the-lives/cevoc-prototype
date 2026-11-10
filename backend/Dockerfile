@@ -23,7 +23,13 @@ COPY --from=deps /pw /pw
 # Tesseract OCR (Apache-2.0), English data and no recommended extras: the one engine behind BannerTextReaderPort.
 # curl: the `curl` certificates provider runs the curl command line program (record 0025); its TLS fingerprint is accepted where the JDK client is not.
 # curl-impersonate: the `curl-impersonate` provider uses a pre-built static binary (Chrome variant, BoringSSL TLS fingerprint).
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr curl \
+# Privacy blur (ADR 0017): Python + OpenCV + YuNet for server-side face/plate blurring.
+# Tesseract: banner OCR (record 0019) + plate OCR for offending-plate match.
+# curl/curl-impersonate: certificate fetch (record 0025).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr curl python3 python3-pip \
+    libgl1-mesa-glx libglib2.0-0 \
+    && pip3 install --break-system-packages --no-cache-dir opencv-contrib-python-headless pytesseract numpy \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /tmp/curl-impersonate.tar.gz \
        https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz \
@@ -41,6 +47,8 @@ ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 FROM browser
 WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
+# Blur pipeline scripts + YuNet model (ADR 0017)
+COPY blur-pipeline/ /app/blur-pipeline/
 USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

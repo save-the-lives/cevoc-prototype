@@ -1,7 +1,6 @@
 package cevoc.config;
 
 import cevoc.adapter.in.web.DemoRoutes;
-import cevoc.adapter.out.blur.DenyAllBlurAdapter;
 import cevoc.adapter.out.blur.ProcessBlurAdapter;
 import cevoc.adapter.out.demo.ClasspathVideoSource;
 import cevoc.adapter.out.demo.DemoCaseFactory;
@@ -62,12 +61,9 @@ public class DemoDataConfig {
     }
 
     @Bean
-    BlurPort blurPort(@Value("${cevoc.blur.enabled:false}") String blurEnabled,
-                      @Value("${cevoc.blur.scripts-dir:scripts/blur-spike}") String scriptsDir) {
-        if ("true".equalsIgnoreCase(blurEnabled)) {
-            return new ProcessBlurAdapter(Path.of(scriptsDir));
-        }
-        return new DenyAllBlurAdapter();
+    BlurPort blurPort(@Value("${cevoc.blur.scripts-dir:blur-pipeline}") String scriptsDir) {
+        // Blur is a core feature — always on. No toggle.
+        return new ProcessBlurAdapter(Path.of(scriptsDir));
     }
 
     @Bean
