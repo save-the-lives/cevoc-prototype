@@ -14,8 +14,10 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,7 +45,8 @@ public class MediaController {
 
     @GetMapping("/{token:[A-Za-z0-9_-]{16,64}}")
     public ResponseEntity<byte[]> get(@PathVariable String token, @RequestParam(name = "s", required = false) String size,
-                                      @RequestParam(name = "dl", required = false) String download) {
+                                      @RequestParam(name = "dl", required = false) String download,
+                                      @RequestHeader(name = "Range", required = false) String rangeHeader) {
         MediaReadPort port = media.getIfAvailable();
         if (port == null) {
             return ResponseEntity.notFound().build();
@@ -61,7 +64,7 @@ public class MediaController {
                     .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
                     .body("This image could not be prepared for safe viewing. This is a technical problem, not an issue with your notice. Please try again shortly.".getBytes());
         }
-        return ok(blurred.get(), download != null);
+        return ok(blurred.get(), download != null, rangeHeader);
     }
 
     /**
@@ -104,19 +107,46 @@ public class MediaController {
         return java.util.Optional.of(content); // non-media or SVG — pass through
     }
 
-    private static ResponseEntity<byte[]> ok(MediaContent c, boolean download) {
+    /**
+     * Serve media with byte-range support (HTTP 206). iOS Safari requires Range responses for video playback.
+     */
+    private static ResponseEntity<byte[]> ok(MediaContent c, boolean download, String rangeHeader) {
         MediaType type;
         try {
             type = MediaType.parseMediaType(c.contentType());
         } catch (RuntimeException e) {
             type = MediaType.APPLICATION_OCTET_STREAM;
         }
-        return ResponseEntity.ok()
-                .contentType(type)
-                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePrivate())
-                .header("X-Content-Type-Options", "nosniff")
-                .header("Cross-Origin-Resource-Policy", "cross-origin")
-                .header(HttpHeaders.CONTENT_DISPOSITION, download ? "attachment; filename=\"camera-evidence\"" : "inline")
-                .body(c.data());
+        byte[] data = c.data();
+        var headers = new HttpHeaders();
+        headers.setContentType(type);
+        headers.setCacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePrivate());
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+        headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, download ? "attachment; filename=\"camera-evidence\"" : "inline");
+
+        // Byte-range support (Safari needs 206 for video)
+        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+            String spec = rangeHeader.substring("bytes=".length()).trim();
+            String[] parts = spec.split("-", 2);
+            long start = parts[0].isEmpty() ? 0 : Long.parseLong(parts[0]);
+            long end = (parts.length < 2 || parts[1].isEmpty()) ? data.length - 1 : Long.parseLong(parts[1]);
+            if (start >= data.length) {
+                return ResponseEntity.status(416)
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes */" + data.length)
+                        .build();
+            }
+            end = Math.min(end, data.length - 1);
+            int len = (int) (end - start + 1);
+            byte[] slice = new byte[len];
+            System.arraycopy(data, (int) start, slice, 0, len);
+            headers.set(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + data.length);
+            headers.setContentLength(len);
+            return new ResponseEntity<>(slice, headers, HttpStatus.PARTIAL_CONTENT);
+        }
+
+        headers.setContentLength(data.length);
+        return new ResponseEntity<>(data, headers, HttpStatus.OK);
     }
 }
