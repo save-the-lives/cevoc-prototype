@@ -34,6 +34,8 @@ public final class ProcessBlurAdapter implements BlurPort {
 
     private final Path scriptsDir;
     private final Map<String, CachedEntry> cache = new ConcurrentHashMap<>();
+    /** Tracks hashes currently being processed in the background to avoid duplicate work. */
+    private final java.util.Set<String> processing = ConcurrentHashMap.newKeySet();
     private final Clock clock;
 
     public ProcessBlurAdapter(Path scriptsDir) {
@@ -58,6 +60,32 @@ public final class ProcessBlurAdapter implements BlurPort {
             cache.remove(hash); // expired
         }
 
+        // Blur is CPU-intensive (face detect + plate detect + merge + render). Run it in the background
+        // and return "processing" immediately — the frontend auto-retries every 5 seconds.
+        if (processing.add(hash)) {
+            log.info("Starting async blur for video hash {} ({} bytes)", hash.substring(0, 12), videoBytes.length);
+            Thread.startVirtualThread(() -> {
+                try {
+                    Result result = blurSync(videoBytes, offendingPlate, hash);
+                    if (result.success()) {
+                        evictIfOverSize(result.data().length);
+                        cache.put(hash, new CachedEntry(result, clock.instant().plus(CACHE_TTL), result.data().length));
+                        log.info("Async blur done: {} -> {} bytes, cached as {} (TTL {}min)",
+                                videoBytes.length, result.data().length, hash.substring(0, 12), CACHE_TTL.toMinutes());
+                    } else {
+                        log.warn("Async blur failed for {}: {}", hash.substring(0, 12), result.detail());
+                    }
+                } finally {
+                    processing.remove(hash);
+                }
+            });
+        } else {
+            log.info("Blur already in progress for hash {}", hash.substring(0, 12));
+        }
+        return Result.failed("Blur processing — try again shortly");
+    }
+
+    private Result blurSync(byte[] videoBytes, String offendingPlate, String hash) {
         try {
             Path tmpDir = Files.createTempDirectory("blur-");
             Path input = tmpDir.resolve("input.mp4");
@@ -101,16 +129,11 @@ public final class ProcessBlurAdapter implements BlurPort {
             }
 
             byte[] blurred = Files.readAllBytes(output);
-            Result result = Result.ok(blurred, "video/mp4");
-            evictIfOverSize(blurred.length);
-            cache.put(hash, new CachedEntry(result, clock.instant().plus(CACHE_TTL), blurred.length));
-            log.info("Blurred video: {} -> {} bytes, cached as {} (TTL {}min)", videoBytes.length, blurred.length, hash.substring(0, 12), CACHE_TTL.toMinutes());
-
             cleanup(tmpDir);
-            return result;
+            return Result.ok(blurred, "video/mp4");
 
         } catch (IOException e) {
-            log.error("Blur processing failed", e);
+            log.error("Blur processing failed for {}", hash.substring(0, 12), e);
             return Result.failed("IO error: " + e.getMessage());
         }
     }
