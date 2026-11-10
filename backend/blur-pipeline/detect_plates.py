@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-Plate detection for the CEVOC blurring pipeline spike.
+Plate detection for the CEVOC blurring pipeline.
 
-Uses contour-based detection (no AGPL models):
-1. Convert frame to grayscale
-2. Apply bilateral filter + adaptive threshold to find high-contrast regions
-3. Find contours with plate-like aspect ratio (2:1 to 6:1)
-4. Filter by size, aspect ratio, and solidity
-5. OCR each candidate with tesseract to read plate text
-6. Label ABC123 as PLATE_OFFENDING (keep visible), others as PLATE (blur)
+Uses a YOLOv8n licence plate detector (ONNX, via OpenCV DNN) for fast CPU
+inference.  Plates are tracked across frames by spatial proximity; each track
+is OCR'd ONCE on its best (largest) crop using pytesseract.  ABC123 (or the
+nominated offending plate) is labelled PLATE_OFFENDING and kept visible by
+render_blur; all other plates are labelled PLATE and blurred.
 
-Output: JSON region track compatible with ADR 0017.
+Output: JSON region track compatible with merge_tracks.py / render_blur.py.
 
 Usage: python3 detect_plates.py <video.mp4> [--offending ABC123] [--output regions.json]
 """
@@ -18,220 +16,166 @@ import argparse
 import json
 import sys
 import time
-from collections import defaultdict
 from pathlib import Path
 
-print("[detect_plates] Starting, importing cv2...", flush=True)
+print("[detect_plates] importing cv2...", flush=True)
 import cv2
-print("[detect_plates] cv2 imported, importing numpy...", flush=True)
+print("[detect_plates] importing numpy...", flush=True)
 import numpy as np
-print("[detect_plates] numpy imported", flush=True)
+print("[detect_plates] imports done", flush=True)
 
 try:
-    print("[detect_plates] Importing pytesseract...", flush=True)
     import pytesseract
     HAS_OCR = True
-    print("[detect_plates] pytesseract imported (OCR available)", flush=True)
 except ImportError:
     HAS_OCR = False
-    print("[detect_plates] pytesseract not available (no OCR)", flush=True)
+
+# ---------------------------------------------------------------------------
+# YOLO plate detector (cv2.dnn, no torch/ultralytics needed)
+# ---------------------------------------------------------------------------
+MODEL_NAME = "yolov8n-plates.onnx"
+INPUT_SIZE = 640
+CONF_THRESH = 0.30
+NMS_THRESH = 0.45
 
 
-def preprocess_for_plates(frame):
-    """Produce several binary images optimised for plate-like rectangles."""
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # Bilateral keeps edges while smoothing noise
-    blur = cv2.bilateralFilter(gray, 11, 17, 17)
-
-    candidates = []
-
-    # Method 1: adaptive threshold
-    thresh1 = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                     cv2.THRESH_BINARY_INV, 19, 5)
-    candidates.append(thresh1)
-
-    # Method 2: Canny edges + dilation to close gaps
-    edges = cv2.Canny(blur, 30, 200)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 3))
-    dilated = cv2.dilate(edges, kernel, iterations=2)
-    candidates.append(dilated)
-
-    # Method 3: blackhat (finds dark objects on light backgrounds — plates on car bodies)
-    rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))
-    blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, rect_kernel)
-    _, bh_thresh = cv2.threshold(blackhat, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    candidates.append(bh_thresh)
-
-    return candidates, gray
+def load_yolo(scripts_dir: Path):
+    """Load the YOLO ONNX model via OpenCV DNN."""
+    model_path = scripts_dir / MODEL_NAME
+    if not model_path.exists():
+        print(f"[detect_plates] ERROR: model not found at {model_path}", flush=True)
+        sys.exit(1)
+    print(f"[detect_plates] Loading YOLO model from {model_path}", flush=True)
+    t0 = time.time()
+    net = cv2.dnn.readNetFromONNX(str(model_path))
+    print(f"[detect_plates] YOLO loaded in {(time.time()-t0)*1000:.0f}ms", flush=True)
+    return net
 
 
-def find_plate_contours(binary, frame_h, frame_w, min_plate_w=40, max_plate_w_ratio=0.45):
-    """Find contours that look like plates: rectangular, right aspect ratio, right size."""
-    contours, _ = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+def detect_plates_yolo(net, frame, conf_thresh=CONF_THRESH, nms_thresh=NMS_THRESH):
+    """Run YOLO inference on a single frame, return list of plate dicts."""
+    h, w = frame.shape[:2]
+    blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (INPUT_SIZE, INPUT_SIZE),
+                                 swapRB=True, crop=False)
+    net.setInput(blob)
+    output = net.forward()  # (1, 5, 8400) for 1-class YOLOv8
+
+    # Transpose to (8400, 5): cx, cy, bw, bh, conf
+    data = output[0].T
+
+    # Filter by confidence
+    mask = data[:, 4] > conf_thresh
+    candidates = data[mask]
+    if len(candidates) == 0:
+        return []
+
+    # Convert to x1,y1,w,h for NMS
+    scale_x = w / INPUT_SIZE
+    scale_y = h / INPUT_SIZE
+
+    boxes = []
+    confs = []
+    for row in candidates:
+        cx, cy, bw, bh, conf = row
+        x1 = (cx - bw / 2) * scale_x
+        y1 = (cy - bh / 2) * scale_y
+        pw = bw * scale_x
+        ph = bh * scale_y
+        boxes.append([int(x1), int(y1), int(pw), int(ph)])
+        confs.append(float(conf))
+
+    # OpenCV NMS
+    indices = cv2.dnn.NMSBoxes(boxes, confs, conf_thresh, nms_thresh)
+    if len(indices) == 0:
+        return []
+
     plates = []
-    max_plate_w = int(frame_w * max_plate_w_ratio)
-
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        if area < 300:
-            continue
-
-        # Approximate the contour to a polygon
-        peri = cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
-
-        # Plates are roughly rectangular (4-6 vertices after approximation)
-        if len(approx) < 4 or len(approx) > 8:
-            continue
-
-        x, y, w, h = cv2.boundingRect(cnt)
-
-        # Aspect ratio filter: plates are wider than tall (2:1 to 6:1)
-        if h == 0:
-            continue
-        ar = w / h
-        if ar < 1.8 or ar > 6.5:
-            continue
-
-        # Size filter
-        if w < min_plate_w or w > max_plate_w or h < 12 or h > frame_h * 0.15:
-            continue
-
-        # Solidity: plate contours should be fairly solid (filled)
-        hull = cv2.convexHull(cnt)
-        hull_area = cv2.contourArea(hull)
-        if hull_area == 0:
-            continue
-        solidity = area / hull_area
-        if solidity < 0.4:
-            continue
-
-        # Confidence based on how plate-like the shape is
-        # Best: aspect ratio near 3.5, solidity near 1.0, approx has 4 vertices
-        ar_score = 1.0 - min(abs(ar - 3.5) / 3.0, 1.0)
-        sol_score = solidity
-        vert_score = 1.0 if len(approx) == 4 else 0.7
-        confidence = (ar_score * 0.4 + sol_score * 0.3 + vert_score * 0.3)
-
+    for i in indices.flatten():
+        x, y, pw, ph = boxes[i]
         plates.append({
-            "x": x, "y": y, "w": w, "h": h,
-            "confidence": round(confidence, 3),
-            "contour": cnt
+            "x": max(0, x), "y": max(0, y),
+            "w": pw, "h": ph,
+            "confidence": round(confs[i], 3),
+            "plate_text": None,
         })
-
     return plates
 
 
-def ocr_plate(gray, x, y, w, h, pad=5):
-    """Try to read plate text from the region using tesseract."""
+# ---------------------------------------------------------------------------
+# OCR — one call per track, on the best (largest) crop
+# ---------------------------------------------------------------------------
+
+def ocr_plate_region(frame, x, y, w, h, pad=5):
+    """Read plate text from one crop using pytesseract (called ONCE per track)."""
     if not HAS_OCR:
         return None
-
-    fh, fw = gray.shape
-    # Pad the region slightly
+    fh, fw = frame.shape[:2]
     x1 = max(0, x - pad)
     y1 = max(0, y - pad)
     x2 = min(fw, x + w + pad)
     y2 = min(fh, y + h + pad)
-    roi = gray[y1:y2, x1:x2]
-
+    roi = frame[y1:y2, x1:x2]
     if roi.size == 0:
         return None
 
-    # Upscale for better OCR
-    scale = max(1, 80 // max(roi.shape[0], 1))
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    # Upscale small plates for better OCR
+    scale = max(1, 80 // max(gray.shape[0], 1))
     if scale > 1:
-        roi = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        gray = cv2.resize(gray, None, fx=scale, fy=scale,
+                          interpolation=cv2.INTER_CUBIC)
+    gray = cv2.GaussianBlur(gray, (3, 3), 0)
+    _, gray = cv2.threshold(gray, 0, 255,
+                            cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
-    # Sharpen + threshold
-    roi = cv2.GaussianBlur(roi, (3, 3), 0)
-    _, roi = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-
-    # OCR with plate-friendly config
     config = "--psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     try:
-        text = pytesseract.image_to_string(roi, config=config).strip()
-        # Clean: remove spaces, newlines
+        text = pytesseract.image_to_string(gray, config=config).strip()
         text = "".join(c for c in text if c.isalnum())
         return text if len(text) >= 3 else None
     except Exception:
         return None
 
 
-def deduplicate_plates(plates, overlap_thresh=0.5):
-    """Remove overlapping detections, keeping the highest confidence."""
-    if not plates:
-        return []
-    plates.sort(key=lambda p: p["confidence"], reverse=True)
-    kept = []
-    for p in plates:
-        overlap = False
-        for k in kept:
-            # IoU check
-            x1 = max(p["x"], k["x"])
-            y1 = max(p["y"], k["y"])
-            x2 = min(p["x"] + p["w"], k["x"] + k["w"])
-            y2 = min(p["y"] + p["h"], k["y"] + k["h"])
-            inter = max(0, x2 - x1) * max(0, y2 - y1)
-            area_p = p["w"] * p["h"]
-            area_k = k["w"] * k["h"]
-            union = area_p + area_k - inter
-            if union > 0 and inter / union > overlap_thresh:
-                overlap = True
-                break
-        if not overlap:
-            kept.append(p)
-    return kept
+# ---------------------------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------------------------
 
+def process_video(video_path, offending_plate="ABC123", every_n=2):
+    """Process a video, detect plates, track, OCR once per track."""
+    scripts_dir = Path(__file__).parent
+    net = load_yolo(scripts_dir)
 
-def detect_plates_in_frame(frame, gray, use_ocr=False):
-    """Run all detection methods and merge results."""
-    h, w = frame.shape[:2]
-    binaries, _ = preprocess_for_plates(frame)
-
-    all_plates = []
-    for binary in binaries:
-        all_plates.extend(find_plate_contours(binary, h, w))
-
-    # Deduplicate
-    plates = deduplicate_plates(all_plates)
-
-    # OCR each plate (disabled by default — too slow in container, ~2s per region)
-    for p in plates:
-        text = ocr_plate(gray, p["x"], p["y"], p["w"], p["h"]) if use_ocr else None
-        p["plate_text"] = text
-        # Drop the contour (not serializable)
-        p.pop("contour", None)
-
-    return plates
-
-
-def process_video(video_path, offending_plate="ABC123", every_n=2, use_ocr=False):
-    """Process a video, detect plates in every Nth frame, return region track."""
     print(f"[detect_plates] Opening video: {video_path}", flush=True)
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
-        print(f"Error: cannot open {video_path}", file=sys.stderr)
+        print(f"Error: cannot open {video_path}", file=sys.stderr, flush=True)
         sys.exit(1)
-    print("[detect_plates] Video opened", flush=True)
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = total / fps
+    duration = total / fps if fps else 0
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    print(f"Video: {video_path}")
-    print(f"  {w}x{h}, {fps} fps, {total} frames, {duration:.1f}s")
-    print(f"  Processing every {every_n}th frame")
-    print(f"  Offending plate: {offending_plate}")
-    print(f"  OCR: {'yes' if HAS_OCR else 'no (pytesseract not available)'}")
-    print()
+    print(f"[detect_plates] Video: {video_path}", flush=True)
+    print(f"[detect_plates]   {w}x{h}, {fps} fps, {total} frames, {duration:.1f}s",
+          flush=True)
+    print(f"[detect_plates]   Processing every {every_n} frame(s)", flush=True)
+    print(f"[detect_plates]   Offending plate: {offending_plate}", flush=True)
+    print(f"[detect_plates]   OCR: {'pytesseract (once per track)' if HAS_OCR else 'unavailable'}",
+          flush=True)
 
-    # Track detections keyed by approximate plate identity (position cluster)
-    all_detections = []  # list of (frame_num, time_s, plates)
+    # ------------------------------------------------------------------
+    # Pass 1: detect plates in sampled frames, save best frame per track
+    # ------------------------------------------------------------------
+    all_detections = []  # (frame_num, t_sec, plates)
+    best_frames = {}     # track_idx -> (area, frame_copy, x, y, w, h)
+    tracks = []          # list of lists of detection entries
+    track_last_pos = []  # last (x, y, w, h) per track
+
     frame_num = 0
-    t0 = time.time()
+    t_detect_start = time.time()
 
     while True:
         ret, frame = cap.read()
@@ -239,64 +183,75 @@ def process_video(video_path, offending_plate="ABC123", every_n=2, use_ocr=False
             break
 
         if frame_num % every_n == 0:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            plates = detect_plates_in_frame(frame, gray, use_ocr=use_ocr)
+            plates = detect_plates_yolo(net, frame)
             t_sec = round(frame_num / fps, 3)
-            if plates:
-                all_detections.append((frame_num, t_sec, plates))
+
+            if frame_num % (every_n * 10) == 0:
+                print(f"[detect_plates]   frame {frame_num}/{total} — "
+                      f"{len(plates)} plates", flush=True)
+
+            # Assign to tracks by spatial proximity
+            used = set()
+            for p in plates:
+                cx = p["x"] + p["w"] // 2
+                cy = p["y"] + p["h"] // 2
+                best_track = None
+                best_dist = float("inf")
+                for ti, (lx, ly, lw, lh) in enumerate(track_last_pos):
+                    lcx, lcy = lx + lw // 2, ly + lh // 2
+                    dist = ((cx - lcx) ** 2 + (cy - lcy) ** 2) ** 0.5
+                    if (dist < max(p["w"], lw) * 2.5
+                            and dist < best_dist and ti not in used):
+                        best_dist = dist
+                        best_track = ti
+
+                entry = {
+                    "t": t_sec,
+                    "x": p["x"], "y": p["y"],
+                    "w": p["w"], "h": p["h"],
+                    "confidence": p["confidence"],
+                }
+
+                if best_track is not None:
+                    tracks[best_track].append(entry)
+                    track_last_pos[best_track] = (p["x"], p["y"],
+                                                  p["w"], p["h"])
+                    used.add(best_track)
+                    ti = best_track
+                else:
+                    tracks.append([entry])
+                    track_last_pos.append((p["x"], p["y"],
+                                          p["w"], p["h"]))
+                    ti = len(tracks) - 1
+
+                # Keep the largest crop per track for OCR
+                area = p["w"] * p["h"]
+                if ti not in best_frames or area > best_frames[ti][0]:
+                    best_frames[ti] = (area, frame.copy(),
+                                       p["x"], p["y"], p["w"], p["h"])
 
         frame_num += 1
 
     cap.release()
-    elapsed = time.time() - t0
-    print(f"Processed {frame_num} frames in {elapsed:.1f}s ({frame_num/max(elapsed,0.01):.0f} fps)")
+    t_detect = time.time() - t_detect_start
+    print(f"[detect_plates]   Detection done: {frame_num} frames in "
+          f"{t_detect:.1f}s", flush=True)
 
-    # Cluster detections into tracks by spatial proximity across frames
-    tracks = []  # each track: list of (t, x, y, w, h, confidence, plate_text)
-    track_last_pos = []  # last known (x, y, w, h) per track
+    # ------------------------------------------------------------------
+    # Pass 2: OCR the best frame of each track (ONCE per track)
+    # ------------------------------------------------------------------
+    offending_norm = offending_plate.replace(" ", "").upper() if offending_plate else ""
+    t_ocr_start = time.time()
 
-    for frame_num, t_sec, plates in all_detections:
-        used = set()
-        for p in plates:
-            cx, cy = p["x"] + p["w"] // 2, p["y"] + p["h"] // 2
-            best_track = None
-            best_dist = float("inf")
-            for ti, (lx, ly, lw, lh) in enumerate(track_last_pos):
-                lcx, lcy = lx + lw // 2, ly + lh // 2
-                dist = ((cx - lcx) ** 2 + (cy - lcy) ** 2) ** 0.5
-                if dist < max(p["w"], lw) * 2 and dist < best_dist and ti not in used:
-                    best_dist = dist
-                    best_track = ti
-
-            entry = {
-                "t": t_sec,
-                "x": p["x"], "y": p["y"], "w": p["w"], "h": p["h"],
-                "confidence": p["confidence"],
-                "plate_text": p.get("plate_text")
-            }
-
-            if best_track is not None:
-                tracks[best_track].append(entry)
-                track_last_pos[best_track] = (p["x"], p["y"], p["w"], p["h"])
-                used.add(best_track)
-            else:
-                tracks.append([entry])
-                track_last_pos.append((p["x"], p["y"], p["w"], p["h"]))
-
-    # Build region track output
     regions = []
-    offending_norm = offending_plate.replace(" ", "").upper()
-
-    for track in tracks:
+    for ti, track in enumerate(tracks):
         if not track:
             continue
 
-        # Determine plate text by majority vote
-        texts = [e["plate_text"] for e in track if e["plate_text"]]
         plate_text = None
-        if texts:
-            from collections import Counter
-            plate_text = Counter(texts).most_common(1)[0][0]
+        if HAS_OCR and ti in best_frames:
+            _, bframe, bx, by, bw, bh = best_frames[ti]
+            plate_text = ocr_plate_region(bframe, bx, by, bw, bh)
 
         is_offending = False
         if plate_text:
@@ -311,14 +266,20 @@ def process_video(video_path, offending_plate="ABC123", every_n=2, use_ocr=False
                 "t": e["t"],
                 "x": e["x"], "y": e["y"],
                 "w": e["w"], "h": e["h"],
-                "confidence": e["confidence"]
+                "confidence": e["confidence"],
             })
 
         regions.append({
             "label": label,
             "plate_text": plate_text,
-            "frames": frames
+            "frames": frames,
         })
+
+    t_ocr = time.time() - t_ocr_start
+    total_time = t_detect + t_ocr
+    print(f"[detect_plates]   OCR done: {len(tracks)} tracks in "
+          f"{t_ocr:.1f}s", flush=True)
+    print(f"[detect_plates]   Total: {total_time:.1f}s", flush=True)
 
     result = {
         "v": 1,
@@ -327,46 +288,54 @@ def process_video(video_path, offending_plate="ABC123", every_n=2, use_ocr=False
         "fps": fps,
         "duration_s": round(duration, 3),
         "offending_plate": offending_plate,
-        "detection_method": "contour-based (OpenCV, no AGPL models)",
-        "ocr": "tesseract" if (use_ocr and HAS_OCR) else "none (disabled for speed)",
+        "detection_method": "YOLOv8n (ONNX, OpenCV DNN)",
+        "ocr": "pytesseract (once per track)" if HAS_OCR else "none",
         "regions": regions,
         "stats": {
             "frames_processed": frame_num // every_n,
             "total_frames": frame_num,
             "tracks_found": len(regions),
-            "offending_found": sum(1 for r in regions if r["label"] == "PLATE_OFFENDING"),
-            "processing_time_s": round(elapsed, 1)
-        }
+            "offending_found": sum(1 for r in regions
+                                   if r["label"] == "PLATE_OFFENDING"),
+            "processing_time_s": round(total_time, 1),
+            "detect_time_s": round(t_detect, 1),
+            "ocr_time_s": round(t_ocr, 1),
+        },
     }
-
     return result
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Detect licence plates in traffic camera video")
+    parser = argparse.ArgumentParser(
+        description="Detect licence plates in traffic camera video")
     parser.add_argument("video", help="Path to video file")
-    parser.add_argument("--offending", default="ABC123", help="Offending plate text (default: ABC123)")
-    parser.add_argument("--output", default=None, help="Output JSON file (default: stdout + plate-regions.json)")
-    parser.add_argument("--every", type=int, default=2, help="Process every Nth frame (default: 2)")
-    parser.add_argument("--ocr", action="store_true", help="Enable tesseract OCR (slow, disabled by default)")
+    parser.add_argument("--offending", default="ABC123",
+                        help="Offending plate text (default: ABC123)")
+    parser.add_argument("--output", default=None,
+                        help="Output JSON file")
+    parser.add_argument("--every", type=int, default=2,
+                        help="Process every Nth frame (default: 2)")
     args = parser.parse_args()
 
-    result = process_video(args.video, args.offending, args.every, use_ocr=args.ocr)
+    result = process_video(args.video, args.offending, args.every)
 
-    # Print summary
-    print(f"\nResults:")
-    print(f"  Tracks found: {result['stats']['tracks_found']}")
-    print(f"  Offending plate (ABC123): {'FOUND' if result['stats']['offending_found'] > 0 else 'NOT FOUND'}")
+    # Summary
+    print(f"\nResults:", flush=True)
+    print(f"  Tracks: {result['stats']['tracks_found']}", flush=True)
+    offending_found = result["stats"]["offending_found"]
+    print(f"  Offending ({args.offending}): "
+          f"{'FOUND' if offending_found else 'NOT FOUND'}", flush=True)
     for r in result["regions"]:
         txt = r["plate_text"] or "(unread)"
-        print(f"    [{r['label']}] {txt}: {len(r['frames'])} detections")
+        print(f"    [{r['label']}] {txt}: {len(r['frames'])} detections",
+              flush=True)
 
-    # Save
-    out_path = args.output or str(Path(__file__).parent / "plate-regions.json")
+    out_path = (args.output or
+                str(Path(__file__).parent / "plate-regions.json"))
     with open(out_path, "w") as f:
         json.dump(result, f, indent=2)
         f.write("\n")
-    print(f"\nSaved to {out_path}")
+    print(f"\nSaved to {out_path}", flush=True)
 
 
 if __name__ == "__main__":
