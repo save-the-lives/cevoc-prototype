@@ -1,6 +1,8 @@
 package cevoc.config;
 
 import cevoc.adapter.in.web.DemoRoutes;
+import cevoc.adapter.out.blur.ProcessBlurAdapter;
+import cevoc.adapter.out.blur.StreamingBlurAdapter;
 import cevoc.adapter.out.demo.ClasspathVideoSource;
 import cevoc.adapter.out.demo.DemoCaseFactory;
 import cevoc.adapter.out.demo.DemoCertificateSource;
@@ -8,6 +10,7 @@ import cevoc.adapter.out.demo.DemoContentGate;
 import cevoc.adapter.out.httpbundle.HttpsDemoBundleSource;
 import cevoc.application.port.out.BlurPort;
 import cevoc.application.port.out.DemoBundleSourcePort;
+import java.nio.file.Path;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import cevoc.adapter.out.demo.DemoCatalog;
@@ -56,6 +59,23 @@ public class DemoDataConfig {
     @Bean
     DemoCatalog demoCatalog(DemoCaseFactory factory) {
         return new DemoCatalog(factory);
+    }
+
+    /**
+     * Blur adapter. Default: {@link ProcessBlurAdapter} (full-file, then serve).
+     * To enable HLS streaming blur (segments served progressively as they're blurred),
+     * set {@code CEVOC_BLUR_STREAMING=true}. The HLS routes in {@link DemoRoutes} activate
+     * automatically (they check {@code instanceof StreamingBlurAdapter}).
+     * The frontend already supports HLS via hls.js — no frontend change needed.
+     */
+    @Bean
+    BlurPort blurPort(@Value("${cevoc.blur.scripts-dir:blur-pipeline}") String scriptsDir,
+                      @Value("${cevoc.blur.streaming:false}") boolean streaming) {
+        if (streaming) {
+            return new StreamingBlurAdapter(Path.of(scriptsDir));
+        }
+        // Default: full-file blur, then serve. Blur is core — always on.
+        return new ProcessBlurAdapter(Path.of(scriptsDir));
     }
 
     @Bean

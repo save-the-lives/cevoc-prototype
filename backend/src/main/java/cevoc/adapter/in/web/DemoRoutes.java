@@ -1,5 +1,6 @@
 package cevoc.adapter.in.web;
 
+import cevoc.adapter.out.blur.StreamingBlurAdapter;
 import cevoc.application.port.out.BlurPort;
 import cevoc.application.port.out.DemoCatalogPort;
 import cevoc.application.port.out.DemoMediaPort;
@@ -55,6 +56,51 @@ public final class DemoRoutes {
                                 return okVideo(result);
                             })
                             .orElseGet(() -> ServerResponse.notFound().build());
+                })
+                // HLS streaming blur routes (when StreamingBlurAdapter is active).
+                // GET .../stream.m3u8 returns the manifest; GET .../segments/{seg}.ts returns one blurred segment.
+                .GET("/api/demo/media/video/{name}/stream.m3u8", req -> {
+                    if (!(blur instanceof StreamingBlurAdapter streaming) || videoSource == null) {
+                        return ServerResponse.status(503).body("HLS streaming blur not enabled");
+                    }
+                    String name = req.pathVariable("name");
+                    if (!NAME.matcher(name).matches()) return ServerResponse.notFound().build();
+                    return videoSource.read(name).map(raw -> {
+                        BlurPort.Result r = streaming.blurVideo(raw, "ABC123");
+                        if (!r.success()) return ServerResponse.status(503).body("HLS preparation failed: " + r.detail());
+                        return ServerResponse.ok()
+                                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                                .cacheControl(CacheControl.noCache())
+                                .header("X-Content-Type-Options", "nosniff")
+                                .header("Cross-Origin-Resource-Policy", "cross-origin")
+                                .body(r.data());
+                    }).orElseGet(() -> ServerResponse.notFound().build());
+                })
+                .GET("/api/demo/media/video/{name}/segments/{segment}", req -> {
+                    if (!(blur instanceof StreamingBlurAdapter streaming) || videoSource == null) {
+                        return ServerResponse.status(503).body("HLS streaming blur not enabled");
+                    }
+                    String name = req.pathVariable("name");
+                    String segment = req.pathVariable("segment");
+                    if (!NAME.matcher(name).matches() || !NAME.matcher(segment).matches()) {
+                        return ServerResponse.notFound().build();
+                    }
+                    // Ensure the video is processed (triggers blur if not cached)
+                    return videoSource.read(name).flatMap(raw -> {
+                        String hash = streaming.hashFor(raw, "ABC123").orElse(null);
+                        if (hash == null) {
+                            // Not yet processed — trigger processing
+                            streaming.blurVideo(raw, "ABC123");
+                            hash = streaming.hashFor(raw, "ABC123").orElse(null);
+                        }
+                        return hash != null ? streaming.segment(hash, segment) : java.util.Optional.<byte[]>empty();
+                    }).map(data -> ServerResponse.ok()
+                            .contentType(MediaType.parseMediaType("video/mp2t"))
+                            .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePublic())
+                            .header("X-Content-Type-Options", "nosniff")
+                            .header("Cross-Origin-Resource-Policy", "cross-origin")
+                            .body(data))
+                    .orElseGet(() -> ServerResponse.notFound().build());
                 })
                 .GET("/api/demo/media/{number}/{name}", req -> {
                     String number = req.pathVariable("number");
