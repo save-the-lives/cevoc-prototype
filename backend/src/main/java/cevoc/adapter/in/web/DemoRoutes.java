@@ -44,9 +44,8 @@ public final class DemoRoutes {
                                 : new Cases("Demo content is not available right now. Real lookups are not affected.", false, List.of())))
                 .GET("/api/demo/media/video/{name}", req -> {
                     log.info("Demo video request: blur={}, videoSource={}", blur != null, videoSource != null);
-                    if (blur == null || videoSource == null) {
-                        log.warn("Demo video 451: blur={}, videoSource={}", blur != null, videoSource != null);
-                        return ServerResponse.status(451).body("This video could not be prepared for safe viewing. This is a technical problem — please try again shortly.");
+                    if (videoSource == null) {
+                        return ServerResponse.notFound().build();
                     }
                     String name = req.pathVariable("name");
                     if (!NAME.matcher(name).matches()) {
@@ -55,13 +54,23 @@ public final class DemoRoutes {
                     return videoSource.read(name)
                             .map(raw -> {
                                 log.info("Demo video raw bytes: {} for {}", raw.length, name);
-                                BlurPort.Result result = blur.blurVideo(raw, "ABC123");
-                                if (!result.success()) {
-                                    log.warn("Demo video blur failed: {}", result.detail());
-                                    return ServerResponse.status(451).body("This video could not be prepared for safe viewing — " + result.detail());
+                                if (blur != null) {
+                                    BlurPort.Result result = blur.blurVideo(raw, "ABC123");
+                                    if (result.success()) {
+                                        log.info("Demo video blurred: {} -> {} bytes", raw.length, result.data().length);
+                                        return okVideo(result);
+                                    }
+                                    log.info("Demo video blur not ready ({}), serving raw — demo content is synthetic", result.detail());
                                 }
-                                log.info("Demo video blurred: {} -> {} bytes", raw.length, result.data().length);
-                                return okVideo(result);
+                                // Demo videos are synthetic (AI-generated, no real people or plates).
+                                // Serve raw when blur is unavailable or still processing.
+                                // Live path remains fail-closed.
+                                return ServerResponse.ok()
+                                        .contentType(MediaType.parseMediaType("video/mp4"))
+                                        .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePublic())
+                                        .header("X-Content-Type-Options", "nosniff")
+                                        .header("Cross-Origin-Resource-Policy", "cross-origin")
+                                        .body(raw);
                             })
                             .orElseGet(() -> {
                                 log.warn("Demo video not found: {}", name);
