@@ -163,12 +163,33 @@ public final class ProcessBlurAdapter implements BlurPort {
             pb.redirectErrorStream(true);
             pb.environment().put("PYTHONDONTWRITEBYTECODE", "1");
             Process p = pb.start();
-            String out = new String(p.getInputStream().readAllBytes());
-            boolean ok = p.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS) && p.exitValue() == 0;
+
+            // Stream output line-by-line in real time so logs show what the script
+            // is doing even if it hangs. The old code called readAllBytes() which
+            // blocked until the process closed stdout — the timeout never triggered.
+            Thread outputDrainer = Thread.startVirtualThread(() -> {
+                try (var reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(p.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.info("[blur:{}] {}", args[0], line);
+                    }
+                } catch (IOException ignored) {
+                    // process destroyed — expected on timeout
+                }
+            });
+
+            boolean finished = p.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            if (!finished) {
+                log.warn("Blur script {} timed out after {}s — killing", args[0], TIMEOUT_SECONDS);
+                p.destroyForcibly();
+                outputDrainer.interrupt();
+                return false;
+            }
+            outputDrainer.join(5_000); // let drainer finish reading last output
+            boolean ok = p.exitValue() == 0;
             if (!ok) {
-                log.warn("Blur script {} failed (exit {}): {}", args[0], p.isAlive() ? "timeout" : p.exitValue(),
-                        out.length() > 500 ? out.substring(0, 500) : out);
-                if (p.isAlive()) p.destroyForcibly();
+                log.warn("Blur script {} exited with code {}", args[0], p.exitValue());
             }
             return ok;
         } catch (IOException | InterruptedException e) {
