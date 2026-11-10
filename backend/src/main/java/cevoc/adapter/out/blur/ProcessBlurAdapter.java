@@ -162,6 +162,7 @@ public final class ProcessBlurAdapter implements BlurPort {
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             pb.environment().put("PYTHONDONTWRITEBYTECODE", "1");
+            pb.environment().put("PYTHONUNBUFFERED", "1");
             Process p = pb.start();
 
             // Stream output line-by-line in real time so logs show what the script
