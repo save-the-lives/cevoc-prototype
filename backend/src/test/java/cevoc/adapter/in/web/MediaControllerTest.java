@@ -29,8 +29,16 @@ class MediaControllerTest {
         };
     }
 
+    private static org.springframework.beans.factory.ObjectProvider<cevoc.application.port.out.BlurPort> noBlur() {
+        return new org.springframework.beans.factory.ObjectProvider<>() {
+            @Override public cevoc.application.port.out.BlurPort getObject() { throw new org.springframework.beans.factory.NoSuchBeanDefinitionException("test"); }
+            @Override public cevoc.application.port.out.BlurPort getIfAvailable() { return null; }
+            @Override public cevoc.application.port.out.BlurPort getIfUnique() { return null; }
+        };
+    }
+
     private static MockMvc mvc(MediaReadPort port) {
-        return MockMvcBuilders.standaloneSetup(new MediaController(provider(port))).build();
+        return MockMvcBuilders.standaloneSetup(new MediaController(provider(port), noBlur())).build();
     }
 
     @Test
