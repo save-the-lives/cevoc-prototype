@@ -290,7 +290,7 @@ export default function EvidenceGrid({ items }) {
           >
             {item && item.kind === 'VIDEO' ? (
               <Suspense fallback={<div className="mg-state is-loading" aria-busy="true">Loading video&hellip;</div>}>
-                <EvidenceVideo item={item} />
+                <EvidenceVideo item={item} bare />
               </Suspense>
             ) : item ? (
               <div className="mg-zoom-wrap" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'center center' }}>

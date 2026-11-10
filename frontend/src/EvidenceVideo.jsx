@@ -8,7 +8,7 @@ import { downloadHref, isHls, isPoorConnection, isSmallScreen, pickLevels } from
  * anything else plays as a plain file. Loads only when scrolled near the viewport; segments
  * are fetched on first play. Each instance has its own loading and error state.
  */
-export default function EvidenceVideo({ item }) {
+export default function EvidenceVideo({ item, bare = false }) {
   const [boxRef, seen] = useInView();
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
@@ -129,6 +129,36 @@ export default function EvidenceVideo({ item }) {
     return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
   }, [preparing, status, tries]);
 
+  const videoEl = (
+    <>
+      <video
+        ref={videoRef}
+        className="media-video"
+        controls
+        playsInline
+        webkit-playsinline=""
+        preload="none"
+        poster={item.posterUrl}
+        aria-label={item.title}
+        onPlay={() => { setPlaying(true); hlsRef.current?.startLoad(); }}
+        onPause={() => setPlaying(false)}
+        onTimeUpdate={(e) => setTime({ t: e.currentTarget.currentTime, d: e.currentTarget.duration || 0 })}
+        onError={() => {
+          if (hlsRef.current || !videoRef.current?.getAttribute('src')) return;
+          fetch(item.url, { method: 'GET', mode: 'cors' }).then(res => {
+            if (res.status === 451) { fail('The server is blurring this video for privacy.'); setPreparing(true); }
+            else if (res.status === 503) fail('The video service is temporarily unavailable.');
+            else fail('');
+          }).catch(() => { fail(''); setPreparing(true); });
+        }}
+      >
+        {item.captionsUrl && <track kind="captions" src={item.captionsUrl} srcLang={item.captionsLang || 'en'} label="English captions" />}
+        Your browser does not support embedded video.
+      </video>
+      {status === 'loading' && <div className="media-overlay" aria-hidden="true">Loading video…</div>}
+    </>
+  );
+
   return (
     <div ref={boxRef} className="media-body">
       {/* NSW DS compact page notification — inline, not a big box */}
@@ -146,35 +176,11 @@ export default function EvidenceVideo({ item }) {
           </p>
         </div>
       )}
-      <ZoomPan label={`${item.title}, video`} controlsAtRest renderTools={tools} onFullscreenFallback={fsFallback}>
-        <video
-          ref={videoRef}
-          className="media-video"
-          controls
-          playsInline
-          webkit-playsinline=""
-          preload="none"
-          poster={item.posterUrl}
-          aria-label={item.title}
-          onPlay={() => { setPlaying(true); hlsRef.current?.startLoad(); }}
-          onPause={() => setPlaying(false)}
-          onTimeUpdate={(e) => setTime({ t: e.currentTarget.currentTime, d: e.currentTarget.duration || 0 })}
-          onError={() => {
-            if (hlsRef.current || !videoRef.current?.getAttribute('src')) return;
-            // Try a fetch to distinguish blur-preparing (451) from other failures.
-            // This may fail due to CORS — that's OK, we show a generic message.
-            fetch(item.url, { method: 'GET', mode: 'cors' }).then(res => {
-              if (res.status === 451) { fail('The server is blurring this video for privacy.'); setPreparing(true); }
-              else if (res.status === 503) fail('The video service is temporarily unavailable.');
-              else fail('');
-            }).catch(() => { fail(''); setPreparing(true); }); // CORS error = likely blur in progress, auto-retry
-          }}
-        >
-          {item.captionsUrl && <track kind="captions" src={item.captionsUrl} srcLang={item.captionsLang || 'en'} label="English captions" />}
-          Your browser does not support embedded video.
-        </video>
-        {status === 'loading' && <div className="media-overlay" aria-hidden="true">Loading video…</div>}
-      </ZoomPan>
+      {bare ? videoEl : (
+        <ZoomPan label={`${item.title}, video`} controlsAtRest renderTools={tools} onFullscreenFallback={fsFallback}>
+          {videoEl}
+        </ZoomPan>
+      )}
       {href && <a className="dl" href={href} download>Download original<span className="sr-only"> of {item.title}</span></a>}
     </div>
   );
