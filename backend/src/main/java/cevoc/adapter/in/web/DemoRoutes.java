@@ -8,6 +8,8 @@ import cevoc.domain.MediaContent;
 import java.time.Duration;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.function.RouterFunction;
@@ -21,6 +23,7 @@ import org.springframework.web.servlet.function.ServerResponse;
  */
 public final class DemoRoutes {
 
+    private static final Logger log = LoggerFactory.getLogger(DemoRoutes.class);
     private static final Pattern NUMBER = Pattern.compile("\\d{10}");
     private static final Pattern NAME = Pattern.compile("[a-z0-9.-]{1,40}");
 
@@ -40,7 +43,9 @@ public final class DemoRoutes {
                                 ? new Cases("Demo data, not real notices. Every number, place and image here is fictitious.", true, catalog.programs())
                                 : new Cases("Demo content is not available right now. Real lookups are not affected.", false, List.of())))
                 .GET("/api/demo/media/video/{name}", req -> {
+                    log.info("Demo video request: blur={}, videoSource={}", blur != null, videoSource != null);
                     if (blur == null || videoSource == null) {
+                        log.warn("Demo video 451: blur={}, videoSource={}", blur != null, videoSource != null);
                         return ServerResponse.status(451).body("This video could not be prepared for safe viewing. This is a technical problem — please try again shortly.");
                     }
                     String name = req.pathVariable("name");
@@ -49,13 +54,19 @@ public final class DemoRoutes {
                     }
                     return videoSource.read(name)
                             .map(raw -> {
+                                log.info("Demo video raw bytes: {} for {}", raw.length, name);
                                 BlurPort.Result result = blur.blurVideo(raw, "ABC123");
                                 if (!result.success()) {
+                                    log.warn("Demo video blur failed: {}", result.detail());
                                     return ServerResponse.status(451).body("This video could not be prepared for safe viewing — " + result.detail());
                                 }
+                                log.info("Demo video blurred: {} -> {} bytes", raw.length, result.data().length);
                                 return okVideo(result);
                             })
-                            .orElseGet(() -> ServerResponse.notFound().build());
+                            .orElseGet(() -> {
+                                log.warn("Demo video not found: {}", name);
+                                return ServerResponse.notFound().build();
+                            });
                 })
                 // HLS streaming blur routes (when StreamingBlurAdapter is active).
                 // GET .../stream.m3u8 returns the manifest; GET .../segments/{seg}.ts returns one blurred segment.
