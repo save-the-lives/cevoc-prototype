@@ -52,7 +52,7 @@ public final class DemoScenario {
     LocalTime offenceTime = LocalTime.of(11, 12);
     Outcome outcome = Outcome.FOUND;
     int images = 3;
-    Plate plate = Plate.NONE;
+    Plate plate = Plate.GATED;
     Certs certs = Certs.COVERING;
     boolean video = true;
     Details details = Details.FULL;

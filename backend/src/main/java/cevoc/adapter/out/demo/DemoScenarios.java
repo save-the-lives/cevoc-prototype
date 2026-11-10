@@ -44,8 +44,8 @@ public final class DemoScenarios {
                         "The seconds after red are there; the speed limit is not.").details(Details.SOME_MISSING));
             }
             out.add(s(p, 105).title("One image only", "A single image instead of three; no video.").images(1).video(false));
-            out.add(s(p, 106).title("Images need the number plate",
-                    "Images and video are held back until the plate " + DemoCaseFactory.PLATE + " is given.").plate(Plate.GATED));
+            out.add(s(p, 106).title("Wrong registration refused",
+                    "Any registration other than " + DemoCaseFactory.PLATE + " is refused.").plate(Plate.REJECTS_ALL));
             out.add(s(p, 107).title("Notice already paid", "Everything returned; the notice is paid and nothing is owing.")
                     .status(NoticeStatus.PAID, "This penalty has been paid."));
             out.add(s(p, 108).title("Notice in review", "Everything returned; the notice is under review.")

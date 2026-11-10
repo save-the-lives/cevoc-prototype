@@ -53,7 +53,7 @@ public final class DemoCatalog implements DemoCatalogPort, DemoMediaPort {
             text.put(info.token(), st.text());
         });
         return new Case(s.number(), s.title(), s.description(), s.offenceDate().toString(),
-                s.plate() == DemoScenario.Plate.GATED ? DemoCaseFactory.PLATE : null, status, text);
+                s.plate() != DemoScenario.Plate.NONE ? DemoCaseFactory.PLATE : null, status, text);
     }
 
     @Override
