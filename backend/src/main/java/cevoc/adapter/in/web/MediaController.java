@@ -1,9 +1,14 @@
 package cevoc.adapter.in.web;
 
+import cevoc.application.port.out.BlurPort;
 import cevoc.application.port.out.MediaReadPort;
 import cevoc.domain.ImageVariant;
 import cevoc.domain.MediaContent;
 import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -16,18 +21,24 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Serves the bytes behind a link made by the in-memory media adapter. Present only so that storage without links of its
- * own has somewhere to point; cloud storage hands out its own links and no {@link MediaReadPort} exists then (404).
- * The token is the only input, an unguessable random value; bytes and tokens are never logged.
+ * Serves the bytes behind a link made by the in-memory media adapter, with server-side privacy blur (ADR 0017).
+ * Every video and image passes through {@link BlurPort} before reaching the browser. Fail-closed: if blur fails,
+ * the content is not served. This is the single blur point for both live and demo paths.
  */
 @RestController
 @RequestMapping("/api/media")
 public class MediaController {
 
-    private final ObjectProvider<MediaReadPort> media;
+    private static final Logger LOG = LoggerFactory.getLogger(MediaController.class);
 
-    public MediaController(ObjectProvider<MediaReadPort> media) {
+    private final ObjectProvider<MediaReadPort> media;
+    private final ObjectProvider<BlurPort> blur;
+    /** Cache blurred content by token so the pipeline runs once per evidence item. */
+    private final Map<String, MediaContent> blurCache = new ConcurrentHashMap<>();
+
+    public MediaController(ObjectProvider<MediaReadPort> media, ObjectProvider<BlurPort> blur) {
         this.media = media;
+        this.blur = blur;
     }
 
     @GetMapping("/{token:[A-Za-z0-9_-]{16,64}}")
@@ -38,7 +49,50 @@ public class MediaController {
             return ResponseEntity.notFound().build();
         }
         ImageVariant variant = "thumb".equals(size) ? ImageVariant.THUMBNAIL : "medium".equals(size) ? ImageVariant.MEDIUM : null;
-        return port.read(token, variant).map(c -> ok(c, download != null)).orElseGet(() -> ResponseEntity.notFound().build());
+        return port.read(token, variant)
+                .flatMap(c -> applyBlur(token + (variant != null ? ":" + variant : ""), c))
+                .map(c -> ok(c, download != null))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Blur video and image content before serving. Non-media types pass through.
+     * Fail-closed: if blur fails, returns empty (content not served).
+     */
+    private java.util.Optional<MediaContent> applyBlur(String cacheKey, MediaContent content) {
+        BlurPort blurPort = blur.getIfAvailable();
+        if (blurPort == null) {
+            return java.util.Optional.of(content); // no blur adapter wired — pass through (e.g. tests)
+        }
+        MediaContent cached = blurCache.get(cacheKey);
+        if (cached != null) {
+            return java.util.Optional.of(cached);
+        }
+        String ct = content.contentType();
+        if (ct != null && ct.startsWith("video/")) {
+            // The offending plate comes from the lookup context (set per-request by the lookup service).
+            String plate = OffendingPlateContext.get();
+            BlurPort.Result result = blurPort.blurVideo(content.data(), plate);
+            if (!result.success()) {
+                LOG.warn("Video blur failed (fail-closed): {}", result.detail());
+                return java.util.Optional.empty();
+            }
+            MediaContent blurred = new MediaContent(result.contentType(), result.data());
+            blurCache.put(cacheKey, blurred);
+            return java.util.Optional.of(blurred);
+        }
+        if (ct != null && ct.startsWith("image/") && !ct.contains("svg")) {
+            String plate = OffendingPlateContext.get();
+            BlurPort.Result result = blurPort.blurImage(content.data(), plate);
+            if (!result.success()) {
+                LOG.warn("Image blur failed (fail-closed): {}", result.detail());
+                return java.util.Optional.empty();
+            }
+            MediaContent blurred = new MediaContent(result.contentType(), result.data());
+            blurCache.put(cacheKey, blurred);
+            return java.util.Optional.of(blurred);
+        }
+        return java.util.Optional.of(content); // non-media or SVG — pass through
     }
 
     private static ResponseEntity<byte[]> ok(MediaContent c, boolean download) {

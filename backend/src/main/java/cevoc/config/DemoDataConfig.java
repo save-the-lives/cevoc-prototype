@@ -1,7 +1,6 @@
 package cevoc.config;
 
 import cevoc.adapter.in.web.DemoRoutes;
-import cevoc.adapter.out.blur.ProcessBlurAdapter;
 import cevoc.adapter.out.demo.ClasspathVideoSource;
 import cevoc.adapter.out.demo.DemoCaseFactory;
 import cevoc.adapter.out.demo.DemoCertificateSource;
@@ -9,7 +8,6 @@ import cevoc.adapter.out.demo.DemoContentGate;
 import cevoc.adapter.out.httpbundle.HttpsDemoBundleSource;
 import cevoc.application.port.out.BlurPort;
 import cevoc.application.port.out.DemoBundleSourcePort;
-import java.nio.file.Path;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import cevoc.adapter.out.demo.DemoCatalog;
@@ -58,12 +56,6 @@ public class DemoDataConfig {
     @Bean
     DemoCatalog demoCatalog(DemoCaseFactory factory) {
         return new DemoCatalog(factory);
-    }
-
-    @Bean
-    BlurPort blurPort(@Value("${cevoc.blur.scripts-dir:blur-pipeline}") String scriptsDir) {
-        // Blur is a core feature — always on. No toggle.
-        return new ProcessBlurAdapter(Path.of(scriptsDir));
     }
 
     @Bean

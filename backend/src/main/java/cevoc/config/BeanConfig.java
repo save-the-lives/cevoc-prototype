@@ -146,4 +146,15 @@ public class BeanConfig {
     CertificateSourcePort certificateSource(org.springframework.core.env.Environment env) {
         return cevoc.adapter.out.scraper.CertificateProviders.create(env);
     }
+
+    /**
+     * Privacy blur (ADR 0017). Core feature — always on for both live and demo paths.
+     * The Python pipeline (detect faces with YuNet, detect plates, render blur) runs as a subprocess.
+     * {@code blur-pipeline/} in the container holds the scripts and the YuNet model.
+     */
+    @Bean
+    cevoc.application.port.out.BlurPort blurPort(
+            @Value("${cevoc.blur.scripts-dir:blur-pipeline}") String scriptsDir) {
+        return new cevoc.adapter.out.blur.ProcessBlurAdapter(java.nio.file.Path.of(scriptsDir));
+    }
 }
