@@ -29,7 +29,7 @@ COPY --from=deps /pw /pw
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr curl python3 python3-pip \
     libgl1-mesa-glx libglib2.0-0 \
-    && pip3 install --break-system-packages --no-cache-dir opencv-contrib-python-headless pytesseract numpy \
+    && pip3 install --no-cache-dir opencv-contrib-python-headless pytesseract numpy \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /tmp/curl-impersonate.tar.gz \
        https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz \
