@@ -30,13 +30,15 @@ public final class DemoCatalog implements DemoCatalogPort, DemoMediaPort {
         }
         List<Program> out = new ArrayList<>();
         for (DemoProgram p : DemoProgram.values()) {
+            // Only show programs that have demo data. Unbuilt programs are hidden until their cases exist.
+            if (!p.built()) {
+                continue;
+            }
             List<Group> groups = new ArrayList<>();
-            if (p.built()) {
-                for (DemoNumber.Kind kind : DemoNumber.Kind.values()) {
-                    List<Case> cases = factory.scenarios().stream()
-                            .filter(s -> s.program() == p && s.kind() == kind).map(DemoCatalog::toCase).toList();
-                    groups.add(new Group(kind.name().toLowerCase(java.util.Locale.ROOT), kind.range(), kind.title(), cases));
-                }
+            for (DemoNumber.Kind kind : DemoNumber.Kind.values()) {
+                List<Case> cases = factory.scenarios().stream()
+                        .filter(s -> s.program() == p && s.kind() == kind).map(DemoCatalog::toCase).toList();
+                groups.add(new Group(kind.name().toLowerCase(java.util.Locale.ROOT), kind.range(), kind.title(), cases));
             }
             out.add(new Program(p.prefix(), p.name(), p.label(), p.built(), p.note(), groups));
         }

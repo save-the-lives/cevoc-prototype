@@ -41,7 +41,7 @@ public final class DemoRoutes {
                                 : new Cases("Demo content is not available right now. Real lookups are not affected.", false, List.of())))
                 .GET("/api/demo/media/video/{name}", req -> {
                     if (blur == null || videoSource == null) {
-                        return ServerResponse.status(503).body("Video blurring not configured");
+                        return ServerResponse.status(451).body("This video could not be prepared for safe viewing. This is a technical problem — please try again shortly.");
                     }
                     String name = req.pathVariable("name");
                     if (!NAME.matcher(name).matches()) {
@@ -51,7 +51,7 @@ public final class DemoRoutes {
                             .map(raw -> {
                                 BlurPort.Result result = blur.blurVideo(raw, "ABC123");
                                 if (!result.success()) {
-                                    return ServerResponse.status(503).body("Video not available: " + result.detail());
+                                    return ServerResponse.status(451).body("This video could not be prepared for safe viewing. This is a technical problem — please try again shortly.");
                                 }
                                 return okVideo(result);
                             })

@@ -113,7 +113,11 @@ export default function App() {
     window.history.replaceState(window.history.state, '', window.location.pathname);
     fetchDemoCases().then((catalog) => {
       const c = findCase(catalog, number);
-      if (c) begin({ infringementNumber: c.number, offenceDate: c.offenceDate }, undefined, { fresh: true });
+      if (c) {
+        const query = { infringementNumber: c.number, offenceDate: c.offenceDate };
+        saveSession(query, undefined);
+        begin(query, undefined, { fresh: true });
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -49,10 +49,19 @@ public class MediaController {
             return ResponseEntity.notFound().build();
         }
         ImageVariant variant = "thumb".equals(size) ? ImageVariant.THUMBNAIL : "medium".equals(size) ? ImageVariant.MEDIUM : null;
-        return port.read(token, variant)
-                .flatMap(c -> applyBlur(token + (variant != null ? ":" + variant : ""), c))
-                .map(c -> ok(c, download != null))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        var content = port.read(token, variant);
+        if (content.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var blurred = applyBlur(token + (variant != null ? ":" + variant : ""), content.get());
+        if (blurred.isEmpty()) {
+            // Blur failed (fail-closed). Return 451 (Unavailable For Legal Reasons) with a user-facing message.
+            // The frontend shows this as a section-level error, not a page-level crash.
+            return ResponseEntity.status(451)
+                    .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+                    .body("This image could not be prepared for safe viewing. This is a technical problem, not an issue with your notice. Please try again shortly.".getBytes());
+        }
+        return ok(blurred.get(), download != null);
     }
 
     /**
