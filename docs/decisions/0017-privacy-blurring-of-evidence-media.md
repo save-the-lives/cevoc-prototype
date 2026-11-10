@@ -1,8 +1,8 @@
-# 0017. Privacy blurring of evidence video and still images (PROPOSED)
+# 0017. Privacy blurring of evidence video and still images (ACCEPTED, BUILDING)
 
-Status: PROPOSED. Research done, nothing built. The owner and the legal team pick before any build.
-Date recorded: 2026-11-05
-Owner approval: none yet. The requirement came from the owner's legal team via the owner; the recommendations below await a decision.
+Status: ACCEPTED. Spike proven end-to-end 2026-11-10; server-side blur wired into the shared media path. ArchitectureTest rules pending.
+Date recorded: 2026-11-05. Updated: 2026-11-10.
+Owner approval: 2026-11-10 — blur is a core feature, always on, no toggle. Pre-blurred static files rejected ("must be rendered like live").
 Paper: `docs/research/privacy-blurring.md`.
 
 ## Question
@@ -24,5 +24,33 @@ Clip length and volume; upstream format and signalling; AGPL budget; self-host v
 ## Ruled out so far
 UI-only overlays as the privacy control; relying on a metadata flag alone; releasing video when blurring or verification failed; mixing clean and blurred delivery to the browser; storing the motorist's registration to decide the offending plate.
 
-## Consequences if accepted
-New ports and an adapter package; an `ArchitectureTest` rule for native libraries; a worker and queue; a restricted store for originals and tracks; an update to `docs/ARCHITECTURE.md` and the information-types section (0007). Record 0011 (video never downloadable, PDF excludes video) is unchanged.
+## Decision: Python for the detection and rendering pipeline (2026-11-10)
+
+The blur pipeline runs in Python (subprocess via `ProcessBlurAdapter`), not JavaCV or a Java-native implementation. Reasons:
+
+1. **ML ecosystem is Python-first.** YuNet, YOLO, MediaPipe, HuggingFace, ONNX Zoo — every face/plate detector ships Python bindings first. Java wrappers arrive months later or not at all. Swapping to a better model means changing one Python file, not a Java rewrite.
+2. **Fine-tuning and training.** If we train a plate detector on Australian plates (likely the real answer for production, see research paper section 4.2), that work is PyTorch/TensorFlow — both Python. The trained model exports to ONNX, but the training pipeline and evaluation tooling are Python.
+3. **GPU acceleration.** CUDA, TensorRT, and OpenVINO integrations are Python-native. Java wrappers for GPU inference lag behind.
+4. **ONNX Runtime parity.** Python gets new operators and optimisers before the Java binding.
+5. **Community and support.** Every detection tutorial, benchmark, pretrained weight, and recall evaluation tool is Python.
+
+The trade-off is ~400 MB of Python dependencies in the Docker image (Python, pip, OpenCV, numpy, pytesseract). This is a one-time build cost; the runtime cost is a subprocess per video (cached by content hash after the first run).
+
+The `BlurPort` interface in the Java application layer is language-agnostic — `ProcessBlurAdapter` calls Python, but a future `JavaCvBlurAdapter` or `CloudBlurAdapter` could replace it without touching the application or web layers. The hexagonal boundary is clean (record 0001).
+
+Ruled out: JavaCV for the detection layer. Same OpenCV underneath, but model availability, GPU tooling, and the fine-tuning path all favour Python. JavaCV remains an option for a future adapter if the Python dependency becomes a deployment constraint (e.g. a serverless target with strict image size limits).
+
+## What is built (2026-11-10)
+
+- `BlurPort` interface in `application.port.out` — `blurVideo(bytes, offendingPlate)`, `blurImage(bytes, offendingPlate)`, fail-closed `Result`.
+- `ProcessBlurAdapter` in `adapter.out.blur` — calls Python scripts as subprocess, caches by SHA-256. Cache is in-memory with no TTL (lives until container restart). **TODO:** align cache retention with evidence link expiry (currently 20 min in `InMemoryMediaAdapter`) and add a size bound.
+- `DenyAllBlurAdapter` — default when no pipeline is available; never releases video.
+- `StreamingBlurAdapter` — HLS segment-by-segment blur, built but not enabled (set `CEVOC_BLUR_STREAMING=true`).
+- `MediaController` applies blur to every video and image before serving — single blur point for both live and demo paths.
+- `OffendingPlateContext` — thread-local per request; the plate is never logged or stored.
+- Python pipeline in `backend/blur-pipeline/`: `detect_faces.py` (YuNet), `detect_plates.py` (contour + tesseract OCR), `render_blur.py` (OpenCV frame-by-frame), `merge_tracks.py`, `yunet.onnx` model (232 KB, MIT).
+- Dockerfile installs Python, OpenCV, pytesseract, numpy in the container image.
+- Fail-closed error: HTTP 451 with "This image/video could not be prepared for safe viewing."
+
+## Consequences
+New ports and an adapter package; an `ArchitectureTest` rule for native libraries (pending); Python in the Docker image; a worker and queue for production volume (not yet built); a restricted store for originals and tracks (not yet built); an update to `docs/ARCHITECTURE.md` and the information-types section (0007). Record 0011 (video never downloadable, PDF excludes video) is unchanged.
