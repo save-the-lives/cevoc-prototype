@@ -77,13 +77,19 @@ public class BeanConfig {
     LookupPenaltyUseCase lookupPenaltyUseCase(PenaltyLookupPort port, SignedLinkPort signedLinks,
             org.springframework.beans.factory.ObjectProvider<CertificateSourcePort> certificates,
             org.springframework.beans.factory.ObjectProvider<cevoc.adapter.out.demo.DemoRoute> demo,
+            cevoc.application.port.out.MediaStoragePort mediaStorage,
+            org.springframework.beans.factory.ObjectProvider<cevoc.adapter.out.demo.ClasspathVideoSource> videoSource,
             @Value("${cevoc.scraper.certificates.window-margin-minutes:-1}") long windowMarginMinutes) {
         // Demo data (DemoDataConfig is the one place that switches it): a demo adapter bean exists only while it is on. It is
         // consulted first for demo numbers and gives the links for demo media; everything else is untouched.
         cevoc.adapter.out.demo.DemoRoute route = demo.getIfAvailable();
         cevoc.adapter.out.demo.DemoPenaltyLookupAdapter demoAdapter = route == null ? null : route.adapter();
         PenaltyLookupPort lookup = demoAdapter == null ? port : new cevoc.adapter.out.demo.DemoFirstPenaltyLookupAdapter(demoAdapter, port);
-        SignedLinkPort links = demoAdapter == null ? signedLinks : cevoc.adapter.out.demo.DemoSignedLinks.wrapping(signedLinks);
+        // Demo video goes through the shared media path: DemoSignedLinks stores bytes in MediaStoragePort,
+        // MediaController applies blur via BlurPort. Same hot path as live — no separate demo route.
+        cevoc.adapter.out.demo.ClasspathVideoSource vs = videoSource.getIfAvailable();
+        SignedLinkPort links = demoAdapter == null ? signedLinks
+                : cevoc.adapter.out.demo.DemoSignedLinks.wrapping(signedLinks, mediaStorage, vs != null ? vs::read : null);
         // Certificates: while demo data is on, a demo camera code is answered by the demo certificate source and any other code goes to
         // the configured provider (or finds nothing when none is configured). Demo off: the configured provider alone, as before.
         CertificateSourcePort configured = certificates.getIfAvailable();

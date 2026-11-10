@@ -5,9 +5,10 @@ import cevoc.adapter.out.demo.ClasspathVideoSource;
 import cevoc.adapter.out.demo.DemoCaseFactory;
 import cevoc.adapter.out.demo.DemoCertificateSource;
 import cevoc.adapter.out.demo.DemoContentGate;
+import cevoc.adapter.out.demo.DemoSignedLinks;
 import cevoc.adapter.out.httpbundle.HttpsDemoBundleSource;
-import cevoc.application.port.out.BlurPort;
 import cevoc.application.port.out.DemoBundleSourcePort;
+import cevoc.application.port.out.MediaStoragePort;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import cevoc.adapter.out.demo.DemoCatalog;
@@ -58,10 +59,18 @@ public class DemoDataConfig {
         return new DemoCatalog(factory);
     }
 
+    /** Video source for demo videos — reads from filesystem or classpath. */
     @Bean
-    RouterFunction<ServerResponse> demoRoutes(DemoCatalog catalog, BlurPort blur,
-            @Value("${cevoc.blur.samples-dir:}") String samplesDir) {
-        return DemoRoutes.routes(catalog, catalog, blur,
-                new ClasspathVideoSource(samplesDir.isBlank() ? null : java.nio.file.Path.of(samplesDir)));
+    ClasspathVideoSource demoVideoSource(@Value("${cevoc.blur.samples-dir:}") String samplesDir) {
+        return new ClasspathVideoSource(samplesDir.isBlank() ? null : java.nio.file.Path.of(samplesDir));
+    }
+
+    /**
+     * Demo routes: only the cases list and generated sample images. Demo video goes through the shared
+     * media path (MediaController → BlurPort) via DemoSignedLinks, not through a demo-specific route.
+     */
+    @Bean
+    RouterFunction<ServerResponse> demoRoutes(DemoCatalog catalog) {
+        return DemoRoutes.routes(catalog, catalog);
     }
 }

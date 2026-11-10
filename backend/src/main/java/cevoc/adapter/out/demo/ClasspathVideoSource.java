@@ -1,6 +1,5 @@
 package cevoc.adapter.out.demo;
 
-import cevoc.adapter.in.web.DemoRoutes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -11,9 +10,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Reads raw demo video files from the filesystem (frontend/public/samples/) or classpath.
- * The raw video is then passed through the {@link cevoc.application.port.out.BlurPort} before serving.
+ * Used by {@link DemoSignedLinks} to store demo video bytes in the shared media adapter,
+ * so they flow through MediaController → BlurPort (the same hot path as live evidence).
  */
-public final class ClasspathVideoSource implements DemoRoutes.DemoVideoSource {
+public final class ClasspathVideoSource {
 
     private static final Logger log = LoggerFactory.getLogger(ClasspathVideoSource.class);
     private final Path samplesDir;
@@ -25,7 +25,6 @@ public final class ClasspathVideoSource implements DemoRoutes.DemoVideoSource {
         this.samplesDir = samplesDir;
     }
 
-    @Override
     public Optional<byte[]> read(String name) {
         if (name == null || name.contains("..") || name.contains("/")) {
             return Optional.empty();
