@@ -21,6 +21,7 @@ export default function EvidenceVideo({ item }) {
   const [time, setTime] = useState({ t: 0, d: 0 });
 
   const fail = useCallback((msg) => { setErrorText(msg); setStatus('error'); }, []);
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -32,8 +33,28 @@ export default function EvidenceVideo({ item }) {
     setQuality(-1);
 
     if (!isHls(item.url)) {
-      video.src = item.url;
-      setStatus('ready'); // preload=none: nothing is fetched until play; failures surface via onError
+      // Pre-flight: check if the video is available (blur may still be processing on the server).
+      setPreparing(false);
+      (async () => {
+        try {
+          const res = await fetch(item.url, { method: 'HEAD' });
+          if (dead) return;
+          if (res.ok) {
+            video.src = item.url;
+            setStatus('ready');
+          } else if (res.status === 451) {
+            // Server-side blur could not prepare the video for safe viewing.
+            fail('This video is being prepared for safe viewing. It may take a moment — try again shortly.');
+            setPreparing(true);
+          } else if (res.status === 503) {
+            fail('The video service is temporarily unavailable. Try again in a moment.');
+          } else {
+            fail('This video could not be loaded.');
+          }
+        } catch {
+          if (!dead) fail('Could not reach the server. Check your connection and try again.');
+        }
+      })();
       return () => { dead = true; video.removeAttribute('src'); video.load(); };
     }
 
@@ -58,7 +79,7 @@ export default function EvidenceVideo({ item }) {
           if (data.type === Hls.ErrorTypes.MEDIA_ERROR) { hls.recoverMediaError(); return; }
           hls.destroy();
           hlsRef.current = null;
-          fail('This video could not be loaded.');
+          fail('The video stream could not be loaded. Try again shortly.');
         });
         hls.loadSource(item.url);
         hls.attachMedia(video);
@@ -132,16 +153,22 @@ export default function EvidenceVideo({ item }) {
           onPlay={() => { setPlaying(true); hlsRef.current?.startLoad(); }}
           onPause={() => setPlaying(false)}
           onTimeUpdate={(e) => setTime({ t: e.currentTarget.currentTime, d: e.currentTarget.duration || 0 })}
-          onError={() => { if (!hlsRef.current && videoRef.current?.getAttribute('src')) fail('This video could not be loaded.'); }}
+          onError={() => { if (!hlsRef.current && videoRef.current?.getAttribute('src')) fail('This video could not be loaded. Try again shortly.'); }}
         >
           {item.captionsUrl && <track kind="captions" src={item.captionsUrl} srcLang={item.captionsLang || 'en'} label="English captions" />}
           Your browser does not support embedded video.
         </video>
-        {status === 'loading' && <div className="media-overlay" aria-hidden="true">Loading video...</div>}
+        {status === 'loading' && <div className="media-overlay" aria-hidden="true">Loading video…</div>}
       </ZoomPan>
       <p className="media-status" role={status === 'error' ? 'alert' : 'status'}>
-        {status === 'loading' && 'Loading video...'}
-        {status === 'error' && (
+        {status === 'loading' && 'Loading video…'}
+        {status === 'error' && preparing && (
+          <>
+            {errorText}{' '}
+            <button type="button" className="linklike" onClick={() => { setPreparing(false); setTries((t) => t + 1); }}>Refresh</button>
+          </>
+        )}
+        {status === 'error' && !preparing && (
           <>
             {errorText}{' '}
             <button type="button" className="linklike" onClick={() => setTries((t) => t + 1)}>Try again</button>
