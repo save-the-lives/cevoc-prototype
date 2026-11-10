@@ -36,6 +36,7 @@ async function downloadAllAsZip(photoDownloads, setZipping) {
 }
 
 const EvidenceVideo = lazy(() => import('./EvidenceVideo.jsx'));
+const ZoomPan = lazy(() => import('./ZoomPan.jsx'));
 const loadViewer = () => import('./ZoomPan.jsx');
 
 const EAGER = 3;
@@ -107,98 +108,20 @@ function StageImage({ item, queueState, onZoom }) {
   );
 }
 
-/** Full-screen popup with zoom, pan, double-click reset and minimap. */
-function FullScreenPopup({ item, selected, n, go, onClose }) {
-  const [fsZoom, setFsZoom] = useState(1);
-  const [fsPan, setFsPan] = useState({ x: 0, y: 0 });
-  const [showLevel, setShowLevel] = useState(false);
-  const fsDragRef = useRef(null);
-  const fsInnerRef = useRef(null);
-  const levelTimer = useRef(null);
-
-  // Reset zoom when image changes
-  useEffect(() => { setFsZoom(1); setFsPan({ x: 0, y: 0 }); }, [selected]);
-
-  const flashLevel = () => {
-    setShowLevel(true);
-    clearTimeout(levelTimer.current);
-    levelTimer.current = setTimeout(() => setShowLevel(false), 800);
-  };
-
-  // Wheel zoom
-  useEffect(() => {
-    const el = fsInnerRef.current;
-    if (!el) return undefined;
-    const handler = (e) => {
-      e.preventDefault();
-      setFsZoom((z) => {
-        const next = Math.max(1, Math.min(5, z * (e.deltaY < 0 ? 1.15 : 0.87)));
-        if (next <= 1) setFsPan({ x: 0, y: 0 });
-        return next;
-      });
-      flashLevel();
-    };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
-  }, []);
-
-  // Drag to pan
-  const onFsPointerDown = (e) => {
-    if (fsZoom <= 1 || e.button !== 0) return;
-    fsDragRef.current = { x: e.clientX - fsPan.x, y: e.clientY - fsPan.y };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-  const onFsPointerMove = (e) => {
-    if (!fsDragRef.current) return;
-    setFsPan({ x: e.clientX - fsDragRef.current.x, y: e.clientY - fsDragRef.current.y });
-  };
-  const onFsPointerUp = () => { fsDragRef.current = null; };
-
-  // Double-click to reset zoom
-  const onDblClick = () => { setFsZoom(1); setFsPan({ x: 0, y: 0 }); flashLevel(); };
-
-  // Minimap viewport rectangle
-  const mapW = 120, mapH = 80;
-  const rectStyle = fsZoom > 1 ? (() => {
-    const vw = window.innerWidth - 48, vh = window.innerHeight - 80;
-    const rw = Math.min(100, (100 / fsZoom));
-    const rh = Math.min(100, (100 / fsZoom));
-    const cx = 50 - (fsPan.x / (vw * fsZoom)) * 100;
-    const cy = 50 - (fsPan.y / (vh * fsZoom)) * 100;
-    const left = Math.max(0, Math.min(100 - rw, cx - rw / 2));
-    const top = Math.max(0, Math.min(100 - rh, cy - rh / 2));
-    return { left: `${left}%`, top: `${top}%`, width: `${rw}%`, height: `${rh}%` };
-  })() : null;
-
+/**
+ * Render a single slide in the full-screen gallery.
+ * Images render as zoomable <img>; video renders the EvidenceVideo player.
+ */
+function GallerySlide({ item }) {
+  if (item.kind === 'VIDEO') {
+    return (
+      <Suspense fallback={<div className="mg-state is-loading" aria-busy="true">Loading video&hellip;</div>}>
+        <EvidenceVideo item={item} />
+      </Suspense>
+    );
+  }
   const alt = item.alt || item.title;
-
-  return (
-    <div className="mg-popup" role="dialog" aria-modal="true" aria-label="Full-size image"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
-        if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
-        if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
-      }}>
-      <div className="mg-popup__inner" ref={fsInnerRef}
-        onPointerDown={onFsPointerDown} onPointerMove={onFsPointerMove} onPointerUp={onFsPointerUp}
-        onDoubleClick={onDblClick}
-        style={{ cursor: fsZoom > 1 ? 'grab' : undefined, overflow: 'hidden' }}>
-        <div className="mg-popup__zoom-wrap" style={{ transform: `translate(${fsPan.x}px, ${fsPan.y}px) scale(${fsZoom})`, transformOrigin: 'center center' }}>
-          <img src={item.url} alt={alt} draggable="false" />
-        </div>
-      </div>
-      <button type="button" className="mg-popup__close" onClick={onClose} aria-label="Close" autoFocus>&times;</button>
-      <div className={`mg-popup__zoom-level${showLevel ? ' is-visible' : ''}`}>{Math.round(fsZoom * 100)}%</div>
-      <p className="mg-popup__cap">{selected + 1} of {n} &middot; use &larr; &rarr; to move &middot; scroll to zoom &middot; double-click to reset</p>
-      {fsZoom > 1 && (
-        <div className="mg-popup__minimap">
-          <img src={item.previewUrl || item.url} alt="" draggable="false" />
-          {rectStyle && <div className="mg-popup__minimap-rect" style={rectStyle} />}
-        </div>
-      )}
-    </div>
-  );
+  return <img src={item.url} alt={alt} draggable="false" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />;
 }
 
 /**
@@ -376,8 +299,10 @@ export default function EvidenceGrid({ items }) {
             ) : null}
             {n > 1 && (
               <>
-                <button type="button" className="mg-nav is-prev" onClick={() => go(-1)} aria-label="Previous">&lsaquo;</button>
-                <button type="button" className="mg-nav is-next" onClick={() => go(1)} aria-label="Next">&rsaquo;</button>
+                <button type="button" className="mg-nav is-prev" onClick={() => go(-1)}
+                  aria-label={`Previous, ${((selected - 1 + n) % n) + 1} of ${n}`}>&lsaquo;</button>
+                <button type="button" className="mg-nav is-next" onClick={() => go(1)}
+                  aria-label={`Next, ${((selected + 1) % n) + 1} of ${n}`}>&rsaquo;</button>
               </>
             )}
           </div>
@@ -425,9 +350,20 @@ export default function EvidenceGrid({ items }) {
             </div>
           )}
 
-          {/* Full-size popup with zoom, pan, minimap */}
-          {full && item && item.kind === 'IMAGE' && (
-            <FullScreenPopup item={item} selected={selected} n={n} go={go} onClose={() => setFull(false)} />
+          {/* Full-screen gallery: swipe left/right through all evidence (images + video) */}
+          {full && n > 0 && (
+            <Suspense fallback={null}><ZoomPan
+              label="Evidence gallery"
+              startFull
+              onExit={() => setFull(false)}
+              controlsAtRest={media[selected]?.kind === 'VIDEO'}
+              gallery={{
+                count: n,
+                index: selected,
+                render: (i) => <GallerySlide item={media[i]} />,
+              }}
+            />
+            </Suspense>
           )}
         </div>
       )}

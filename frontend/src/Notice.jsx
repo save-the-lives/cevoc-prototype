@@ -133,7 +133,7 @@ function EvidenceBody({ result, state, media, onPlate, plateBusy, timedOut }) {
       return (
         <>
           <TimedOut />
-          {!timedOut && <p className="hint">Zoom in to read registration numbers and signs: scroll wheel or pinch on the image, or click it to open full size.</p>}
+          {!timedOut && <p className="hint">{'ontouchstart' in window ? 'Swipe to move between images, pinch to zoom.' : 'Zoom in to read registration numbers and signs: scroll wheel or pinch on the image, or click it to open full size.'}</p>}
           <Suspense fallback={<PhotoSkeleton count={media.length} />}><EvidenceGrid items={media} /></Suspense>
           <p className="muted">If someone else was driving, you can nominate them (see Your options).</p>
         </>
