@@ -121,7 +121,7 @@ function GallerySlide({ item }) {
     );
   }
   const alt = item.alt || item.title;
-  return <img src={item.url} alt={alt} draggable="false" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />;
+  return <img src={item.url} alt={alt} draggable="false" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
 }
 
 /**
@@ -313,10 +313,10 @@ export default function EvidenceGrid({ items }) {
               <span>{selected + 1} of {n}</span>
             </div>
             <div className="mg-actions">
-              {item && currentHref && (
+              {item && item.kind !== 'VIDEO' && currentHref && (
                 <a className="mg-btn" href={currentHref} download>Download this image</a>
               )}
-              {photoDownloads.length > 1 && (
+              {item && item.kind !== 'VIDEO' && photoDownloads.length > 1 && (
                 <button type="button" className="mg-btn" disabled={zipping}
                   onClick={() => downloadAllAsZip(photoDownloads, setZipping)}>
                   {zipping ? 'Preparing zip…' : 'Download all images'}
@@ -324,7 +324,7 @@ export default function EvidenceGrid({ items }) {
               )}
             </div>
           </div>
-          {hasNonDownloadableVideo && <p className="mg-note">Video evidence cannot be downloaded.</p>}
+          {item && item.kind === 'VIDEO' && <p className="mg-note">Video evidence cannot be downloaded.</p>}
 
           {/* Thumbnail strip */}
           {n > 1 && (

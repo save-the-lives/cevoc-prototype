@@ -272,27 +272,40 @@ export default function ZoomPan({ label, children, controlsAtRest = false, rende
           {nav ? gallery.render(pos) : children}
         </div>
       </div>
-      <div className="zp-tools" role="toolbar" aria-label={`${label} controls`}>
-        {nav && (
-          <>
-            <button type="button" onClick={() => go(-1)} aria-disabled={pos === 0} aria-label="Previous photo">&lsaquo;</button>
-            <output className="zp-pos" aria-hidden="true">{pos + 1} / {gallery.count}</output>
-            <span className="sr-only" role="status">{said}</span>
-            <button type="button" onClick={() => go(1)} aria-disabled={pos === gallery.count - 1} aria-label="Next photo">&rsaquo;</button>
-          </>
-        )}
-        <button type="button" onClick={() => zoomStep(-1)} disabled={view.scale <= 1} aria-label="Zoom out">&minus;</button>
-        <output className="zp-level" aria-live="polite" aria-label="Zoom level">{pct}</output>
-        <button type="button" onClick={() => zoomStep(1)} disabled={view.scale >= 6} aria-label="Zoom in">+</button>
-        <button type="button" onClick={reset} disabled={!zoomed} aria-label="Reset zoom">Reset</button>
-        {canFs && (
-          <button type="button" onClick={toggleFs} aria-pressed={isFs || overlay} aria-label={isFs || overlay ? 'Exit full screen' : 'Full screen'}>
-            {isFs || overlay ? 'Exit full screen' : 'Full screen'}
-          </button>
-        )}
-        {overlay && <button type="button" className="zp-close" onClick={closeOverlay}>Close</button>}
-        {renderTools?.(view)}
-      </div>
+      {/* Full-screen gallery mode: clean overlay controls (close, counter, edge arrows) */}
+      {overlay && nav ? (
+        <>
+          <button type="button" className="zp-close-x" onClick={closeOverlay} aria-label="Close">&times;</button>
+          <div className="zp-counter" aria-hidden="true">{pos + 1} of {gallery.count}</div>
+          <span className="sr-only" role="status">{said}</span>
+          <button type="button" className="zp-edge is-prev" onClick={() => go(-1)}
+            aria-disabled={pos === 0} aria-label={`Previous, ${pos} of ${gallery.count}`}>&lsaquo;</button>
+          <button type="button" className="zp-edge is-next" onClick={() => go(1)}
+            aria-disabled={pos === gallery.count - 1} aria-label={`Next, ${pos + 2} of ${gallery.count}`}>&rsaquo;</button>
+        </>
+      ) : (
+        <div className="zp-tools" role="toolbar" aria-label={`${label} controls`}>
+          {nav && (
+            <>
+              <button type="button" onClick={() => go(-1)} aria-disabled={pos === 0} aria-label="Previous photo">&lsaquo;</button>
+              <output className="zp-pos" aria-hidden="true">{pos + 1} / {gallery.count}</output>
+              <span className="sr-only" role="status">{said}</span>
+              <button type="button" onClick={() => go(1)} aria-disabled={pos === gallery.count - 1} aria-label="Next photo">&rsaquo;</button>
+            </>
+          )}
+          <button type="button" onClick={() => zoomStep(-1)} disabled={view.scale <= 1} aria-label="Zoom out">&minus;</button>
+          <output className="zp-level" aria-live="polite" aria-label="Zoom level">{pct}</output>
+          <button type="button" onClick={() => zoomStep(1)} disabled={view.scale >= 6} aria-label="Zoom in">+</button>
+          <button type="button" onClick={reset} disabled={!zoomed} aria-label="Reset zoom">Reset</button>
+          {canFs && (
+            <button type="button" onClick={toggleFs} aria-pressed={isFs || overlay} aria-label={isFs || overlay ? 'Exit full screen' : 'Full screen'}>
+              {isFs || overlay ? 'Exit full screen' : 'Full screen'}
+            </button>
+          )}
+          {overlay && <button type="button" className="zp-close" onClick={closeOverlay}>Close</button>}
+          {renderTools?.(view)}
+        </div>
+      )}
     </div>
   );
 }

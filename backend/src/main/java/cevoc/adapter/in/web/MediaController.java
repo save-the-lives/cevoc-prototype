@@ -124,7 +124,9 @@ public class MediaController {
         headers.set("X-Content-Type-Options", "nosniff");
         headers.set("Cross-Origin-Resource-Policy", "cross-origin");
         headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, download ? "attachment; filename=\"camera-evidence\"" : "inline");
+        // Video evidence must never be downloadable — always inline, ignore dl param for video.
+        boolean isVideo = type.toString().startsWith("video/");
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, (download && !isVideo) ? "attachment; filename=\"camera-evidence\"" : "inline");
 
         // Byte-range support (Safari needs 206 for video)
         if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
