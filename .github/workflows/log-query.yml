@@ -131,8 +131,6 @@ jobs:
                    ' server_header=coalesce(extract(@"(?i)\\bserver[=:]\\s*([^,;\\s]+)", 1, Log_s), "-"),'
                    ' message=msg(Log_s)'),
               ]),
-          }
-
               "blur-last-hour": ("Blur pipeline, last hour", [
                   ("Blur log lines (newest 30, oldest first)",
                    'ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h)'
