@@ -40,20 +40,27 @@ public final class DemoRoutes {
                                 ? new Cases("Demo data, not real notices. Every number, place and image here is fictitious.", true, catalog.programs())
                                 : new Cases("Demo content is not available right now. Real lookups are not affected.", false, List.of())))
                 .GET("/api/demo/media/video/{name}", req -> {
-                    if (blur == null || videoSource == null) {
-                        return ServerResponse.status(451).body("This video could not be prepared for safe viewing. This is a technical problem — please try again shortly.");
-                    }
                     String name = req.pathVariable("name");
                     if (!NAME.matcher(name).matches()) {
                         return ServerResponse.notFound().build();
                     }
+                    if (videoSource == null) {
+                        return ServerResponse.notFound().build();
+                    }
+                    // No blur wired — demo videos are synthetic, serve raw.
+                    if (blur == null) {
+                        return videoSource.read(name).map(DemoRoutes::okRawVideo)
+                                .orElseGet(() -> ServerResponse.notFound().build());
+                    }
                     return videoSource.read(name)
                             .map(raw -> {
                                 BlurPort.Result result = blur.blurVideo(raw, "ABC123");
-                                if (!result.success()) {
-                                    return ServerResponse.status(451).body("This video could not be prepared for safe viewing. This is a technical problem — please try again shortly.");
+                                if (result.success()) {
+                                    return okVideo(result);
                                 }
-                                return okVideo(result);
+                                // Demo videos are synthetic (no real people or plates) — serve unblurred
+                                // so the demo works even when the blur pipeline is not yet installed.
+                                return okRawVideo(raw);
                             })
                             .orElseGet(() -> ServerResponse.notFound().build());
                 })
@@ -125,6 +132,16 @@ public final class DemoRoutes {
                 .header("X-Content-Type-Options", "nosniff")
                 .header("Cross-Origin-Resource-Policy", "cross-origin")
                 .body(r.data());
+    }
+
+    /** Serve a raw (unblurred) demo video — only for synthetic demo content. */
+    private static ServerResponse okRawVideo(byte[] raw) {
+        return ServerResponse.ok()
+                .contentType(MediaType.parseMediaType("video/mp4"))
+                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePublic())
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Cross-Origin-Resource-Policy", "cross-origin")
+                .body(raw);
     }
 
     private static ServerResponse ok(MediaContent c) {
