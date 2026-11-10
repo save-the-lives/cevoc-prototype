@@ -17,6 +17,7 @@ on:
           - step-trace-last-hour
           - app-health
           - certificate-403-detail
+          - blur-last-hour
 permissions:
   contents: read
 concurrency:
@@ -129,6 +130,20 @@ jobs:
                    ' duration_ms=coalesce(extract(@"duration=(\\d+)ms", 1, Log_s), "-"),'
                    ' server_header=coalesce(extract(@"(?i)\\bserver[=:]\\s*([^,;\\s]+)", 1, Log_s), "-"),'
                    ' message=msg(Log_s)'),
+              ]),
+          }
+
+              "blur-last-hour": ("Blur pipeline, last hour", [
+                  ("Blur log lines (newest 30, oldest first)",
+                   'ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h)'
+                   ' | where Log_s has_any ("blur","Blur","ProcessBlur","DenyAll","StreamingBlur","blurVideo","blurImage","python3","detect_faces","detect_plates","render_blur","merge_tracks")'
+                   ' | top 30 by TimeGenerated desc | sort by TimeGenerated asc'
+                   ' | project timestamp=TimeGenerated, level=lvl(Log_s), message=msg(Log_s)'),
+                  ("Demo video route hits (newest 20, oldest first)",
+                   'ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h)'
+                   ' | where Log_s has "/api/demo/media/video"'
+                   ' | top 20 by TimeGenerated desc | sort by TimeGenerated asc'
+                   ' | project timestamp=TimeGenerated, level=lvl(Log_s), message=msg(Log_s)'),
               ]),
           }
 
