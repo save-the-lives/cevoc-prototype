@@ -131,20 +131,19 @@ export default function EvidenceVideo({ item }) {
 
   return (
     <div ref={boxRef} className="media-body">
-      {/* Error/preparing message ABOVE the video so it's always visible */}
+      {/* NSW DS compact page notification — inline, not a big box */}
       {status === 'error' && (
-        <div className="notice-box" role="alert" style={{ marginBottom: 12 }}>
-          {preparing ? (
-            <>
-              <h3>Preparing video for safe viewing</h3>
-              <p>Faces and registration numbers of other vehicles are being blurred. This can take a moment. The video will appear automatically when ready.</p>
-            </>
-          ) : (
-            <>
-              <h3>This video could not be loaded</h3>
-              <p>{errorText} <button type="button" className="linklike" onClick={() => setTries((t) => t + 1)}>Try again</button></p>
-            </>
-          )}
+        <div className={`nsw-notification nsw-notification--${preparing ? 'info' : 'error'}`} role="alert" style={{ marginBottom: 8 }}>
+          <svg className="nsw-notification__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            {preparing
+              ? <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+              : <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>}
+          </svg>
+          <p className="nsw-notification__content">
+            {preparing
+              ? 'Preparing video for safe viewing…'
+              : <>{errorText || 'This video could not be loaded.'} <button type="button" className="linklike" onClick={() => setTries((t) => t + 1)}>Try again</button></>}
+          </p>
         </div>
       )}
       <ZoomPan label={`${item.title}, video`} controlsAtRest renderTools={tools} onFullscreenFallback={fsFallback}>

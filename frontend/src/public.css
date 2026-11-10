@@ -318,3 +318,12 @@ h1:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .nsw-form__radio-input:checked + .nsw-form__radio-label::before { border-color: var(--navy); }
 .nsw-form__radio-input:checked + .nsw-form__radio-label::after { opacity: 1; }
 .nsw-form__radio-input:focus-visible + .nsw-form__radio-label { outline: 3px solid var(--focus, #0085b3); outline-offset: 2px; }
+
+/* NSW DS page notification — compact inline, per https://digitalnsw.github.io/nsw-design-system/components/notification */
+.nsw-notification { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; border-radius: 4px; font-size: 14px; line-height: 1.4; }
+.nsw-notification--info { background: var(--soft, #eef2f8); color: var(--navy, #002664); border-left: 4px solid var(--navy, #002664); }
+.nsw-notification--error { background: #fdf0f0; color: #b81237; border-left: 4px solid var(--red, #d7153a); }
+.nsw-notification__icon { flex-shrink: 0; margin-top: 1px; }
+.nsw-notification--info .nsw-notification__icon { color: var(--navy, #002664); }
+.nsw-notification--error .nsw-notification__icon { color: var(--red, #d7153a); }
+.nsw-notification__content { margin: 0; }
