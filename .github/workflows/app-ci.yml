@@ -47,6 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - name: Stage sample videos for Docker build
+        run: mkdir -p backend/samples && cp frontend/public/samples/*.mp4 backend/samples/
       - name: Build the image (layer cache)
         uses: docker/build-push-action@v6
         with:

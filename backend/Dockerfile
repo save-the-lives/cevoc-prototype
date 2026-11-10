@@ -49,6 +49,9 @@ WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
 # Blur pipeline scripts + YuNet model (ADR 0017)
 COPY blur-pipeline/ /app/blur-pipeline/
+# Sample demo videos for server-side blur (ADR 0017); served through DemoRoutes, never raw.
+# The CI workflow copies frontend/public/samples/*.mp4 here before the build.
+COPY samples/ /app/samples/
 USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

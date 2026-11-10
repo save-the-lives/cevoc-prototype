@@ -59,6 +59,10 @@ jobs:
           case "$CEVOC_BASE_URL" in https://?*) ;; *) echo "::error::Variable CEVOC_BASE_URL must be an https URL."; exit 1;; esac
           [ -n "$LIVE_CONTACT" ] || { echo "::error::Variable LIVE_CONTACT is not set."; exit 1; }
 
+      # Copy sample demo videos into the Docker context so the backend can serve them through the blur pipeline.
+      - name: Stage sample videos for Docker build
+        run: mkdir -p backend/samples && cp frontend/public/samples/*.mp4 backend/samples/
+
       # One image for both modes (always contains Chromium). Layers: base, deps + Chromium, then the thin app layer.
       - name: Build and push image
         uses: docker/build-push-action@v6
