@@ -33,72 +33,127 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # YOLO plate detector (cv2.dnn, no torch/ultralytics needed)
 # ---------------------------------------------------------------------------
-MODEL_NAME = "yolov8n-plates.onnx"
+PLATE_MODEL = "yolov8n-plates.onnx"
 INPUT_SIZE = 640
-CONF_THRESH = 0.30
+# Low threshold — false positives are fine, missed plates are not
+CONF_THRESH = 0.15
 NMS_THRESH = 0.45
+# Padding: expand each detection box by this fraction on each side
+PAD_FRAC = 0.20
 
 
-def load_yolo(scripts_dir: Path):
-    """Load the YOLO ONNX model via OpenCV DNN."""
-    model_path = scripts_dir / MODEL_NAME
+def load_yolo(scripts_dir: Path, model_name: str):
+    """Load a YOLO ONNX model via OpenCV DNN."""
+    model_path = scripts_dir / model_name
     if not model_path.exists():
-        print(f"[detect_plates] ERROR: model not found at {model_path}", flush=True)
-        sys.exit(1)
-    print(f"[detect_plates] Loading YOLO model from {model_path}", flush=True)
+        print(f"[detect_plates] WARNING: model not found at {model_path}", flush=True)
+        return None
+    print(f"[detect_plates] Loading model from {model_path}", flush=True)
     t0 = time.time()
     net = cv2.dnn.readNetFromONNX(str(model_path))
-    print(f"[detect_plates] YOLO loaded in {(time.time()-t0)*1000:.0f}ms", flush=True)
+    print(f"[detect_plates]   Loaded in {(time.time()-t0)*1000:.0f}ms", flush=True)
     return net
 
 
-def detect_plates_yolo(net, frame, conf_thresh=CONF_THRESH, nms_thresh=NMS_THRESH):
-    """Run YOLO inference on a single frame, return list of plate dicts."""
+def detect_yolo(net, frame, conf_thresh, nms_thresh=NMS_THRESH, num_classes=1):
+    """Run YOLO inference on a single frame, return list of dicts with x,y,w,h,confidence,class_id."""
     h, w = frame.shape[:2]
     blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (INPUT_SIZE, INPUT_SIZE),
                                  swapRB=True, crop=False)
     net.setInput(blob)
-    output = net.forward()  # (1, 5, 8400) for 1-class YOLOv8
+    output = net.forward()  # (1, 4+num_classes, 8400)
 
-    # Transpose to (8400, 5): cx, cy, bw, bh, conf
-    data = output[0].T
-
-    # Filter by confidence
-    mask = data[:, 4] > conf_thresh
-    candidates = data[mask]
-    if len(candidates) == 0:
-        return []
-
-    # Convert to x1,y1,w,h for NMS
+    data = output[0].T  # (8400, 4+num_classes)
     scale_x = w / INPUT_SIZE
     scale_y = h / INPUT_SIZE
 
-    boxes = []
-    confs = []
-    for row in candidates:
-        cx, cy, bw, bh, conf = row
+    boxes, confs, class_ids = [], [], []
+    for row in data:
+        cx, cy, bw, bh = row[:4]
+        if num_classes == 1:
+            conf = float(row[4])
+            cls_id = 0
+        else:
+            scores = row[4:]
+            cls_id = int(np.argmax(scores))
+            conf = float(scores[cls_id])
+        if conf < conf_thresh:
+            continue
         x1 = (cx - bw / 2) * scale_x
         y1 = (cy - bh / 2) * scale_y
         pw = bw * scale_x
         ph = bh * scale_y
         boxes.append([int(x1), int(y1), int(pw), int(ph)])
-        confs.append(float(conf))
+        confs.append(conf)
+        class_ids.append(cls_id)
 
-    # OpenCV NMS
+    if not boxes:
+        return []
+
     indices = cv2.dnn.NMSBoxes(boxes, confs, conf_thresh, nms_thresh)
     if len(indices) == 0:
         return []
 
-    plates = []
+    results = []
     for i in indices.flatten():
         x, y, pw, ph = boxes[i]
-        plates.append({
+        results.append({
             "x": max(0, x), "y": max(0, y),
             "w": pw, "h": ph,
             "confidence": round(confs[i], 3),
-            "plate_text": None,
+            "class_id": class_ids[i],
         })
-    return plates
+    return results
+
+
+def pad_box(x, y, w, h, img_w, img_h, frac=PAD_FRAC):
+    """Expand a box by frac on each side, clamped to image bounds."""
+    px = int(w * frac)
+    py = int(h * frac)
+    nx = max(0, x - px)
+    ny = max(0, y - py)
+    nw = min(img_w - nx, w + 2 * px)
+    nh = min(img_h - ny, h + 2 * py)
+    return nx, ny, nw, nh
+
+
+# ---------------------------------------------------------------------------
+# Vehicle backstop: detect vehicles, blur plate region of any without a plate
+# ---------------------------------------------------------------------------
+# COCO class IDs for vehicles
+VEHICLE_CLASSES = {2: "car", 5: "bus", 7: "truck"}
+VEHICLE_MODEL = "yolov8n.onnx"
+VEHICLE_CONF = 0.30
+
+
+def vehicle_backstop_plates(vehicles, plate_dets, img_w, img_h):
+    """For vehicles without a nearby plate detection, infer a plate region."""
+    backstop = []
+    for v in vehicles:
+        # Check if any plate detection overlaps this vehicle
+        has_plate = False
+        for p in plate_dets:
+            # Plate center inside vehicle box?
+            pcx = p["x"] + p["w"] // 2
+            pcy = p["y"] + p["h"] // 2
+            if (v["x"] <= pcx <= v["x"] + v["w"] and
+                    v["y"] <= pcy <= v["y"] + v["h"]):
+                has_plate = True
+                break
+        if has_plate:
+            continue
+        # Infer plate region: bottom center of vehicle, ~15% height, ~40% width
+        pw = int(v["w"] * 0.45)
+        ph = int(v["h"] * 0.18)
+        px = v["x"] + (v["w"] - pw) // 2
+        py = v["y"] + v["h"] - ph - int(v["h"] * 0.05)  # slightly above bottom
+        px, py, pw, ph = pad_box(px, py, pw, ph, img_w, img_h, frac=0.1)
+        backstop.append({
+            "x": px, "y": py, "w": pw, "h": ph,
+            "confidence": 0.10,  # low confidence marker
+            "source": "vehicle_backstop",
+        })
+    return backstop
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +174,6 @@ def ocr_plate_region(frame, x, y, w, h, pad=5):
         return None
 
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    # Upscale small plates for better OCR
     scale = max(1, 80 // max(gray.shape[0], 1))
     if scale > 1:
         gray = cv2.resize(gray, None, fx=scale, fy=scale,
@@ -138,13 +192,94 @@ def ocr_plate_region(frame, x, y, w, h, pad=5):
 
 
 # ---------------------------------------------------------------------------
+# Track interpolation: fill gaps in each track with linear interpolation
+# ---------------------------------------------------------------------------
+
+def interpolate_tracks(tracks, total_frames, fps):
+    """For each track, fill gaps between detections with interpolated boxes."""
+    for track in tracks:
+        if len(track) < 2:
+            continue
+        # Build frame->entry map
+        by_frame = {}
+        for e in track:
+            fn = int(e["t"] * fps)
+            by_frame[fn] = e
+        frames = sorted(by_frame.keys())
+        first, last = frames[0], frames[-1]
+
+        interpolated = []
+        for fn in range(first, last + 1):
+            if fn in by_frame:
+                continue
+            # Find nearest before and after
+            before = max(f for f in frames if f < fn)
+            after = min(f for f in frames if f > fn)
+            a, b = by_frame[before], by_frame[after]
+            frac = (fn - before) / (after - before)
+            interpolated.append({
+                "t": round(fn / fps, 3),
+                "x": int(a["x"] + (b["x"] - a["x"]) * frac),
+                "y": int(a["y"] + (b["y"] - a["y"]) * frac),
+                "w": int(a["w"] + (b["w"] - a["w"]) * frac),
+                "h": int(a["h"] + (b["h"] - a["h"]) * frac),
+                "confidence": round(min(a["confidence"], b["confidence"]) * 0.9, 3),
+                "interpolated": True,
+            })
+        track.extend(interpolated)
+        track.sort(key=lambda e: e["t"])
+
+    # Also extend tracks a few frames before first and after last detection
+    EXTEND = 5
+    for track in tracks:
+        if not track:
+            continue
+        first = track[0]
+        last = track[-1]
+        fn_first = int(first["t"] * fps)
+        fn_last = int(last["t"] * fps)
+        # Extend before
+        for i in range(1, EXTEND + 1):
+            fn = fn_first - i
+            if fn < 0:
+                break
+            track.insert(0, {
+                "t": round(fn / fps, 3),
+                "x": first["x"], "y": first["y"],
+                "w": first["w"], "h": first["h"],
+                "confidence": round(first["confidence"] * 0.8, 3),
+                "interpolated": True,
+            })
+        # Extend after
+        for i in range(1, EXTEND + 1):
+            fn = fn_last + i
+            if fn >= total_frames:
+                break
+            track.append({
+                "t": round(fn / fps, 3),
+                "x": last["x"], "y": last["y"],
+                "w": last["w"], "h": last["h"],
+                "confidence": round(last["confidence"] * 0.8, 3),
+                "interpolated": True,
+            })
+
+
+# ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
 
 def process_video(video_path, offending_plate="ABC123", every_n=1):
     """Process a video, detect plates, track, OCR once per track."""
     scripts_dir = Path(__file__).parent
-    net = load_yolo(scripts_dir)
+    plate_net = load_yolo(scripts_dir, PLATE_MODEL)
+    if plate_net is None:
+        print("[detect_plates] FATAL: plate model not found", flush=True)
+        sys.exit(1)
+
+    # Vehicle model for backstop (optional)
+    vehicle_net = load_yolo(scripts_dir, VEHICLE_MODEL)
+    if vehicle_net is None:
+        print("[detect_plates] NOTE: vehicle model not found, backstop disabled", flush=True)
 
     print(f"[detect_plates] Opening video: {video_path}", flush=True)
     cap = cv2.VideoCapture(str(video_path))
@@ -161,20 +296,23 @@ def process_video(video_path, offending_plate="ABC123", every_n=1):
     print(f"[detect_plates] Video: {video_path}", flush=True)
     print(f"[detect_plates]   {w}x{h}, {fps} fps, {total} frames, {duration:.1f}s",
           flush=True)
+    print(f"[detect_plates]   Conf threshold: {CONF_THRESH}, padding: {PAD_FRAC*100:.0f}%", flush=True)
     print(f"[detect_plates]   Processing every {every_n} frame(s)", flush=True)
     print(f"[detect_plates]   Offending plate: {offending_plate}", flush=True)
-    print(f"[detect_plates]   OCR: {'pytesseract (once per track)' if HAS_OCR else 'unavailable'}",
-          flush=True)
+    print(f"[detect_plates]   Vehicle backstop: {'ON' if vehicle_net else 'OFF'}", flush=True)
 
     # ------------------------------------------------------------------
-    # Pass 1: detect plates in sampled frames, save best frame per track
+    # Pass 1: detect plates (and vehicles) in every frame
     # ------------------------------------------------------------------
-    all_detections = []  # (frame_num, t_sec, plates)
-    best_frames = {}     # track_idx -> (area, frame_copy, x, y, w, h)
     tracks = []          # list of lists of detection entries
     track_last_pos = []  # last (x, y, w, h) per track
+    best_frames = {}     # track_idx -> (area, frame_copy, x, y, w, h)
+    backstop_dets = []   # vehicle backstop entries with frame numbers
 
     frame_num = 0
+    total_plate_dets = 0
+    total_vehicle_dets = 0
+    conf_bins = {"<0.2": 0, "0.2-0.4": 0, "0.4-0.6": 0, "0.6-0.8": 0, ">0.8": 0}
     t_detect_start = time.time()
 
     while True:
@@ -183,12 +321,41 @@ def process_video(video_path, offending_plate="ABC123", every_n=1):
             break
 
         if frame_num % every_n == 0:
-            plates = detect_plates_yolo(net, frame)
+            # Plate detection
+            raw_plates = detect_yolo(plate_net, frame, CONF_THRESH)
             t_sec = round(frame_num / fps, 3)
+            total_plate_dets += len(raw_plates)
 
-            if frame_num % (every_n * 10) == 0:
+            # Apply padding to all plate boxes
+            plates = []
+            for p in raw_plates:
+                px, py, pw, ph = pad_box(p["x"], p["y"], p["w"], p["h"], w, h)
+                plates.append({**p, "x": px, "y": py, "w": pw, "h": ph})
+                # Confidence distribution
+                c = p["confidence"]
+                if c < 0.2: conf_bins["<0.2"] += 1
+                elif c < 0.4: conf_bins["0.2-0.4"] += 1
+                elif c < 0.6: conf_bins["0.4-0.6"] += 1
+                elif c < 0.8: conf_bins["0.6-0.8"] += 1
+                else: conf_bins[">0.8"] += 1
+
+            # Vehicle backstop detection
+            if vehicle_net:
+                raw_vehicles = detect_yolo(vehicle_net, frame, VEHICLE_CONF,
+                                           num_classes=80)
+                vehicles = [v for v in raw_vehicles
+                            if v["class_id"] in VEHICLE_CLASSES]
+                total_vehicle_dets += len(vehicles)
+                bs = vehicle_backstop_plates(vehicles, plates, w, h)
+                for b in bs:
+                    backstop_dets.append({
+                        **b, "t": t_sec, "frame": frame_num,
+                    })
+
+            if frame_num % 10 == 0:
+                vcount = f", {len(vehicles)} vehicles" if vehicle_net else ""
                 print(f"[detect_plates]   frame {frame_num}/{total} — "
-                      f"{len(plates)} plates", flush=True)
+                      f"{len(plates)} plates{vcount}", flush=True)
 
             # Assign to tracks by spatial proximity
             used = set()
@@ -224,7 +391,7 @@ def process_video(video_path, offending_plate="ABC123", every_n=1):
                                           p["w"], p["h"]))
                     ti = len(tracks) - 1
 
-                # Keep the largest crop per track for OCR
+                # Keep the largest crop per track for OCR (use original unpadded box)
                 area = p["w"] * p["h"]
                 if ti not in best_frames or area > best_frames[ti][0]:
                     best_frames[ti] = (area, frame.copy(),
@@ -235,7 +402,15 @@ def process_video(video_path, offending_plate="ABC123", every_n=1):
     cap.release()
     t_detect = time.time() - t_detect_start
     print(f"[detect_plates]   Detection done: {frame_num} frames in "
-          f"{t_detect:.1f}s", flush=True)
+          f"{t_detect:.1f}s ({total_plate_dets} plate dets, {total_vehicle_dets} vehicle dets)", flush=True)
+    print(f"[detect_plates]   Confidence dist: {conf_bins}", flush=True)
+
+    # ------------------------------------------------------------------
+    # Interpolate tracks to fill gaps
+    # ------------------------------------------------------------------
+    interpolate_tracks(tracks, frame_num, fps)
+    interp_count = sum(1 for t in tracks for e in t if e.get("interpolated"))
+    print(f"[detect_plates]   Track interpolation: {interp_count} frames filled", flush=True)
 
     # ------------------------------------------------------------------
     # Pass 2: OCR the best frame of each track (ONCE per track)
@@ -275,6 +450,20 @@ def process_video(video_path, offending_plate="ABC123", every_n=1):
             "frames": frames,
         })
 
+    # Add vehicle backstop regions as a separate "track"
+    if backstop_dets:
+        regions.append({
+            "label": "PLATE",
+            "plate_text": None,
+            "source": "vehicle_backstop",
+            "frames": [{
+                "t": d["t"], "x": d["x"], "y": d["y"],
+                "w": d["w"], "h": d["h"],
+                "confidence": d["confidence"],
+            } for d in backstop_dets],
+        })
+        print(f"[detect_plates]   Vehicle backstop: {len(backstop_dets)} plate regions inferred", flush=True)
+
     t_ocr = time.time() - t_ocr_start
     total_time = t_detect + t_ocr
     print(f"[detect_plates]   OCR done: {len(tracks)} tracks in "
@@ -287,16 +476,23 @@ def process_video(video_path, offending_plate="ABC123", every_n=1):
         "resolution": f"{w}x{h}",
         "fps": fps,
         "duration_s": round(duration, 3),
+        "duration": round(duration, 3),
         "offending_plate": offending_plate,
-        "detection_method": "YOLOv8n (ONNX, OpenCV DNN)",
+        "detection_method": "YOLOv8n (ONNX, OpenCV DNN), conf >= {}, pad {}%".format(CONF_THRESH, int(PAD_FRAC*100)),
         "ocr": "pytesseract (once per track)" if HAS_OCR else "none",
+        "vehicle_backstop": vehicle_net is not None,
         "regions": regions,
         "stats": {
             "frames_processed": frame_num // every_n,
             "total_frames": frame_num,
-            "tracks_found": len(regions),
+            "tracks_found": len(tracks),
+            "backstop_regions": len(backstop_dets),
             "offending_found": sum(1 for r in regions
                                    if r["label"] == "PLATE_OFFENDING"),
+            "total_plate_detections": total_plate_dets,
+            "total_vehicle_detections": total_vehicle_dets,
+            "interpolated_frames": interp_count,
+            "confidence_distribution": conf_bins,
             "processing_time_s": round(total_time, 1),
             "detect_time_s": round(t_detect, 1),
             "ocr_time_s": round(t_ocr, 1),
@@ -322,12 +518,17 @@ def main():
     # Summary
     print(f"\nResults:", flush=True)
     print(f"  Tracks: {result['stats']['tracks_found']}", flush=True)
+    print(f"  Total plate detections: {result['stats']['total_plate_detections']}", flush=True)
+    print(f"  Vehicle backstop regions: {result['stats']['backstop_regions']}", flush=True)
+    print(f"  Interpolated frames: {result['stats']['interpolated_frames']}", flush=True)
+    print(f"  Confidence distribution: {result['stats']['confidence_distribution']}", flush=True)
     offending_found = result["stats"]["offending_found"]
     print(f"  Offending ({args.offending}): "
           f"{'FOUND' if offending_found else 'NOT FOUND'}", flush=True)
     for r in result["regions"]:
         txt = r["plate_text"] or "(unread)"
-        print(f"    [{r['label']}] {txt}: {len(r['frames'])} detections",
+        src = f" [{r['source']}]" if r.get("source") else ""
+        print(f"    [{r['label']}] {txt}: {len(r['frames'])} detections{src}",
               flush=True)
 
     out_path = (args.output or
