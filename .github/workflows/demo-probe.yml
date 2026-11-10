@@ -1,0 +1,92 @@
+name: Demo probe (Playwright)
+
+# Runs every demo case through the live site with real headless browsers.
+# Supersedes demo-video-check.yml (curl-only check).
+
+on:
+  schedule:
+    - cron: "42 * * * *"           # Hourly at :42 (jittered off the hour)
+  workflow_run:
+    workflows: ["Trigger auto deployment for cevoc-backend"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write                    # open/close issues on failure/recovery
+
+concurrency:
+  group: demo-probe
+  cancel-in-progress: true
+
+env:
+  FRONTEND_URL: ${{ vars.CEVOC_FRONTEND_URL || 'https://calm-water-028cfd500.3.azurestaticapps.net' }}
+  API_BASE: ${{ vars.CEVOC_API_BASE_URL || 'https://cevoc-backend.ambitiousdesert-0ce8e229.australiaeast.azurecontainerapps.io' }}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Skip the scheduled/workflow_run probe if the deploy failed
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install @playwright/test@1.49.1
+          npx playwright install --with-deps chromium webkit
+
+      - name: Fetch demo cases
+        id: cases
+        run: |
+          curl -sf "$API_BASE/api/demo/cases" -o /tmp/demo-cases.json
+          echo "count=$(python3 -c 'import json; d=json.load(open("/tmp/demo-cases.json")); print(sum(len(c) for p in d.get("programs",[]) for g in p.get("groups",[]) for c in [g.get("cases",[])]))')" >> "$GITHUB_OUTPUT"
+          echo "Demo cases fetched: $(cat /tmp/demo-cases.json | python3 -c 'import json,sys; d=json.load(sys.stdin); [print(f"  {c[\"number\"]}: {c.get(\"title\",\"?\")}") for p in d.get("programs",[]) for g in p.get("groups",[]) for c in g.get("cases",[])]')"
+
+      - name: Run demo probe
+        run: npx playwright test --config=.github/demo-probe/playwright.config.js --reporter=list
+        env:
+          DEMO_CASES_FILE: /tmp/demo-cases.json
+
+      - name: Save screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-probe-screenshots
+          path: test-results/
+          retention-days: 7
+
+      - name: Open or close issue on result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          ISSUE_TITLE="Demo probe failure"
+          EXISTING=$(gh issue list --state open --search "$ISSUE_TITLE" --json number --jq '.[0].number // empty')
+
+          if [ "$RESULT" != "success" ]; then
+            BODY="Demo probe failed at $(date -u +%Y-%m-%dT%H:%M:%SZ).
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Commit: ${{ github.sha }}
+
+          Check the run logs and screenshots for details."
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "$BODY"
+            else
+              gh issue create --title "$ISSUE_TITLE" --body "$BODY" --label "bug"
+            fi
+          elif [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "Demo probe passed at $(date -u +%Y-%m-%dT%H:%M:%SZ). Closing."
+          fi

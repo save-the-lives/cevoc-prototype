@@ -1,4 +1,4 @@
-name: Demo video endpoint check
+name: "Demo video endpoint check (superseded by demo-probe.yml)"
 on:
   workflow_dispatch:
 permissions:
