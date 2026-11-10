@@ -1,0 +1,62 @@
+name: Demo video endpoint check
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Test demo video endpoint
+        env:
+          API_BASE: ${{ vars.CEVOC_API_BASE_URL || 'https://cevoc-backend.ambitiousdesert-0ce8e229.australiaeast.azurecontainerapps.io' }}
+        run: |
+          set -euo pipefail
+          echo "### Demo video endpoint check" >> "$GITHUB_STEP_SUMMARY"
+          echo "API_BASE: $API_BASE" >> "$GITHUB_STEP_SUMMARY"
+
+          # 1. Check demo cases endpoint
+          echo "--- Demo cases ---"
+          status=$(curl -s -o /tmp/cases.json -w "%{http_code}" "$API_BASE/api/demo/cases" -H "Accept: application/json")
+          echo "Demo cases: HTTP $status" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$status" = "200" ]; then
+            python3 -c "
+          import json
+          d = json.load(open('/tmp/cases.json'))
+          progs = d.get('programs', [])
+          print(f'Available: {d.get(\"available\")}, programs: {len(progs)}')
+          for p in progs:
+            for g in p.get('groups', []):
+              for c in g.get('cases', []):
+                print(f'  {c[\"number\"]}: {c.get(\"title\",\"?\")} plate={c.get(\"plate\",\"none\")}')
+          " | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # 2. Check video endpoint (HEAD only — don't download the whole blurred video)
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "--- Video endpoint ---" | tee -a "$GITHUB_STEP_SUMMARY"
+          for vid in video-1.mp4 video-2.mp4; do
+            url="$API_BASE/api/demo/media/video/$vid"
+            status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$url")
+            echo "$vid: HTTP $status" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
+          # 3. Run a full SSE lookup on case 0001 and check for video evidence
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "--- SSE lookup case 0001 ---" | tee -a "$GITHUB_STEP_SUMMARY"
+          curl -s --max-time 30 "$API_BASE/api/penalty-lookups/stream" \
+            -H "Content-Type: application/json" \
+            -H "Accept: text/event-stream" \
+            -d '{"infringementNumber":"0000000001","offenceDate":"2026-03-14","registration":"ABC123"}' \
+            -o /tmp/sse.txt || true
+          grep -o 'event:[a-z]*' /tmp/sse.txt | sort | uniq -c | tee -a "$GITHUB_STEP_SUMMARY"
+          # Show evidence URLs
+          python3 -c "
+          import json, re
+          text = open('/tmp/sse.txt').read()
+          for m in re.finditer(r'event:evidence\ndata:(.*)', text):
+            d = json.loads(m.group(1))
+            for e in d.get('evidence', []):
+              print(f'  {e[\"kind\"]}: {e.get(\"url\",\"?\")[:120]}')
+          " 2>/dev/null | tee -a "$GITHUB_STEP_SUMMARY"
