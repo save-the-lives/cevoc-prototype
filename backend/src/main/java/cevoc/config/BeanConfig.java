@@ -149,12 +149,16 @@ public class BeanConfig {
 
     /**
      * Privacy blur (ADR 0017). Core feature — always on for both live and demo paths.
-     * The Python pipeline (detect faces with YuNet, detect plates, render blur) runs as a subprocess.
-     * {@code blur-pipeline/} in the container holds the scripts and the YuNet model.
+     * Default: full-file blur then serve ({@link cevoc.adapter.out.blur.ProcessBlurAdapter}).
+     * HLS streaming (segments served progressively): set {@code CEVOC_BLUR_STREAMING=true}.
      */
     @Bean
     cevoc.application.port.out.BlurPort blurPort(
-            @Value("${cevoc.blur.scripts-dir:blur-pipeline}") String scriptsDir) {
+            @Value("${cevoc.blur.scripts-dir:blur-pipeline}") String scriptsDir,
+            @Value("${cevoc.blur.streaming:false}") boolean streaming) {
+        if (streaming) {
+            return new cevoc.adapter.out.blur.StreamingBlurAdapter(java.nio.file.Path.of(scriptsDir));
+        }
         return new cevoc.adapter.out.blur.ProcessBlurAdapter(java.nio.file.Path.of(scriptsDir));
     }
 }
