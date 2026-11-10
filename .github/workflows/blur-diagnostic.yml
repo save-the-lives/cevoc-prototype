@@ -1,0 +1,116 @@
+name: Blur pipeline diagnostic
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage sample videos for Docker build
+        run: mkdir -p backend/samples && cp frontend/public/samples/*.mp4 backend/samples/
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          load: true
+          tags: cevoc-blur-diag:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+
+      - name: Pre-check — OpenCV video read
+        run: |
+          echo "### Pre-check: OpenCV VideoCapture" >> "$GITHUB_STEP_SUMMARY"
+          docker run --rm cevoc-blur-diag:latest \
+            python3 -c "import cv2; cap = cv2.VideoCapture('/app/samples/video-1.mp4'); print('opened:', cap.isOpened(), 'frames:', cap.get(5)); cap.release()" \
+            2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Step 1 — detect_faces.py
+        run: |
+          echo "### Step 1: detect_faces.py" >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          docker run --rm cevoc-blur-diag:latest \
+            timeout 60 python3 -I /app/blur-pipeline/detect_faces.py /app/samples/video-1.mp4 --output /tmp/face-regions.json \
+            2>&1 | tee /tmp/step1.log
+          rc=$?
+          echo "Exit code: $rc" | tee -a "$GITHUB_STEP_SUMMARY"
+          cat /tmp/step1.log >> "$GITHUB_STEP_SUMMARY"
+          if [ $rc -eq 124 ]; then echo "**TIMED OUT after 60s**" | tee -a "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Step 2 — detect_plates.py
+        run: |
+          echo "### Step 2: detect_plates.py" >> "$GITHUB_STEP_SUMMARY"
+          # Need face-regions from step 1; run both in one container
+          set +e
+          docker run --rm cevoc-blur-diag:latest \
+            bash -c '
+              timeout 60 python3 -I /app/blur-pipeline/detect_faces.py /app/samples/video-1.mp4 --output /tmp/face-regions.json 2>&1
+              echo "--- detect_plates ---"
+              timeout 60 python3 -I /app/blur-pipeline/detect_plates.py /app/samples/video-1.mp4 --offending ABC123 --output /tmp/plate-regions.json 2>&1
+              echo "exit: $?"
+            ' 2>&1 | tee /tmp/step2.log
+          rc=$?
+          echo "Exit code: $rc" | tee -a "$GITHUB_STEP_SUMMARY"
+          cat /tmp/step2.log >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Step 3+4 — merge_tracks.py + render_blur.py
+        run: |
+          echo "### Steps 3+4: merge_tracks + render_blur" >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          docker run --rm cevoc-blur-diag:latest \
+            bash -c '
+              echo "=== detect_faces ==="
+              timeout 60 python3 -I /app/blur-pipeline/detect_faces.py /app/samples/video-1.mp4 --output /tmp/face-regions.json 2>&1
+              echo "exit: $?"
+              echo "=== detect_plates ==="
+              timeout 60 python3 -I /app/blur-pipeline/detect_plates.py /app/samples/video-1.mp4 --offending ABC123 --output /tmp/plate-regions.json 2>&1
+              echo "exit: $?"
+              echo "=== merge_tracks ==="
+              timeout 60 python3 -I /app/blur-pipeline/merge_tracks.py /tmp/face-regions.json /tmp/plate-regions.json --output /tmp/merged-regions.json 2>&1
+              echo "exit: $?"
+              echo "=== render_blur ==="
+              timeout 60 python3 -I /app/blur-pipeline/render_blur.py /app/samples/video-1.mp4 /tmp/merged-regions.json --output /tmp/blurred.mp4 2>&1
+              echo "exit: $?"
+              ls -lh /tmp/blurred.mp4 2>/dev/null || echo "No output file"
+            ' 2>&1 | tee /tmp/step34.log
+          rc=$?
+          echo "Exit code: $rc" | tee -a "$GITHUB_STEP_SUMMARY"
+          cat /tmp/step34.log >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Full pipeline timing
+        run: |
+          echo "### Full pipeline timing" >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          docker run --rm cevoc-blur-diag:latest \
+            bash -c '
+              start=$(date +%s)
+              echo "--- detect_faces ---"
+              t0=$(date +%s)
+              timeout 60 python3 -I /app/blur-pipeline/detect_faces.py /app/samples/video-1.mp4 --output /tmp/face-regions.json 2>&1
+              echo "  exit: $? time: $(( $(date +%s) - t0 ))s"
+
+              echo "--- detect_plates ---"
+              t0=$(date +%s)
+              timeout 60 python3 -I /app/blur-pipeline/detect_plates.py /app/samples/video-1.mp4 --offending ABC123 --output /tmp/plate-regions.json 2>&1
+              echo "  exit: $? time: $(( $(date +%s) - t0 ))s"
+
+              echo "--- merge_tracks ---"
+              t0=$(date +%s)
+              timeout 60 python3 -I /app/blur-pipeline/merge_tracks.py /tmp/face-regions.json /tmp/plate-regions.json --output /tmp/merged-regions.json 2>&1
+              echo "  exit: $? time: $(( $(date +%s) - t0 ))s"
+
+              echo "--- render_blur ---"
+              t0=$(date +%s)
+              timeout 60 python3 -I /app/blur-pipeline/render_blur.py /app/samples/video-1.mp4 /tmp/merged-regions.json --output /tmp/blurred.mp4 2>&1
+              echo "  exit: $? time: $(( $(date +%s) - t0 ))s"
+
+              total=$(( $(date +%s) - start ))
+              echo "--- total: ${total}s ---"
+              ls -lh /tmp/blurred.mp4 2>/dev/null || echo "No output file"
+            ' 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
