@@ -33,28 +33,9 @@ export default function EvidenceVideo({ item }) {
     setQuality(-1);
 
     if (!isHls(item.url)) {
-      // Pre-flight: check if the video is available (blur may still be processing on the server).
       setPreparing(false);
-      (async () => {
-        try {
-          const res = await fetch(item.url, { method: 'HEAD' });
-          if (dead) return;
-          if (res.ok) {
-            video.src = item.url;
-            setStatus('ready');
-          } else if (res.status === 451) {
-            // Server-side blur could not prepare the video for safe viewing.
-            fail('This video is being prepared for safe viewing. It may take a moment — try again shortly.');
-            setPreparing(true);
-          } else if (res.status === 503) {
-            fail('The video service is temporarily unavailable. Try again in a moment.');
-          } else {
-            fail('This video could not be loaded.');
-          }
-        } catch {
-          if (!dead) fail('Could not reach the server. Check your connection and try again.');
-        }
-      })();
+      video.src = item.url;
+      setStatus('ready'); // preload=none: nothing fetched until play; failures surface via onError
       return () => { dead = true; video.removeAttribute('src'); video.load(); };
     }
 
@@ -153,7 +134,15 @@ export default function EvidenceVideo({ item }) {
           onPlay={() => { setPlaying(true); hlsRef.current?.startLoad(); }}
           onPause={() => setPlaying(false)}
           onTimeUpdate={(e) => setTime({ t: e.currentTarget.currentTime, d: e.currentTarget.duration || 0 })}
-          onError={() => { if (!hlsRef.current && videoRef.current?.getAttribute('src')) fail('This video could not be loaded. Try again shortly.'); }}
+          onError={() => {
+            if (hlsRef.current || !videoRef.current?.getAttribute('src')) return;
+            // The <video> error doesn't give us the HTTP status. Try a fetch to distinguish blur-preparing from other failures.
+            fetch(item.url, { method: 'GET', mode: 'cors' }).then(res => {
+              if (res.status === 451) { fail('This video is being prepared for safe viewing. It may take a moment — try again shortly.'); setPreparing(true); }
+              else if (res.status === 503) fail('The video service is temporarily unavailable. Try again in a moment.');
+              else fail('This video could not be loaded. Try again shortly.');
+            }).catch(() => fail('This video could not be loaded. Try again shortly.'));
+          }}
         >
           {item.captionsUrl && <track kind="captions" src={item.captionsUrl} srcLang={item.captionsLang || 'en'} label="English captions" />}
           Your browser does not support embedded video.
