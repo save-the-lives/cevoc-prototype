@@ -141,7 +141,7 @@ def ocr_plate_region(frame, x, y, w, h, pad=5):
 # Main pipeline
 # ---------------------------------------------------------------------------
 
-def process_video(video_path, offending_plate="ABC123", every_n=2):
+def process_video(video_path, offending_plate="ABC123", every_n=1):
     """Process a video, detect plates, track, OCR once per track."""
     scripts_dir = Path(__file__).parent
     net = load_yolo(scripts_dir)
@@ -313,8 +313,8 @@ def main():
                         help="Offending plate text (default: ABC123)")
     parser.add_argument("--output", default=None,
                         help="Output JSON file")
-    parser.add_argument("--every", type=int, default=2,
-                        help="Process every Nth frame (default: 2)")
+    parser.add_argument("--every", type=int, default=1,
+                        help="Process every Nth frame (default: 1, every frame)")
     args = parser.parse_args()
 
     result = process_video(args.video, args.offending, args.every)

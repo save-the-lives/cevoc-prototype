@@ -25,7 +25,7 @@ def load_regions(path):
     return track, by_frame
 
 
-def interpolate_regions(by_frame, total_frames, hold_frames=3):
+def interpolate_regions(by_frame, total_frames, hold_frames=5):
     filled = dict(by_frame)
     for frame_num in sorted(by_frame.keys()):
         for det in by_frame[frame_num]:
