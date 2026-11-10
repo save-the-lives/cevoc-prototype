@@ -21,14 +21,20 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
+print("[detect_plates] Starting, importing cv2...", flush=True)
 import cv2
+print("[detect_plates] cv2 imported, importing numpy...", flush=True)
 import numpy as np
+print("[detect_plates] numpy imported", flush=True)
 
 try:
+    print("[detect_plates] Importing pytesseract...", flush=True)
     import pytesseract
     HAS_OCR = True
+    print("[detect_plates] pytesseract imported (OCR available)", flush=True)
 except ImportError:
     HAS_OCR = False
+    print("[detect_plates] pytesseract not available (no OCR)", flush=True)
 
 
 def preprocess_for_plates(frame):
@@ -202,10 +208,12 @@ def detect_plates_in_frame(frame, gray):
 
 def process_video(video_path, offending_plate="ABC123", every_n=2):
     """Process a video, detect plates in every Nth frame, return region track."""
+    print(f"[detect_plates] Opening video: {video_path}", flush=True)
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         print(f"Error: cannot open {video_path}", file=sys.stderr)
         sys.exit(1)
+    print("[detect_plates] Video opened", flush=True)
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
