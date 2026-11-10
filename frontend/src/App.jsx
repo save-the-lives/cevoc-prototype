@@ -115,8 +115,9 @@ export default function App() {
       const c = findCase(catalog, number);
       if (c) {
         const query = { infringementNumber: c.number, offenceDate: c.offenceDate };
-        saveSession(query, undefined);
-        begin(query, undefined, { fresh: true });
+        const reg = c.plate || undefined;
+        saveSession(query, reg);
+        begin(query, reg, { fresh: true });
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps

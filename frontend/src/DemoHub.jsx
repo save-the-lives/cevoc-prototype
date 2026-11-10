@@ -45,7 +45,7 @@ function CaseCard({ c }) {
           </div>
         ))}
       </dl>
-      {c.plate && <p className="demo-plate">Vehicle registration number to type when asked: <code>{c.plate}</code>. Any other registration shows the refusal.</p>}
+      {c.plate && <p className="demo-plate">Vehicle registration number: <code>{c.plate}</code> (sent automatically from this page; any other registration shows the refusal).</p>}
       <p className="demo-open">
         <a className="btn primary" href={`/?demo=${c.number}`}>Open this case<span className="sr-only"> {c.number}: {c.title}</span></a>
       </p>
