@@ -4,6 +4,7 @@ Status: ACCEPTED. Spike proven end-to-end 2026-11-10; server-side blur wired int
 Date recorded: 2026-11-05. Updated: 2026-11-10.
 Owner approval: 2026-11-10 — blur is a core feature, always on, no toggle. Pre-blurred static files rejected ("must be rendered like live").
 Paper: `docs/research/privacy-blurring.md`.
+Licence note: `docs/research/blur-pipeline-licences.md` — every component's licence, implications for a public TfNSW service, and open questions for legal.
 
 ## Question
 Evidence video shown to the motorist may show the offending vehicle's plate. Every human face and every other vehicle's plate must be blurred so it cannot be seen or recovered. The same question applies to still images. Upstream blurring is planned separately. Video is not available from the legacy site today (record 0007).
@@ -14,7 +15,7 @@ Evidence video shown to the motorist may show the offending vehicle's plate. Eve
 3. Content-based verification on every video; a manifest or signed upstream flag is only a hint. Blur only what detectors still see; never blur twice.
 4. Detect once into a versioned timed region track (JSON) kept in restricted storage; merge with the clean video on the server into ONE stream; pre-render at ingest with region-only (smart) segment rendering, lazy merge only as a fallback; cache the merged output. The browser receives only the merged blurred stream; the clean video and the track are never sent to it.
 5. A `BlurPort` (detect, render, verify) with swappable adapters under `adapter.out.blur`; default adapter denies everything. Per-video `RedactionStatus` maps onto the statuses in 0007.
-6. Licence-safe detectors first (YuNet, MIT; an Apache-licensed plate detector). No AGPL (Ultralytics YOLO, OpenALPR) and no non-commercial weights (InsightFace) unless the owner buys a licence. Cloud detection only as an optional adapter.
+6. Licence-safe detectors first (YuNet, MIT; an Apache-licensed plate detector). No AGPL (Ultralytics YOLO, OpenALPR) and no non-commercial weights (InsightFace) unless the owner buys a licence. Cloud detection only as an optional adapter. **Update 2026-11-10:** Owner accepted AGPL YOLOv8n for the prototype to get blur working; licence decision deferred to productionisation (see `docs/research/blur-pipeline-licences.md`).
 7. Offending plate revealed only on a confident match (metadata plus exact plate read); otherwise blur everything.
 8. One shared detect-and-verify core for video and stills, with two renderers.
 
