@@ -184,7 +184,7 @@ def deduplicate_plates(plates, overlap_thresh=0.5):
     return kept
 
 
-def detect_plates_in_frame(frame, gray):
+def detect_plates_in_frame(frame, gray, use_ocr=False):
     """Run all detection methods and merge results."""
     h, w = frame.shape[:2]
     binaries, _ = preprocess_for_plates(frame)
@@ -196,9 +196,9 @@ def detect_plates_in_frame(frame, gray):
     # Deduplicate
     plates = deduplicate_plates(all_plates)
 
-    # OCR each plate
+    # OCR each plate (disabled by default — too slow in container, ~2s per region)
     for p in plates:
-        text = ocr_plate(gray, p["x"], p["y"], p["w"], p["h"])
+        text = ocr_plate(gray, p["x"], p["y"], p["w"], p["h"]) if use_ocr else None
         p["plate_text"] = text
         # Drop the contour (not serializable)
         p.pop("contour", None)
@@ -206,7 +206,7 @@ def detect_plates_in_frame(frame, gray):
     return plates
 
 
-def process_video(video_path, offending_plate="ABC123", every_n=2):
+def process_video(video_path, offending_plate="ABC123", every_n=2, use_ocr=False):
     """Process a video, detect plates in every Nth frame, return region track."""
     print(f"[detect_plates] Opening video: {video_path}", flush=True)
     cap = cv2.VideoCapture(str(video_path))
@@ -240,7 +240,7 @@ def process_video(video_path, offending_plate="ABC123", every_n=2):
 
         if frame_num % every_n == 0:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            plates = detect_plates_in_frame(frame, gray)
+            plates = detect_plates_in_frame(frame, gray, use_ocr=use_ocr)
             t_sec = round(frame_num / fps, 3)
             if plates:
                 all_detections.append((frame_num, t_sec, plates))
@@ -328,7 +328,7 @@ def process_video(video_path, offending_plate="ABC123", every_n=2):
         "duration_s": round(duration, 3),
         "offending_plate": offending_plate,
         "detection_method": "contour-based (OpenCV, no AGPL models)",
-        "ocr": "tesseract" if HAS_OCR else "none",
+        "ocr": "tesseract" if (use_ocr and HAS_OCR) else "none (disabled for speed)",
         "regions": regions,
         "stats": {
             "frames_processed": frame_num // every_n,
@@ -348,9 +348,10 @@ def main():
     parser.add_argument("--offending", default="ABC123", help="Offending plate text (default: ABC123)")
     parser.add_argument("--output", default=None, help="Output JSON file (default: stdout + plate-regions.json)")
     parser.add_argument("--every", type=int, default=2, help="Process every Nth frame (default: 2)")
+    parser.add_argument("--ocr", action="store_true", help="Enable tesseract OCR (slow, disabled by default)")
     args = parser.parse_args()
 
-    result = process_video(args.video, args.offending, args.every)
+    result = process_video(args.video, args.offending, args.every, use_ocr=args.ocr)
 
     # Print summary
     print(f"\nResults:")
