@@ -152,6 +152,7 @@ export default function EvidenceVideo({ item }) {
           className="media-video"
           controls
           playsInline
+          webkit-playsinline=""
           preload="none"
           poster={item.posterUrl}
           aria-label={item.title}
