@@ -61,6 +61,6 @@ public class DemoDataConfig {
     @Bean
     RouterFunction<ServerResponse> demoRoutes(DemoCatalog catalog, BlurPort blur,
             @Value("${cevoc.blur.samples-dir:frontend/public/samples}") String samplesDir) {
-        return DemoRoutes.routes(catalog, catalog, blur, new ClasspathVideoSource(Path.of(samplesDir)));
+        return DemoRoutes.routes(catalog, catalog, blur, new ClasspathVideoSource(java.nio.file.Path.of(samplesDir)));
     }
 }
