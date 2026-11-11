@@ -2,7 +2,7 @@ using '../main.bicep'
 
 param environment = 'dev'
 param baseName = 'cevoc'
-param location = 'southeastasia'
+param location = 'australiasoutheast'
 param springProfile = 'dev'
 param imageTag = 'latest'
 param enableFrontDoor = false
