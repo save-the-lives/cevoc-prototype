@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   validate:
-    name: Lint, validate & what-if
+    name: Lint, validate & deploy
     runs-on: ubuntu-latest
     env:
       RG_NAME: rg-cevoc-dev
@@ -30,29 +30,10 @@ jobs:
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
 
-      # Step 1: Lint — catches syntax/type errors offline
       - name: Bicep lint & build
         run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
 
-      # Step 2: Validate — ARM checks the template against the subscription
-      - name: Validate deployment
-        run: |
-          az deployment group validate \
-            --resource-group "$RG_NAME" \
-            --template-file infra/azure/main.bicep \
-            --parameters infra/azure/parameters/dev.bicepparam \
-            --output table
-
-      # Step 3: What-if — show what would be created (no actual deploy)
-      - name: What-if (dry run)
-        run: |
-          az deployment group what-if \
-            --resource-group "$RG_NAME" \
-            --template-file infra/azure/main.bicep \
-            --parameters infra/azure/parameters/dev.bicepparam \
-            --output table
-
-      # Step 4: Clean stale resources from failed prior deploys
+      # When deploying: clean first, then deploy (which validates internally)
       - name: Clean stale resources
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
@@ -63,13 +44,12 @@ jobs:
               echo "  Deleting: $id"
               az resource delete --ids "$id" --output none 2>/dev/null || true
             done
-            echo "  Waiting for deletions..."
-            sleep 30
+            echo "  Waiting for deletions to propagate..."
+            sleep 60
           else
             echo "  Resource group is clean."
           fi
 
-      # Step 5: Deploy (only on manual trigger with deploy=true)
       - name: Deploy to rg-cevoc-dev
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
@@ -78,4 +58,23 @@ jobs:
             --template-file infra/azure/main.bicep \
             --parameters infra/azure/parameters/dev.bicepparam \
             --mode Incremental \
+            --output table
+
+      # When not deploying: validate and what-if only
+      - name: Validate deployment
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.deploy != 'true'
+        run: |
+          az deployment group validate \
+            --resource-group "$RG_NAME" \
+            --template-file infra/azure/main.bicep \
+            --parameters infra/azure/parameters/dev.bicepparam \
+            --output table
+
+      - name: What-if (dry run)
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.deploy != 'true'
+        run: |
+          az deployment group what-if \
+            --resource-group "$RG_NAME" \
+            --template-file infra/azure/main.bicep \
+            --parameters infra/azure/parameters/dev.bicepparam \
             --output table
