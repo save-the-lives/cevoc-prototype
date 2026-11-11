@@ -1,0 +1,8 @@
+[
+  { "ParameterKey": "Environment",              "ParameterValue": "prod" },
+  { "ParameterKey": "ImageUri",                 "ParameterValue": "CHANGE_ME" },
+  { "ParameterKey": "CertificateArn",           "ParameterValue": "CHANGE_ME" },
+  { "ParameterKey": "CloudFrontCertificateArn", "ParameterValue": "CHANGE_ME" },
+  { "ParameterKey": "DomainName",               "ParameterValue": "CHANGE_ME" },
+  { "ParameterKey": "TemplateBaseUrl",          "ParameterValue": "CHANGE_ME" }
+]

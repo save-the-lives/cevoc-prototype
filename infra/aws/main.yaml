@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CEVOC — Root stack (orchestrates nested stacks)
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+  ImageUri:
+    Type: String
+    Description: Full ECR image URI (account.dkr.ecr.region.amazonaws.com/repo:tag)
+  CertificateArn:
+    Type: String
+    Description: ACM certificate ARN for HTTPS (ALB)
+  CloudFrontCertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM certificate ARN in us-east-1 (CloudFront, prod only)
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Custom domain for CloudFront (optional)
+  TemplateBaseUrl:
+    Type: String
+    Description: S3 URL prefix where nested templates are uploaded (e.g. https://bucket.s3.amazonaws.com/cevoc)
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  Vpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub ${TemplateBaseUrl}/vpc.yaml
+      Parameters:
+        Environment: !Ref Environment
+
+  Ecr:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub ${TemplateBaseUrl}/ecr.yaml
+      Parameters:
+        Environment: !Ref Environment
+
+  Secrets:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub ${TemplateBaseUrl}/secrets.yaml
+      Parameters:
+        Environment: !Ref Environment
+
+  Monitoring:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub ${TemplateBaseUrl}/monitoring.yaml
+      Parameters:
+        Environment: !Ref Environment
+
+  Alb:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: Vpc
+    Properties:
+      TemplateURL: !Sub ${TemplateBaseUrl}/alb.yaml
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !GetAtt Vpc.Outputs.VpcId
+        PublicSubnetIds: !GetAtt Vpc.Outputs.PublicSubnetIds
+        CertificateArn: !Ref CertificateArn
+
+  Ecs:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: [Alb, Secrets, Monitoring]
+    Properties:
+      TemplateURL: !Sub ${TemplateBaseUrl}/ecs.yaml
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !GetAtt Vpc.Outputs.VpcId
+        PrivateSubnetIds: !GetAtt Vpc.Outputs.PrivateSubnetIds
+        TargetGroupArn: !GetAtt Alb.Outputs.TargetGroupArn
+        AlbSecurityGroupId: !GetAtt Alb.Outputs.AlbSecurityGroupId
+        ImageUri: !Ref ImageUri
+        TaskRoleArn: !GetAtt Secrets.Outputs.TaskRoleArn
+        TaskExecutionRoleArn: !GetAtt Secrets.Outputs.TaskExecutionRoleArn
+        SecretArn: !GetAtt Secrets.Outputs.SecretArn
+        LogGroupName: !GetAtt Monitoring.Outputs.LogGroupName
+
+  CloudFront:
+    Type: AWS::CloudFormation::Stack
+    Condition: IsProd
+    DependsOn: Alb
+    Properties:
+      TemplateURL: !Sub ${TemplateBaseUrl}/cloudfront.yaml
+      Parameters:
+        Environment: !Ref Environment
+        AlbDnsName: !GetAtt Alb.Outputs.AlbDnsName
+        CertificateArn: !Ref CloudFrontCertificateArn
+        DomainName: !Ref DomainName
+
+Outputs:
+  AlbDnsName:
+    Value: !GetAtt Alb.Outputs.AlbDnsName
+  EcrRepositoryUri:
+    Value: !GetAtt Ecr.Outputs.RepositoryUri
+  CloudFrontDomain:
+    Condition: IsProd
+    Value: !GetAtt CloudFront.Outputs.DistributionDomainName

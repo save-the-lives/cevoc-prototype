@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CEVOC — CloudWatch log group and alarms
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+  ClusterName:
+    Type: String
+    Default: ''
+  ServiceName:
+    Type: String
+    Default: ''
+  AlbArn:
+    Type: String
+    Default: ''
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+  HasService: !Not [!Equals [!Ref ServiceName, '']]
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/cevoc-${Environment}
+      RetentionInDays: !If [IsProd, 90, 14]
+      Tags:
+        - Key: Project
+          Value: cevoc
+        - Key: Environment
+          Value: !Ref Environment
+
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Condition: IsProd
+    Properties:
+      TopicName: !Sub cevoc-${Environment}-alarms
+      Tags:
+        - Key: Project
+          Value: cevoc
+
+  CpuAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasService
+    Properties:
+      AlarmName: !Sub cevoc-${Environment}-cpu-high
+      AlarmDescription: ECS CPU utilisation above 80% for 5 minutes
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref ServiceName
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions: !If [IsProd, [!Ref AlarmTopic], []]
+
+  MemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasService
+    Properties:
+      AlarmName: !Sub cevoc-${Environment}-memory-high
+      AlarmDescription: ECS memory utilisation above 85% for 5 minutes
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref ClusterName
+        - Name: ServiceName
+          Value: !Ref ServiceName
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions: !If [IsProd, [!Ref AlarmTopic], []]
+
+Outputs:
+  LogGroupName:
+    Value: !Ref LogGroup
+  LogGroupArn:
+    Value: !GetAtt LogGroup.Arn

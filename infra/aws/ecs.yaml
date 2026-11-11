@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CEVOC — ECS Fargate cluster, service and task definition
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  TargetGroupArn:
+    Type: String
+  AlbSecurityGroupId:
+    Type: String
+  ImageUri:
+    Type: String
+    Description: Full ECR image URI (account.dkr.ecr.region.amazonaws.com/repo:tag)
+  TaskRoleArn:
+    Type: String
+  TaskExecutionRoleArn:
+    Type: String
+  SecretArn:
+    Type: String
+  LogGroupName:
+    Type: String
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub cevoc-${Environment}
+      ClusterSettings:
+        - Name: containerInsights
+          Value: !If [IsProd, enabled, disabled]
+      Tags:
+        - Key: Project
+          Value: cevoc
+        - Key: Environment
+          Value: !Ref Environment
+
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: CEVOC ECS tasks — accepts 8080 from ALB only
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref AlbSecurityGroupId
+      Tags:
+        - Key: Name
+          Value: !Sub cevoc-${Environment}-ecs-sg
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub cevoc-${Environment}
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: !If [IsProd, '2048', '1024']
+      Memory: !If [IsProd, '4096', '2048']
+      TaskRoleArn: !Ref TaskRoleArn
+      ExecutionRoleArn: !Ref TaskExecutionRoleArn
+      ContainerDefinitions:
+        - Name: cevoc
+          Image: !Ref ImageUri
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+            - Name: SPRING_PROFILES_ACTIVE
+              Value: !Ref Environment
+            - Name: SECRETS_ARN
+              Value: !Ref SecretArn
+            - Name: SERVER_PORT
+              Value: '8080'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroupName
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: cevoc
+          HealthCheck:
+            Command: ['CMD-SHELL', 'curl -f http://localhost:8080/actuator/health || exit 1']
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+      Tags:
+        - Key: Project
+          Value: cevoc
+
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub cevoc-${Environment}
+      Cluster: !Ref Cluster
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !If [IsProd, 2, 1]
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: !Ref PrivateSubnetIds
+          SecurityGroups:
+            - !Ref TaskSecurityGroup
+      LoadBalancers:
+        - ContainerName: cevoc
+          ContainerPort: 8080
+          TargetGroupArn: !Ref TargetGroupArn
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+      Tags:
+        - Key: Project
+          Value: cevoc
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  ClusterArn:
+    Value: !GetAtt Cluster.Arn
+  ServiceName:
+    Value: !GetAtt Service.Name
