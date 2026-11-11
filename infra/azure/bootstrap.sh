@@ -94,6 +94,18 @@ for ROLE in "Contributor" "Role Based Access Control Administrator" "Key Vault C
   fi
 done
 
+# 4b. Subscription-level Key Vault purge permission (needed for teardown)
+echo "--- Granting vault purge at subscription level..."
+SUB_SCOPE="/subscriptions/$(az account show --query id -o tsv)"
+PURGE_ROLE="Key Vault Contributor"
+EXISTING_SUB_ROLE=$(az role assignment list --assignee "$CLIENT_ID" --role "$PURGE_ROLE" --scope "$SUB_SCOPE" --query '[0].id' -o tsv 2>/dev/null || true)
+if [[ -z "$EXISTING_SUB_ROLE" ]]; then
+  az role assignment create --assignee "$CLIENT_ID" --role "$PURGE_ROLE" --scope "$SUB_SCOPE" --output none
+  echo "    Assigned: ${PURGE_ROLE} (subscription scope, for vault purge)"
+else
+  echo "    Already assigned: ${PURGE_ROLE} (subscription scope)"
+fi
+
 # 5. GitHub secret
 echo "--- Saving ${SECRET_NAME} to GitHub repo secrets..."
 gh secret set "$SECRET_NAME" --repo "$REPO" --body "$CLIENT_ID"

@@ -58,7 +58,15 @@ jobs:
             FAIL=1
           fi
 
-          # 3. Check resource group exists
+          # 3. Check Container App Environment count in target region
+          echo "Checking Container App Environments in target region..."
+          TARGET_REGION=$(grep "param location" infra/azure/parameters/dev.bicepparam | grep -oP "'[^']+'" | tr -d "'" || echo "australiasoutheast")
+          ENV_COUNT=$(az containerapp env list --query "[?location=='${TARGET_REGION}'] | length(@)" -o tsv 2>/dev/null || echo "0")
+          if [ "$ENV_COUNT" -ge 1 ]; then
+            echo "::warning::$ENV_COUNT Container App Environment(s) already in $TARGET_REGION. Trial subscriptions allow 1 per region — deploy may fail."
+          fi
+
+          # 4. Check resource group exists
           echo "Checking resource group..."
           RG_EXISTS=$(az group exists --name "$RG_NAME" 2>/dev/null || echo "false")
           if [ "$RG_EXISTS" != "true" ]; then
