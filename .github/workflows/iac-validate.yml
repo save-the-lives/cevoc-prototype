@@ -58,13 +58,31 @@ jobs:
           echo "  Waiting for deletions to propagate..."
           sleep 30
 
+      - name: Find existing Container Apps environment
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        id: find-env
+        run: |
+          # Auto-detect any existing Container Apps environment in the subscription
+          ENV_ID=$(az containerapp env list --query '[0].id' -o tsv 2>/dev/null || true)
+          if [ -n "$ENV_ID" ]; then
+            echo "Found existing environment: $ENV_ID"
+            echo "env_id=$ENV_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "No existing environment found — will create one"
+            echo "env_id=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy to rg-cevoc-dev
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
+          EXTRA=""
+          if [ -n "${{ steps.find-env.outputs.env_id }}" ]; then
+            EXTRA="existingContainerAppEnvId=${{ steps.find-env.outputs.env_id }}"
+          fi
           az deployment group create \
             --resource-group "$RG_NAME" \
             --template-file infra/azure/main.bicep \
-            --parameters infra/azure/parameters/dev.bicepparam \
+            --parameters infra/azure/parameters/dev.bicepparam $EXTRA \
             --mode Incremental \
             --output table
 

@@ -17,6 +17,9 @@ param appInsightsConnectionString string
 @description('Deploy the blur worker as a separate container app')
 param deployBlurWorker bool = false
 
+@description('Existing Container Apps environment ID. When set, skips creating a new environment (use for trial subscriptions with a 1-env limit).')
+param existingEnvironmentId string = ''
+
 // ---------- Sizing ----------
 var cpuCores = environment == 'prod' ? '2.0' : '1.0'
 var memoryGi = environment == 'prod' ? '4Gi' : '2Gi'
@@ -37,7 +40,8 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
 }
 
 // ---------- Managed Environment ----------
-resource env 'Microsoft.App/managedEnvironments@2023-05-01' = {
+// Skip creating if an existing environment ID is provided (trial sub workaround)
+resource env 'Microsoft.App/managedEnvironments@2023-05-01' = if (existingEnvironmentId == '') {
   name: '${baseName}-env'
   location: location
   tags: tags
@@ -52,6 +56,8 @@ resource env 'Microsoft.App/managedEnvironments@2023-05-01' = {
   }
 }
 
+var envId = existingEnvironmentId != '' ? existingEnvironmentId : env.id
+
 // ---------- Backend Container App ----------
 resource app 'Microsoft.App/containerApps@2023-05-01' = {
   name: '${baseName}-app'
@@ -61,7 +67,7 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
     type: 'SystemAssigned'
   }
   properties: {
-    managedEnvironmentId: env.id
+    managedEnvironmentId: envId
     configuration: {
       ingress: {
         external: true
@@ -141,7 +147,7 @@ resource blurWorker 'Microsoft.App/containerApps@2023-05-01' = if (deployBlurWor
     type: 'SystemAssigned'
   }
   properties: {
-    managedEnvironmentId: env.id
+    managedEnvironmentId: envId
     configuration: {
       registries: [
         {
@@ -179,5 +185,5 @@ output defaultHostName string = app.properties.configuration.ingress.fqdn
 output identityPrincipalId string = app.identity.principalId
 output identityTenantId string = tenant().tenantId
 output appId string = app.id
-output environmentId string = env.id
+output environmentId string = envId
 output blurWorkerPrincipalId string = deployBlurWorker ? blurWorker.identity.principalId : ''
