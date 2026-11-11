@@ -83,6 +83,7 @@ for (const c of allCases) {
 
 // Special deep check for case 0000000001 (the happy-path case).
 test('Case 0000000001: video plays', async ({ page }) => {
+  test.setTimeout(120_000);
   await openCase(page, '0000000001');
 
   // Wait for the video element to appear (it may take time if blur is preparing).
@@ -118,4 +119,54 @@ test('Case 0000000001: video plays', async ({ page }) => {
     path: 'test-results/case-0000000001-video.png',
     fullPage: false,
   });
+});
+
+// Frame-by-frame plate leak check on blurred video.
+// Downloads the blurred video for case 0000000001 and runs the YOLO plate
+// detector on every frame. Fails if any non-offending plate is detected.
+test('Case 0000000001: no plate leaks in blurred video', async ({ page }) => {
+  test.setTimeout(180_000); // plate detection is CPU-intensive
+
+  await openCase(page, '0000000001');
+
+  // Wait for the video element to get a valid src
+  const video = page.locator('video');
+  await video.first().waitFor({ state: 'attached', timeout: 90_000 });
+  await expect(async () => {
+    const src = await video.first().getAttribute('src');
+    expect(src).toBeTruthy();
+    expect(src.length).toBeGreaterThan(0);
+  }).toPass({ timeout: 90_000 });
+
+  const videoSrc = await video.first().getAttribute('src');
+  // Resolve relative URL against the page
+  const videoUrl = new URL(videoSrc, page.url()).href;
+  console.log(`Video URL for leak check: ${videoUrl}`);
+
+  // The leak check runs as a Python subprocess using the same YOLO model
+  // that the blur pipeline uses. The model and script are in the repo.
+  const { execSync } = require('child_process');
+  const scriptPath = path.join(__dirname, 'check_blur_leaks.py');
+  const modelPath = path.join(__dirname, '../../backend/blur-pipeline/yolov8n-plates.onnx');
+  const gridPath = path.join(process.cwd(), 'test-results', 'case-0000000001-blur-grid.png');
+
+  // Ensure test-results dir exists
+  fs.mkdirSync(path.join(process.cwd(), 'test-results'), { recursive: true });
+
+  try {
+    const result = execSync(
+      `python3 -I "${scriptPath}" "${videoUrl}" --model "${modelPath}" --output-grid "${gridPath}" --threshold 0.10`,
+      { timeout: 150_000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    console.log(result);
+  } catch (e) {
+    // Print output even on failure
+    if (e.stdout) console.log(e.stdout);
+    if (e.stderr) console.error(e.stderr);
+    if (e.status === 1) {
+      // Exit code 1 = leaked plates found
+      throw new Error('PLATE LEAK DETECTED: Non-offending plates visible in blurred video. See frame grid artifact for details.');
+    }
+    throw new Error(`Blur leak check failed: ${e.message}`);
+  }
 });

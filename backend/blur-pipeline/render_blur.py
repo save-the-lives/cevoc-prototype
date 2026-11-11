@@ -262,15 +262,29 @@ def main():
                     continue
                 offending_by_frame.setdefault(fn, []).append(det)
 
-    # Verification pass (re-detect on blurred output, re-blur leaks)
+    # Verification loop: re-detect on blurred output, re-blur leaks, up to 3 passes.
+    # Fail-closed: if plates still leak after 3 passes, exit non-zero so the video is never served.
+    MAX_VERIFY_PASSES = 3
     leaked = 0
     if not args.no_verify:
-        leaked, reblurred_path = verify_and_reblur(
-            output_tmp, actual_fps, w, h, offending_plate, scripts_dir,
-            offending_regions=offending_by_frame)
-        if reblurred_path:
-            output_tmp.unlink()
-            output_tmp = reblurred_path
+        for verify_pass in range(1, MAX_VERIFY_PASSES + 1):
+            print(f"[render_blur] Verification pass {verify_pass}/{MAX_VERIFY_PASSES}...", flush=True)
+            leaked, reblurred_path = verify_and_reblur(
+                output_tmp, actual_fps, w, h, offending_plate, scripts_dir,
+                offending_regions=offending_by_frame)
+            if reblurred_path:
+                output_tmp.unlink()
+                output_tmp = reblurred_path
+            if leaked == 0:
+                print(f"[render_blur] Verification CLEAN after pass {verify_pass}", flush=True)
+                break
+        else:
+            if leaked > 0:
+                print(f"[render_blur] FAIL-CLOSED: {leaked} plates still leaked after "
+                      f"{MAX_VERIFY_PASSES} verification passes — refusing to release video",
+                      flush=True)
+                output_tmp.unlink(missing_ok=True)
+                sys.exit(1)
 
     # Re-encode with x264 for web
     print("[render_blur] Encoding final output with x264...", flush=True)
