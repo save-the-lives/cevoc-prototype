@@ -59,9 +59,16 @@ function StageImage({ item, queueState, onZoom }) {
   const [level, setLevel] = useState(0);
   const [broken, setBroken] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef(null);
 
-  // Reset loaded state when switching images
-  useEffect(() => { setLoaded(false); }, [item.url]);
+  // Reset loaded state when switching images, then check if already complete (cached)
+  useEffect(() => {
+    setLoaded(false);
+    const frame = requestAnimationFrame(() => {
+      if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) setLoaded(true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [item.url]);
 
   useEffect(() => {
     if (queueState === STATE.READY) {
@@ -102,7 +109,7 @@ function StageImage({ item, queueState, onZoom }) {
 
   return (
     <button type="button" className="mg-zoom" onClick={onZoom} aria-label={`View larger: ${alt}`}>
-      <img className={`mg-media${loaded ? ' is-loaded' : ''}`} src={src} alt={alt} draggable="false" decoding="async"
+      <img ref={imgRef} className={`mg-media${loaded ? ' is-loaded' : ''}`} src={src} alt={alt} draggable="false" decoding="async"
         onError={() => setBroken(true)} onLoad={() => { setBroken(false); setLoaded(true); }} />
     </button>
   );
@@ -290,7 +297,7 @@ export default function EvidenceGrid({ items }) {
           >
             {item && item.kind === 'VIDEO' ? (
               <Suspense fallback={<div className="mg-state is-loading" aria-busy="true">Loading video&hellip;</div>}>
-                <EvidenceVideo item={item} bare />
+                <EvidenceVideo item={item} bare autoPlay />
               </Suspense>
             ) : item ? (
               <div className="mg-zoom-wrap" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'center center' }}>

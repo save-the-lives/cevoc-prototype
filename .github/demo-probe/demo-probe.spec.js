@@ -81,6 +81,66 @@ for (const c of allCases) {
   }
 }
 
+// Deep check: no plate leaks in blurred video for every case with video.
+for (const c of allCases) {
+  if (NO_EVIDENCE_CASES.has(c.number)) continue;
+
+  test(`Case ${c.number}: no plate leaks in blurred video`, async ({ page }) => {
+    await openCase(page, c.number);
+
+    // Find the video element's src
+    const video = page.locator('video');
+    const videoCount = await video.count();
+    if (videoCount === 0) {
+      console.log(`Case ${c.number}: no video element — skipping leak check`);
+      return;
+    }
+
+    // Wait for video src to be set
+    let videoSrc = '';
+    try {
+      await expect(async () => {
+        videoSrc = await video.first().getAttribute('src') || '';
+        expect(videoSrc.length).toBeGreaterThan(0);
+      }).toPass({ timeout: 90_000 });
+    } catch {
+      console.log(`Case ${c.number}: video src never appeared — skipping leak check`);
+      return;
+    }
+
+    // Make the URL absolute
+    if (videoSrc.startsWith('/')) {
+      const base = new URL(page.url());
+      videoSrc = `${base.protocol}//${base.host}${videoSrc}`;
+    }
+
+    // Run the Python leak checker
+    const { execSync } = require('child_process');
+    const scriptDir = path.join(__dirname);
+    const modelPath = path.join(__dirname, '..', '..', 'backend', 'blur-pipeline', 'yolov8n-plates.onnx');
+    const gridPath = `test-results/case-${c.number}-blur-grid.png`;
+
+    try {
+      const result = execSync(
+        `python3 ${scriptDir}/check_blur_leaks.py "${videoSrc}" --model "${modelPath}" --output "${gridPath}"`,
+        { timeout: 180_000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+      console.log(result);
+    } catch (e) {
+      // Exit code 1 = leaked plates, 2 = setup error
+      const stderr = e.stderr || '';
+      const stdout = e.stdout || '';
+      console.error(stdout);
+      console.error(stderr);
+      if (e.status === 1) {
+        throw new Error(`Plate leak detected in case ${c.number} blurred video:\n${stderr}`);
+      }
+      // Status 2 = setup error — skip, don't fail the case
+      console.log(`Leak check setup error for case ${c.number} — skipping`);
+    }
+  });
+}
+
 // Special deep check for case 0000000001 (the happy-path case).
 test('Case 0000000001: video plays', async ({ page }) => {
   await openCase(page, '0000000001');

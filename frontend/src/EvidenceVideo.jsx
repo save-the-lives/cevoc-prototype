@@ -8,7 +8,7 @@ import { downloadHref, isHls, isPoorConnection, isSmallScreen, pickLevels } from
  * anything else plays as a plain file. Loads only when scrolled near the viewport; segments
  * are fetched on first play. Each instance has its own loading and error state.
  */
-export default function EvidenceVideo({ item, bare = false }) {
+export default function EvidenceVideo({ item, bare = false, autoPlay = false }) {
   const [boxRef, seen] = useInView();
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
@@ -129,6 +129,14 @@ export default function EvidenceVideo({ item, bare = false }) {
     return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
   }, [preparing, status, tries]);
 
+  // Autoplay: when autoPlay prop is set and video becomes ready, play muted
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!autoPlay || status !== 'ready' || !video) return;
+    video.muted = true;
+    video.play().catch(() => {});
+  }, [autoPlay, status]);
+
   const videoEl = (
     <>
       <video
@@ -181,7 +189,7 @@ export default function EvidenceVideo({ item, bare = false }) {
           {videoEl}
         </ZoomPan>
       )}
-      {href && <a className="dl" href={href} download>Download original<span className="sr-only"> of {item.title}</span></a>}
+      {!bare && href && <a className="dl" href={href} download>Download original<span className="sr-only"> of {item.title}</span></a>}
     </div>
   );
 }
