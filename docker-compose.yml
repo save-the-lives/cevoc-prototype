@@ -1,0 +1,66 @@
+# Local development: backend + blur worker + Redis (ADR 0027).
+# Usage:
+#   docker compose up              # all services
+#   docker compose up backend      # backend only (uses ProcessBlurAdapter, no worker needed)
+#   docker compose up --profile split  # backend + worker + redis (QueueBlurAdapter)
+#
+# The "split" profile runs the container-split architecture. Without it,
+# only the backend starts and uses its built-in ProcessBlurAdapter.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      CEVOC_DEMO_DATA_ENABLED: "true"
+      # Set to "queue" to use the blur worker instead of in-process blur
+      CEVOC_BLUR_MODE: "${CEVOC_BLUR_MODE:-process}"
+      CEVOC_BLUR_SHARED_DIR: /shared/blur-data
+      REDIS_URL: "redis://redis:6379/0"
+    volumes:
+      - blur-data:/shared/blur-data
+    depends_on:
+      redis:
+        condition: service_healthy
+        required: false
+
+  blur-worker:
+    build:
+      context: ./backend
+      dockerfile: blur-worker/Dockerfile
+    profiles: ["split"]
+    environment:
+      BLUR_QUEUE_TYPE: redis
+      REDIS_URL: "redis://redis:6379/0"
+      BLUR_SCRIPTS_DIR: /app/blur-pipeline
+      BLUR_SHARED_DIR: /shared/blur-data
+    volumes:
+      - blur-data:/shared/blur-data
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2  # scale workers independently
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["split"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-data:/data
+
+volumes:
+  blur-data:
+    driver: local
+  redis-data:
+    driver: local

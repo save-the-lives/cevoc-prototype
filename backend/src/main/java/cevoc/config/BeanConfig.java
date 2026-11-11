@@ -154,17 +154,33 @@ public class BeanConfig {
     }
 
     /**
-     * Privacy blur (ADR 0017). Core feature — always on for both live and demo paths.
-     * Default: full-file blur then serve ({@link cevoc.adapter.out.blur.ProcessBlurAdapter}).
-     * HLS streaming (segments served progressively): set {@code CEVOC_BLUR_STREAMING=true}.
+     * Privacy blur (ADR 0017, ADR 0027). Core feature — always on for both live and demo paths.
+     * Adapter selection via {@code cevoc.blur.mode}:
+     * <ul>
+     *   <li>{@code process} (default) — full-file blur in-process via Python subprocess</li>
+     *   <li>{@code streaming} — HLS chunk-by-chunk blur, segments served progressively</li>
+     *   <li>{@code queue} — delegates to a standalone blur worker via a message queue (ADR 0027)</li>
+     *   <li>{@code deny} — blur disabled, all videos blocked (fail-closed)</li>
+     * </ul>
      */
     @Bean
     cevoc.application.port.out.BlurPort blurPort(
             @Value("${cevoc.blur.scripts-dir:blur-pipeline}") String scriptsDir,
-            @Value("${cevoc.blur.streaming:false}") boolean streaming) {
-        if (streaming) {
-            return new cevoc.adapter.out.blur.StreamingBlurAdapter(java.nio.file.Path.of(scriptsDir));
-        }
-        return new cevoc.adapter.out.blur.ProcessBlurAdapter(java.nio.file.Path.of(scriptsDir));
+            @Value("${cevoc.blur.mode:process}") String mode,
+            @Value("${cevoc.blur.shared-dir:/shared/blur-data}") String sharedDir,
+            @Value("${cevoc.blur.worker-script:blur-worker/worker.py}") String workerScript,
+            @Value("${cevoc.blur.streaming:false}") boolean streamingLegacy) {
+        // Legacy env var support: CEVOC_BLUR_STREAMING=true -> streaming mode
+        String effectiveMode = streamingLegacy && "process".equals(mode) ? "streaming" : mode;
+        return switch (effectiveMode) {
+            case "streaming" -> new cevoc.adapter.out.blur.StreamingBlurAdapter(
+                    java.nio.file.Path.of(scriptsDir));
+            case "queue" -> new cevoc.adapter.out.blur.QueueBlurAdapter(
+                    java.nio.file.Path.of(sharedDir),
+                    new cevoc.adapter.out.blur.RedisQueueClient(java.nio.file.Path.of(workerScript)));
+            case "deny" -> new cevoc.adapter.out.blur.DenyAllBlurAdapter();
+            default -> new cevoc.adapter.out.blur.ProcessBlurAdapter(
+                    java.nio.file.Path.of(scriptsDir));
+        };
     }
 }
