@@ -46,9 +46,6 @@ jobs:
           npm install @playwright/test@1.49.1
           npx playwright install --with-deps chromium webkit
 
-      - name: Install Python deps for blur leak check
-        run: pip install opencv-python-headless numpy
-
       - name: Fetch demo cases
         id: cases
         run: |
@@ -61,7 +58,7 @@ jobs:
         env:
           DEMO_CASES_FILE: /tmp/demo-cases.json
 
-      - name: Save screenshots and frame grids
+      - name: Save screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
