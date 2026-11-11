@@ -65,6 +65,7 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
         { name: 'DOCKER_REGISTRY_SERVER_URL', value: 'https://${acrLoginServer}' }
         { name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE', value: 'false' }
         { name: 'DOCKER_ENABLE_CI', value: 'true' } // Continuous deployment webhook
+        { name: 'CEVOC_DEMO_DATA_ENABLED', value: 'true' }
       ]
     }
   }

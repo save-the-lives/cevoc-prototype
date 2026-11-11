@@ -80,6 +80,8 @@ Resources:
               Value: !Ref SecretArn
             - Name: SERVER_PORT
               Value: '8080'
+            - Name: CEVOC_DEMO_DATA_ENABLED
+              Value: 'true'
           LogConfiguration:
             LogDriver: awslogs
             Options:
