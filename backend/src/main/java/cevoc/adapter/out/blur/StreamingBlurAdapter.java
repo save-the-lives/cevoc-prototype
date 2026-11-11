@@ -1,11 +1,16 @@
 package cevoc.adapter.out.blur;
 
 import cevoc.application.port.out.BlurPort;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -43,27 +48,70 @@ public final class StreamingBlurAdapter implements BlurPort {
     private static final Logger log = LoggerFactory.getLogger(StreamingBlurAdapter.class);
     private static final long TIMEOUT_SECONDS = 120;
     private static final int SEGMENT_DURATION = 2; // seconds per HLS segment
+    private static final Duration CACHE_TTL = Duration.ofMinutes(20);
 
     private final Path scriptsDir;
     private final Map<String, CachedStream> cache = new ConcurrentHashMap<>();
+    /** Tracks hashes being processed to avoid duplicate work. */
+    private final java.util.Set<String> processing = ConcurrentHashMap.newKeySet();
+    /** Base path for segment URLs in the rewritten manifest. Set by MediaController when wiring. */
+    private String segmentBasePath = "/api/media/hls/";
+    private final Clock clock;
 
     public StreamingBlurAdapter(Path scriptsDir) {
+        this(scriptsDir, Clock.systemUTC());
+    }
+
+    StreamingBlurAdapter(Path scriptsDir, Clock clock) {
         this.scriptsDir = scriptsDir;
+        this.clock = clock;
+    }
+
+    /** Set the base URL path for segment references in the m3u8 manifest. */
+    public void setSegmentBasePath(String basePath) {
+        this.segmentBasePath = basePath;
     }
 
     /**
-     * Returns the m3u8 manifest as bytes. The manifest references segments by relative path;
-     * the caller must serve segments via {@link #segment(String, String)}.
+     * Returns the m3u8 manifest as bytes. The manifest references segments by absolute path;
+     * individual segments are served via {@link #segment(String, String)}.
+     * Runs async: first call returns "processing", subsequent calls return the manifest once ready.
      */
     @Override
     public Result blurVideo(byte[] videoBytes, String offendingPlate) {
         String hash = sha256(videoBytes) + "-" + (offendingPlate != null ? offendingPlate : "NONE");
+        evictExpired();
         CachedStream cached = cache.get(hash);
-        if (cached != null) {
+        if (cached != null && cached.expiresAt.isAfter(clock.instant())) {
             log.info("Streaming blur cache hit for {}", hash.substring(0, 12));
             return Result.ok(cached.manifest, "application/vnd.apple.mpegurl");
         }
+        if (cached != null) {
+            cache.remove(hash);
+        }
 
+        // Async: start blur in background, return "processing" immediately
+        if (processing.add(hash)) {
+            log.info("Starting async streaming blur for {} ({} bytes)", hash.substring(0, 12), videoBytes.length);
+            Thread.startVirtualThread(() -> {
+                try {
+                    Result result = blurSync(videoBytes, offendingPlate, hash);
+                    if (result.success()) {
+                        log.info("Async streaming blur done for {}", hash.substring(0, 12));
+                    } else {
+                        log.warn("Async streaming blur failed for {}: {}", hash.substring(0, 12), result.detail());
+                    }
+                } finally {
+                    processing.remove(hash);
+                }
+            });
+        } else {
+            log.info("Streaming blur already in progress for {}", hash.substring(0, 12));
+        }
+        return Result.failed("Blur processing — try again shortly");
+    }
+
+    private Result blurSync(byte[] videoBytes, String offendingPlate, String hash) {
         try {
             Path workDir = Files.createTempDirectory("blur-stream-");
             Path input = workDir.resolve("input.mp4");
@@ -109,7 +157,7 @@ public final class StreamingBlurAdapter implements BlurPort {
                 return Result.failed("Track merge failed");
             }
 
-            // Step 5: Blur each segment
+            // Step 5: Blur each segment (fail-closed: any failure = whole video fails)
             List<Path> rawSegments;
             try (Stream<Path> files = Files.list(segDir)) {
                 rawSegments = files.filter(p -> p.toString().endsWith(".ts")).sorted().toList();
@@ -118,23 +166,22 @@ public final class StreamingBlurAdapter implements BlurPort {
             Path blurredDir = workDir.resolve("blurred");
             Files.createDirectories(blurredDir);
 
-            for (Path seg : rawSegments) {
+            for (int i = 0; i < rawSegments.size(); i++) {
+                Path seg = rawSegments.get(i);
                 Path blurredSeg = blurredDir.resolve(seg.getFileName());
+                double tStart = i * SEGMENT_DURATION;
+                double tEnd = (i + 1) * SEGMENT_DURATION;
                 if (!runScript(workDir, "blur_segment.py",
                         seg.toString(), mergedRegions.toString(),
-                        "--output", blurredSeg.toString())) {
-                    log.warn("Segment blur failed for {}, using raw segment (fail-safe would block this)", seg.getFileName());
-                    // Fail-closed: don't serve unblurred segments
+                        "--output", blurredSeg.toString(),
+                        "--t-start", String.valueOf(tStart),
+                        "--t-end", String.valueOf(tEnd))) {
                     cleanup(workDir);
                     return Result.failed("Segment blur failed for " + seg.getFileName());
                 }
             }
 
-            // Step 6: Rewrite manifest to point at blurred segments
-            String manifestContent = rewriteManifest(rawManifest, "segments/", "");
-            byte[] manifestBytes = manifestContent.getBytes();
-
-            // Step 7: Cache all blurred segments
+            // Step 6: Cache all blurred segments
             Map<String, byte[]> segments = new ConcurrentHashMap<>();
             try (Stream<Path> files = Files.list(blurredDir)) {
                 files.filter(p -> p.toString().endsWith(".ts")).forEach(p -> {
@@ -146,7 +193,11 @@ public final class StreamingBlurAdapter implements BlurPort {
                 });
             }
 
-            cache.put(hash, new CachedStream(manifestBytes, segments));
+            // Step 7: Rewrite manifest with absolute segment URLs
+            String manifestContent = rewriteManifest(rawManifest, hash);
+            byte[] manifestBytes = manifestContent.getBytes();
+
+            cache.put(hash, new CachedStream(manifestBytes, segments, clock.instant().plus(CACHE_TTL)));
             log.info("Streaming blur done: {} segments, manifest {} bytes, cached as {}",
                     segments.size(), manifestBytes.length, hash.substring(0, 12));
 
@@ -160,21 +211,19 @@ public final class StreamingBlurAdapter implements BlurPort {
     }
 
     /**
-     * Serve one blurred segment from cache.
-     * @param videoHash the same hash used for blurVideo (SHA-256 of raw bytes + offending plate)
+     * Serve one blurred segment from cache. Accepts a hash prefix (first 16 chars)
+     * to keep URLs shorter; finds the matching full hash.
+     * @param hashPrefix first 16 chars of the cache key
      * @param segmentName e.g. "seg-000.ts"
      * @return the blurred segment bytes, or empty if not found
      */
-    public Optional<byte[]> segment(String videoHash, String segmentName) {
-        CachedStream cached = cache.get(videoHash);
-        if (cached == null) return Optional.empty();
-        return Optional.ofNullable(cached.segments.get(segmentName));
-    }
-
-    /** List cached video hashes — for the route layer to resolve a video name to its hash. */
-    public Optional<String> hashFor(byte[] videoBytes, String offendingPlate) {
-        String hash = sha256(videoBytes) + "-" + (offendingPlate != null ? offendingPlate : "NONE");
-        return cache.containsKey(hash) ? Optional.of(hash) : Optional.empty();
+    public Optional<byte[]> segment(String hashPrefix, String segmentName) {
+        for (var entry : cache.entrySet()) {
+            if (entry.getKey().startsWith(hashPrefix) && entry.getValue().expiresAt.isAfter(clock.instant())) {
+                return Optional.ofNullable(entry.getValue().segments.get(segmentName));
+            }
+        }
+        return Optional.empty();
     }
 
     @Override
@@ -184,10 +233,23 @@ public final class StreamingBlurAdapter implements BlurPort {
 
     // --- internals ---
 
-    private String rewriteManifest(Path original, String oldPrefix, String newPrefix) throws IOException {
-        String content = Files.readString(original);
-        // Replace segment paths: segments/seg-000.ts -> seg-000.ts (or whatever the new prefix is)
-        return content.replace(oldPrefix, newPrefix);
+    /**
+     * Rewrite the m3u8 manifest so segment paths are absolute URLs via the segment endpoint.
+     * E.g. "seg-000.ts" becomes "/api/media/hls/{hash}/seg-000.ts"
+     */
+    private String rewriteManifest(Path original, String hash) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        for (String line : Files.readAllLines(original)) {
+            if (line.endsWith(".ts")) {
+                // Extract just the filename (may have a path prefix)
+                String name = line.contains("/") ? line.substring(line.lastIndexOf('/') + 1) : line;
+                sb.append(segmentBasePath).append(hash.substring(0, 16)).append("/").append(name);
+            } else {
+                sb.append(line);
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     private boolean runScript(Path workDir, String... args) {
@@ -201,32 +263,54 @@ public final class StreamingBlurAdapter implements BlurPort {
                 cmd[i + 2] = args[i];
             }
         }
-        return exec(workDir, cmd);
+        return exec(workDir, cmd, args[0]);
     }
 
     private boolean runCmd(Path workDir, String... cmd) {
-        return exec(workDir, cmd);
+        return exec(workDir, cmd, cmd.length > 0 ? cmd[0] : "cmd");
     }
 
-    private boolean exec(Path workDir, String[] cmd) {
+    private boolean exec(Path workDir, String[] cmd, String label) {
         try {
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.directory(workDir.toFile());
             pb.redirectErrorStream(true);
             pb.environment().put("PYTHONDONTWRITEBYTECODE", "1");
+            pb.environment().put("PYTHONUNBUFFERED", "1");
             Process p = pb.start();
-            String out = new String(p.getInputStream().readAllBytes());
-            boolean ok = p.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS) && p.exitValue() == 0;
+
+            // Stream output line-by-line (same pattern as ProcessBlurAdapter)
+            Thread outputDrainer = Thread.startVirtualThread(() -> {
+                try (var reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        log.info("[streaming-blur:{}] {}", label, line);
+                    }
+                } catch (IOException ignored) {}
+            });
+
+            boolean finished = p.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            if (!finished) {
+                log.warn("Streaming blur script {} timed out after {}s", label, TIMEOUT_SECONDS);
+                p.destroyForcibly();
+                outputDrainer.interrupt();
+                return false;
+            }
+            outputDrainer.join(5_000);
+            boolean ok = p.exitValue() == 0;
             if (!ok) {
-                log.warn("Command {} failed (exit {}): {}", cmd[2], p.isAlive() ? "timeout" : p.exitValue(),
-                        out.length() > 500 ? out.substring(0, 500) : out);
-                if (p.isAlive()) p.destroyForcibly();
+                log.warn("Streaming blur script {} exited with code {}", label, p.exitValue());
             }
             return ok;
         } catch (IOException | InterruptedException e) {
-            log.error("Failed to exec {}", cmd.length > 2 ? cmd[2] : cmd[0], e);
+            log.error("Failed to exec streaming blur script {}", label, e);
             return false;
         }
+    }
+
+    private void evictExpired() {
+        Instant now = clock.instant();
+        cache.entrySet().removeIf(e -> e.getValue().expiresAt.isBefore(now));
     }
 
     private static void cleanup(Path dir) {
@@ -237,7 +321,7 @@ public final class StreamingBlurAdapter implements BlurPort {
         } catch (IOException ignored) {}
     }
 
-    private static String sha256(byte[] data) {
+    static String sha256(byte[] data) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
         } catch (NoSuchAlgorithmException e) {
@@ -245,5 +329,10 @@ public final class StreamingBlurAdapter implements BlurPort {
         }
     }
 
-    private record CachedStream(byte[] manifest, Map<String, byte[]> segments) {}
+    /** Compute the cache key for a video — used by MediaController to resolve segment requests. */
+    public static String cacheKey(byte[] videoBytes, String offendingPlate) {
+        return sha256(videoBytes) + "-" + (offendingPlate != null ? offendingPlate : "NONE");
+    }
+
+    private record CachedStream(byte[] manifest, Map<String, byte[]> segments, Instant expiresAt) {}
 }

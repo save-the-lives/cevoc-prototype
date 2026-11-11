@@ -1,5 +1,6 @@
 package cevoc.adapter.in.web;
 
+import cevoc.adapter.out.blur.StreamingBlurAdapter;
 import cevoc.application.port.out.BlurPort;
 import cevoc.application.port.out.MediaReadPort;
 import cevoc.domain.ImageVariant;
@@ -65,6 +66,31 @@ public class MediaController {
                     .body("This image could not be prepared for safe viewing. This is a technical problem, not an issue with your notice. Please try again shortly.".getBytes());
         }
         return ok(blurred.get(), download != null, rangeHeader);
+    }
+
+    /**
+     * Serve an HLS segment from the streaming blur cache. The m3u8 manifest produced by
+     * StreamingBlurAdapter references segments at this path. Only active when streaming blur is enabled.
+     */
+    @GetMapping("/hls/{hashPrefix:[a-f0-9]{16}}/{segment:[a-z0-9_-]+\\.ts}")
+    public ResponseEntity<byte[]> hlsSegment(@PathVariable String hashPrefix, @PathVariable String segment) {
+        BlurPort blurPort = blur.getIfAvailable();
+        if (!(blurPort instanceof StreamingBlurAdapter streaming)) {
+            return ResponseEntity.notFound().build();
+        }
+        // Find the full hash in the cache that starts with this prefix
+        var cached = streaming.segment(hashPrefix, segment);
+        if (cached.isEmpty()) {
+            LOG.warn("HLS segment not found: {}/{}", hashPrefix, segment);
+            return ResponseEntity.notFound().build();
+        }
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.valueOf("video/mp2t"));
+        headers.setCacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePrivate());
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+        headers.setContentLength(cached.get().length);
+        return new ResponseEntity<>(cached.get(), headers, HttpStatus.OK);
     }
 
     /**
