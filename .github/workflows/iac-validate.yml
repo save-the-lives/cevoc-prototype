@@ -30,6 +30,13 @@ jobs:
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
 
+      # Step 0: Register required resource providers (idempotent, no-ops if already registered)
+      - name: Register resource providers
+        run: |
+          for ns in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry; do
+            az provider register --namespace "$ns" --wait || true
+          done
+
       # Step 1: Lint — catches syntax/type errors offline
       - name: Bicep lint & build
         run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
