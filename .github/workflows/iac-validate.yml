@@ -44,11 +44,17 @@ jobs:
               echo "  Deleting: $id"
               az resource delete --ids "$id" --output none 2>/dev/null || true
             done
-            echo "  Waiting for deletions to propagate..."
-            sleep 60
           else
             echo "  Resource group is clean."
           fi
+          # Purge any soft-deleted Key Vaults that would block re-creation
+          echo "Purging soft-deleted Key Vaults..."
+          az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv 2>/dev/null | while read -r kv; do
+            echo "  Purging: $kv"
+            az keyvault purge --name "$kv" --output none 2>/dev/null || true
+          done
+          echo "  Waiting for deletions to propagate..."
+          sleep 30
 
       - name: Deploy to rg-cevoc-dev
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
