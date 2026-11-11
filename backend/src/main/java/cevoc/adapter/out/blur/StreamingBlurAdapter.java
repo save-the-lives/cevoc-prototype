@@ -1,6 +1,7 @@
 package cevoc.adapter.out.blur;
 
 import cevoc.application.port.out.BlurPort;
+import cevoc.application.port.out.HlsSegmentPort;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -43,7 +44,7 @@ import org.slf4j.LoggerFactory;
  * <p>The companion {@code blurVideo()} method from {@link BlurPort} returns the m3u8 manifest as bytes;
  * individual segments are served via {@link #segment(String, String)}.</p>
  */
-public final class StreamingBlurAdapter implements BlurPort {
+public final class StreamingBlurAdapter implements BlurPort, HlsSegmentPort {
 
     private static final Logger log = LoggerFactory.getLogger(StreamingBlurAdapter.class);
     private static final long TIMEOUT_SECONDS = 120;

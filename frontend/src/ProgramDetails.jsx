@@ -1,5 +1,6 @@
 import { detailRows, pickProgram } from './programs.js';
 import RedLightVisual from './RedLightVisual.jsx';
+import SpeedVisual from './SpeedVisual.jsx';
 
 /**
  * The program-specific facts the notice returned (for a red light camera: seconds after red, lane, direction...), labelled from
@@ -39,6 +40,9 @@ function renderVisual(program, view, result) {
   if (!program || view.state !== 'rows') return null;
   if (program.id === 'RED_LIGHT_SPEED') {
     return <RedLightVisual rows={view.rows} details={result?.details} />;
+  }
+  if (program.id === 'SPEED_CAMERA') {
+    return <SpeedVisual rows={view.rows} details={result?.details} />;
   }
   return null;
 }

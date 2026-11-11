@@ -130,7 +130,14 @@ public final class DemoCaseFactory {
                 m.put("speedLimit", s.shape() == Shape.EXTREME_VALUES ? 130 : 60);
             }
         } else {
-            m.put("offenceText", "Camera recorded");
+            int limit = s.shape() == Shape.EXTREME_VALUES ? 130 : 60;
+            int speed = s.shape() == Shape.EXTREME_VALUES ? 161 : 78;
+            m.put("offenceText", "Exceed speed limit - camera recorded");
+            m.put("speedKmh", speed);
+            m.put("speedLimit", limit);
+            m.put("speedOverLimit", speed - limit);
+            m.put("cameraDirection", "Northbound");
+            m.put("lane", "Lane 1");
         }
         return m;
     }

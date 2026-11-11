@@ -1,7 +1,7 @@
 package cevoc.adapter.in.web;
 
-import cevoc.adapter.out.blur.StreamingBlurAdapter;
 import cevoc.application.port.out.BlurPort;
+import cevoc.application.port.out.HlsSegmentPort;
 import cevoc.application.port.out.MediaReadPort;
 import cevoc.domain.ImageVariant;
 import cevoc.domain.MediaContent;
@@ -36,12 +36,15 @@ public class MediaController {
 
     private final ObjectProvider<MediaReadPort> media;
     private final ObjectProvider<BlurPort> blur;
+    private final ObjectProvider<HlsSegmentPort> hlsSegments;
     /** Cache blurred content by token so the pipeline runs once per evidence item. */
     private final Map<String, MediaContent> blurCache = new ConcurrentHashMap<>();
 
-    public MediaController(ObjectProvider<MediaReadPort> media, ObjectProvider<BlurPort> blur) {
+    public MediaController(ObjectProvider<MediaReadPort> media, ObjectProvider<BlurPort> blur,
+                           ObjectProvider<HlsSegmentPort> hlsSegments) {
         this.media = media;
         this.blur = blur;
+        this.hlsSegments = hlsSegments;
     }
 
     @GetMapping("/{token:[A-Za-z0-9_-]{16,64}}")
@@ -70,16 +73,16 @@ public class MediaController {
 
     /**
      * Serve an HLS segment from the streaming blur cache. The m3u8 manifest produced by
-     * StreamingBlurAdapter references segments at this path. Only active when streaming blur is enabled.
+     * The streaming blur adapter references segments at this path. Only active when streaming blur is enabled.
      */
     @GetMapping("/hls/{hashPrefix:[a-f0-9]{16}}/{segment:[a-z0-9_-]+\\.ts}")
     public ResponseEntity<byte[]> hlsSegment(@PathVariable String hashPrefix, @PathVariable String segment) {
-        BlurPort blurPort = blur.getIfAvailable();
-        if (!(blurPort instanceof StreamingBlurAdapter streaming)) {
+        HlsSegmentPort hls = hlsSegments.getIfAvailable();
+        if (hls == null) {
             return ResponseEntity.notFound().build();
         }
         // Find the full hash in the cache that starts with this prefix
-        var cached = streaming.segment(hashPrefix, segment);
+        var cached = hls.segment(hashPrefix, segment);
         if (cached.isEmpty()) {
             LOG.warn("HLS segment not found: {}/{}", hashPrefix, segment);
             return ResponseEntity.notFound().build();

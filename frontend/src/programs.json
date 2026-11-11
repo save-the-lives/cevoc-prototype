@@ -2,6 +2,40 @@
   "_comment": "Per-program display configuration (plain JSON in the repo, decision records 0007 and 0013 to 0015). Versions are date-ranged and chosen by the OFFENCE date. The DEFAULT block is used for any notice whose program is not configured or cannot be matched; a program's own switch always wins, and a switch a program does not set is inherited from the default block. Modes: on, off, not_applicable, not_yet.",
   "programs": [
     {
+      "id": "SPEED_CAMERA",
+      "label": "Speed camera",
+      "measureSubtitle": "Speed",
+      "match": {"offenceTextContains": ["exceed speed", "speeding", "speed camera"], "detailKeysAny": ["speedKmh"]},
+      "versions": [
+        {
+          "version": "2026-a",
+          "from": "2000-01-01",
+          "to": null,
+          "types": {
+            "images": { "mode": "on" },
+            "certificates": { "mode": "on" },
+            "video": { "mode": "on" }
+          },
+          "details": [
+            { "key": "speedKmh", "label": "Recorded speed", "unit": "km/h", "first": true },
+            { "key": "speedLimit", "label": "Speed limit", "unit": "km/h" },
+            { "key": "speedOverLimit", "label": "Amount over limit", "unit": "km/h" },
+            { "key": "cameraDirection", "label": "Direction of travel" },
+            { "key": "lane", "label": "Lane" }
+          ],
+          "explainer": [
+            { "icon": "sensor", "heading": "Calibrated sensors", "body": "The camera system measures vehicle speed using calibrated sensors or radar. The reading is the speed at the moment the photograph is taken." },
+            { "icon": "check", "heading": "Checked before every session", "body": "The operator checks the camera before every session. That check is recorded, and a reading is only used if it was done.", "link": { "text": "See the check for this session", "step": "step-camera" } },
+            { "icon": "camera", "heading": "Photographs at detection", "body": "The camera takes photographs as the vehicle passes the detection point, recording position, speed and timestamp." }
+          ],
+          "messages": [
+            { "condition": { "field": "speedOverLimit", "op": ">", "value": 30 }, "priority": 1, "text": "At speeds more than 30 km/h over the limit, the risk of a fatal collision rises sharply for everyone on the road." },
+            { "condition": { "field": "speedOverLimit", "op": ">", "value": 10 }, "priority": 2, "text": "Travelling more than 10 km/h over the limit significantly increases stopping distance and the severity of any impact." }
+          ]
+        }
+      ]
+    },
+    {
       "id": "RED_LIGHT_SPEED",
       "label": "Red light camera",
       "measureSubtitle": "Red light and speed",

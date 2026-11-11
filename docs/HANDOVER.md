@@ -58,6 +58,17 @@ Everything below is scheduled for removal when the TfNSW API providers exist (`a
 | Interim wording and banners | "Interim service" footer, "Demonstration data only." banner and summary | Say what the app is today; revisit when real sources are connected. |
 | Approval reference note | `CEVOC_CERTIFICATES_APPROVAL_REFERENCE`, `CEVOC_REVENUE_NSW_HTTP_APPROVAL_REFERENCE` | Recorded note for the interim routes; goes with them. |
 
+## Architecture documentation
+For detailed architecture reference, see `docs/architecture/`:
+- `README.md` — high-level overview with hexagonal diagram
+- `ports-and-adapters.md` — every port and its adapters, how to add new ones
+- `blur-pipeline.md` — how privacy blur works end-to-end
+- `demo-system.md` — how demo data works as an adapter
+- `extending.md` — step-by-step guides for common extension tasks
+- `eval-framework.md` — how the probe gates releases
+
+For project status (done / prototype / not started), see `docs/STATUS.md`.
+
 ## Open decisions
 - Which AWS shape (ECS Fargate or App Runner; CloudFront signed URLs or S3 pre-signed URLs), and whether it sits in an agency landing zone (`docs/RUNBOOK-AWS.md`).
 - Repository and Pages site naming (the repository is still `save-the-lives/cevoc-prototype`; renaming is the owner's call and affects record 0006).

@@ -141,6 +141,59 @@ for (const c of allCases) {
   });
 }
 
+// Banner OCR: verify camera banner text is readable on evidence images per program type.
+for (const c of allCases) {
+  if (NO_EVIDENCE_CASES.has(c.number)) continue;
+
+  test(`Case ${c.number}: banner text readable on evidence images`, async ({ page }) => {
+    await openCase(page, c.number);
+
+    // Find image elements in the evidence grid
+    const imgs = page.locator('.mg-thumb img, .mg-media');
+    const imgCount = await imgs.count();
+    if (imgCount === 0) {
+      console.log(`Case ${c.number}: no evidence images — skipping banner check`);
+      return;
+    }
+
+    // Get the first image's full src
+    let imgSrc = '';
+    try {
+      imgSrc = await imgs.first().getAttribute('src') || '';
+    } catch {
+      console.log(`Case ${c.number}: could not get image src — skipping banner check`);
+      return;
+    }
+    if (!imgSrc) return;
+
+    // Make absolute
+    if (imgSrc.startsWith('/')) {
+      const base = new URL(page.url());
+      imgSrc = `${base.protocol}//${base.host}${imgSrc}`;
+    }
+
+    // Determine program type from case data
+    const programType = (c.programNote || '').toLowerCase().includes('red light') ? 'red_light' : 'speed';
+
+    const { execSync } = require('child_process');
+    const scriptDir = path.join(__dirname);
+    const gridPath = `test-results/case-${c.number}-banner-ocr.png`;
+
+    try {
+      const result = execSync(
+        `python3 ${scriptDir}/check_banner_ocr.py "${imgSrc}" --program ${programType} --output "${gridPath}"`,
+        { timeout: 30_000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+      console.log(result);
+    } catch (e) {
+      if (e.status === 1) {
+        throw new Error(`Banner text not readable for case ${c.number}: ${e.stderr || ''}`);
+      }
+      console.log(`Banner OCR setup error for case ${c.number} — skipping`);
+    }
+  });
+}
+
 // Special deep check for case 0000000001 (the happy-path case).
 test('Case 0000000001: video plays', async ({ page }) => {
   await openCase(page, '0000000001');
