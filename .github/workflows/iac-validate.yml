@@ -33,60 +33,57 @@ jobs:
       - name: Bicep lint & build
         run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
 
-      # When deploying: clean first, then deploy (which validates internally)
-      - name: Clean stale resources
+      # Pre-flight checks (deploy path only) — fail early with clear messages
+      - name: Pre-flight checks
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
-          echo "Removing any stale resources from prior failed deploys..."
-          RESOURCES=$(az resource list --resource-group "$RG_NAME" --query '[].id' -o tsv 2>/dev/null || true)
-          if [ -n "$RESOURCES" ]; then
-            echo "$RESOURCES" | while read -r id; do
-              echo "  Deleting: $id"
-              az resource delete --ids "$id" --output none 2>/dev/null || true
-            done
-          else
-            echo "  Resource group is clean."
-          fi
-          # Purge any soft-deleted Key Vaults that would block re-creation
-          echo "Purging soft-deleted Key Vaults..."
-          for kv in $(az keyvault list-deleted --query "[].name" -o tsv 2>/dev/null); do
-            echo "  Purging: $kv"
-            az keyvault purge --name "$kv" --output none 2>/dev/null || true
+          echo "=== Pre-flight checks ==="
+          FAIL=0
+
+          # 1. Check required resource providers
+          echo "Checking resource providers..."
+          for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry; do
+            STATE=$(az provider show --namespace "$NS" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
+            if [ "$STATE" != "Registered" ]; then
+              echo "::error::Provider $NS is not registered. Run bootstrap.sh first (it registers providers as subscription Owner)."
+              FAIL=1
+            fi
           done
-          # Also try direct purge of the known vault name
-          az keyvault purge --name "cevoc-4hyxfw5gm6kcq-kv" --output none 2>/dev/null || true
-          echo "  Waiting for deletions to propagate..."
-          sleep 30
 
-      - name: Find existing Container Apps environment
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        id: find-env
-        run: |
-          # Auto-detect any existing Container Apps environment in the subscription
-          ENV_ID=$(az containerapp env list --query '[0].id' -o tsv 2>/dev/null || true)
-          if [ -n "$ENV_ID" ]; then
-            echo "Found existing environment: $ENV_ID"
-            echo "env_id=$ENV_ID" >> "$GITHUB_OUTPUT"
-          else
-            echo "No existing environment found — will create one"
-            echo "env_id=" >> "$GITHUB_OUTPUT"
+          # 2. Check for soft-deleted Key Vaults that would block creation
+          echo "Checking for soft-deleted Key Vaults..."
+          DELETED_KVS=$(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv 2>/dev/null || true)
+          if [ -n "$DELETED_KVS" ]; then
+            echo "::error::Soft-deleted Key Vault(s) found: $DELETED_KVS. Run teardown.sh to purge them first."
+            FAIL=1
           fi
 
+          # 3. Check resource group exists
+          echo "Checking resource group..."
+          RG_EXISTS=$(az group exists --name "$RG_NAME" 2>/dev/null || echo "false")
+          if [ "$RG_EXISTS" != "true" ]; then
+            echo "::error::Resource group $RG_NAME does not exist. Run bootstrap.sh first."
+            FAIL=1
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::Pre-flight checks failed. Fix the issues above before deploying."
+            exit 1
+          fi
+          echo "All pre-flight checks passed."
+
+      # Deploy (only on manual trigger with deploy=true, after pre-flight passes)
       - name: Deploy to rg-cevoc-dev
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
-          EXTRA=""
-          if [ -n "${{ steps.find-env.outputs.env_id }}" ]; then
-            EXTRA="existingContainerAppEnvId=${{ steps.find-env.outputs.env_id }}"
-          fi
           az deployment group create \
             --resource-group "$RG_NAME" \
             --template-file infra/azure/main.bicep \
-            --parameters infra/azure/parameters/dev.bicepparam $EXTRA \
+            --parameters infra/azure/parameters/dev.bicepparam \
             --mode Incremental \
             --output table
 
-      # When not deploying: validate and what-if only
+      # Validate and what-if (non-deploy path: push trigger)
       - name: Validate deployment
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.deploy != 'true'
         run: |

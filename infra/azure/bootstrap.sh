@@ -12,7 +12,7 @@
 #   1. Resource group (if missing)
 #   2. Entra ID app registration: cevoc-<env>-deploy
 #   3. Federated credential for GitHub Actions (main branch)
-#   4. Contributor + RBAC Administrator roles on the resource group
+#   4. Contributor + RBAC Administrator + Key Vault Contributor roles on the resource group
 #   5. GitHub repo secret: AZURE_<ENV>_CLIENT_ID
 #   6. Registers required Azure resource providers
 #
@@ -84,7 +84,7 @@ fi
 echo "--- Assigning roles on ${RG}..."
 RG_ID=$(az group show --name "$RG" --query id -o tsv)
 
-for ROLE in "Contributor" "Role Based Access Control Administrator"; do
+for ROLE in "Contributor" "Role Based Access Control Administrator" "Key Vault Contributor"; do
   EXISTING_ROLE=$(az role assignment list --assignee "$CLIENT_ID" --role "$ROLE" --scope "$RG_ID" --query '[0].id' -o tsv 2>/dev/null || true)
   if [[ -z "$EXISTING_ROLE" ]]; then
     az role assignment create --assignee "$CLIENT_ID" --role "$ROLE" --scope "$RG_ID" --output none
@@ -121,4 +121,5 @@ echo ""
 echo "==> Bootstrap complete."
 echo "    To deploy: push to main (validates automatically)"
 echo "    To deploy now: gh workflow run iac-validate.yml -f deploy=true"
-echo "    To tear down: az group delete --name ${RG} --yes"
+echo "    To tear down: ./teardown.sh ${ENV}"
+echo "    To retire permanently: ./retire.sh ${ENV}"

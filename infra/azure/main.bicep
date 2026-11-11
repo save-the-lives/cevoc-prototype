@@ -28,9 +28,6 @@ param enableFrontDoor bool = environment == 'prod'
 @description('Deploy the blur worker as a separate container app')
 param deployBlurWorker bool = false
 
-@description('Existing Container Apps environment resource ID. Set this on trial subscriptions that allow only 1 environment globally. The dev app deploys into the existing environment instead of creating a new one.')
-param existingContainerAppEnvId string = ''
-
 // Unique suffix for globally unique resource names (ACR, Key Vault)
 var uniqueSuffix = uniqueString(resourceGroup().id)
 
@@ -87,7 +84,6 @@ module app 'modules/container-app.bicep' = {
     keyVaultUri: kv.outputs.vaultUri
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     deployBlurWorker: deployBlurWorker
-    existingEnvironmentId: existingContainerAppEnvId
   }
 }
 
