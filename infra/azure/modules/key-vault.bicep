@@ -22,8 +22,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
     }
     tenantId: subscription().tenantId
     enableSoftDelete: true
-    softDeleteRetentionInDays: 7
-    enablePurgeProtection: false
+    softDeleteRetentionInDays: 90
     enableRbacAuthorization: false // Using access policies for simplicity
     accessPolicies: accessPolicies
     networkAcls: {
