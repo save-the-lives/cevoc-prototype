@@ -63,10 +63,11 @@ module monitoring 'modules/monitoring.bicep' = {
 }
 
 // ---------- Key Vault ----------
+var kvName = '${baseName}${environment}${take(uniqueSuffix, 4)}kv'  // max 24 chars, unique per env
 module kv 'modules/key-vault.bicep' = {
   name: 'kv-${environment}'
   params: {
-    name: '${baseName}-${uniqueSuffix}-kv'
+    name: kvName
     location: location
     tags: tags
   }
@@ -94,7 +95,7 @@ module app 'modules/container-app.bicep' = {
 module kvAccess 'modules/key-vault.bicep' = {
   name: 'kv-access-${environment}'
   params: {
-    name: '${baseName}-${uniqueSuffix}-kv'
+    name: kvName
     location: location
     tags: tags
     accessPolicies: [
