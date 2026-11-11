@@ -51,7 +51,7 @@ public final class DemoScenario {
     LocalDate offenceDate = LocalDate.of(2026, 3, 14);
     LocalTime offenceTime = LocalTime.of(11, 12);
     Outcome outcome = Outcome.FOUND;
-    int images = 3;
+    int images = 4;
     Plate plate = Plate.GATED;
     Certs certs = Certs.COVERING;
     boolean video = true;

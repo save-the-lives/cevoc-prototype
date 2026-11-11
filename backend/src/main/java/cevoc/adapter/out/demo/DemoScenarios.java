@@ -30,7 +30,7 @@ public final class DemoScenarios {
             boolean red = p == DemoProgram.RED_LIGHT;
             // ---- happy: everything returned
             out.add(s(p, 1).title("Everything returned",
-                    "Three images, a certificate covering the offence date, " + (red ? "all red light details, " : "") + "and a video."));
+                    "Four images, a certificate covering the offence date, " + (red ? "all red light details, " : "") + "and a video."));
             out.add(s(p, 2).title("Everything returned, evening",
                     "Same as 0001 for an evening offence at a different place.").time(LocalTime.of(21, 40)).certs(Certs.SINGLE));
             // ---- partial: something is missing, said plainly
