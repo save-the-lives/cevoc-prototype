@@ -52,7 +52,24 @@ jobs:
             --parameters infra/azure/parameters/dev.bicepparam \
             --output table
 
-      # Step 4: Deploy (only on manual trigger with deploy=true)
+      # Step 4: Clean stale resources from failed prior deploys
+      - name: Clean stale resources
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          echo "Removing any stale resources from prior failed deploys..."
+          RESOURCES=$(az resource list --resource-group "$RG_NAME" --query '[].id' -o tsv 2>/dev/null || true)
+          if [ -n "$RESOURCES" ]; then
+            echo "$RESOURCES" | while read -r id; do
+              echo "  Deleting: $id"
+              az resource delete --ids "$id" --output none 2>/dev/null || true
+            done
+            echo "  Waiting for deletions..."
+            sleep 30
+          else
+            echo "  Resource group is clean."
+          fi
+
+      # Step 5: Deploy (only on manual trigger with deploy=true)
       - name: Deploy to rg-cevoc-dev
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
