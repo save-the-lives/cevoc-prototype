@@ -1,9 +1,14 @@
-name: IaC Validate (Azure)
+name: IaC Validate & Deploy (Azure Dev)
 
 on:
   push:
     paths: ['infra/azure/**']
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Actually deploy to rg-cevoc-dev (not just validate)'
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -14,14 +19,14 @@ jobs:
     name: Lint, validate & what-if
     runs-on: ubuntu-latest
     env:
-      RG_NAME: cevoc-iac-test-${{ github.run_id }}
+      RG_NAME: rg-cevoc-dev
     steps:
       - uses: actions/checkout@v4
 
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
@@ -29,16 +34,7 @@ jobs:
       - name: Bicep lint & build
         run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
 
-      # Step 2: Create throwaway resource group
-      - name: Create test resource group
-        run: |
-          az group create \
-            --name "$RG_NAME" \
-            --location australiaeast \
-            --tags project=cevoc purpose=iac-test ttl=1h \
-            --output none
-
-      # Step 3: Validate — ARM checks the template against the subscription
+      # Step 2: Validate — ARM checks the template against the subscription
       - name: Validate deployment
         run: |
           az deployment group validate \
@@ -47,7 +43,7 @@ jobs:
             --parameters infra/azure/parameters/dev.bicepparam \
             --output table
 
-      # Step 4: What-if — show what would be created (no actual deploy)
+      # Step 3: What-if — show what would be created (no actual deploy)
       - name: What-if (dry run)
         run: |
           az deployment group what-if \
@@ -56,12 +52,13 @@ jobs:
             --parameters infra/azure/parameters/dev.bicepparam \
             --output table
 
-      # Always clean up the test resource group
-      - name: Delete test resource group
-        if: always()
+      # Step 4: Deploy (only on manual trigger with deploy=true)
+      - name: Deploy to rg-cevoc-dev
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
-          az group delete \
-            --name "$RG_NAME" \
-            --yes \
-            --no-wait \
-            --output none || true
+          az deployment group create \
+            --resource-group "$RG_NAME" \
+            --template-file infra/azure/main.bicep \
+            --parameters infra/azure/parameters/dev.bicepparam \
+            --mode Incremental \
+            --output table
