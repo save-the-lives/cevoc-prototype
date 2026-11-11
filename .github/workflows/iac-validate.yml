@@ -1,0 +1,67 @@
+name: IaC Validate (Azure)
+
+on:
+  push:
+    paths: ['infra/azure/**']
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    name: Lint, validate & what-if
+    runs-on: ubuntu-latest
+    env:
+      RG_NAME: cevoc-iac-test-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Step 1: Lint — catches syntax/type errors offline
+      - name: Bicep lint & build
+        run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+
+      # Step 2: Create throwaway resource group
+      - name: Create test resource group
+        run: |
+          az group create \
+            --name "$RG_NAME" \
+            --location australiaeast \
+            --tags project=cevoc purpose=iac-test ttl=1h \
+            --output none
+
+      # Step 3: Validate — ARM checks the template against the subscription
+      - name: Validate deployment
+        run: |
+          az deployment group validate \
+            --resource-group "$RG_NAME" \
+            --template-file infra/azure/main.bicep \
+            --parameters infra/azure/parameters/dev.bicepparam \
+            --output table
+
+      # Step 4: What-if — show what would be created (no actual deploy)
+      - name: What-if (dry run)
+        run: |
+          az deployment group what-if \
+            --resource-group "$RG_NAME" \
+            --template-file infra/azure/main.bicep \
+            --parameters infra/azure/parameters/dev.bicepparam \
+            --output table
+
+      # Always clean up the test resource group
+      - name: Delete test resource group
+        if: always()
+        run: |
+          az group delete \
+            --name "$RG_NAME" \
+            --yes \
+            --no-wait \
+            --output none || true

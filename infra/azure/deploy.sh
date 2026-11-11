@@ -25,12 +25,30 @@ echo "==> Deploying CEVOC ${ENV} to resource group ${RG}"
 # Create resource group if it doesn't exist
 az group create --name "$RG" --location australiaeast --tags project=cevoc environment="$ENV" --output none 2>/dev/null || true
 
-# Deploy
+# For prod, show what-if and require confirmation
+EXTRA_FLAGS=""
+if [[ "$ENV" == "prod" ]]; then
+  echo "==> Running what-if for prod deployment..."
+  az deployment group what-if \
+    --resource-group "$RG" \
+    --template-file "${DIR}/main.bicep" \
+    --parameters "${PARAM_FILE}" \
+    --output table
+
+  read -rp "Proceed with prod deployment? [y/N] " confirm
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "Aborted." >&2
+    exit 1
+  fi
+fi
+
+# Deploy (Incremental mode — only adds/updates, never deletes resources not in template)
 az deployment group create \
   --resource-group "$RG" \
   --template-file "${DIR}/main.bicep" \
   --parameters "${PARAM_FILE}" \
   --name "cevoc-${ENV}-$(date +%Y%m%d-%H%M%S)" \
+  --mode Incremental \
   --output table
 
 echo "==> Done. Check outputs above for URLs."

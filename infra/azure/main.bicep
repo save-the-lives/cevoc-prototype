@@ -1,4 +1,4 @@
-// CEVOC Prototype — Azure Infrastructure
+// CEVOC Prototype — Azure Infrastructure (Container Apps)
 // Orchestrator: deploys all modules for a given environment.
 // Usage: az deployment group create -g <rg> -f main.bicep -p parameters/dev.bicepparam
 
@@ -25,6 +25,12 @@ param imageTag string = 'latest'
 @description('Enable Azure Front Door (recommended for prod)')
 param enableFrontDoor bool = environment == 'prod'
 
+@description('Deploy the blur worker as a separate container app')
+param deployBlurWorker bool = false
+
+// Unique suffix for globally unique resource names (ACR, Key Vault)
+var uniqueSuffix = uniqueString(resourceGroup().id)
+
 // ---------- Tags ----------
 var tags = {
   project: 'cevoc'
@@ -36,7 +42,7 @@ var tags = {
 module acr 'modules/container-registry.bicep' = {
   name: 'acr-${environment}'
   params: {
-    name: '${baseName}${environment}acr'
+    name: '${baseName}${uniqueSuffix}acr'
     location: location
     sku: environment == 'prod' ? 'Standard' : 'Basic'
     tags: tags
@@ -57,14 +63,14 @@ module monitoring 'modules/monitoring.bicep' = {
 module kv 'modules/key-vault.bicep' = {
   name: 'kv-${environment}'
   params: {
-    name: '${baseName}-${environment}-kv'
+    name: '${baseName}-${uniqueSuffix}-kv'
     location: location
     tags: tags
   }
 }
 
-// ---------- App Service ----------
-module app 'modules/app-service.bicep' = {
+// ---------- Container App ----------
+module app 'modules/container-app.bicep' = {
   name: 'app-${environment}'
   params: {
     baseName: '${baseName}-${environment}'
@@ -76,14 +82,15 @@ module app 'modules/app-service.bicep' = {
     springProfile: springProfile
     keyVaultUri: kv.outputs.vaultUri
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
+    deployBlurWorker: deployBlurWorker
   }
 }
 
-// Grant App Service managed identity access to Key Vault
+// Grant Container App managed identity access to Key Vault
 module kvAccess 'modules/key-vault.bicep' = {
   name: 'kv-access-${environment}'
   params: {
-    name: '${baseName}-${environment}-kv'
+    name: '${baseName}-${uniqueSuffix}-kv'
     location: location
     tags: tags
     accessPolicies: [
@@ -98,11 +105,11 @@ module kvAccess 'modules/key-vault.bicep' = {
   }
 }
 
-// Grant App Service AcrPull on the registry
+// Grant Container App AcrPull on the registry
 module acrPull 'modules/container-registry.bicep' = {
   name: 'acr-pull-${environment}'
   params: {
-    name: '${baseName}${environment}acr'
+    name: '${baseName}${uniqueSuffix}acr'
     location: location
     sku: environment == 'prod' ? 'Standard' : 'Basic'
     tags: tags
