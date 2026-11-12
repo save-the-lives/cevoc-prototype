@@ -80,7 +80,8 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
       containers: [
         {
           name: 'cevoc-backend'
-          image: '${acrLoginServer}/cevoc:${imageTag}'
+          // Use Microsoft's quickstart image until the real image is pushed to ACR
+          image: imageTag == 'latest' ? 'mcr.microsoft.com/k8se/quickstart:latest' : '${acrLoginServer}/cevoc:${imageTag}'
           resources: {
             cpu: json(cpuCores)
             memory: memoryGi
