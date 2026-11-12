@@ -69,12 +69,12 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
         transport: 'http'
         allowInsecure: false
       }
-      registries: [
+      registries: imageTag != 'latest' ? [
         {
           server: acrLoginServer
           identity: 'system'
         }
-      ]
+      ] : []
     }
     template: {
       containers: [
@@ -86,14 +86,14 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
             cpu: json(cpuCores)
             memory: memoryGi
           }
-          env: [
+          env: imageTag != 'latest' ? [
             { name: 'SPRING_PROFILES_ACTIVE', value: springProfile }
             { name: 'AZURE_KEY_VAULT_URI', value: keyVaultUri }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
             { name: 'CEVOC_DEMO_DATA_ENABLED', value: 'true' }
             { name: 'SERVER_PORT', value: '8080' }
-          ]
-          probes: [
+          ] : []
+          probes: imageTag != 'latest' ? [
             {
               type: 'Liveness'
               httpGet: {
@@ -112,7 +112,7 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
               initialDelaySeconds: 10
               periodSeconds: 10
             }
-          ]
+          ] : []
         }
       ]
       scale: {
