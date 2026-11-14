@@ -1,0 +1,98 @@
+name: AWS IaC Validate (CloudFormation)
+
+on:
+  push:
+    paths: ['infra/aws/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Lint & LocalStack deploy
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack:latest
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: cloudformation,ecs,ecr,secretsmanager,iam,logs,elasticloadbalancingv2,ec2,s3
+          DEFAULT_REGION: ap-southeast-2
+          DEBUG: 0
+        options: >-
+          --health-cmd "curl -f http://localhost:4566/_localstack/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+
+      - name: Lint CloudFormation templates
+        run: bash infra/aws/cfn-lint.sh
+
+      - name: Install AWS CLI local wrapper
+        run: pip install awscli-local
+
+      - name: Wait for LocalStack
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1; then
+              echo "LocalStack is ready"
+              break
+            fi
+            echo "Waiting... ($i)"
+            sleep 5
+          done
+
+      - name: Deploy templates to LocalStack
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_DEFAULT_REGION: ap-southeast-2
+        run: |
+          ENDPOINT="http://localhost:4566"
+          STACKS=(vpc ecr secrets monitoring)
+          FAILED=0
+
+          for stack in "${STACKS[@]}"; do
+            echo "=== Deploying $stack ==="
+            PARAMS="ParameterKey=Environment,ParameterValue=dev"
+
+            if aws --endpoint-url="$ENDPOINT" cloudformation deploy \
+              --stack-name "cevoc-test-${stack}" \
+              --template-file "infra/aws/${stack}.yaml" \
+              --parameter-overrides $PARAMS \
+              --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+              --no-fail-on-empty-changeset 2>&1; then
+              echo "  ✅ $stack deployed"
+            else
+              echo "  ❌ $stack failed"
+              FAILED=1
+            fi
+          done
+
+          # ALB and ECS need cross-stack references — validate only
+          for stack in alb ecs cloudfront; do
+            if [ -f "infra/aws/${stack}.yaml" ]; then
+              echo "=== Validating $stack (template only) ==="
+              if aws --endpoint-url="$ENDPOINT" cloudformation validate-template \
+                --template-body "file://infra/aws/${stack}.yaml" 2>&1; then
+                echo "  ✅ $stack template valid"
+              else
+                echo "  ❌ $stack template invalid"
+                FAILED=1
+              fi
+            fi
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::Some stacks failed — see above"
+            exit 1
+          fi
+          echo "All stacks passed."

@@ -50,6 +50,48 @@ Edit `parameters/dev.json` or `parameters/prod.json` with your actual values bef
 2. **DNS:** point your domain to the ALB DNS name (dev) or CloudFront domain (prod)
 3. **CI/CD:** the GitHub Actions workflow builds and pushes to ECR, then updates the ECS service
 
+## Local validation with LocalStack
+
+Test the CloudFormation templates locally without an AWS account, using [LocalStack](https://localstack.cloud/).
+
+### Quick start
+
+```bash
+# Install dev tools
+pip install -r infra/aws/requirements-dev.txt
+
+# Lint templates (no AWS needed)
+bash infra/aws/cfn-lint.sh
+
+# Deploy against LocalStack (starts it automatically)
+bash infra/aws/deploy-local.sh
+
+# Tear down
+docker compose --profile localstack down -v
+
+# Full cycle: tear down + redeploy
+bash infra/aws/deploy-local.sh --clean
+```
+
+### How it works
+
+LocalStack runs as a Docker container (via `docker compose --profile localstack`), exposing a fake AWS at `http://localhost:4566`. The `deploy-local.sh` script uses the same CloudFormation templates as the real deploy, with the same parameter structure — only the endpoint changes.
+
+### What's validated
+
+| Check | Tool | AWS account needed? |
+|-------|------|-------------------|
+| Template syntax and rules | cfn-lint | No |
+| VPC, ECR, Secrets, Monitoring stacks | LocalStack (free) | No |
+| ALB, ECS template validity | LocalStack validate-template | No |
+| ECS task execution, CloudFront | LocalStack Pro | No (but limited) |
+
+**Note:** LocalStack's free tier does not fully simulate ECS task execution or CloudFront distributions. The templates are validated and the stacks are created, but the containers don't actually run. For full end-to-end testing, deploy to a real AWS dev account.
+
+### CI
+
+The `aws-validate.yml` workflow runs cfn-lint and deploys to a LocalStack service container on every push to `infra/aws/`. Same pipeline, different target.
+
 ## Security
 
 - No secrets in templates — Secrets Manager references only
