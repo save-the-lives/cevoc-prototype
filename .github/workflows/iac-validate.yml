@@ -133,6 +133,20 @@ jobs:
           APP_NAME="cevoc-dev-app"
 
           echo "Updating ${APP_NAME} to ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+
+          # Ensure the container app's managed identity has AcrPull on the registry
+          ACR_ID=$(az acr show --name "${{ steps.acr.outputs.name }}" --query id -o tsv)
+          APP_IDENTITY=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'identity.principalId' -o tsv)
+          az role assignment create --assignee "$APP_IDENTITY" --role AcrPull --scope "$ACR_ID" --output none 2>/dev/null || true
+
+          # Configure the registry on the container app and update the image
+          az containerapp registry set \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --server "${LOGIN_SERVER}" \
+            --identity system \
+            --output none
+
           az containerapp update \
             --name "$APP_NAME" \
             --resource-group "$RG_NAME" \
