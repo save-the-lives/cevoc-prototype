@@ -13,6 +13,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  packages: read
 
 jobs:
   validate:
@@ -90,6 +91,62 @@ jobs:
             --parameters infra/azure/parameters/dev.bicepparam \
             --mode Incremental \
             --output table
+
+      # --- Build, push image and update container app ---
+      - name: Get ACR login server
+        id: acr
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query '[0].name' -o tsv 2>/dev/null || true)
+          if [ -z "$ACR_NAME" ]; then
+            echo "::warning::No ACR found in $RG_NAME — skipping image push"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+            echo "name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+            echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "ACR: $ACR_NAME ($LOGIN_SERVER)"
+          fi
+
+      - name: Build and push image to ACR
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'
+        run: |
+          ACR_NAME="${{ steps.acr.outputs.name }}"
+          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+
+          echo "Building image: ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "cevoc:${IMAGE_TAG}" \
+            --image "cevoc:latest" \
+            --file backend/Dockerfile \
+            backend/ \
+            2>&1 | tail -20
+
+      - name: Update container app to use new image
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'
+        run: |
+          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          APP_NAME="cevoc-dev-app"
+
+          echo "Updating ${APP_NAME} to ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group "$RG_NAME" \
+            --image "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" \
+            --set-env-vars \
+              SPRING_PROFILES_ACTIVE=dev \
+              CEVOC_DEMO_DATA_ENABLED=true \
+              SERVER_PORT=8080 \
+            --output table
+
+          # Get the app URL
+          APP_URL=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv)
+          echo "::notice::Dev app URL: https://${APP_URL}"
+          echo "app_url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
 
       # Validate and what-if (non-deploy path: push trigger)
       - name: Validate deployment
