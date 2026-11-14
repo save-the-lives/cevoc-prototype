@@ -1,10 +1,11 @@
 variable "base_name" { type = string }
+variable "resource_group_name" { type = string }
 variable "tags" { type = map(string) }
 variable "origin_host_name" { type = string }
 
 resource "azurerm_cdn_frontdoor_profile" "this" {
   name                = "${var.base_name}-fd"
-  resource_group_name = "rg-cevoc-${var.tags["environment"]}"
+  resource_group_name = var.resource_group_name
   sku_name            = "Standard_AzureFrontDoor"
   tags                = var.tags
 }
@@ -18,10 +19,11 @@ resource "azurerm_cdn_frontdoor_endpoint" "this" {
 resource "azurerm_cdn_frontdoor_origin_group" "this" {
   name                     = "app-origins"
   cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.this.id
+  session_affinity_enabled = false
 
   load_balancing {
-    sample_size                 = 4
-    successful_samples_required = 3
+    sample_size                        = 4
+    successful_samples_required        = 3
     additional_latency_in_milliseconds = 50
   }
 
@@ -43,6 +45,8 @@ resource "azurerm_cdn_frontdoor_origin" "this" {
   priority                      = 1
   weight                        = 1000
   enabled                       = true
+
+  certificate_name_check_enabled = true
 }
 
 resource "azurerm_cdn_frontdoor_route" "this" {
@@ -59,7 +63,7 @@ resource "azurerm_cdn_frontdoor_route" "this" {
   cache {
     query_string_caching_behavior = "IgnoreQueryString"
     compression_enabled           = true
-    content_types_to_compress     = [
+    content_types_to_compress = [
       "text/html",
       "text/css",
       "application/javascript",
@@ -72,7 +76,7 @@ resource "azurerm_cdn_frontdoor_route" "this" {
 # WAF policy
 resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
   name                = replace("${var.base_name}waf", "-", "")
-  resource_group_name = "rg-cevoc-${var.tags["environment"]}"
+  resource_group_name = var.resource_group_name
   sku_name            = azurerm_cdn_frontdoor_profile.this.sku_name
   mode                = "Detection"
   tags                = var.tags
