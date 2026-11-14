@@ -1,62 +1,29 @@
 #!/usr/bin/env bash
-# Deploy CEVOC Azure infrastructure with Terraform/OpenTofu.
-#
+# Deploy CEVOC Azure infrastructure with Terraform or OpenTofu.
+# Prerequisites: az login, resource group created by bootstrap.sh
 # Usage: ./deploy.sh <environment> [plan|apply|destroy]
-#   environment: dev | staging | prod
-#   action: plan (default) | apply | destroy
-#
-# Prerequisites:
-#   - az login (or service principal env vars)
-#   - terraform or tofu on PATH
-#   - Resource group created by bootstrap.sh
-#
-# State is stored in Azure Blob Storage. Configure backend with:
-#   export ARM_ACCESS_KEY=<storage-account-key>
-#   or use -backend-config at init time.
 set -euo pipefail
 
 ENV="${1:?Usage: $0 <dev|staging|prod> [plan|apply|destroy]}"
 ACTION="${2:-plan}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TFVARS="${SCRIPT_DIR}/environments/${ENV}.tfvars"
 
-if [[ "$ENV" != "dev" && "$ENV" != "staging" && "$ENV" != "prod" ]]; then
-  echo "Error: environment must be dev, staging, or prod" >&2
+if [ ! -f "$TFVARS" ]; then
+  echo "ERROR: No tfvars file at ${TFVARS}" >&2
   exit 1
 fi
 
-# Use tofu if available, otherwise terraform
-TF=$(command -v tofu 2>/dev/null || command -v terraform 2>/dev/null || true)
-if [[ -z "$TF" ]]; then
-  echo "Error: neither tofu nor terraform found on PATH" >&2
-  exit 1
-fi
-echo "Using: $TF"
+if command -v tofu &>/dev/null; then TF=tofu; elif command -v terraform &>/dev/null; then TF=terraform; else echo "ERROR: Neither tofu nor terraform found" >&2; exit 1; fi
+
+echo "==> Using ${TF} for CEVOC Azure ${ENV} (${ACTION})"
 
 cd "$SCRIPT_DIR"
-
-# Initialize (idempotent)
-$TF init -input=false \
-  -backend-config="key=cevoc-${ENV}.tfstate"
+$TF init -upgrade
 
 case "$ACTION" in
-  plan)
-    $TF plan -var-file="environments/${ENV}.tfvars" -out="tfplan-${ENV}"
-    echo ""
-    echo "To apply: $0 ${ENV} apply"
-    ;;
-  apply)
-    if [[ -f "tfplan-${ENV}" ]]; then
-      $TF apply "tfplan-${ENV}"
-    else
-      $TF apply -var-file="environments/${ENV}.tfvars" -auto-approve
-    fi
-    ;;
-  destroy)
-    echo "WARNING: This will destroy all ${ENV} infrastructure."
-    $TF destroy -var-file="environments/${ENV}.tfvars"
-    ;;
-  *)
-    echo "Error: action must be plan, apply, or destroy" >&2
-    exit 1
-    ;;
+  plan)    $TF plan -var-file="$TFVARS" -out=tfplan ;;
+  apply)   if [ -f tfplan ]; then $TF apply tfplan; else $TF apply -var-file="$TFVARS" -auto-approve; fi ;;
+  destroy) $TF destroy -var-file="$TFVARS" -auto-approve ;;
+  *)       echo "ERROR: Unknown action: ${ACTION}" >&2; exit 1 ;;
 esac
