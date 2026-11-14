@@ -1,0 +1,62 @@
+name: Terraform Azure Validate
+
+on:
+  push:
+    paths: ['infra/terraform/azure/**']
+  pull_request:
+    paths: ['infra/terraform/azure/**']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Apply to dev (not just validate)'
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Terraform (Azure)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/azure
+    env:
+      # Use OpenTofu in CI for licence compatibility with Transport tooling
+      TF_VERSION: "1.8.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TF_VERSION }}
+
+      - name: Format check
+        run: tofu fmt -check -recursive
+
+      - name: Init (no backend)
+        run: tofu init -backend=false
+
+      - name: Validate
+        run: tofu validate
+
+      - name: Azure login (deploy only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Plan (deploy only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          tofu init -input=false
+          tofu plan -var-file=environments/dev.tfvars -out=tfplan-dev
+
+      - name: Apply (deploy only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: tofu apply tfplan-dev
