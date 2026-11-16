@@ -228,7 +228,8 @@ jobs:
         run: |
           ACR_NAME="${{ needs.deploy-infra.outputs.acr_name }}"
           IMAGE_TAG="${GITHUB_SHA::7}"
-          DOCKERFILE=$( [ -f backend/Dockerfile.lean ] && echo "backend/Dockerfile.lean" || echo "backend/Dockerfile" )
+          # Force monolith Dockerfile to test if lean image is the problem
+          DOCKERFILE="backend/Dockerfile"
           echo "Building $DOCKERFILE → cevoc:${IMAGE_TAG}"
           az acr build --registry "$ACR_NAME" \
             --image "cevoc:${IMAGE_TAG}" --image "cevoc:latest" \
@@ -486,6 +487,13 @@ jobs:
           done
 
           # ---------- Collect diagnostics on failure ----------
+          # Re-login: the OIDC token (5 min) may have expired during the health check wait
+          az login --service-principal \
+            --username "${{ secrets.AZURE_DEV_CLIENT_ID }}" \
+            --tenant "${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}" \
+            --federated-token "$(cat $ACTIONS_ID_TOKEN_REQUEST_URL)" 2>/dev/null \
+            || az login --identity 2>/dev/null \
+            || echo "::warning::Could not re-authenticate for diagnostics"
           echo ""
           echo "=== Application logs (stdout/stderr) ==="
           az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
