@@ -8,3 +8,4 @@ visual-check-output/
 node_modules
 scripts/blur-spike/blurred-output.mp4
 scripts/blur-spike/*.mp4
+.terraform/

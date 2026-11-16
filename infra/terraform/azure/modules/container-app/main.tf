@@ -20,11 +20,11 @@ variable "deploy_blur_worker" {
 variable "resource_group_name" { type = string }
 
 locals {
-  is_prod      = var.environment == "prod"
-  cpu_cores    = local.is_prod ? 2.0 : 1.0
-  memory_gi    = local.is_prod ? "4Gi" : "2Gi"
-  min_replicas = local.is_prod ? 1 : 0
-  max_replicas = local.is_prod ? 3 : 1
+  is_prod         = var.environment == "prod"
+  cpu_cores       = local.is_prod ? 2.0 : 1.0
+  memory_gi       = local.is_prod ? "4Gi" : "2Gi"
+  min_replicas    = local.is_prod ? 1 : 0
+  max_replicas    = local.is_prod ? 3 : 1
   use_placeholder = var.image_tag == "latest"
 }
 
@@ -108,22 +108,22 @@ resource "azurerm_container_app" "backend" {
       dynamic "liveness_probe" {
         for_each = local.use_placeholder ? [] : [1]
         content {
-          transport             = "HTTP"
-          path                  = "/actuator/health"
-          port                  = 8080
-          initial_delay         = 30
-          interval_seconds      = 30
+          transport        = "HTTP"
+          path             = "/actuator/health"
+          port             = 8080
+          initial_delay    = 30
+          interval_seconds = 30
         }
       }
 
       dynamic "readiness_probe" {
         for_each = local.use_placeholder ? [] : [1]
         content {
-          transport             = "HTTP"
-          path                  = "/actuator/health"
-          port                  = 8080
-          initial_delay         = 10
-          interval_seconds      = 10
+          transport        = "HTTP"
+          path             = "/actuator/health"
+          port             = 8080
+          initial_delay    = 10
+          interval_seconds = 10
         }
       }
     }

@@ -48,17 +48,17 @@ module "alb" {
 
 # ---------- ECS ----------
 module "ecs" {
-  source               = "./modules/ecs"
-  environment          = var.environment
-  vpc_id               = module.vpc.vpc_id
-  private_subnet_ids   = module.vpc.private_subnet_ids
-  target_group_arn     = module.alb.target_group_arn
+  source                = "./modules/ecs"
+  environment           = var.environment
+  vpc_id                = module.vpc.vpc_id
+  private_subnet_ids    = module.vpc.private_subnet_ids
+  target_group_arn      = module.alb.target_group_arn
   alb_security_group_id = module.alb.alb_security_group_id
-  image_uri            = var.image_uri != "" ? var.image_uri : "${module.ecr.repository_uri}:latest"
-  task_role_arn        = module.secrets.task_role_arn
-  execution_role_arn   = module.secrets.execution_role_arn
-  secret_arn           = module.secrets.secret_arn
-  log_group_name       = module.monitoring.log_group_name
+  image_uri             = var.image_uri != "" ? var.image_uri : "${module.ecr.repository_uri}:latest"
+  task_role_arn         = module.secrets.task_role_arn
+  execution_role_arn    = module.secrets.execution_role_arn
+  secret_arn            = module.secrets.secret_arn
+  log_group_name        = module.monitoring.log_group_name
 }
 
 # ---------- CloudFront (prod only) ----------
