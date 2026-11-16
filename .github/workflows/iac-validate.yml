@@ -135,12 +135,79 @@ jobs:
           fi
 
   # =========================================================================
-  # Jobs 3a/3b/3c: Build images IN PARALLEL (all independent)
+  # Job 2b: Detect what actually changed (skip unchanged builds)
+  # =========================================================================
+  detect-changes:
+    name: Detect changes
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: deploy-infra
+    runs-on: ubuntu-latest
+    env:
+      RG_NAME: rg-cevoc-dev
+    outputs:
+      backend_changed: ${{ steps.check.outputs.backend_changed }}
+      browser_changed: ${{ steps.check.outputs.browser_changed }}
+      frontend_changed: ${{ steps.check.outputs.frontend_changed }}
+      deployed_tag: ${{ steps.check.outputs.deployed_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history for diff
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Check what changed since last deploy
+        id: check
+        run: |
+          IMAGE_TAG="${GITHUB_SHA::7}"
+
+          # What tag is currently deployed?
+          DEPLOYED_IMAGE=$(az containerapp show --name "cevoc-dev-app" --resource-group "$RG_NAME" \
+            --query 'properties.template.containers[0].image' -o tsv 2>/dev/null || echo "none")
+          DEPLOYED_TAG=$(echo "$DEPLOYED_IMAGE" | grep -oP ':\K[^:]+$' || echo "none")
+          echo "deployed_tag=$DEPLOYED_TAG" >> "$GITHUB_OUTPUT"
+          echo "Currently deployed: $DEPLOYED_IMAGE (tag: $DEPLOYED_TAG)"
+
+          if [ "$DEPLOYED_TAG" = "$IMAGE_TAG" ]; then
+            echo "Same commit already deployed — skipping all builds"
+            echo "backend_changed=false" >> "$GITHUB_OUTPUT"
+            echo "browser_changed=false" >> "$GITHUB_OUTPUT"
+            echo "frontend_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find the commit for the deployed tag (7-char SHA prefix)
+          DEPLOYED_COMMIT=$(git log --all --oneline | grep "^${DEPLOYED_TAG}" | head -1 | cut -d' ' -f1 || echo "")
+          if [ -z "$DEPLOYED_COMMIT" ]; then
+            echo "Can't find deployed commit $DEPLOYED_TAG — rebuilding everything"
+            echo "backend_changed=true" >> "$GITHUB_OUTPUT"
+            echo "browser_changed=true" >> "$GITHUB_OUTPUT"
+            echo "frontend_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Check each path for changes
+          BACKEND=$(git diff --name-only "$DEPLOYED_COMMIT"..HEAD -- backend/ | head -1)
+          FRONTEND=$(git diff --name-only "$DEPLOYED_COMMIT"..HEAD -- frontend/ | head -1)
+
+          echo "backend_changed=$( [ -n "$BACKEND" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          echo "browser_changed=$( [ -n "$BACKEND" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          echo "frontend_changed=$( [ -n "$FRONTEND" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+
+          echo "Backend changed: $( [ -n "$BACKEND" ] && echo yes || echo no )"
+          echo "Browser changed: $( [ -n "$BACKEND" ] && echo yes || echo no )"
+          echo "Frontend changed: $( [ -n "$FRONTEND" ] && echo yes || echo no )"
+
+  # =========================================================================
+  # Jobs 3a/3b/3c: Build images IN PARALLEL (skip if unchanged)
   # =========================================================================
   build-backend:
     name: Build backend image (lean)
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-    needs: deploy-infra
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && needs.detect-changes.outputs.backend_changed == 'true'
+    needs: [deploy-infra, detect-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -151,6 +218,11 @@ jobs:
           client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Prepare build context
+        run: |
+          # Copy sample demo videos into backend/ context (Dockerfile expects them there)
+          mkdir -p backend/samples
+          cp frontend/public/samples/*.mp4 backend/samples/ 2>/dev/null || echo "No sample videos to copy"
       - name: Build and push
         if: needs.deploy-infra.outputs.acr_found == 'true'
         run: |
@@ -164,8 +236,8 @@ jobs:
 
   build-browser-worker:
     name: Build browser worker image
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-    needs: deploy-infra
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && needs.detect-changes.outputs.browser_changed == 'true'
+    needs: [deploy-infra, detect-changes]
     runs-on: ubuntu-latest
     outputs:
       built: ${{ steps.build.outputs.built }}
@@ -198,8 +270,8 @@ jobs:
 
   build-frontend:
     name: Build frontend
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-    needs: deploy-infra
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && needs.detect-changes.outputs.frontend_changed == 'true'
+    needs: [deploy-infra, detect-changes]
     runs-on: ubuntu-latest
     env:
       RG_NAME: rg-cevoc-dev
@@ -257,8 +329,8 @@ jobs:
   # =========================================================================
   deploy-apps:
     name: Deploy apps & verify
-    needs: [deploy-infra, build-backend, build-browser-worker, build-frontend]
-    if: always() && needs.deploy-infra.result == 'success' && needs.build-backend.result == 'success'
+    needs: [deploy-infra, detect-changes, build-backend, build-browser-worker, build-frontend]
+    if: always() && needs.deploy-infra.result == 'success' && (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped')
     runs-on: ubuntu-latest
     env:
       RG_NAME: rg-cevoc-dev

@@ -1,8 +1,7 @@
 # Lean backend image — Java API only, no Chromium, no heavy ML deps.
 # Chromium (browser worker) and Python/OpenCV (blur worker) live in their own containers.
-# Use this for deployments where the browser and blur pipelines run as sidecars or separate services.
 #
-# Layer order: 1. JDK/Maven base  2. pom.xml → dependencies  3. JRE base + minimal Python  4. app jar
+# Layer order: 1. JDK/Maven base  2. pom.xml → dependencies  3. JRE + Python  4. app jar
 #
 # Build:  docker build -f Dockerfile.lean -t cevoc-api .
 
@@ -34,9 +33,18 @@ COPY --from=build /src/target/*.jar app.jar
 # Blur pipeline scripts + YuNet model (ADR 0017)
 COPY blur-pipeline/ /app/blur-pipeline/
 
-# Sample demo videos (served through DemoRoutes when CEVOC_DEMO_DATA_ENABLED=true)
-COPY samples/ /app/samples/
+# Sample demo videos — optional, may not exist in backend/ context.
+# CI should copy frontend/public/samples/*.mp4 here before building.
+RUN mkdir -p /app/samples
+COPY sample[s]/ /app/samples/
 
 USER app
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+# JVM tuning: container-aware memory settings, faster startup
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:+UseG1GC", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "/app/app.jar"]
