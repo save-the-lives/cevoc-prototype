@@ -34,23 +34,36 @@ jobs:
           # Several passes: a resource another depends on (the Container Apps environment, the registry) is refused
           # until its dependants are gone. --no-wait, then the group is listed: polling a delete operation needs a
           # subscription-level read this identity does not have (2026-11-17, Static Web App delete).
+          # A resource the group still lists but whose own service says does not exist is a stale listing, not a
+          # resource (2026-11-17: cevoc-dev-swa was listed, but "az staticwebapp delete" answered NotFound, and the
+          # portal could not delete it either). It is reported, not counted.
+          real() {
+            while IFS= read -r ID; do
+              [ -z "$ID" ] && continue
+              case "$ID" in
+                */Microsoft.Web/staticSites/*)
+                  if az staticwebapp show --name "${ID##*/}" --resource-group "$RG_NAME" -o none 2>/dev/null; then echo "$ID"
+                  else echo "::notice::Stale listing, the service says it does not exist: ${ID#*/providers/}" >&2; fi ;;
+                *) echo "$ID" ;;
+              esac
+            done
+          }
           for pass in $(seq 1 15); do
-            IDS=$(az resource list --resource-group "$RG_NAME" --query '[].id' -o tsv)
+            IDS=$(az resource list --resource-group "$RG_NAME" --query '[].id' -o tsv | real)
             [ -z "$IDS" ] && break
             echo "Pass $pass: $(echo "$IDS" | wc -l) resource(s) left"
             # One id per line: some names have spaces (the Application Insights smart detector).
             while IFS= read -r ID; do
               echo "  ${ID#*/providers/}"
               case "$ID" in
-                # A Static Web App is deleted through its own command: the generic delete is refused for it.
                 */Microsoft.Web/staticSites/*) az staticwebapp delete --name "${ID##*/}" --resource-group "$RG_NAME" --yes --no-wait || true ;;
                 *) az resource delete --ids "$ID" --no-wait || true ;;
               esac
             done <<< "$IDS"
             sleep 30
           done
-          LEFT=$(az resource list --resource-group "$RG_NAME" --query 'length(@)' -o tsv)
-          [ "$LEFT" = "0" ] || { echo "::error::$LEFT resource(s) still in $RG_NAME"; az resource list --resource-group "$RG_NAME" --query '[].type' -o tsv; exit 1; }
+          LEFT=$(az resource list --resource-group "$RG_NAME" --query '[].id' -o tsv | real)
+          [ -z "$LEFT" ] || { echo "::error::Still in $RG_NAME:"; echo "$LEFT"; exit 1; }
           echo "KVS=$KVS" >> "$GITHUB_ENV"
       - name: Purge the soft-deleted Key Vault
         run: |
