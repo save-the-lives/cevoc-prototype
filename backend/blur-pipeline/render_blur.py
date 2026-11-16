@@ -111,13 +111,32 @@ def render_blur_pass(video_path, by_frame, output_path, fps, w, h, pass_name="bl
     return frame_num, blurred_total
 
 
+def covered(det, regions, min_cover=0.5):
+    """True when at least min_cover of det's area lies inside the UNION of the given (already blurred) regions.
+    A union, not any single region: a blurred plate is often covered by two overlapping boxes from different passes."""
+    x0, y0 = max(0, det["x"]), max(0, det["y"])
+    x1, y1 = det["x"] + det["w"], det["y"] + det["h"]
+    if x1 <= x0 or y1 <= y0:
+        return True
+    mask = np.zeros((y1 - y0, x1 - x0), dtype=np.uint8)
+    for r in regions:
+        rx0, ry0 = max(x0, r["x"]), max(y0, r["y"])
+        rx1, ry1 = min(x1, r["x"] + r["w"]), min(y1, r["y"] + r["h"])
+        if rx1 > rx0 and ry1 > ry0:
+            mask[ry0 - y0:ry1 - y0, rx0 - x0:rx1 - x0] = 1
+    return mask.mean() >= min_cover
+
+
 def verify_and_reblur(blurred_raw_path, fps, w, h, offending_plate, scripts_dir,
-                      offending_regions=None):
+                      offending_regions=None, blurred_regions=None):
     """
     Verification pass: re-run plate detection on the blurred output.
     If any non-offending plates are still visible, blur them.
     offending_regions: by_frame dict of offending plate positions to skip.
-    Returns (leaked_count, reblurred_path or None).
+    blurred_regions: by_frame dict of regions already blurred. The detector still finds a plate-shaped box where a plate
+    was blurred (the shape survives the blur), so a detection that lies inside a blurred region is not a leak. Counting
+    it as one made every video fail verification (2026-11-17). Only detections outside blurred regions are leaks.
+    Returns (leaked_count, reblurred_path or None, leaked_by_frame).
     """
     print("[render_blur] VERIFICATION PASS: checking for leaked plates...", flush=True)
 
@@ -138,6 +157,7 @@ def verify_and_reblur(blurred_raw_path, fps, w, h, offending_plate, scripts_dir,
     frame_num = 0
     total_leaked = 0
     skipped_offending = 0
+    skipped_blurred = 0
 
     while True:
         ret, frame = cap.read()
@@ -183,6 +203,9 @@ def verify_and_reblur(blurred_raw_path, fps, w, h, offending_plate, scripts_dir,
                     if any(iou(det, o) > 0.3 for o in off_dets):
                         skipped_offending += 1
                         continue
+                    if covered(det, (blurred_regions or {}).get(frame_num, [])):
+                        skipped_blurred += 1
+                        continue
                     leaked_frames.setdefault(frame_num, []).append({
                         **det,
                         "confidence": confs[i],
@@ -199,13 +222,24 @@ def verify_and_reblur(blurred_raw_path, fps, w, h, offending_plate, scripts_dir,
 
     cap.release()
 
-    print(f"[render_blur]   Skipped {skipped_offending} offending plate detections", flush=True)
+    print(f"[render_blur]   Skipped {skipped_offending} offending plate detections, "
+          f"{skipped_blurred} detections inside already blurred regions", flush=True)
     if total_leaked == 0:
         print("[render_blur]   Verification PASSED: no leaked plates", flush=True)
-        return 0, None
+        return 0, None, {}
 
     print(f"[render_blur]   Verification found {total_leaked} leaked plate regions "
           f"across {len(leaked_frames)} frames — re-blurring", flush=True)
+
+    # Re-blur a leak with a wider box than the detection. The detector re-finds a blurred plate a few pixels away from
+    # where it found it before, so a re-blur exactly the size of the detection leaves an edge it finds again on the
+    # next round. Blurring more is the privacy-safe direction.
+    LEAK_MARGIN = 0.5
+    for fn, dets in leaked_frames.items():
+        for d in dets:
+            mx, my = int(d["w"] * LEAK_MARGIN), int(d["h"] * LEAK_MARGIN)
+            d["x"], d["y"] = max(0, d["x"] - mx), max(0, d["y"] - my)
+            d["w"], d["h"] = min(w - d["x"], d["w"] + 2 * mx), min(h - d["y"], d["h"] + 2 * my)
 
     # Interpolate leaked regions too
     leaked_frames = interpolate_regions(leaked_frames, frame_num, hold_frames=3)
@@ -214,7 +248,7 @@ def verify_and_reblur(blurred_raw_path, fps, w, h, offending_plate, scripts_dir,
     reblurred_path = blurred_raw_path.with_stem(blurred_raw_path.stem + "-v2")
     render_blur_pass(str(blurred_raw_path), leaked_frames, str(reblurred_path),
                      fps, w, h, pass_name="re-blur")
-    return total_leaked, reblurred_path
+    return total_leaked, reblurred_path, leaked_frames
 
 
 def main():
@@ -232,7 +266,7 @@ def main():
     track, by_frame = load_regions(args.regions)
     fps = track.get("fps", 25)
     total = int(track.get("duration", track.get("duration_s", 5)) * fps)
-    offending_plate = track.get("offending_plate", "ABC123")
+    offending_plate = track.get("offending_plate")  # None: no plate is kept visible
     by_frame = interpolate_regions(by_frame, total)
 
     output_final = Path(args.output or video_path.with_stem(video_path.stem + "-blurred"))
@@ -262,26 +296,35 @@ def main():
                     continue
                 offending_by_frame.setdefault(fn, []).append(det)
 
-    # Verification loop: up to 3 passes, fail-closed if plates still leak
-    MAX_VERIFY_PASSES = 3
+    # Verification: up to MAX_REBLUR_ROUNDS rounds of "find leaks, re-blur them", then the decision is made by a
+    # verification of the FINAL output. Until 2026-11-17 the loop failed closed on leaks it had just re-blurred, without
+    # looking at the result, so a video that needed a third re-blur was always refused.
+    MAX_REBLUR_ROUNDS = 6
     leaked = 0
+    # Everything blurred so far, per frame (offending plates are not blurred, so they are not in here).
+    blurred_by_frame = {fn: [d for d in dets if d.get("label") != "PLATE_OFFENDING"] for fn, dets in by_frame.items()}
     if not args.no_verify:
-        for vpass in range(1, MAX_VERIFY_PASSES + 1):
-            leaked, reblurred_path = verify_and_reblur(
+        for vround in range(0, MAX_REBLUR_ROUNDS + 1):
+            leaked, reblurred_path, reblurred = verify_and_reblur(
                 output_tmp, actual_fps, w, h, offending_plate, scripts_dir,
-                offending_regions=offending_by_frame)
+                offending_regions=offending_by_frame, blurred_regions=blurred_by_frame)
+            if leaked == 0:
+                break
+            if vround == MAX_REBLUR_ROUNDS:
+                # The final output still shows plates: refuse it. The re-blur made in this call is not used.
+                if reblurred_path:
+                    reblurred_path.unlink(missing_ok=True)
+                print(f"[render_blur] FAIL-CLOSED: {leaked} plates still visible after "
+                      f"{MAX_REBLUR_ROUNDS} re-blur rounds — refusing to release video", flush=True)
+                output_tmp.unlink(missing_ok=True)
+                sys.exit(1)
+            for fn, dets in reblurred.items():
+                blurred_by_frame.setdefault(fn, []).extend(dets)
             if reblurred_path:
                 output_tmp.unlink()
                 output_tmp = reblurred_path
-            if leaked == 0:
-                break
-            print(f"[render_blur] Verification pass {vpass}/{MAX_VERIFY_PASSES}: "
-                  f"{leaked} plates still visible", flush=True)
-        if leaked > 0:
-            print(f"[render_blur] FAIL-CLOSED: {leaked} plates still visible after "
-                  f"{MAX_VERIFY_PASSES} passes — refusing to release video", flush=True)
-            output_tmp.unlink(missing_ok=True)
-            sys.exit(1)
+            print(f"[render_blur] Re-blur round {vround + 1}/{MAX_REBLUR_ROUNDS}: {leaked} plates re-blurred, "
+                  f"verifying again", flush=True)
 
     # Re-encode with x264 for web
     print("[render_blur] Encoding final output with x264...", flush=True)

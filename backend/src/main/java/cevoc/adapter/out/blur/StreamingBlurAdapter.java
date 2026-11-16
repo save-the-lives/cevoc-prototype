@@ -109,7 +109,7 @@ public final class StreamingBlurAdapter implements BlurPort, HlsSegmentPort {
         } else {
             log.info("Streaming blur already in progress for {}", hash.substring(0, 12));
         }
-        return Result.failed("Blur processing — try again shortly");
+        return Result.pending("Blur processing — try again shortly");
     }
 
     private Result blurSync(byte[] videoBytes, String offendingPlate, String hash) {

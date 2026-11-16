@@ -12,3 +12,4 @@ scripts/blur-spike/*.mp4
 # The built site is copied here by the deploy workflows; only the placeholder is kept.
 backend/site/*
 !backend/site/.gitkeep
+__pycache__/

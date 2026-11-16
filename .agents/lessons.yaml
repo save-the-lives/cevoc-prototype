@@ -79,3 +79,13 @@ lessons:
     status: promoted
     opened: 2026-11-17
     promoted: 2026-11-17
+  - id: L-0009
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "Demo videos never played. The cause was in the blur pipeline (verification counted its own blur as a leak; a plate ABC123 was hard-coded as the default 'offending' plate) and was hidden for a week because 'still blurring' and 'failed' were the same HTTP answer."
+    right_behaviour: "Reproduce a failing pipeline step locally on the real input before changing anything; never default a plate, number or name; keep 'in progress' and 'failed' as different answers."
+    destination: decision-log
+    destination_ref: docs/decisions/0032-blur-judges-the-final-output.md
+    status: promoted
+    opened: 2026-11-17
+    promoted: 2026-11-17

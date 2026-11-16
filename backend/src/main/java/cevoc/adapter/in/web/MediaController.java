@@ -39,6 +39,12 @@ public class MediaController {
     private final ObjectProvider<HlsSegmentPort> hlsSegments;
     /** Cache blurred content by token so the pipeline runs once per evidence item. */
     private final Map<String, MediaContent> blurCache = new ConcurrentHashMap<>();
+    /** What blurring gave: the content to serve, or nothing (failed, fail-closed), or nothing yet (still running). */
+    private record Blurred(MediaContent content, boolean pending) {
+        static Blurred of(MediaContent c) { return new Blurred(c, false); }
+        static Blurred failed() { return new Blurred(null, false); }
+        static Blurred stillRunning() { return new Blurred(null, true); }
+    }
 
     public MediaController(ObjectProvider<MediaReadPort> media, ObjectProvider<BlurPort> blur,
                            ObjectProvider<HlsSegmentPort> hlsSegments) {
@@ -60,15 +66,22 @@ public class MediaController {
         if (content.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        var blurred = applyBlur(token + (variant != null ? ":" + variant : ""), content.get());
-        if (blurred.isEmpty()) {
+        Blurred blurred = applyBlur(token + (variant != null ? ":" + variant : ""), content.get());
+        if (blurred.pending()) {
+            // Still being blurred: not a failure. 503 with Retry-After tells the page to ask again shortly.
+            return ResponseEntity.status(503)
+                    .header("Retry-After", "5")
+                    .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+                    .body("This video is being prepared for safe viewing.".getBytes());
+        }
+        if (blurred.content() == null) {
             // Blur failed (fail-closed). Return 451 (Unavailable For Legal Reasons) with a user-facing message.
             // The frontend shows this as a section-level error, not a page-level crash.
             return ResponseEntity.status(451)
                     .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
                     .body("This image could not be prepared for safe viewing. This is a technical problem, not an issue with your notice. Please try again shortly.".getBytes());
         }
-        return ok(blurred.get(), download != null, rangeHeader);
+        return ok(blurred.content(), download != null, rangeHeader);
     }
 
     /**
@@ -100,40 +113,43 @@ public class MediaController {
      * Blur video and image content before serving. Non-media types pass through.
      * Fail-closed: if blur fails, returns empty (content not served).
      */
-    private java.util.Optional<MediaContent> applyBlur(String cacheKey, MediaContent content) {
+    private Blurred applyBlur(String cacheKey, MediaContent content) {
         BlurPort blurPort = blur.getIfAvailable();
         if (blurPort == null) {
-            return java.util.Optional.of(content); // no blur adapter wired — pass through (e.g. tests)
+            return Blurred.of(content); // no blur adapter wired — pass through (e.g. tests)
         }
         MediaContent cached = blurCache.get(cacheKey);
         if (cached != null) {
-            return java.util.Optional.of(cached);
+            return Blurred.of(cached);
         }
         String ct = content.contentType();
         if (ct != null && ct.startsWith("video/")) {
             // The offending plate comes from the lookup context (set per-request by the lookup service).
             String plate = OffendingPlateContext.get();
             BlurPort.Result result = blurPort.blurVideo(content.data(), plate);
+            if (result.pending()) {
+                return Blurred.stillRunning();
+            }
             if (!result.success()) {
                 LOG.warn("Video blur failed (fail-closed): {}", result.detail());
-                return java.util.Optional.empty();
+                return Blurred.failed();
             }
             MediaContent blurred = new MediaContent(result.contentType(), result.data());
             blurCache.put(cacheKey, blurred);
-            return java.util.Optional.of(blurred);
+            return Blurred.of(blurred);
         }
         if (ct != null && ct.startsWith("image/") && !ct.contains("svg")) {
             String plate = OffendingPlateContext.get();
             BlurPort.Result result = blurPort.blurImage(content.data(), plate);
             if (!result.success()) {
                 LOG.warn("Image blur failed (fail-closed): {}", result.detail());
-                return java.util.Optional.empty();
+                return Blurred.failed();
             }
             MediaContent blurred = new MediaContent(result.contentType(), result.data());
             blurCache.put(cacheKey, blurred);
-            return java.util.Optional.of(blurred);
+            return Blurred.of(blurred);
         }
-        return java.util.Optional.of(content); // non-media or SVG — pass through
+        return Blurred.of(content); // non-media or SVG — pass through
     }
 
     /**

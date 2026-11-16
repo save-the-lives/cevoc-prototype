@@ -122,12 +122,14 @@ export default function EvidenceVideo({ item, bare = false, autoPlay = false }) 
 
   // Auto-retry: when the video is being prepared (blur running server-side), poll every 5s
   const retryTimer = useRef(null);
+  // Gives up after 5 minutes of "still preparing" and says so, rather than waiting for ever.
   useEffect(() => {
     if (preparing && status === 'error') {
+      if (tries >= 60) { setPreparing(false); fail('This video is taking too long to prepare. Try again later.'); return undefined; }
       retryTimer.current = setTimeout(() => setTries((t) => t + 1), 5000);
     }
     return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
-  }, [preparing, status, tries]);
+  }, [preparing, status, tries, fail]);
 
   // Autoplay: when autoPlay prop is set and video becomes ready, play muted
   useEffect(() => {
@@ -154,12 +156,13 @@ export default function EvidenceVideo({ item, bare = false, autoPlay = false }) 
         onError={() => {
           if (hlsRef.current || !videoRef.current?.getAttribute('src')) return;
           fetch(item.url, { method: 'GET', mode: 'cors' }).then(res => {
-            // 451 means the server could not blur the video and so will not send it (fail-closed). That is a technical
-            // failure, not work in progress: say so plainly and offer Try again, never an endless "Preparing" (2026-11-17).
-            if (res.status === 451) fail('This video could not be prepared for safe viewing. This is a technical problem, not an issue with your notice.');
-            else if (res.status === 503) fail('The video service is temporarily unavailable.');
-            else fail('');
-          }).catch(() => fail(''));
+            // 503 + Retry-After: the server is still blurring the video; ask again shortly and say so.
+            // 451: blurring failed and the server will not send the video (fail-closed); say so plainly and stop asking.
+            if (res.status === 503 && res.headers.get('Retry-After')) { setPreparing(true); fail('preparing'); }
+            else if (res.status === 451) { setPreparing(false); fail('This video could not be prepared for safe viewing. This is a technical problem, not an issue with your notice.'); }
+            else if (res.status === 503) { setPreparing(false); fail('The video service is temporarily unavailable.'); }
+            else { setPreparing(false); fail(''); }
+          }).catch(() => { setPreparing(false); fail(''); });
         }}
       >
         {item.captionsUrl && <track kind="captions" src={item.captionsUrl} srcLang={item.captionsLang || 'en'} label="English captions" />}

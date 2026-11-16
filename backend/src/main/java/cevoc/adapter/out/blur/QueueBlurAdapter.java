@@ -72,7 +72,7 @@ public final class QueueBlurAdapter implements BlurPort {
         // Already submitted?
         if (!pending.add(hash)) {
             log.info("Blur request already pending for {}", hash.substring(0, 12));
-            return Result.failed("Blur processing — try again shortly");
+            return Result.pending("Blur processing — try again shortly");
         }
 
         // Write input to shared volume
@@ -98,7 +98,7 @@ public final class QueueBlurAdapter implements BlurPort {
             return Result.failed("IO error: " + e.getMessage());
         }
 
-        return Result.failed("Blur processing — try again shortly");
+        return Result.pending("Blur processing — try again shortly");
     }
 
     @Override

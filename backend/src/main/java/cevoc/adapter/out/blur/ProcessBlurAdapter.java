@@ -36,6 +36,9 @@ public final class ProcessBlurAdapter implements BlurPort {
     private final Map<String, CachedEntry> cache = new ConcurrentHashMap<>();
     /** Tracks hashes currently being processed in the background to avoid duplicate work. */
     private final java.util.Set<String> processing = ConcurrentHashMap.newKeySet();
+    /** A blur that failed is remembered for a short time, so asking again reports the failure instead of re-running it. */
+    private static final Duration FAILURE_TTL = Duration.ofMinutes(2);
+    private final Map<String, java.time.Instant> failedUntil = new ConcurrentHashMap<>();
     private final Clock clock;
 
     public ProcessBlurAdapter(Path scriptsDir) {
@@ -60,8 +63,14 @@ public final class ProcessBlurAdapter implements BlurPort {
             cache.remove(hash); // expired
         }
 
+        java.time.Instant failedEnd = failedUntil.get(hash);
+        if (failedEnd != null && failedEnd.isAfter(clock.instant())) {
+            return Result.failed("Blur failed recently for this video; not retried until " + failedEnd);
+        }
+        failedUntil.remove(hash);
+
         // Blur is CPU-intensive (face detect + plate detect + merge + render). Run it in the background
-        // and return "processing" immediately — the frontend auto-retries every 5 seconds.
+        // and return "pending" immediately — the frontend asks again every 5 seconds.
         if (processing.add(hash)) {
             log.info("Starting async blur for video hash {} ({} bytes)", hash.substring(0, 12), videoBytes.length);
             Thread.startVirtualThread(() -> {
@@ -73,6 +82,7 @@ public final class ProcessBlurAdapter implements BlurPort {
                         log.info("Async blur done: {} -> {} bytes, cached as {} (TTL {}min)",
                                 videoBytes.length, result.data().length, hash.substring(0, 12), CACHE_TTL.toMinutes());
                     } else {
+                        failedUntil.put(hash, clock.instant().plus(FAILURE_TTL));
                         log.warn("Async blur failed for {}: {}", hash.substring(0, 12), result.detail());
                     }
                 } finally {
@@ -82,7 +92,7 @@ public final class ProcessBlurAdapter implements BlurPort {
         } else {
             log.info("Blur already in progress for hash {}", hash.substring(0, 12));
         }
-        return Result.failed("Blur processing — try again shortly");
+        return Result.pending("Blur processing — try again shortly");
     }
 
     private Result blurSync(byte[] videoBytes, String offendingPlate, String hash) {

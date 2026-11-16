@@ -268,7 +268,7 @@ def interpolate_tracks(tracks, total_frames, fps):
 # Main pipeline
 # ---------------------------------------------------------------------------
 
-def process_video(video_path, offending_plate="ABC123", every_n=1):
+def process_video(video_path, offending_plate=None, every_n=1):
     """Process a video, detect plates, track, OCR once per track."""
     scripts_dir = Path(__file__).parent
     plate_net = load_yolo(scripts_dir, PLATE_MODEL)
@@ -505,8 +505,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="Detect licence plates in traffic camera video")
     parser.add_argument("video", help="Path to video file")
-    parser.add_argument("--offending", default="ABC123",
-                        help="Offending plate text (default: ABC123)")
+    # No default: without a nominated plate every plate is blurred. A built-in default plate would keep whatever plate
+    # happens to match it visible (it matched the demo video's plate by coincidence until 2026-11-17).
+    parser.add_argument("--offending", default=None,
+                        help="Offending plate text to keep visible (default: none, every plate is blurred)")
     parser.add_argument("--output", default=None,
                         help="Output JSON file")
     parser.add_argument("--every", type=int, default=1,
