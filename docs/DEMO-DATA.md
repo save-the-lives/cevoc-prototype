@@ -72,74 +72,60 @@ Status words in the table: *Shown* (all of it returned), *Shown in part*, *Not r
 
 | Number | Kind | What it shows | Images | Certificates | Video | Program details |
 |---|---|---|---|---|---|---|
-| `0000000001` | Happy | **Everything returned.** Three images, a certificate covering the offence date, and a video. | Shown | Shown | Shown | No display rules, default message |
-| `0000000002` | Happy | **Everything returned, evening.** Same as 0001 for an evening offence at a different place. | Shown | Shown | Shown | No display rules, default message |
-| `0000000101` | Partial | **No certificate returned.** Images and video are there; the certificate list is empty. | Shown | Not returned, said plainly | Shown | No display rules, default message |
-| `0000000102` | Partial | **Certificate does not cover the date.** A certificate is listed but none was in force on the offence date. | Shown | Shown in part | Shown | No display rules, default message |
-| `0000000103` | Partial | **No video returned.** Images and a covering certificate; no video. | Shown | Shown | Not returned, said plainly | No display rules, default message |
-| `0000000105` | Partial | **One image only.** A single image instead of three; no video. | Shown in part | Shown | Not returned, said plainly | No display rules, default message |
-| `0000000106` | Partial | **Images need the number plate.** Images and video are held back until the plate ABC123 is given. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
-| `0000000107` | Partial | **Notice already paid.** Everything returned; the notice is paid and nothing is owing. | Shown | Shown | Shown | No display rules, default message |
-| `0000000108` | Partial | **Notice in review.** Everything returned; the notice is under review. | Shown | Shown | Shown | No display rules, default message |
-| `0000000201` | Sad | **Certificate lookup failed.** Images and video are there; the certificate lookup has a technical failure. | Shown | Technical failure, said plainly | Shown | No display rules, default message |
+| `0000000001` | Happy | **Everything returned.** Four images, a certificate covering the offence date, and a video. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000002` | Happy | **Everything returned, evening.** Same as 0001 for an evening offence at a different place. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000101` | Partial | **No certificate returned.** Images and video are there; the certificate list is empty. | Held back until the number plate is given | Not returned, said plainly | Held back until the number plate is given | No display rules, default message |
+| `0000000102` | Partial | **Certificate does not cover the date.** A certificate is listed but none was in force on the offence date. | Held back until the number plate is given | Shown in part | Held back until the number plate is given | No display rules, default message |
+| `0000000103` | Partial | **No video returned.** Images and a covering certificate; no video. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000105` | Partial | **One image only.** A single image instead of three; no video. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000106` | Partial | **Wrong registration refused.** Any registration other than ABC123 is refused. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000107` | Partial | **Notice already paid.** Everything returned; the notice is paid and nothing is owing. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000108` | Partial | **Notice in review.** Everything returned; the notice is under review. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000109` | Partial | **All certificate types covered.** Two certificate types (accuracy and calibration); both cover the offence date. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000110` | Partial | **One certificate type uncovered.** Two certificate types; the accuracy certificate covers the date but the calibration certificate does not. | Held back until the number plate is given | Shown in part | Held back until the number plate is given | No display rules, default message |
+| `0000000111` | Partial | **Mixed certificate types.** Three certificate types; accuracy and calibration cover the date but the maintenance certificate does not. | Held back until the number plate is given | Shown in part | Held back until the number plate is given | No display rules, default message |
+| `0000000201` | Sad | **Certificate lookup failed.** Images and video are there; the certificate lookup has a technical failure. | Held back until the number plate is given | Technical failure, said plainly | Held back until the number plate is given | No display rules, default message |
 | `0000000202` | Sad | **Image retrieval failed.** The notice is found, then the image step fails; images, certificates and video are reported failed. | Technical failure, said plainly | Technical failure, said plainly | Technical failure, said plainly | No display rules, default message |
 | `0000000204` | Sad | **Source timed out.** The source does not answer in time; no details at all. | Technical failure, said plainly | Technical failure, said plainly | Technical failure, said plainly | Technical failure, said plainly |
 | `0000000205` | Sad | **Notice not found.** The source does not know this notice. | No notice, nothing to show | No notice, nothing to show | No notice, nothing to show | No notice, nothing to show |
 | `0000000206` | Sad | **Wrong plate, always refused.** Images are held back and every number plate is refused, so the page says so. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
-| `0000000301` | Edge | **Offence date before any configuration version.** Dated 31 Dec 1999; the default block never fails and is used as always. | Shown | Shown | Shown | No display rules, default message |
-| `0000000303` | Edge | **Very long location text.** The location is about 300 characters long. | Shown | Shown | Shown | No display rules, default message |
-| `0000000304` | Edge | **Extreme values.** Penalty $99,999.99, offence at 23:59:59. | Shown | Shown | Shown | No display rules, default message |
+| `0000000301` | Edge | **Offence date before any configuration version.** Dated 31 Dec 1999; the default block never fails and is used as always. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000303` | Edge | **Very long location text.** The location is about 300 characters long. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `0000000304` | Edge | **Extreme values.** Penalty $99,999.99, offence at 23:59:59. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
 
 ### 100000 Red light
 
 | Number | Kind | What it shows | Images | Certificates | Video | Program details |
 |---|---|---|---|---|---|---|
-| `1000000001` | Happy | **Everything returned.** Three images, a certificate covering the offence date, all red light details, and a video. | Shown | Shown | Shown | Shown |
-| `1000000002` | Happy | **Everything returned, evening.** Same as 0001 for an evening offence at a different place. | Shown | Shown | Shown | Shown |
-| `1000000101` | Partial | **No certificate returned.** Images and video are there; the certificate list is empty. | Shown | Not returned, said plainly | Shown | Shown |
-| `1000000102` | Partial | **Certificate does not cover the date.** A certificate is listed but none was in force on the offence date. | Shown | Shown in part | Shown | Shown |
-| `1000000103` | Partial | **No video returned.** Images and a covering certificate; no video. | Shown | Shown | Not returned, said plainly | Shown |
-| `1000000104` | Partial | **Some red light details not returned.** The seconds after red are there; the speed limit is not. | Shown | Shown | Shown | Shown in part |
-| `1000000105` | Partial | **One image only.** A single image instead of three; no video. | Shown in part | Shown | Not returned, said plainly | Shown |
-| `1000000106` | Partial | **Images need the number plate.** Images and video are held back until the plate ABC123 is given. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
-| `1000000107` | Partial | **Notice already paid.** Everything returned; the notice is paid and nothing is owing. | Shown | Shown | Shown | Shown |
-| `1000000108` | Partial | **Notice in review.** Everything returned; the notice is under review. | Shown | Shown | Shown | Shown |
-| `1000000201` | Sad | **Certificate lookup failed.** Images and video are there; the certificate lookup has a technical failure. | Shown | Technical failure, said plainly | Shown | Shown |
+| `1000000001` | Happy | **Everything returned.** Four images, a certificate covering the offence date, all red light details, and a video. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000002` | Happy | **Everything returned, evening.** Same as 0001 for an evening offence at a different place. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000101` | Partial | **No certificate returned.** Images and video are there; the certificate list is empty. | Held back until the number plate is given | Not returned, said plainly | Held back until the number plate is given | Shown |
+| `1000000102` | Partial | **Certificate does not cover the date.** A certificate is listed but none was in force on the offence date. | Held back until the number plate is given | Shown in part | Held back until the number plate is given | Shown |
+| `1000000103` | Partial | **No video returned.** Images and a covering certificate; no video. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000104` | Partial | **Some red light details not returned.** The seconds after red are there; the speed limit is not. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown in part |
+| `1000000105` | Partial | **One image only.** A single image instead of three; no video. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000106` | Partial | **Wrong registration refused.** Any registration other than ABC123 is refused. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000107` | Partial | **Notice already paid.** Everything returned; the notice is paid and nothing is owing. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000108` | Partial | **Notice in review.** Everything returned; the notice is under review. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000109` | Partial | **All certificate types covered.** Two certificate types (accuracy and calibration); both cover the offence date. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000110` | Partial | **One certificate type uncovered.** Two certificate types; the accuracy certificate covers the date but the calibration certificate does not. | Held back until the number plate is given | Shown in part | Held back until the number plate is given | Shown |
+| `1000000111` | Partial | **Mixed certificate types.** Three certificate types; accuracy and calibration cover the date but the maintenance certificate does not. | Held back until the number plate is given | Shown in part | Held back until the number plate is given | Shown |
+| `1000000201` | Sad | **Certificate lookup failed.** Images and video are there; the certificate lookup has a technical failure. | Held back until the number plate is given | Technical failure, said plainly | Held back until the number plate is given | Shown |
 | `1000000202` | Sad | **Image retrieval failed.** The notice is found, then the image step fails; images, certificates and video are reported failed. | Technical failure, said plainly | Technical failure, said plainly | Technical failure, said plainly | Not returned, said plainly |
-| `1000000203` | Sad | **Details missing entirely.** Images, certificate and video are there; no red light details at all. | Shown | Shown | Shown | Not returned, said plainly |
+| `1000000203` | Sad | **Details missing entirely.** Images, certificate and video are there; no red light details at all. | Held back until the number plate is given | Shown | Held back until the number plate is given | Not returned, said plainly |
 | `1000000204` | Sad | **Source timed out.** The source does not answer in time; no details at all. | Technical failure, said plainly | Technical failure, said plainly | Technical failure, said plainly | Technical failure, said plainly |
 | `1000000205` | Sad | **Notice not found.** The source does not know this notice. | No notice, nothing to show | No notice, nothing to show | No notice, nothing to show | No notice, nothing to show |
 | `1000000206` | Sad | **Wrong plate, always refused.** Images are held back and every number plate is refused, so the page says so. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
-| `1000000301` | Edge | **Offence date before any configuration version.** Dated 31 Dec 1999, before the first display rules; the page says it has no rules for that date. | Shown | Shown | Shown | No display rules, default message |
-| `1000000302` | Edge | **Unknown program falls to the default block.** Camera notice whose offence text and details match no program, so the default block shows. | Shown | Shown | Shown | No display rules, default message |
-| `1000000303` | Edge | **Very long location text.** The location is about 300 characters long. | Shown | Shown | Shown | Shown |
-| `1000000304` | Edge | **Extreme values.** Penalty $99,999.99, offence at 23:59:59, 59.9 seconds after red, speed limit 130. | Shown | Shown | Shown | Shown |
-| `1000000305` | Edge | **Time after red just under 1.0 s.** 0.9 seconds after red, just under the illustrative late-red threshold. | Shown | Shown | Shown | Shown |
-| `1000000306` | Edge | **Time after red exactly 1.0 s.** 1.0 seconds after red, exactly at the threshold. | Shown | Shown | Shown | Shown |
-| `1000000307` | Edge | **Time after red just over 1.0 s.** 1.1 seconds after red, just over the threshold. | Shown | Shown | Shown | Shown |
-| `1000000308` | Edge | **Offence at 19:59, just before night.** Just under the illustrative night threshold of 20:00. | Shown | Shown | Shown | Shown |
-| `1000000309` | Edge | **Offence at 20:00, night starts.** Exactly at the night threshold. | Shown | Shown | Shown | Shown |
-| `1000000310` | Edge | **Offence at 20:01, just into night.** Just over the night threshold. | Shown | Shown | Shown | Shown |
-
-### 200000 Fixed speed (not built yet)
-
-Reserved, not built yet. The prefix is reserved: the sequence ranges below apply when it is built.
-
-### 300000 Mobile speed (not built yet)
-
-Reserved, not built yet. The prefix is reserved: the sequence ranges below apply when it is built.
-
-### 400000 Average speed (not built yet)
-
-Reserved, not built yet. The prefix is reserved: the sequence ranges below apply when it is built.
-
-### 500000 Mobile phone detection (not built yet)
-
-Reserved, not built yet. The prefix is reserved: the sequence ranges below apply when it is built.
-
-### 600000 Bus lane (not built yet)
-
-Reserved, not built yet. The prefix is reserved: the sequence ranges below apply when it is built.
+| `1000000301` | Edge | **Offence date before any configuration version.** Dated 31 Dec 1999, before the first display rules; the page says it has no rules for that date. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `1000000302` | Edge | **Unknown program falls to the default block.** Camera notice whose offence text and details match no program, so the default block shows. | Held back until the number plate is given | Shown | Held back until the number plate is given | No display rules, default message |
+| `1000000303` | Edge | **Very long location text.** The location is about 300 characters long. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000304` | Edge | **Extreme values.** Penalty $99,999.99, offence at 23:59:59, 59.9 seconds after red, speed limit 130. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000305` | Edge | **Time after red just under 1.0 s.** 0.9 seconds after red, just under the illustrative late-red threshold. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000306` | Edge | **Time after red exactly 1.0 s.** 1.0 seconds after red, exactly at the threshold. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000307` | Edge | **Time after red just over 1.0 s.** 1.1 seconds after red, just over the threshold. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000308` | Edge | **Offence at 19:59, just before night.** Just under the illustrative night threshold of 20:00. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000309` | Edge | **Offence at 20:00, night starts.** Exactly at the night threshold. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
+| `1000000310` | Edge | **Offence at 20:01, just into night.** Just over the night threshold. | Held back until the number plate is given | Shown | Held back until the number plate is given | Shown |
 
 <!-- END GENERATED -->
 
