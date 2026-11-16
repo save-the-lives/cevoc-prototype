@@ -15,367 +15,38 @@ permissions:
   contents: read
   packages: read
 
+# ---------------------------------------------------------------------------
+# PATTERN: config-driven optional dependencies
+#
+# Any worker/sidecar that is only needed for a specific config value follows
+# the same rule:
+#   - Build it always (so config changes take effect without a redeploy).
+#   - If the build FAILS and the config DOES NOT require it → warning.
+#   - If the build FAILS and the config DOES require it → error (blocks deploy).
+#
+# This applies to: browser worker (CEVOC_PENALTY_LOOKUP_ADAPTER=browser),
+# blur worker (cevoc.blur.mode=queue), and any future optional sidecar.
+# ---------------------------------------------------------------------------
+
 jobs:
+  # =========================================================================
+  # Job 1: Validate (runs on every push to infra/azure/**)
+  # =========================================================================
   validate:
-    name: Lint, validate & deploy
+    name: Validate Bicep
     runs-on: ubuntu-latest
     env:
       RG_NAME: rg-cevoc-dev
     steps:
       - uses: actions/checkout@v4
-
       - name: Azure login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
-
       - name: Bicep lint & build
         run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
-
-      # Pre-flight checks (deploy path only) — fail early with clear messages
-      - name: Pre-flight checks
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          echo "=== Pre-flight checks ==="
-          FAIL=0
-
-          # 1. Check required resource providers
-          echo "Checking resource providers..."
-          for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry Microsoft.Web; do
-            STATE=$(az provider show --namespace "$NS" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
-            if [ "$STATE" != "Registered" ]; then
-              echo "::error::Provider $NS is not registered. Run bootstrap.sh first (it registers providers as subscription Owner)."
-              FAIL=1
-            fi
-          done
-
-          # 2. Check for soft-deleted Key Vaults that would block creation
-          echo "Checking for soft-deleted Key Vaults..."
-          DELETED_KVS=$(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv 2>/dev/null || true)
-          if [ -n "$DELETED_KVS" ]; then
-            echo "::error::Soft-deleted Key Vault(s) found: $DELETED_KVS. Run teardown.sh to purge them first."
-            FAIL=1
-          fi
-
-          # 3. Check Container App Environment count in target region
-          echo "Checking Container App Environments in target region..."
-          TARGET_REGION=$(grep "param location" infra/azure/parameters/dev.bicepparam | grep -oP "'[^']+'" | tr -d "'" || echo "australiasoutheast")
-          ENV_COUNT=$(az containerapp env list --query "[?location=='${TARGET_REGION}'] | length(@)" -o tsv 2>/dev/null || echo "0")
-          if [ "$ENV_COUNT" -ge 1 ]; then
-            echo "::warning::$ENV_COUNT Container App Environment(s) already in $TARGET_REGION. Trial subscriptions allow 1 per region — deploy may fail."
-          fi
-
-          # 4. Check resource group exists
-          echo "Checking resource group..."
-          RG_EXISTS=$(az group exists --name "$RG_NAME" 2>/dev/null || echo "false")
-          if [ "$RG_EXISTS" != "true" ]; then
-            echo "::error::Resource group $RG_NAME does not exist. Run bootstrap.sh first."
-            FAIL=1
-          fi
-
-          if [ "$FAIL" -ne 0 ]; then
-            echo "::error::Pre-flight checks failed. Fix the issues above before deploying."
-            exit 1
-          fi
-          echo "All pre-flight checks passed."
-
-      # Deploy (only on manual trigger with deploy=true, after pre-flight passes)
-      - name: Deploy to rg-cevoc-dev
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          az deployment group create \
-            --resource-group "$RG_NAME" \
-            --template-file infra/azure/main.bicep \
-            --parameters infra/azure/parameters/dev.bicepparam \
-            --mode Incremental \
-            --output table
-
-      # --- Build, push image and update container app ---
-      - name: Get ACR login server
-        id: acr
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query '[0].name' -o tsv 2>/dev/null || true)
-          if [ -z "$ACR_NAME" ]; then
-            echo "::warning::No ACR found in $RG_NAME — skipping image push"
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          else
-            LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
-            echo "name=$ACR_NAME" >> "$GITHUB_OUTPUT"
-            echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            echo "ACR: $ACR_NAME ($LOGIN_SERVER)"
-          fi
-
-      - name: Build and push backend image (lean) to ACR
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'
-        run: |
-          ACR_NAME="${{ steps.acr.outputs.name }}"
-          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
-          IMAGE_TAG="${GITHUB_SHA::7}"
-
-          # Use lean Dockerfile if it exists, fall back to monolith
-          if [ -f backend/Dockerfile.lean ]; then
-            DOCKERFILE="backend/Dockerfile.lean"
-            echo "Building LEAN image (no Chromium/Python): ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
-          else
-            DOCKERFILE="backend/Dockerfile"
-            echo "Building MONOLITH image: ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
-          fi
-
-          az acr build \
-            --registry "$ACR_NAME" \
-            --image "cevoc:${IMAGE_TAG}" \
-            --image "cevoc:latest" \
-            --file "$DOCKERFILE" \
-            backend/ \
-            2>&1 | tail -20
-
-      - name: Build and push browser worker image to ACR
-        id: browser_build
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'
-        continue-on-error: true
-        run: |
-          ACR_NAME="${{ steps.acr.outputs.name }}"
-          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
-          IMAGE_TAG="${GITHUB_SHA::7}"
-
-          if [ ! -f backend/Dockerfile.browser ]; then
-            echo "::notice::No Dockerfile.browser found — browser worker not built"
-            echo "built=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Building browser worker: ${LOGIN_SERVER}/cevoc-browser-worker:${IMAGE_TAG}"
-          az acr build \
-            --registry "$ACR_NAME" \
-            --image "cevoc-browser-worker:${IMAGE_TAG}" \
-            --image "cevoc-browser-worker:latest" \
-            --file backend/Dockerfile.browser \
-            backend/ \
-            2>&1 | tail -20
-          echo "built=true" >> "$GITHUB_OUTPUT"
-
-      - name: Check browser worker build result
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.browser_build.outcome == 'failure'
-        run: |
-          # Browser worker build failed. Warning if not in config, error if it is.
-          ADAPTER=$(echo "${{ vars.CEVOC_PENALTY_LOOKUP_ADAPTER }}" | tr '[:upper:]' '[:lower:]')
-          if [ "$ADAPTER" = "browser" ]; then
-            echo "::error::Browser worker build failed and CEVOC_PENALTY_LOOKUP_ADAPTER=browser — this is a deploy blocker"
-            exit 1
-          else
-            echo "::warning::Browser worker build failed, but adapter is '${ADAPTER:-demo}' — continuing (warning only)"
-          fi
-
-      - name: Update container app to use new image
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'
-        run: |
-          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
-          IMAGE_TAG="${GITHUB_SHA::7}"
-          APP_NAME="cevoc-dev-app"
-
-          echo "Updating ${APP_NAME} to ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
-
-          # Ensure the container app's managed identity has AcrPull on the registry
-          ACR_ID=$(az acr show --name "${{ steps.acr.outputs.name }}" --query id -o tsv)
-          APP_IDENTITY=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'identity.principalId' -o tsv)
-          az role assignment create --assignee "$APP_IDENTITY" --role AcrPull --scope "$ACR_ID" --output none 2>/dev/null || true
-
-          # Configure the registry on the container app and update the image
-          az containerapp registry set \
-            --name "$APP_NAME" \
-            --resource-group "$RG_NAME" \
-            --server "${LOGIN_SERVER}" \
-            --identity system \
-            --output none
-
-          az containerapp update \
-            --name "$APP_NAME" \
-            --resource-group "$RG_NAME" \
-            --image "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" \
-            --set-env-vars \
-              SPRING_PROFILES_ACTIVE=dev \
-              CEVOC_DEMO_DATA_ENABLED=true \
-              SERVER_PORT=8080 \
-            --output table
-
-          # Get the app URL
-          APP_URL=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv)
-          echo "::notice::Dev backend URL: https://${APP_URL}"
-          echo "app_url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
-
-      # --- Build and deploy frontend to Static Web App ---
-      - name: Setup Node.js
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Get backend URL for frontend build
-        id: backend_url
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          APP_URL=$(az containerapp show --name "cevoc-dev-app" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv 2>/dev/null || true)
-          if [ -n "$APP_URL" ]; then
-            echo "url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
-            echo "Backend URL for frontend: https://${APP_URL}"
-          else
-            echo "::error::Cannot determine backend URL for frontend build"
-            exit 1
-          fi
-
-      - name: Build frontend
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        working-directory: frontend
-        env:
-          VITE_API_BASE_URL: ${{ steps.backend_url.outputs.url }}
-        run: |
-          npm ci
-          npm run build
-          echo "Frontend built with API_BASE_URL=$VITE_API_BASE_URL"
-
-      - name: Get SWA deployment token
-        id: swa
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv 2>/dev/null || true)
-          if [ -z "$SWA_NAME" ]; then
-            echo "::error::No Static Web App found in $RG_NAME"
-            exit 1
-          fi
-          SWA_TOKEN=$(az staticwebapp secrets list --name "$SWA_NAME" --query 'properties.apiKey' -o tsv)
-          echo "::add-mask::${SWA_TOKEN}"
-          echo "token=${SWA_TOKEN}" >> "$GITHUB_OUTPUT"
-          SWA_HOSTNAME=$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)
-          echo "url=https://${SWA_HOSTNAME}" >> "$GITHUB_OUTPUT"
-          echo "name=${SWA_NAME}" >> "$GITHUB_OUTPUT"
-          echo "::notice::SWA: ${SWA_NAME} → https://${SWA_HOSTNAME}"
-
-      - name: Deploy frontend to Static Web App
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ steps.swa.outputs.token }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "./frontend"
-          output_location: "dist"
-          skip_app_build: true  # We already built it above with the correct env vars
-
-      # --- Health check: query Azure revision status + container logs ---
-      - name: Health check — backend
-        id: health_backend
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          APP_NAME="cevoc-dev-app"
-          BACKEND_URL="${{ steps.backend_url.outputs.url }}"
-
-          echo "=== Checking container app revision status ==="
-          # Get the latest revision and its provisioning/running state
-          REVISION=$(az containerapp revision list \
-            --name "$APP_NAME" --resource-group "$RG_NAME" \
-            --query 'reverse(sort_by(@, &properties.createdTime))[0]' -o json 2>/dev/null || echo '{}')
-
-          REV_NAME=$(echo "$REVISION" | jq -r '.name // "unknown"')
-          PROV_STATE=$(echo "$REVISION" | jq -r '.properties.provisioningState // "unknown"')
-          RUN_STATE=$(echo "$REVISION" | jq -r '.properties.runningState // "unknown"')
-          REPLICAS=$(echo "$REVISION" | jq -r '.properties.replicas // 0')
-
-          echo "  Revision:    $REV_NAME"
-          echo "  Provisioning: $PROV_STATE"
-          echo "  Running:      $RUN_STATE"
-          echo "  Replicas:     $REPLICAS"
-
-          # If provisioning failed, dump logs and exit immediately
-          if [ "$PROV_STATE" = "Failed" ]; then
-            echo "::error::Revision $REV_NAME failed to provision"
-            echo "=== Container logs (last 50 lines) ==="
-            az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
-              --tail 50 --format text 2>&1 || echo "(no logs available)"
-            echo "healthy=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          # Poll revision state + HTTP until healthy (up to 4 min for cold start)
-          echo ""
-          echo "=== Waiting for backend to become healthy ==="
-          for i in $(seq 1 16); do
-            # Re-check revision state
-            RUN_STATE=$(az containerapp revision show \
-              --name "$APP_NAME" --resource-group "$RG_NAME" \
-              --revision "$REV_NAME" \
-              --query 'properties.runningState' -o tsv 2>/dev/null || echo "unknown")
-
-            # Try HTTP
-            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/actuator/health" 2>/dev/null || echo "000")
-
-            echo "  [$i/16] revision=$RUN_STATE http=$HTTP"
-
-            if [ "$HTTP" = "200" ]; then
-              echo "::notice::Backend healthy after $i checks"
-              echo "healthy=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            # If revision is in a terminal bad state, bail early
-            if [ "$RUN_STATE" = "Failed" ] || [ "$RUN_STATE" = "Degraded" ]; then
-              echo "::error::Revision entered $RUN_STATE state"
-              echo "=== Container logs ==="
-              az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
-                --tail 80 --format text 2>&1 || echo "(no logs available)"
-              echo "healthy=false" >> "$GITHUB_OUTPUT"
-              exit 1
-            fi
-
-            sleep 15
-          done
-
-          # Timed out — dump logs for diagnosis
-          echo "::error::Backend did not become healthy after 16 checks (~4 min)"
-          echo "=== Container logs ==="
-          az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
-            --tail 80 --format text 2>&1 || echo "(no logs available)"
-          echo "healthy=false" >> "$GITHUB_OUTPUT"
-          exit 1
-
-      - name: Health check — frontend
-        id: health_frontend
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          FRONTEND_URL="${{ steps.swa.outputs.url }}"
-          echo "Checking frontend at ${FRONTEND_URL}..."
-          for i in 1 2 3; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${FRONTEND_URL}" || true)
-            echo "  Attempt $i: HTTP $STATUS"
-            if [ "$STATUS" = "200" ]; then
-              echo "Frontend is responding"
-              echo "healthy=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "::error::Frontend health check failed"
-          echo "healthy=false" >> "$GITHUB_OUTPUT"
-          exit 1
-
-      - name: Deploy summary
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-        run: |
-          echo "========================================"
-          echo "  CEVOC Dev Deployment Complete"
-          echo "========================================"
-          echo "  Frontend: ${{ steps.swa.outputs.url }}"
-          echo "  Backend:  ${{ steps.backend_url.outputs.url }}"
-          echo "  Backend health: ${{ steps.health_backend.outputs.healthy }}"
-          echo "  Frontend health: ${{ steps.health_frontend.outputs.healthy }}"
-          echo "========================================"
-
-      # Validate and what-if (non-deploy path: push trigger)
       - name: Validate deployment
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.deploy != 'true'
         run: |
@@ -384,7 +55,6 @@ jobs:
             --template-file infra/azure/main.bicep \
             --parameters infra/azure/parameters/dev.bicepparam \
             --output table
-
       - name: What-if (dry run)
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.deploy != 'true'
         run: |
@@ -393,3 +63,320 @@ jobs:
             --template-file infra/azure/main.bicep \
             --parameters infra/azure/parameters/dev.bicepparam \
             --output table
+
+  # =========================================================================
+  # Job 2: Deploy infra (only on workflow_dispatch with deploy=true)
+  # =========================================================================
+  deploy-infra:
+    name: Deploy infrastructure
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      RG_NAME: rg-cevoc-dev
+    outputs:
+      acr_name: ${{ steps.acr.outputs.name }}
+      acr_login_server: ${{ steps.acr.outputs.login_server }}
+      acr_found: ${{ steps.acr.outputs.found }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pre-flight checks
+        run: |
+          echo "=== Pre-flight checks ==="
+          FAIL=0
+          for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry Microsoft.Web; do
+            STATE=$(az provider show --namespace "$NS" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
+            if [ "$STATE" != "Registered" ]; then
+              echo "::error::Provider $NS not registered. Run bootstrap.sh first."
+              FAIL=1
+            fi
+          done
+          DELETED_KVS=$(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv 2>/dev/null || true)
+          if [ -n "$DELETED_KVS" ]; then
+            echo "::error::Soft-deleted Key Vault(s): $DELETED_KVS. Run teardown.sh first."
+            FAIL=1
+          fi
+          RG_EXISTS=$(az group exists --name "$RG_NAME" 2>/dev/null || echo "false")
+          if [ "$RG_EXISTS" != "true" ]; then
+            echo "::error::Resource group $RG_NAME does not exist. Run bootstrap.sh first."
+            FAIL=1
+          fi
+          [ "$FAIL" -ne 0 ] && exit 1
+          echo "All pre-flight checks passed."
+
+      - name: Deploy Bicep
+        run: |
+          az deployment group create \
+            --resource-group "$RG_NAME" \
+            --template-file infra/azure/main.bicep \
+            --parameters infra/azure/parameters/dev.bicepparam \
+            --mode Incremental \
+            --output table
+
+      - name: Get ACR login server
+        id: acr
+        run: |
+          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query '[0].name' -o tsv 2>/dev/null || true)
+          if [ -z "$ACR_NAME" ]; then
+            echo "::warning::No ACR found in $RG_NAME"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+            echo "name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+            echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # =========================================================================
+  # Jobs 3a/3b/3c: Build images IN PARALLEL (all independent)
+  # =========================================================================
+  build-backend:
+    name: Build backend image (lean)
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: deploy-infra
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        if: needs.deploy-infra.outputs.acr_found == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push
+        if: needs.deploy-infra.outputs.acr_found == 'true'
+        run: |
+          ACR_NAME="${{ needs.deploy-infra.outputs.acr_name }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          DOCKERFILE=$( [ -f backend/Dockerfile.lean ] && echo "backend/Dockerfile.lean" || echo "backend/Dockerfile" )
+          echo "Building $DOCKERFILE → cevoc:${IMAGE_TAG}"
+          az acr build --registry "$ACR_NAME" \
+            --image "cevoc:${IMAGE_TAG}" --image "cevoc:latest" \
+            --file "$DOCKERFILE" backend/ 2>&1 | tail -30
+
+  build-browser-worker:
+    name: Build browser worker image
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: deploy-infra
+    runs-on: ubuntu-latest
+    outputs:
+      built: ${{ steps.build.outputs.built }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        if: needs.deploy-infra.outputs.acr_found == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push
+        id: build
+        if: needs.deploy-infra.outputs.acr_found == 'true'
+        continue-on-error: true
+        run: |
+          if [ ! -f backend/Dockerfile.browser ]; then
+            echo "::notice::No Dockerfile.browser — skipping"
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ACR_NAME="${{ needs.deploy-infra.outputs.acr_name }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          echo "Building browser worker → cevoc-browser-worker:${IMAGE_TAG}"
+          az acr build --registry "$ACR_NAME" \
+            --image "cevoc-browser-worker:${IMAGE_TAG}" --image "cevoc-browser-worker:latest" \
+            --file backend/Dockerfile.browser backend/ 2>&1 | tail -30
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+  build-frontend:
+    name: Build frontend
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: deploy-infra
+    runs-on: ubuntu-latest
+    env:
+      RG_NAME: rg-cevoc-dev
+    outputs:
+      swa_url: ${{ steps.swa.outputs.url }}
+      swa_token: ${{ steps.swa.outputs.token }}
+      backend_url: ${{ steps.backend_url.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Get backend URL
+        id: backend_url
+        run: |
+          APP_URL=$(az containerapp show --name "cevoc-dev-app" --resource-group "$RG_NAME" \
+            --query 'properties.configuration.ingress.fqdn' -o tsv 2>/dev/null || true)
+          if [ -z "$APP_URL" ]; then echo "::error::No backend URL"; exit 1; fi
+          echo "url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ${{ steps.backend_url.outputs.url }}
+        run: npm ci && npm run build
+      - name: Get SWA deployment token
+        id: swa
+        run: |
+          SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv 2>/dev/null || true)
+          if [ -z "$SWA_NAME" ]; then echo "::error::No SWA in $RG_NAME"; exit 1; fi
+          SWA_TOKEN=$(az staticwebapp secrets list --name "$SWA_NAME" --query 'properties.apiKey' -o tsv)
+          echo "::add-mask::${SWA_TOKEN}"
+          echo "token=${SWA_TOKEN}" >> "$GITHUB_OUTPUT"
+          SWA_HOSTNAME=$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)
+          echo "url=https://${SWA_HOSTNAME}" >> "$GITHUB_OUTPUT"
+      - name: Deploy to SWA
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa.outputs.token }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "./frontend"
+          output_location: "dist"
+          skip_app_build: true
+
+  # =========================================================================
+  # Job 4: Deploy apps + health check (waits for all builds)
+  # =========================================================================
+  deploy-apps:
+    name: Deploy apps & verify
+    needs: [deploy-infra, build-backend, build-browser-worker, build-frontend]
+    if: always() && needs.deploy-infra.result == 'success' && needs.build-backend.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      RG_NAME: rg-cevoc-dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+
+      # --- Config-driven optional dependency check (universal pattern) ---
+      - name: Check optional dependencies
+        run: |
+          # For each optional worker: if its build failed AND the config requires it → error.
+          # Otherwise → warning. Add new optional deps here following the same pattern.
+
+          check_optional() {
+            local NAME="$1" BUILD_RESULT="$2" CONFIG_VAR="$3" REQUIRED_VALUE="$4"
+            if [ "$BUILD_RESULT" != "success" ]; then
+              CURRENT=$(echo "$CONFIG_VAR" | tr '[:upper:]' '[:lower:]')
+              if [ "$CURRENT" = "$REQUIRED_VALUE" ]; then
+                echo "::error::${NAME} build failed and config requires it (${REQUIRED_VALUE})"
+                return 1
+              else
+                echo "::warning::${NAME} build did not succeed (${BUILD_RESULT}), but config is '${CURRENT:-unset}' — continuing"
+              fi
+            fi
+            return 0
+          }
+
+          FAIL=0
+          check_optional "Browser worker" "${{ needs.build-browser-worker.result }}" \
+            "${{ vars.CEVOC_PENALTY_LOOKUP_ADAPTER }}" "browser" || FAIL=1
+
+          # Future: check_optional "Blur worker" "${{ needs.build-blur-worker.result }}" \
+          #   "${{ vars.CEVOC_BLUR_MODE }}" "queue" || FAIL=1
+
+          [ "$FAIL" -ne 0 ] && exit 1
+          echo "All optional dependency checks passed."
+
+      - name: Update container app
+        run: |
+          LOGIN_SERVER="${{ needs.deploy-infra.outputs.acr_login_server }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          APP_NAME="cevoc-dev-app"
+
+          # Grant AcrPull
+          ACR_ID=$(az acr show --name "${{ needs.deploy-infra.outputs.acr_name }}" --query id -o tsv)
+          APP_IDENTITY=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'identity.principalId' -o tsv)
+          az role assignment create --assignee "$APP_IDENTITY" --role AcrPull --scope "$ACR_ID" --output none 2>/dev/null || true
+          az containerapp registry set --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --server "${LOGIN_SERVER}" --identity system --output none
+
+          az containerapp update --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --image "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" \
+            --set-env-vars \
+              SPRING_PROFILES_ACTIVE=dev \
+              CEVOC_DEMO_DATA_ENABLED=true \
+              SERVER_PORT=8080 \
+            --output table
+
+      - name: Health check — backend
+        run: |
+          APP_NAME="cevoc-dev-app"
+          BACKEND_URL="${{ needs.build-frontend.outputs.backend_url }}"
+
+          echo "=== Revision status ==="
+          REVISION=$(az containerapp revision list --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --query 'reverse(sort_by(@, &properties.createdTime))[0]' -o json 2>/dev/null || echo '{}')
+          REV_NAME=$(echo "$REVISION" | jq -r '.name // "unknown"')
+          echo "  Revision: $REV_NAME"
+          echo "  Provisioning: $(echo "$REVISION" | jq -r '.properties.provisioningState // "unknown"')"
+          echo "  Running: $(echo "$REVISION" | jq -r '.properties.runningState // "unknown"')"
+
+          echo ""
+          echo "=== Waiting for healthy ==="
+          for i in $(seq 1 16); do
+            RUN_STATE=$(az containerapp revision show --name "$APP_NAME" --resource-group "$RG_NAME" \
+              --revision "$REV_NAME" --query 'properties.runningState' -o tsv 2>/dev/null || echo "unknown")
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/actuator/health" 2>/dev/null || echo "000")
+            echo "  [$i/16] revision=$RUN_STATE http=$HTTP"
+
+            [ "$HTTP" = "200" ] && echo "::notice::Backend healthy" && exit 0
+
+            if [ "$RUN_STATE" = "Failed" ] || [ "$RUN_STATE" = "Degraded" ]; then
+              echo "::error::Revision $RUN_STATE"
+              az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 80 --format text 2>&1 || true
+              exit 1
+            fi
+            sleep 15
+          done
+
+          echo "::error::Backend not healthy after ~4 min"
+          az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 80 --format text 2>&1 || true
+          exit 1
+
+      - name: Health check — frontend
+        run: |
+          FRONTEND_URL="${{ needs.build-frontend.outputs.swa_url }}"
+          echo "Checking frontend at ${FRONTEND_URL}..."
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${FRONTEND_URL}" || true)
+            echo "  Attempt $i: HTTP $STATUS"
+            [ "$STATUS" = "200" ] && echo "::notice::Frontend healthy" && exit 0
+            sleep 5
+          done
+          echo "::error::Frontend not responding"
+          exit 1
+
+      - name: Deploy summary
+        if: always()
+        run: |
+          echo "========================================"
+          echo "  CEVOC Dev Deployment"
+          echo "========================================"
+          echo "  Frontend: ${{ needs.build-frontend.outputs.swa_url }}"
+          echo "  Backend:  ${{ needs.build-frontend.outputs.backend_url }}"
+          echo "  Browser worker: ${{ needs.build-browser-worker.result }}"
+          echo "========================================"
