@@ -1,0 +1,68 @@
+name: Dev diagnose (video + backend logs)
+# Manual. Lets an agent or developer see what the deployed dev app is doing without the Azure portal or anyone's phone:
+# requests a demo case's blurred video with timing, then prints the backend's recent log lines about the blur pipeline only.
+# Demo data only. Ten-digit numbers are redacted from the printed log lines (the repository and its logs are public).
+on:
+  workflow_dispatch:
+    inputs:
+      demo_case:
+        description: "Demo case number"
+        type: string
+        default: "0000000001"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RG_NAME: rg-cevoc-dev
+      APP_NAME: cevoc-dev-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Resolve addresses
+        id: urls
+        run: |
+          APP=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv)
+          SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv)
+          SWA=$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)
+          echo "backend=https://$APP" >> "$GITHUB_OUTPUT"
+          echo "frontend=https://$SWA" >> "$GITHUB_OUTPUT"
+          echo "Revision: $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.latestRevisionName' -o tsv)"
+          echo "Image:    $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.template.containers[0].image' -o tsv)"
+          echo "Size:     $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.template.containers[0].resources' -o json | tr -d '\n ')"
+      - name: Install Playwright
+        run: npm install --no-save playwright && npx playwright install chromium
+      - name: Request the blurred video
+        id: video
+        continue-on-error: true
+        env:
+          FRONTEND_URL: ${{ steps.urls.outputs.frontend }}
+          BACKEND_URL: ${{ steps.urls.outputs.backend }}
+          DEMO_CASE: ${{ inputs.demo_case }}
+        run: node scripts/diagnose-video.mjs
+      - name: Backend log lines about blur and errors
+        run: |
+          az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 300 --format text > /tmp/app.log
+          echo "Log lines fetched: $(wc -l < /tmp/app.log)"
+          grep -iE "blur|ffmpeg|hls|python|traceback|killed|OutOfMemory|No such file|ModuleNotFound|MediaController" /tmp/app.log \
+            | sed -E 's/[0-9]{10}/<number>/g' | cut -c1-400 | tail -150 > /tmp/filtered.log
+          echo "Matching lines: $(wc -l < /tmp/filtered.log)"
+          cat /tmp/filtered.log
+      - name: Result
+        if: steps.video.outcome != 'success'
+        run: |
+          echo "::error::The blurred video was not served; see the two steps above"
+          exit 1
