@@ -406,19 +406,26 @@ jobs:
                 - name: SERVER_PORT
                   value: "8080"
                 probes:
+                # Azure Container Apps probe limits (2022-03-01 API):
+                #   initialDelaySeconds: 1-60
+                #   periodSeconds:       1-240
+                #   failureThreshold:    1-10
+                #   successThreshold:    1-10 (must be 1 for liveness/startup)
+                #   timeoutSeconds:      1-240
+                # Startup: 10 × 60s period = 10 min window (max with these limits)
                 - type: Startup
                   httpGet:
                     path: /actuator/health
                     port: 8080
-                  initialDelaySeconds: 30
-                  periodSeconds: 10
-                  failureThreshold: 30
+                  initialDelaySeconds: 1
+                  periodSeconds: 60
+                  failureThreshold: 10
                   timeoutSeconds: 5
                 - type: Liveness
                   httpGet:
                     path: /actuator/health
                     port: 8080
-                  initialDelaySeconds: 0
+                  initialDelaySeconds: 1
                   periodSeconds: 30
                   failureThreshold: 5
                   timeoutSeconds: 5
@@ -426,7 +433,7 @@ jobs:
                   httpGet:
                     path: /actuator/health
                     port: 8080
-                  initialDelaySeconds: 30
+                  initialDelaySeconds: 1
                   periodSeconds: 10
                   failureThreshold: 3
                   timeoutSeconds: 5

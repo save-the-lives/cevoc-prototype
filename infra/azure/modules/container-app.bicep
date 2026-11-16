@@ -101,38 +101,33 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'CEVOC_DEMO_DATA_ENABLED', value: 'true' }
             { name: 'SERVER_PORT', value: '8080' }
           ] : []
+          // Azure Container Apps probe limits (2022-03-01 API):
+          //   initialDelaySeconds: 1-60 | periodSeconds: 1-240
+          //   failureThreshold: 1-10   | timeoutSeconds: 1-240
           probes: imageTag != 'latest' ? [
             {
-              type: 'Liveness'
-              httpGet: {
-                path: '/actuator/health'
-                port: 8080
-              }
-              // Liveness only runs after startup probe passes. No initial delay needed.
-              initialDelaySeconds: 0
-              periodSeconds: 30
-              failureThreshold: 5
+              type: 'Startup'
+              httpGet: { path: '/actuator/health'; port: 8080 }
+              initialDelaySeconds: 1
+              periodSeconds: 60      // 10 × 60s = 10 min max window
+              failureThreshold: 10
+              timeoutSeconds: 5
             }
             {
-              type: 'Startup'
-              httpGet: {
-                path: '/actuator/health'
-                port: 8080
-              }
-              // Startup probe runs first; liveness/readiness don't start until it passes.
-              // 18 × 10s = 3 min window for the lean JVM image.
-              initialDelaySeconds: 10
-              periodSeconds: 10
-              failureThreshold: 18
+              type: 'Liveness'
+              httpGet: { path: '/actuator/health'; port: 8080 }
+              initialDelaySeconds: 1  // runs only after startup passes
+              periodSeconds: 30
+              failureThreshold: 5
+              timeoutSeconds: 5
             }
             {
               type: 'Readiness'
-              httpGet: {
-                path: '/actuator/health'
-                port: 8080
-              }
-              initialDelaySeconds: 10
+              httpGet: { path: '/actuator/health'; port: 8080 }
+              initialDelaySeconds: 1
               periodSeconds: 10
+              failureThreshold: 3
+              timeoutSeconds: 5
             }
           ] : []
         }
