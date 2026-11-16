@@ -20,7 +20,9 @@ param deployBlurWorker bool = false
 // ---------- Sizing ----------
 var cpuCores = environment == 'prod' ? '2.0' : '1.0'
 var memoryGi = environment == 'prod' ? '4Gi' : '2Gi'
-var minReplicas = environment == 'prod' ? 1 : 0
+// minReplicas=1 for dev too — a cold-start Spring Boot app on Container Apps takes 2+ min
+// and returns HTTP 000 the whole time, breaking CI health checks. Scale to zero manually if needed.
+var minReplicas = 1
 var maxReplicas = environment == 'prod' ? 3 : 1
 var workerCpu = '1.0'
 var workerMemory = '2Gi'

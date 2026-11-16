@@ -222,25 +222,79 @@ jobs:
           output_location: "dist"
           skip_app_build: true  # We already built it above with the correct env vars
 
-      # --- Health check: both frontend and backend must respond ---
+      # --- Health check: query Azure revision status + container logs ---
       - name: Health check — backend
         id: health_backend
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
         run: |
+          APP_NAME="cevoc-dev-app"
           BACKEND_URL="${{ steps.backend_url.outputs.url }}"
-          echo "Checking backend health at ${BACKEND_URL}/actuator/health..."
-          echo "Note: Container App may need 2-3 min cold start (minReplicas=0 + Spring Boot)"
-          for i in $(seq 1 12); do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "${BACKEND_URL}/actuator/health" || true)
-            echo "  Attempt $i/12: HTTP $STATUS"
-            if [ "$STATUS" = "200" ]; then
-              echo "Backend is healthy"
+
+          echo "=== Checking container app revision status ==="
+          # Get the latest revision and its provisioning/running state
+          REVISION=$(az containerapp revision list \
+            --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --query 'reverse(sort_by(@, &properties.createdTime))[0]' -o json 2>/dev/null || echo '{}')
+
+          REV_NAME=$(echo "$REVISION" | jq -r '.name // "unknown"')
+          PROV_STATE=$(echo "$REVISION" | jq -r '.properties.provisioningState // "unknown"')
+          RUN_STATE=$(echo "$REVISION" | jq -r '.properties.runningState // "unknown"')
+          REPLICAS=$(echo "$REVISION" | jq -r '.properties.replicas // 0')
+
+          echo "  Revision:    $REV_NAME"
+          echo "  Provisioning: $PROV_STATE"
+          echo "  Running:      $RUN_STATE"
+          echo "  Replicas:     $REPLICAS"
+
+          # If provisioning failed, dump logs and exit immediately
+          if [ "$PROV_STATE" = "Failed" ]; then
+            echo "::error::Revision $REV_NAME failed to provision"
+            echo "=== Container logs (last 50 lines) ==="
+            az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
+              --tail 50 --format text 2>&1 || echo "(no logs available)"
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Poll revision state + HTTP until healthy (up to 4 min for cold start)
+          echo ""
+          echo "=== Waiting for backend to become healthy ==="
+          for i in $(seq 1 16); do
+            # Re-check revision state
+            RUN_STATE=$(az containerapp revision show \
+              --name "$APP_NAME" --resource-group "$RG_NAME" \
+              --revision "$REV_NAME" \
+              --query 'properties.runningState' -o tsv 2>/dev/null || echo "unknown")
+
+            # Try HTTP
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/actuator/health" 2>/dev/null || echo "000")
+
+            echo "  [$i/16] revision=$RUN_STATE http=$HTTP"
+
+            if [ "$HTTP" = "200" ]; then
+              echo "::notice::Backend healthy after $i checks"
               echo "healthy=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
+
+            # If revision is in a terminal bad state, bail early
+            if [ "$RUN_STATE" = "Failed" ] || [ "$RUN_STATE" = "Degraded" ]; then
+              echo "::error::Revision entered $RUN_STATE state"
+              echo "=== Container logs ==="
+              az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
+                --tail 80 --format text 2>&1 || echo "(no logs available)"
+              echo "healthy=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+
             sleep 15
           done
-          echo "::error::Backend health check failed after 12 attempts (~3 min)"
+
+          # Timed out — dump logs for diagnosis
+          echo "::error::Backend did not become healthy after 16 checks (~4 min)"
+          echo "=== Container logs ==="
+          az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --tail 80 --format text 2>&1 || echo "(no logs available)"
           echo "healthy=false" >> "$GITHUB_OUTPUT"
           exit 1
 
