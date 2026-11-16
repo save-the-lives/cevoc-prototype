@@ -13,7 +13,7 @@ RUN mvn -B -q -Plive-browser dependency:go-offline \
 
 FROM deps AS build
 COPY src ./src
-RUN mvn -B -q -Plive-browser -DskipTests package
+RUN mvn -B -q -Plive-browser -Dmaven.test.skip=true package
 
 # Browser layer: depends only on the Playwright jars (pom.xml), never on app code.
 FROM eclipse-temurin:21-jre-jammy AS browser
