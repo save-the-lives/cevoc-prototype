@@ -17,7 +17,6 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 ## Environment variables (optional)
 | Variable | Default | Meaning |
 |---|---|---|
-| `CEVOC_CORS_ALLOWED_ORIGINS` | published front end | Origins allowed to call `/api` |
 | `AZURE_STORAGE_CONNECTION_STRING` | none | Only with `cevoc.media.adapter=azure-blob` |
 | `CEVOC_SCRAPER_EVIDENCE_CONTACT` | none, optional | When set, added to the User-Agent of the real lookup so the site owner can reach us. Blank does not stop lookups (record 0029) |
 | `CEVOC_PENALTY_LOOKUP_ADAPTER` | `browser` | Optional override of the one setting that picks the lookup route: `browser` (default, temporary Chromium route to the Revenue NSW page), `stub` (explicit: fictitious data, nothing contacted), `http` (plain request route), `api` (reserved). See `docs/ARCHITECTURE.md` and record 0022 |
@@ -43,6 +42,5 @@ Frontend: when the lookup response has a non-empty `certificates` array (`descri
 | X1234 | Not found |
 
 ## Environment variables
-- `CEVOC_CORS_ALLOWED_ORIGINS`: front end origins allowed to call `/api`.
 - `AZURE_STORAGE_CONNECTION_STRING`: only with `cevoc.media.adapter=azure-blob`.
 - `CEVOC_CERTIFICATES_PROVIDERS` (optional override, default `browser`; `none` = no certificate source): the certificates adapter choice, an ordered list using the same names as the lookup adapter (`http`, `browser`, `api`). The source's robots.txt disallows automated access, so production use needs the owner's approval and it should be replaced by the real API. See `docs/ARCHITECTURE.md` and `docs/CONFIG-REFERENCE.md`.

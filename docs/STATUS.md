@@ -15,7 +15,7 @@ What is implemented, what is prototype quality, and what remains. This is the ha
 | Program-specific display | **Working** | Red light visual (signal timeline), speed camera visual (speed scale), config-driven |
 | Road safety messages | **Working** | Condition-based message engine from programs.json config |
 | NSW Design System styling | **Working** | Public Sans, NSW DS colour tokens, buttons, steps, inputs — plain CSS, no framework dependency |
-| IaC — Azure (Bicep) | **Working** | Container Apps, ACR, Key Vault, Front Door, monitoring; `infra/azure/` |
+| IaC — Azure (Bicep) | **Working** | Container Apps, ACR, Key Vault, monitoring (Front Door removed: not available on this subscription, record 0031); `infra/azure/` |
 | IaC — Azure (Terraform/OpenTofu) | **Working** | Faithful port of Bicep; 5 modules, dev/prod tfvars, deploy.sh, CI via OpenTofu; `infra/terraform/azure/` |
 | IaC — AWS (CloudFormation) | **Working** | ECS Fargate, ECR, ALB, CloudFront, Secrets Manager, VPC; `infra/aws/` |
 | IaC — AWS (Terraform/OpenTofu) | **Working** | 7 modules ported from CloudFormation, LocalStack integration testing; `infra/terraform/aws/` |

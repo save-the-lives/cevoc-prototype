@@ -29,7 +29,7 @@ not a sentence here. Each lesson in `.agents/lessons.yaml` names where its fix l
 
 | Rule | Enforced by |
 |---|---|
-| The deployed site renders, scripts are served as JavaScript, the frontend is built for this backend, CORS allows it | `scripts/release-gate.mjs`, run by the release gate |
+| The deployed site renders, scripts are served as JavaScript, and the page can call the API | `scripts/release-gate.mjs`, run by the release gate |
 | Real lookups work on the deployed backend | `pdvt.yml`, run by the release gate |
 | The running app has exactly the environment variables the workflow lists | "Verify env vars match this workflow" step in both deploy workflows |
 | One deploy to an environment at a time | shared `concurrency` group in both deploy workflows |
@@ -39,14 +39,14 @@ not a sentence here. Each lesson in `.agents/lessons.yaml` names where its fix l
 ## Deploying (Azure dev, `rg-cevoc-dev`)
 
 - **A push only validates.** `iac-validate.yml` deploys only on a manual run with `deploy=true`.
-  `deploy-image-only.yml` rebuilds and redeploys the backend image without touching infrastructure;
-  it does **not** redeploy the frontend.
+  `deploy-image-only.yml` rebuilds and redeploys the app image (site and API) without touching infrastructure.
 - **Environment variables are declared, not accumulated.** Deploys use `--replace-env-vars` with the full list.
   To add or remove a variable, change the list in **both** deploy workflows and the `EXPECTED` line of the check.
 - **Real lookups need the full image** (`backend/Dockerfile`, with Chromium). `Dockerfile.lean` has no browser and
   can only serve demo data until the browser worker is wired in (record 0027).
-- **The frontend is built for one backend.** `VITE_API_BASE_URL` is baked in at build time, and the backend must
-  list the frontend origin in `CEVOC_CORS_ALLOWED_ORIGINS`.
+- **One container, one address** (record 0031). The deploy workflows build the site with no API address and copy
+  it into `backend/site`; the app serves it from `/app/site`. There is no CORS configuration and none is needed.
+  Page paths the frontend reads from the address bar are listed in `SiteController`; add a new one there.
 - **Lifecycle separation.** Deploy workflows never delete or purge. `teardown.sh` cleans up; `bootstrap.sh` does
   not work around teardown; nothing is reused across environments.
 
@@ -55,10 +55,10 @@ not a sentence here. Each lesson in `.agents/lessons.yaml` names where its fix l
 Do not guess a limit, a region or a flag. Check the provider's current documentation, or make CI prove it, before
 pushing. These were each learned from a failed deploy:
 
-- Azure Static Web Apps exists only in: centralus, eastus2, westus2, westeurope, eastasia.
-- Deploy the Static Web App with the SWA CLI (`swa deploy`). The `Azure/static-web-apps-deploy` action served
+- Azure Static Web Apps exists only in: centralus, eastus2, westus2, westeurope, eastasia. (Not used for the site since
+  record 0031.) If it is used again, deploy with the SWA CLI: the `Azure/static-web-apps-deploy` action served
   JavaScript as `application/octet-stream`, which gives a blank page.
-- `staticwebapp.config.json` lives in `frontend/public/` so the build copies it into `dist/`.
+- Azure Front Door is not available on this subscription (Free Trial); its module was removed (record 0031).
 - A Basic-tier container registry has no ACR Tasks: use `docker build` and `docker push`, not `az acr build`.
 - Container Apps probe limits: `initialDelaySeconds` 1 to 60, `periodSeconds` 1 to 240, `failureThreshold` 1 to 10,
   `timeoutSeconds` 1 to 240.

@@ -19,7 +19,7 @@ implementations under `infra/azure/` and `infra/aws/`.
 ```
 infra/terraform/
   azure/          # Port of infra/azure/ (Bicep → Terraform)
-    modules/      # container-registry, container-app, key-vault, monitoring, front-door
+    modules/      # container-registry, container-app, key-vault, monitoring (front-door removed, record 0031)
     environments/ # dev.tfvars, prod.tfvars
     deploy.sh     # Wrapper: init + plan/apply/destroy
   aws/            # Port of infra/aws/ (CloudFormation → Terraform)

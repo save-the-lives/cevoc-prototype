@@ -52,6 +52,8 @@ COPY blur-pipeline/ /app/blur-pipeline/
 # Sample demo videos for server-side blur (ADR 0017); served through DemoRoutes, never raw.
 # The CI workflow copies frontend/public/samples/*.mp4 here before the build.
 COPY samples/ /app/samples/
+# The built site (record 0031): the deploy workflows copy frontend/dist here; empty in a local build.
+COPY site/ /app/site/
 USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

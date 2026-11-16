@@ -223,6 +223,22 @@ jobs:
           client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build the site into the image context
+        # One container serves the site and the API on one address (record 0031), so the site is built with no API
+        # address (same origin) and copied into backend/site, which the Dockerfile serves from /app/site.
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ''
+        run: |
+          npm ci
+          npm run build
+          rm -rf ../backend/site && mkdir -p ../backend/site && cp -r dist/. ../backend/site/
+          test -f ../backend/site/index.html
       - name: Prepare build context
         run: |
           # Copy sample demo videos into backend/ context (Dockerfile expects them there)
@@ -283,65 +299,14 @@ jobs:
           docker push "${LOGIN_SERVER}/cevoc-browser-worker:latest"
           echo "built=true" >> "$GITHUB_OUTPUT"
 
-  build-frontend:
-    name: Build frontend
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
-    needs: [deploy-infra]
-    runs-on: ubuntu-latest
-    env:
-      RG_NAME: rg-cevoc-dev
-    outputs:
-      swa_url: ${{ steps.swa.outputs.url }}
-      swa_token: ${{ steps.swa.outputs.token }}
-      backend_url: ${{ steps.backend_url.outputs.url }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Azure login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
-          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
-      - name: Get backend URL
-        id: backend_url
-        run: |
-          APP_URL=$(az containerapp show --name "cevoc-dev-app" --resource-group "$RG_NAME" \
-            --query 'properties.configuration.ingress.fqdn' -o tsv 2>/dev/null || true)
-          if [ -z "$APP_URL" ]; then echo "::error::No backend URL"; exit 1; fi
-          echo "url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - name: Build frontend
-        working-directory: frontend
-        env:
-          VITE_API_BASE_URL: ${{ steps.backend_url.outputs.url }}
-        run: npm ci && npm run build
-      - name: Get SWA deployment token
-        id: swa
-        run: |
-          SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv 2>/dev/null || true)
-          if [ -z "$SWA_NAME" ]; then echo "::error::No SWA in $RG_NAME"; exit 1; fi
-          SWA_TOKEN=$(az staticwebapp secrets list --name "$SWA_NAME" --query 'properties.apiKey' -o tsv)
-          echo "::add-mask::${SWA_TOKEN}"
-          echo "token=${SWA_TOKEN}" >> "$GITHUB_OUTPUT"
-          SWA_HOSTNAME=$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)
-          echo "url=https://${SWA_HOSTNAME}" >> "$GITHUB_OUTPUT"
-      - name: Deploy to SWA
-        run: |
-          npm install -g @azure/static-web-apps-cli
-          swa deploy ./frontend/dist \
-            --deployment-token "${{ steps.swa.outputs.token }}" \
-            --env production
-
   # =========================================================================
   # Job 4: Deploy apps + health check (waits for all builds)
   # =========================================================================
   deploy-apps:
     name: Deploy apps & verify
-    needs: [deploy-infra, build-backend, build-browser-worker, build-frontend]
+    outputs:
+      app_url: ${{ steps.url.outputs.app_url }}
+    needs: [deploy-infra, build-backend, build-browser-worker]
     if: always() && needs.deploy-infra.result == 'success' && (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped')
     runs-on: ubuntu-latest
     env:
@@ -354,6 +319,13 @@ jobs:
           client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+
+      - name: App address
+        id: url
+        run: |
+          FQDN=$(az containerapp show --name cevoc-dev-app --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv)
+          [ -n "$FQDN" ] || { echo "::error::No address for cevoc-dev-app"; exit 1; }
+          echo "app_url=https://$FQDN" >> "$GITHUB_OUTPUT"
 
       # --- Config-driven optional dependency check (universal pattern) ---
       - name: Check optional dependencies
@@ -401,19 +373,12 @@ jobs:
           # Simple update: image + env vars + cpu/memory. No custom probes —
           # Azure defaults work (this is how the manual deploy succeeded before).
           # Custom probes can be added later via Bicep once the app is confirmed working.
-          # CORS: the SWA frontend origin must be allowed, or the browser blocks every API call.
-          SWA_URL="${{ needs.build-frontend.outputs.swa_url }}"
-          if [ -z "$SWA_URL" ]; then
-            SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv)
-            SWA_URL="https://$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)"
-          fi
           az containerapp update --name "$APP_NAME" --resource-group "$RG_NAME" \
             --image "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" \
             --replace-env-vars \
               SPRING_PROFILES_ACTIVE=dev \
               CEVOC_DEMO_DATA_ENABLED=true \
               SERVER_PORT=8080 \
-              CEVOC_CORS_ALLOWED_ORIGINS="${SWA_URL}" \
             --cpu 2.0 --memory 4Gi \
             --output table
 
@@ -421,7 +386,7 @@ jobs:
       # from earlier deploys would otherwise stay on the app. Names only, no values.
       - name: Verify env vars match this workflow (no drift)
         run: |
-          EXPECTED="CEVOC_CORS_ALLOWED_ORIGINS CEVOC_DEMO_DATA_ENABLED SERVER_PORT SPRING_PROFILES_ACTIVE"
+          EXPECTED="CEVOC_DEMO_DATA_ENABLED SERVER_PORT SPRING_PROFILES_ACTIVE"
           ACTUAL=$(az containerapp show --name "cevoc-dev-app" --resource-group "$RG_NAME" \
             --query 'properties.template.containers[0].env[].name' -o tsv | sort | xargs)
           echo "Expected: $EXPECTED"
@@ -434,7 +399,7 @@ jobs:
       - name: Health check — backend
         run: |
           APP_NAME="cevoc-dev-app"
-          BACKEND_URL="${{ needs.build-frontend.outputs.backend_url }}"
+          BACKEND_URL="${{ steps.url.outputs.app_url }}"
 
           # ---------- Self-diagnosing health check ----------
           # Collects ALL the information needed to diagnose failures without
@@ -511,27 +476,13 @@ jobs:
           echo "healthy=false" >> "$GITHUB_OUTPUT"
           exit 1
 
-      - name: Health check — frontend
-        run: |
-          FRONTEND_URL="${{ needs.build-frontend.outputs.swa_url }}"
-          echo "Checking frontend at ${FRONTEND_URL}..."
-          for i in 1 2 3; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${FRONTEND_URL}" || true)
-            echo "  Attempt $i: HTTP $STATUS"
-            [ "$STATUS" = "200" ] && echo "::notice::Frontend healthy" && exit 0
-            sleep 5
-          done
-          echo "::error::Frontend not responding"
-          exit 1
-
       - name: Deploy summary
         if: always()
         run: |
           echo "========================================"
           echo "  CEVOC Dev Deployment"
           echo "========================================"
-          echo "  Frontend: ${{ needs.build-frontend.outputs.swa_url }}"
-          echo "  Backend:  ${{ needs.build-frontend.outputs.backend_url }}"
+          echo "  App (site and API): ${{ steps.url.outputs.app_url }}"
           echo "  Browser worker: ${{ needs.build-browser-worker.result }}"
           echo "========================================"
 
@@ -540,11 +491,11 @@ jobs:
   # real browser and the live cases pass against the deployed backend.
   # =========================================================================
   release-gate:
-    needs: [build-frontend, deploy-apps]
+    needs: [deploy-apps]
     # always(): an optional build (browser worker) may be skipped or failed; the gate still runs if the deploy itself succeeded.
-    if: always() && needs.deploy-apps.result == 'success' && needs.build-frontend.result == 'success'
+    if: always() && needs.deploy-apps.result == 'success'
     uses: ./.github/workflows/release-gate.yml
     with:
-      frontend_url: ${{ needs.build-frontend.outputs.swa_url }}
-      backend_url: ${{ needs.build-frontend.outputs.backend_url }}
+      frontend_url: ${{ needs.deploy-apps.outputs.app_url }}
+      backend_url: ${{ needs.deploy-apps.outputs.app_url }}
     secrets: inherit

@@ -38,6 +38,8 @@ COPY blur-pipeline/ /app/blur-pipeline/
 # CI should copy frontend/public/samples/*.mp4 here before building.
 RUN mkdir -p /app/samples
 COPY sample[s]/ /app/samples/
+# The built site (record 0031): the deploy workflows copy frontend/dist here; empty in a local build.
+COPY site/ /app/site/
 
 USER app
 EXPOSE 8080

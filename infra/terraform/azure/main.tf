@@ -102,15 +102,6 @@ module "swa" {
   resource_group_name = local.rg_name
 }
 
-# ---------- Front Door (prod only) ----------
-module "front_door" {
-  source           = "./modules/front-door"
-  count            = var.enable_front_door ? 1 : 0
-  base_name        = "${var.base_name}-${var.environment}"
-  tags             = local.tags
-  origin_host_name = module.app.default_host_name
-}
-
 # ---------- Outputs ----------
 output "app_url" {
   value = "https://${module.app.default_host_name}"
@@ -131,8 +122,4 @@ output "frontend_url" {
 output "frontend_api_key" {
   value     = module.swa.api_key
   sensitive = true
-}
-
-output "front_door_endpoint" {
-  value = var.enable_front_door && length(module.front_door) > 0 ? module.front_door[0].endpoint_host_name : ""
 }

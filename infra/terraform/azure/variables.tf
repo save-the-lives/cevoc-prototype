@@ -31,12 +31,6 @@ variable "spring_profile" {
   default     = ""
 }
 
-variable "enable_front_door" {
-  description = "Enable Azure Front Door (recommended for prod)"
-  type        = bool
-  default     = false
-}
-
 variable "deploy_blur_worker" {
   description = "Deploy the blur worker as a separate container app"
   type        = bool

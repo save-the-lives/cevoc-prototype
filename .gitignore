@@ -9,3 +9,6 @@ node_modules
 scripts/blur-spike/blurred-output.mp4
 scripts/blur-spike/*.mp4
 .terraform/
+# The built site is copied here by the deploy workflows; only the placeholder is kept.
+backend/site/*
+!backend/site/.gitkeep

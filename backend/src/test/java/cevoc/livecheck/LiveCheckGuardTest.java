@@ -36,7 +36,7 @@ class LiveCheckGuardTest {
     }
 
     @Nested
-    @SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.live-check.enabled=true", "cevoc.cors.allowed-origins=https://front.example.test"})
+    @SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.live-check.enabled=true"})
     @AutoConfigureMockMvc
     @Import(Stub.class)
     class Enabled {
@@ -50,16 +50,6 @@ class LiveCheckGuardTest {
         @Test
         void aTokenHeaderIsIgnored() throws Exception {
             mvc.perform(get("/live-check/ping").header("X-Live-Check-Token", "anything")).andExpect(status().isOk());
-        }
-
-        @Test
-        void preflightFromFrontendOriginAllowed() throws Exception {
-            mvc.perform(options("/live-check/lookup")
-                            .header("Origin", "https://front.example.test")
-                            .header("Access-Control-Request-Method", "POST")
-                            .header("Access-Control-Request-Headers", "Content-Type"))
-                    .andExpect(status().isOk())
-                    .andExpect(header().string("Access-Control-Allow-Origin", "https://front.example.test"));
         }
     }
 

@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /** The public Server-Sent Events lookup, over the default (manifest, fictitious) configuration. */
-@SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none", "cevoc.cors.allowed-origins=https://front.example.test"})
+@SpringBootTest(properties = {"cevoc.penalty-lookup.adapter=stub", "cevoc.certificates.providers=none"})
 @AutoConfigureMockMvc
 class PenaltyLookupStreamTest {
 
@@ -75,15 +75,5 @@ class PenaltyLookupStreamTest {
         mvc.perform(post("/api/penalty-lookups").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"infringementNumber\":\"9000000001\",\"offenceDate\":\"2026-09-01\"}"))
                 .andExpect(status().isOk());
-    }
-
-    @Test
-    void theStaticWebAppOriginMayCallTheStreamAndTheMediaEndpoint() throws Exception {
-        mvc.perform(options("/api/penalty-lookups/stream").header("Origin", "https://front.example.test")
-                        .header("Access-Control-Request-Method", "POST").header("Access-Control-Request-Headers", "Content-Type"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "https://front.example.test"));
-        mvc.perform(get("/api/media/unknowntoken0000001").header("Origin", "https://front.example.test"))
-                .andExpect(status().isNotFound());
     }
 }

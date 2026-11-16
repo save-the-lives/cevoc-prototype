@@ -31,3 +31,4 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0025 | Certificates: a `curl` provider (the curl program) is first in the default chain | Owner direction, 2026-11-07; built, not verified live |
 | 0029 | The lookup contact is optional; supersedes point 4 of 0022 | Owner direction, 2026-11-17; built |
 | 0030 | Cheapest lookup route first (`http,browser` by default), refusals remembered for a day, HTTP path learned from the page | Owner direction, 2026-11-17; built |
+| 0031 | One container serves the site and the API; CORS removed; Front Door removed (not available on the subscription) | Owner direction, 2026-11-17; built |

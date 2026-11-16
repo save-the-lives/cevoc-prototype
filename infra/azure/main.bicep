@@ -22,9 +22,6 @@ param springProfile string = environment
 @description('Container image tag to deploy')
 param imageTag string = 'latest'
 
-@description('Enable Azure Front Door (recommended for prod)')
-param enableFrontDoor bool = environment == 'prod'
-
 @description('Deploy the blur worker as a separate container app')
 param deployBlurWorker bool = false
 
@@ -137,22 +134,10 @@ module swa 'modules/static-web-app.bicep' = {
   }
 }
 
-// ---------- Front Door: one public address, /api/* to the backend, the rest to the frontend ----------
-module frontDoor 'modules/front-door.bicep' = if (enableFrontDoor) {
-  name: 'frontdoor-${environment}'
-  params: {
-    baseName: '${baseName}-${environment}'
-    tags: tags
-    apiOriginHostName: app.outputs.defaultHostName
-    siteOriginHostName: swa.outputs.defaultHostname
-  }
-}
-
 // ---------- Outputs ----------
 output appUrl string = 'https://${app.outputs.defaultHostName}'
 output acrLoginServer string = acr.outputs.loginServer
 output keyVaultUri string = kv.outputs.vaultUri
-output frontDoorEndpoint string = enableFrontDoor ? frontDoor.outputs.endpointHostName : ''
 output swaHostname string = swa.outputs.defaultHostname
 output swaName string = swa.outputs.name
 output browserWorkerFqdn string = deployBrowserWorker ? app.outputs.browserWorkerFqdn : ''

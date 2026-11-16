@@ -53,7 +53,6 @@ gh workflow run iac-validate.yml --repo save-the-lives/cevoc-prototype -f deploy
 | `container-registry` | Azure Container Registry | Basic (dev) / Standard (prod). AcrPull role granted to container app identity. |
 | `key-vault` | Key Vault | Stores API keys and connection strings. Container app identity gets `get`+`list` on secrets. Name includes environment to avoid soft-delete collisions. |
 | `monitoring` | Log Analytics + Application Insights | 30-day retention. Connection string injected into container app. |
-| `front-door` | Front Door Standard + WAF | Prod only. HTTPS redirect, compression, health probes. WAF in Detection mode initially. |
 
 ## Environment variables set on Container App
 
@@ -82,7 +81,7 @@ Azure trial subscriptions allow only **1 Container App Environment globally** (n
 ## Architecture
 
 ```
-Internet → Front Door (prod) → Container App (from ACR)
+Internet → Container App (from ACR): the site and the API on one address (record 0031)
                                     ↓
                               Key Vault (secrets)
                               App Insights (telemetry)

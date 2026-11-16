@@ -36,10 +36,8 @@ jobs:
         id: urls
         run: |
           APP=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv)
-          SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv)
-          SWA=$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)
           echo "backend=https://$APP" >> "$GITHUB_OUTPUT"
-          echo "frontend=https://$SWA" >> "$GITHUB_OUTPUT"
+          echo "frontend=https://$APP" >> "$GITHUB_OUTPUT"
           echo "Revision: $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.latestRevisionName' -o tsv)"
           echo "Image:    $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.template.containers[0].image' -o tsv)"
           echo "Size:     $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.template.containers[0].resources' -o json | tr -d '\n ')"

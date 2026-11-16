@@ -34,7 +34,7 @@ Everything else below is optional. Keep these only if you want the behaviour the
 | `CEVOC_PENALTY_LOOKUP_ADAPTER` | `cevoc.penalty-lookup.adapter` | `browser` (also when empty or unset) | **Legacy; prefer `CEVOC_EVIDENCE_PROVIDERS`.** Optional override. The single-value setting that picks the lookup route. Ignored when `CEVOC_EVIDENCE_PROVIDERS` is set. |
 | `CEVOC_CERTIFICATES_PROVIDERS` | `cevoc.certificates.providers` | `curl,http,browser` (when empty or unset) | **Optional override.** Ordered list of: `curl` (same search, each request run by the `curl` command line program; needs no contact; see `docs/decisions/0025-certificates-curl-provider.md`), `browser` (certificates search page in headless Chromium; formerly `search-page`), `http` (same page with plain requests; formerly `search-page-http`; without a contact it logs the missing contact and runs without this source, it no longer stops start-up), `api` (reserved; listing it stops start-up with "not available yet"; formerly `tfnsw-api`), the legacy `http-form` and `browser-link`, and `none` (explicit: no certificate source). A name not in this list, including the three retired names, is ignored with a warning and never stops start-up; a value that lists nothing known leaves no certificate source. | Temporary (browser providers); `api` is the production target | in use |
 | `CEVOC_SCRAPER_EVIDENCE_URL`, `CEVOC_CERTIFICATES_SEARCH_PAGE_URL` | optional override | only if the site address moves; a full `https://` URL |
-| `CEVOC_CORS_ALLOWED_ORIGINS` | optional override | only if the front end address changes (default is the current static web app address) |
+| `CEVOC_CORS_ALLOWED_ORIGINS` | REMOVED | not needed: the site and the API share one address (record 0031) |
 | `CEVOC_MEDIA_*`, `AZURE_STORAGE_CONNECTION_STRING` | optional override | only for `azure-blob` media or a cross-host public link prefix |
 | `CEVOC_DEMO_BUNDLE_*` | optional override | only with a demo content bundle |
 
@@ -157,7 +157,7 @@ Exists only when `CEVOC_PENALTY_LOOKUP_ADAPTER=http`. It then does nothing unles
 
 | Env name | Property | Default | What it does | Scope | Status |
 |---|---|---|---|---|---|
-| `CEVOC_CORS_ALLOWED_ORIGINS` | `cevoc.cors.allowed-origins` | the published Azure Static Web App address (`application.properties`) | Comma-separated origins allowed to call `/api` (and `/live-check`). PROVEN. | Both | in use |
+| `CEVOC_CORS_ALLOWED_ORIGINS` | `cevoc.cors.allowed-origins` | n/a | **REMOVED (record 0031).** The site and the API share one address, so no cross-origin access is configured. Read by nothing. | n/a | REMOVED |
 | `VITE_API_BASE_URL` | build-time, `import.meta.env` | empty (same origin, dev proxy) | Backend address baked into the front end at build. Set by `azure-static-web-apps-*.yml` from the GitHub variable `CEVOC_API_BASE_URL`, with a built-in fallback. PROVEN. | Both | in use |
 | `server.port` | `server.port` | `8080` | Spring port. Not a `CEVOC_` name. | Both | in use |
 
