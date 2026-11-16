@@ -438,7 +438,7 @@ jobs:
           for i in $(seq 1 24); do
             RUN_STATE=$(az containerapp revision show --name "$APP_NAME" --resource-group "$RG_NAME" \
               --revision "$REV_NAME" --query 'properties.runningState' -o tsv 2>/dev/null || echo "unknown")
-            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/actuator/health" 2>/dev/null || echo "000")
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/api/demo/cases" 2>/dev/null || echo "000")
             echo "  [$i/24] revision=$RUN_STATE http=$HTTP"
 
             [ "$HTTP" = "200" ] && echo "::notice::Backend healthy after $((i * 15))s" && exit 0

@@ -49,15 +49,36 @@ jobs:
           docker push "${LOGIN_SERVER}/cevoc:latest"
           echo "Pushed ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
 
+      - name: Get SWA URL
+        id: swa
+        run: |
+          SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv 2>/dev/null || true)
+          if [ -n "$SWA_NAME" ]; then
+            SWA_HOST=$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)
+            echo "url=https://${SWA_HOST}" >> "$GITHUB_OUTPUT"
+            echo "::notice::Frontend SWA: https://${SWA_HOST}"
+          else
+            echo "url=" >> "$GITHUB_OUTPUT"
+            echo "::warning::No SWA found"
+          fi
+
       - name: Update container app
         run: |
           LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
           IMAGE_TAG="${GITHUB_SHA::7}"
+          SWA_URL="${{ steps.swa.outputs.url }}"
           az containerapp registry set --name "$APP_NAME" --resource-group "$RG_NAME" \
             --server "$LOGIN_SERVER" --identity system --output none
+          # Set CORS to allow the SWA frontend origin
+          CORS_ORIGINS="https://calm-water-028cfd500.3.azurestaticapps.net"
+          [ -n "$SWA_URL" ] && CORS_ORIGINS="${CORS_ORIGINS},${SWA_URL}"
           az containerapp update --name "$APP_NAME" --resource-group "$RG_NAME" \
             --image "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" \
-            --set-env-vars SPRING_PROFILES_ACTIVE=dev CEVOC_DEMO_DATA_ENABLED=true SERVER_PORT=8080 \
+            --set-env-vars \
+              SPRING_PROFILES_ACTIVE=dev \
+              CEVOC_DEMO_DATA_ENABLED=true \
+              SERVER_PORT=8080 \
+              CEVOC_CORS_ALLOWED_ORIGINS="${CORS_ORIGINS}" \
             --cpu 2.0 --memory 4Gi \
             --output table
 
@@ -67,7 +88,7 @@ jobs:
             --query 'properties.configuration.ingress.fqdn' -o tsv)
           echo "Backend: https://${APP_URL}"
           for i in $(seq 1 24); do
-            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${APP_URL}/actuator/health" 2>/dev/null || echo "000")
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${APP_URL}/api/demo/cases" 2>/dev/null || echo "000")
             echo "  [$i/24] http=$HTTP"
             [ "$HTTP" = "200" ] && echo "::notice::Backend healthy" && exit 0
             sleep 15
@@ -75,3 +96,15 @@ jobs:
           echo "::error::Backend not healthy"
           az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 50 --format text 2>&1 || true
           exit 1
+
+      - name: Deploy summary
+        if: always()
+        run: |
+          APP_URL=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --query 'properties.configuration.ingress.fqdn' -o tsv 2>/dev/null || echo "unknown")
+          echo "========================================"
+          echo "  CEVOC Dev Deployment"
+          echo "========================================"
+          echo "  Backend:  https://${APP_URL}"
+          echo "  Frontend: ${{ steps.swa.outputs.url }}"
+          echo "========================================"
