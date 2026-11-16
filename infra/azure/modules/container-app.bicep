@@ -18,8 +18,10 @@ param appInsightsConnectionString string
 param deployBlurWorker bool = false
 
 // ---------- Sizing ----------
-var cpuCores = environment == 'prod' ? '2.0' : '1.0'
-var memoryGi = environment == 'prod' ? '4Gi' : '2Gi'
+// The backend image includes Chromium, Python/OpenCV, Tesseract, ffmpeg + JVM.
+// 1 CPU / 2Gi is not enough — the JVM never finishes starting. Use 2 CPU / 4Gi everywhere.
+var cpuCores = '2.0'
+var memoryGi = '4Gi'
 // minReplicas=1 for dev too — a cold-start Spring Boot app on Container Apps takes 2+ min
 // and returns HTTP 000 the whole time, breaking CI health checks. Scale to zero manually if needed.
 var minReplicas = 1
