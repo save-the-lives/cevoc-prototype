@@ -154,10 +154,12 @@ export default function EvidenceVideo({ item, bare = false, autoPlay = false }) 
         onError={() => {
           if (hlsRef.current || !videoRef.current?.getAttribute('src')) return;
           fetch(item.url, { method: 'GET', mode: 'cors' }).then(res => {
-            if (res.status === 451) { fail('The server is blurring this video for privacy.'); setPreparing(true); }
+            // 451 means the server could not blur the video and so will not send it (fail-closed). That is a technical
+            // failure, not work in progress: say so plainly and offer Try again, never an endless "Preparing" (2026-11-17).
+            if (res.status === 451) fail('This video could not be prepared for safe viewing. This is a technical problem, not an issue with your notice.');
             else if (res.status === 503) fail('The video service is temporarily unavailable.');
             else fail('');
-          }).catch(() => { fail(''); setPreparing(true); });
+          }).catch(() => fail(''));
         }}
       >
         {item.captionsUrl && <track kind="captions" src={item.captionsUrl} srcLang={item.captionsLang || 'en'} label="English captions" />}

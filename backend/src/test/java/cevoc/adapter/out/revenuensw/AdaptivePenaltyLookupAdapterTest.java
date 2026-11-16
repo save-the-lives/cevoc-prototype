@@ -109,6 +109,26 @@ class AdaptivePenaltyLookupAdapterTest {
     }
 
     @Test
+    void detailsWithoutImagesBecauseAnImageCallFailedFallBackAndAreRemembered() {
+        // FOUND with no evidence and an image-step cause in the diagnostic (as the HTTP route reports a refused image call).
+        http.then(Status.FOUND, "blocked-403");
+        adapter.find(REQ);
+        assertThat(browser.calls).isEqualTo(1);
+        clock.advance(Duration.ofHours(1));
+        adapter.find(REQ);
+        assertThat(http.calls).isEqualTo(1);
+        assertThat(browser.calls).isEqualTo(2);
+    }
+
+    @Test
+    void foundWithoutImagesAndWithoutACauseIsFinal() {
+        // For example no images exist for this notice, or the registration was not accepted: an authoritative answer.
+        http.then(Status.FOUND, null);
+        adapter.find(REQ);
+        assertThat(browser.calls).isZero();
+    }
+
+    @Test
     void notReadyCostsNothingSoItIsPassedOverButNeverRemembered() {
         http.then(Status.LIVE_LOOKUP_OFF, null);
         adapter.find(REQ);

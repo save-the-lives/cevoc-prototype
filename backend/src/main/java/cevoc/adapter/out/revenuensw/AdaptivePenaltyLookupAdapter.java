@@ -18,9 +18,10 @@ import org.slf4j.LoggerFactory;
  * Cheapest route first (record 0030): the plain HTTP route, then the Chromium route. It adjusts itself to how the source
  * treats the cheap route:
  * <ul>
- *   <li><b>Refused</b> (401, 403, 429, a captcha, or an answer in a shape we cannot read): the source does not accept the
- *       cheap route, so it is skipped for {@link #REFUSED_SKIP} and every lookup goes straight to Chromium. After that one
- *       lookup tries it again.</li>
+ *   <li><b>Refused</b> (401, 403, 429, a captcha, or an answer in a shape we cannot read), or <b>details without the
+ *       images</b> because an image call failed: the cheap route is not accepted for the full answer, so it is skipped for
+ *       {@link #REFUSED_SKIP} and every lookup goes straight to Chromium (this one included). After that one lookup tries it
+ *       again.</li>
  *   <li><b>Not ready</b> (no service path yet): costs nothing, so it is just passed over; the first Chromium lookup learns
  *       the path ({@link LearnedServicePath}) and the next lookup uses HTTP.</li>
  *   <li><b>Transient</b> (timeout, network error, server error): {@value #FAILURE_THRESHOLD} within
@@ -89,7 +90,20 @@ public class AdaptivePenaltyLookupAdapter implements PenaltyLookupPort {
         }
 
         switch (result.status()) {
-            case FOUND, NOT_FOUND, INPUT_REQUIRED -> {
+            case FOUND -> {
+                // The details came back but an image call failed (its cause is in the diagnostic): the cheap route gives a
+                // worse answer than Chromium for this notice, so it does not count as accepted. A wrong registration is
+                // reported without a cause token and stays final.
+                String imageCause = causeToken(LookupDiagnostic.peek());
+                if (result.evidence().isEmpty() && !"unavailable".equals(imageCause)) {
+                    refused(now, "images-" + imageCause);
+                    LOG.info("Penalty lookup route: adapter=browser, cause=http-images-{}", imageCause);
+                    return browserAdapter.find(request, progress);
+                }
+                succeeded();
+                return result;
+            }
+            case NOT_FOUND, INPUT_REQUIRED -> {
                 succeeded();
                 return result;
             }
