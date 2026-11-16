@@ -1,10 +1,10 @@
 name: Regenerate demo artifacts
 # docs/DEMO-DATA.md and scripts/visual-check-demo-cases.json are generated from the demo case list (DemoArtifactsTest).
-# Maven cannot run in the agent's sandbox, so this regenerates them here and uploads both files to commit.
+# Maven cannot run in the agent's sandbox, so this regenerates them here and commits them to main when they changed.
 on:
   workflow_dispatch: {}
 permissions:
-  contents: read
+  contents: write
 jobs:
   regenerate:
     runs-on: ubuntu-latest
@@ -21,9 +21,10 @@ jobs:
         run: mvn -q -B test -Dtest=DemoArtifactsTest -Dcevoc.demo.regenerate=true -Dsurefire.failIfNoSpecifiedTests=false
       - name: Show what changed
         run: git diff --stat
-      - uses: actions/upload-artifact@v4
-        with:
-          name: demo-artifacts
-          path: |
-            docs/DEMO-DATA.md
-            scripts/visual-check-demo-cases.json
+      - name: Commit the regenerated files
+        run: |
+          git add docs/DEMO-DATA.md scripts/visual-check-demo-cases.json
+          if git diff --cached --quiet; then echo "::notice::Already up to date"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "Regenerate demo artifacts (docs/DEMO-DATA.md, visual-check fixture)"
+          git push origin HEAD:main
