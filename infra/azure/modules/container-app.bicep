@@ -108,8 +108,8 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
                 path: '/actuator/health'
                 port: 8080
               }
-              // Lean JVM image starts in ~30-60s, but allow headroom.
-              initialDelaySeconds: 60
+              // Liveness only runs after startup probe passes. No initial delay needed.
+              initialDelaySeconds: 0
               periodSeconds: 30
               failureThreshold: 5
             }

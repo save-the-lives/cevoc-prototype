@@ -418,7 +418,7 @@ jobs:
                   httpGet:
                     path: /actuator/health
                     port: 8080
-                  initialDelaySeconds: 180
+                  initialDelaySeconds: 0
                   periodSeconds: 30
                   failureThreshold: 5
                   timeoutSeconds: 5
