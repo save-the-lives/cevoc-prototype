@@ -38,6 +38,11 @@ public final class LookupDiagnostic {
         return structure(html == null ? "" : html).replaceFirst("^; ", "");
     }
 
+    /** Returns the reason recorded on this thread (or null) without forgetting it. */
+    public static String peek() {
+        return CURRENT.get();
+    }
+
     /** Returns the reason recorded on this thread (or null) and forgets it. */
     public static String take() {
         String v = CURRENT.get();

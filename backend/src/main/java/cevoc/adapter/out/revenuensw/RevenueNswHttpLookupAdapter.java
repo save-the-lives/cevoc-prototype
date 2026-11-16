@@ -61,7 +61,8 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
     private static final long MAX_JSON_BYTES = 1024 * 1024;
     private static final int MAX_AUTH_LENGTH = 8192;
 
-    private final RevenueNswHttpSettings settings;
+    /** Not final: when no path segment is configured, the one learned from the page is filled in at the next lookup. */
+    private RevenueNswHttpSettings settings;
     private final HttpTransport transport;
     private final MediaStoragePort storage;
     private final RegistrationProvider registrations;
@@ -125,6 +126,10 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
     @Override
     public synchronized PenaltyLookupResult find(PenaltyLookupRequest request, LookupProgress progress) {
         String number = request.infringementNumber();
+        String learned = LearnedServicePath.get();
+        if (!settings.usable() && learned != null) {
+            settings = settings.withPathPrefix(learned);
+        }
         if (!settings.usable()) {
             return result(Status.LIVE_LOOKUP_OFF, number, "Looking up this notice is switched off for now, until approvals are in place.");
         }

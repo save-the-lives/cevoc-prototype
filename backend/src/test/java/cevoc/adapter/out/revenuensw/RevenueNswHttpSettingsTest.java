@@ -21,14 +21,24 @@ class RevenueNswHttpSettingsTest {
     }
 
     @Test
-    void usableOnlyWithEveryRequiredSetting() {
+    void usableWithAnAllowedAddressAndAPath() {
         String b = "https://api.osr.nsw.gov.au";
         assertThat(with(b, "TEST_PREFIX_AAAA", "c@example.invalid", "ref").usable()).isTrue();
         assertThat(with("", "TEST_PREFIX_AAAA", "c@example.invalid", "ref").usable()).isFalse();
         assertThat(with(b, "", "c@example.invalid", "ref").usable()).isFalse();
         assertThat(with(b, "bad/prefix", "c@example.invalid", "ref").usable()).isFalse();
-        assertThat(with(b, "TEST_PREFIX_AAAA", "", "ref").usable()).isFalse();
-        assertThat(with(b, "TEST_PREFIX_AAAA", "c@example.invalid", " ").usable()).isFalse();
+        // Contact and approval reference are optional (records 0029 and 0030).
+        assertThat(with(b, "TEST_PREFIX_AAAA", "", "").usable()).isTrue();
+        assertThat(with(b, "TEST_PREFIX_AAAA", "", "").userAgent()).isEqualTo("CEVOC/1.0");
+        assertThat(with(b, "", "", "").withPathPrefix("TEST_PREFIX_AAAA").usable()).isTrue();
+    }
+
+    @Test
+    void theBaseAddressDefaultsToTheApprovedHostButThePathStaysUnknown() {
+        RevenueNswHttpSettings s = RevenueNswHttpFactory.settings(new MockEnvironment());
+        assertThat(s.baseUrl()).isEqualTo("https://api.osr.nsw.gov.au");
+        assertThat(s.usable()).isFalse();
+        assertThat(s.withPathPrefix("TEST_PREFIX_AAAA").finesRoot()).isEqualTo("https://api.osr.nsw.gov.au/TEST_PREFIX_AAAA/rest/api/v2/fines");
     }
 
     @Test

@@ -30,3 +30,4 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0024 | Certificates: the `http` provider sends browser headers and is first in the default chain | Owner direction, 2026-11-07; built, not verified live |
 | 0025 | Certificates: a `curl` provider (the curl program) is first in the default chain | Owner direction, 2026-11-07; built, not verified live |
 | 0029 | The lookup contact is optional; supersedes point 4 of 0022 | Owner direction, 2026-11-17; built |
+| 0030 | Cheapest lookup route first (`http,browser` by default), refusals remembered for a day, HTTP path learned from the page | Owner direction, 2026-11-17; built |

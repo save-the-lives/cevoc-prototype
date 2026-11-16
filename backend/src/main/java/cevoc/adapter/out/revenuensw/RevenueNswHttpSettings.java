@@ -7,7 +7,8 @@ import java.util.regex.Pattern;
 
 /**
  * Settings for the plain HTTP route to the Revenue NSW JSON service. There is no on/off flag: the route exists only when it
- * is selected ({@code cevoc.penalty-lookup.adapter=http}), and it does nothing unless a base URL (https, on the allow-list), the path prefix, a contact and the owner's
+ * is selected ({@code cevoc.penalty-lookup.adapter=http}, or first in {@code cevoc.evidence.providers}). It needs an https base URL on the allow-list
+ * (default https://api.osr.nsw.gov.au) and the path segment (configured, or learned from the page: record 0030). Earlier versions also required a contact and the owner's
  * approval reference are all supplied. The path prefix is configuration on purpose (record 0010: meaning and stability
  * not yet confirmed), so no deployment-specific value lives in the code.
  */
@@ -51,10 +52,18 @@ public record RevenueNswHttpSettings(
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_MAX_BYTES, 1, DEFAULT_RETRY_BACKOFF, Set.of(DEFAULT_HOST));
     }
 
-    /** True only when configured well enough to identify ourselves and to name the approval. */
+    /**
+     * True when there is an allowed https address and a path segment. The contact and the approval reference are optional
+     * (owner direction 2026-11-17, records 0029 and 0030); the segment may be configured or learned ({@link LearnedServicePath}).
+     */
     public boolean usable() {
-        return httpsBase() != null && present(pathPrefix) && PREFIX.matcher(pathPrefix.trim()).matches()
-                && present(contact) && present(approvalReference);
+        return httpsBase() != null && present(pathPrefix) && PREFIX.matcher(pathPrefix.trim()).matches();
+    }
+
+    /** These settings with the given path segment (used when none is configured and one has been learned). */
+    public RevenueNswHttpSettings withPathPrefix(String prefix) {
+        return new RevenueNswHttpSettings(baseUrl, prefix, contact, approvalReference, authorizationScheme, offenceDateFormat,
+                minInterval, connectTimeout, requestTimeout, maxBytes, summaryRetries, retryBackoff, allowedHosts);
     }
 
     /** The service root up to and including {@code /fines}, or null when not usable. No trailing slash. */
@@ -82,9 +91,9 @@ public record RevenueNswHttpSettings(
         }
     }
 
-    /** Identifies us honestly so the site owner can see who is calling and contact us. */
+    /** Names the caller; carries the contact only when one is set (optional, as for the browser route). */
     public String userAgent() {
-        return "CEVOC/1.0 (contact: " + contact + ")";
+        return present(contact) ? "CEVOC/1.0 (contact: " + contact.trim() + ")" : "CEVOC/1.0";
     }
 
     private static boolean present(String s) {

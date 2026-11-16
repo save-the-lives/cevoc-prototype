@@ -38,11 +38,20 @@ class PenaltyLookupAdapterSelectionTest {
         assertThat(ctx.getBeansOfType(LiveCheckGuardConfig.class)).isEmpty();
     }
 
-    /** The default: the real (Chromium) adapter and the browser certificates provider, nothing else switched on. With no contact set
-     *  it makes no network call and answers the "switched off" message (the app starts and keeps running). */
-    private static void assertBrowserDefault(PenaltyLookupPort port, ApplicationContext ctx) {
+    /** The Chromium route and the browser certificates provider. No lookup is run here: the contact no longer keeps the route
+     *  off (record 0029), so a lookup could open a browser where one is installed. */
+    private static void assertBrowserRoute(PenaltyLookupPort port, ApplicationContext ctx) {
         assertThat(port).isInstanceOf(ScraperEvidenceLookupAdapter.class);
-        assertThat(port.find(UNKNOWN).status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
+        assertSharedDefaults(ctx);
+    }
+
+    /** The default with no settings: cheapest route first, plain HTTP then Chromium (record 0030). */
+    private static void assertCheapestFirstDefault(PenaltyLookupPort port, ApplicationContext ctx) {
+        assertThat(port).isInstanceOf(cevoc.adapter.out.revenuensw.AdaptivePenaltyLookupAdapter.class);
+        assertSharedDefaults(ctx);
+    }
+
+    private static void assertSharedDefaults(ApplicationContext ctx) {
         assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
         assertThat(ctx.getBean(CertificateSourcePort.class)).isInstanceOf(cevoc.adapter.out.scraper.CertificateProviderChain.class);
         assertThat(ctx.getBeansOfType(LiveCheckGuardConfig.class)).isEmpty();
@@ -56,8 +65,8 @@ class PenaltyLookupAdapterSelectionTest {
         @Autowired PenaltyLookupPort port;
 
         @Test
-        void startsAndDefaultsToTheBrowserAdapterAndProvider() {
-            assertBrowserDefault(port, ctx);
+        void startsAndDefaultsToCheapestFirst() {
+            assertCheapestFirstDefault(port, ctx);
         }
     }
 
@@ -82,7 +91,7 @@ class PenaltyLookupAdapterSelectionTest {
 
         @Test
         void emptyIsTheDefault() {
-            assertBrowserDefault(port, ctx);
+            assertCheapestFirstDefault(port, ctx);
         }
     }
 
@@ -93,10 +102,8 @@ class PenaltyLookupAdapterSelectionTest {
         @Autowired PenaltyLookupPort port;
 
         @Test
-        void selectsTheChromiumRouteWhichStaysOffWithoutUrlAndContact() {
-            assertThat(port).isInstanceOf(ScraperEvidenceLookupAdapter.class);
-            assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
-            assertThat(port.find(UNKNOWN).status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
+        void selectsTheChromiumRouteOnly() {
+            assertBrowserRoute(port, ctx);
         }
     }
 
@@ -107,7 +114,7 @@ class PenaltyLookupAdapterSelectionTest {
         @Autowired PenaltyLookupPort port;
 
         @Test
-        void selectsThePlainRequestRouteWhichStaysOffWhenNotConfigured() {
+        void selectsThePlainRequestRouteWhichStaysOffUntilItKnowsTheServicePath() {
             assertThat(port).isInstanceOf(RevenueNswHttpLookupAdapter.class);
             assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
             assertThat(port.find(UNKNOWN).status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
@@ -124,7 +131,7 @@ class PenaltyLookupAdapterSelectionTest {
         @Test
         void newPropertyTakesPrecedence() {
             // The new property says browser, the legacy says stub; browser wins.
-            assertBrowserDefault(port, ctx);
+            assertBrowserRoute(port, ctx);
         }
     }
 
@@ -197,7 +204,7 @@ class PenaltyLookupAdapterSelectionTest {
 
         @Test
         void stillTheDefault() {
-            assertBrowserDefault(port, ctx);
+            assertCheapestFirstDefault(port, ctx);
         }
     }
 

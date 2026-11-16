@@ -16,7 +16,7 @@ Status words used below: PROVEN means checked in the code or a run; INFERRED mea
 | Cloud and vendors | Cloud-agnostic. Azure is the MVP trial only. AWS is the real target. Vendor specifics live behind adapters and in deploy config only | 0002, 0008 |
 | Providers (sources of data) | Revenue NSW is the interim provider. TfNSW APIs replace it concern by concern, by configuration | 0003 |
 | Browser (Chromium) route | Temporary: delete at cutover (interim route, removed when the TfNSW API exists), behind its adapter | 0004 |
-| Plain HTTP route (Revenue NSW JSON service) | BUILT 2026-11-05, offline-tested, NOT yet run live (UNTESTED). Selected by `cevoc.penalty-lookup.adapter=http`; not selected means it does not exist; default unchanged | 0010 |
+| Plain HTTP route (Revenue NSW JSON service) | BUILT 2026-11-05, offline-tested. Since 2026-11-17 it is first in the DEFAULT order (`http,browser`, cheapest first, refusals remembered for a day) and learns its service path from the browser route; live result recorded in record 0030 | 0010, 0030 |
 | Demo data (fictitious notices) | BUILT 2026-11-05. OFF by default, on only with `CEVOC_DEMO_DATA_ENABLED=true` (renamed 2026-11-05; old `CEVOC_DEMO_DATA` retired; one switch in `DemoDataConfig`); a demo adapter behind the same lookup port, `DemoCaseFactory`, demo hub at `/demo-cases`. Off: nothing demo exists. See docs/DEMO-DATA.md | 0007, 0009, 0010, 0013 to 0016 |
 | Data scope and security | Public data only. No secrets in code, logs or the hand-off log | 0005 |
 | Published URLs | Existing published URLs (the original mockup site on GitHub Pages) must not change | 0006 |

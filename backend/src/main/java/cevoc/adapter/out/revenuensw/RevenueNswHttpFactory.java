@@ -24,7 +24,7 @@ public final class RevenueNswHttpFactory {
     public static PenaltyLookupPort create(Environment env, MediaStoragePort media) {
         RevenueNswHttpSettings s = settings(env);
         if (!s.usable()) {
-            LOG.warn("cevoc.penalty-lookup.adapter=http but it is not fully configured; lookups report it as switched off");
+            LOG.info("Plain HTTP route: no service path configured yet; it is learned from the first browser lookup (record 0030)");
         }
         return new RevenueNswHttpLookupAdapter(s, new JdkHttpTransport(s.connectTimeout()), media, new RequestScopedRegistration());
     }
@@ -35,7 +35,7 @@ public final class RevenueNswHttpFactory {
         Set<String> allowed = Arrays.stream(hosts.split(",")).map(h -> h.trim().toLowerCase(Locale.ROOT)).filter(h -> !h.isEmpty())
                 .collect(Collectors.toSet());
         return new RevenueNswHttpSettings(
-                env.getProperty(p + "base-url", ""),
+                orDefault(env.getProperty(p + "base-url", ""), "https://" + RevenueNswHttpSettings.DEFAULT_HOST),
                 env.getProperty(p + "path-prefix", ""),
                 env.getProperty(p + "contact", ""),
                 env.getProperty(p + "approval-reference", ""),
@@ -48,5 +48,9 @@ public final class RevenueNswHttpFactory {
                 env.getProperty(p + "summary-retries", Integer.class, 1),
                 Duration.ofMillis(env.getProperty(p + "retry-backoff-ms", Long.class, RevenueNswHttpSettings.DEFAULT_RETRY_BACKOFF.toMillis())),
                 allowed);
+    }
+
+    private static String orDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
     }
 }

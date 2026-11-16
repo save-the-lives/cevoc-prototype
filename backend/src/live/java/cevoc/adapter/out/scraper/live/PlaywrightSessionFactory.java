@@ -84,6 +84,8 @@ public final class PlaywrightSessionFactory implements RenderedPageSessionFactor
                 browser = playwright.chromium().launch(launchOptions(headless, browserDefaultUserAgent));
             }
             context = browser.newContext(contextOptions(settings, browserDefaultUserAgent, browser.version()));
+            // The page's own calls tell the plain HTTP route where the JSON service lives (record 0030). Path segment only.
+            context.onRequest(req -> cevoc.adapter.out.revenuensw.LearnedServicePath.offer(req.url()));
             if (browserDefaultUserAgent) {
                 context.addInitScript(WEBDRIVER_INIT_SCRIPT);
             }
