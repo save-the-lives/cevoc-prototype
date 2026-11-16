@@ -1,0 +1,77 @@
+name: Deploy image only (skip infra)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      RG_NAME: rg-cevoc-dev
+      APP_NAME: cevoc-dev-app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR
+        id: acr
+        run: |
+          ACR_NAME=$(az acr list --resource-group "$RG_NAME" --query '[0].name' -o tsv)
+          LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+          echo "name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+          echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+          echo "ACR: $LOGIN_SERVER"
+
+      - name: Prepare context
+        run: |
+          mkdir -p backend/samples
+          cp frontend/public/samples/*.mp4 backend/samples/ 2>/dev/null || true
+
+      - name: Build and push backend
+        run: |
+          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          DOCKERFILE=$( [ -f backend/Dockerfile.lean ] && echo "backend/Dockerfile.lean" || echo "backend/Dockerfile" )
+          echo "Building $DOCKERFILE → ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          az acr login --name "${{ steps.acr.outputs.name }}"
+          docker build -t "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:latest" \
+            -f "$DOCKERFILE" backend/
+          docker push "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          docker push "${LOGIN_SERVER}/cevoc:latest"
+          echo "Pushed ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+
+      - name: Update container app
+        run: |
+          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          az containerapp registry set --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --server "$LOGIN_SERVER" --identity system --output none
+          az containerapp update --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --image "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" \
+            --set-env-vars SPRING_PROFILES_ACTIVE=dev CEVOC_DEMO_DATA_ENABLED=true SERVER_PORT=8080 \
+            --cpu 2.0 --memory 4Gi \
+            --output table
+
+      - name: Health check
+        run: |
+          APP_URL=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --query 'properties.configuration.ingress.fqdn' -o tsv)
+          echo "Backend: https://${APP_URL}"
+          for i in $(seq 1 24); do
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${APP_URL}/actuator/health" 2>/dev/null || echo "000")
+            echo "  [$i/24] http=$HTTP"
+            [ "$HTTP" = "200" ] && echo "::notice::Backend healthy" && exit 0
+            sleep 15
+          done
+          echo "::error::Backend not healthy"
+          az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 50 --format text 2>&1 || true
+          exit 1
