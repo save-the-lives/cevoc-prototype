@@ -401,7 +401,6 @@ jobs:
             --set-env-vars \
               SPRING_PROFILES_ACTIVE=dev \
               CEVOC_DEMO_DATA_ENABLED=true \
-              CEVOC_SCRAPER_EVIDENCE_CONTACT="${{ secrets.CEVOC_SCRAPER_EVIDENCE_CONTACT }}" \
               SERVER_PORT=8080 \
             --cpu 2.0 --memory 4Gi \
             --output table
