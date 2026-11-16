@@ -16,13 +16,12 @@ FROM deps AS build
 COPY src ./src
 RUN mvn -B -q -DskipTests package
 
-# --- Runtime: lean JRE + just enough for ProcessBlurAdapter ---
+# --- Runtime: JRE + Python/OpenCV for blur (no Chromium, no Tesseract) ---
+# The blur pipeline runs as a subprocess (ProcessBlurAdapter) and needs Python + OpenCV.
+# Once QueueBlurAdapter is the default and the blur worker container handles all blur work,
+# strip Python entirely and this becomes a ~250 MB pure-JVM image.
 FROM eclipse-temurin:21-jre-jammy
 
-# Python 3 + OpenCV + ffmpeg: needed while ProcessBlurAdapter calls render_blur.py as a subprocess.
-# TODO: Remove Python, OpenCV and ffmpeg once QueueBlurAdapter is the default blur mode —
-#       at that point the blur worker container handles all Python/OpenCV work and this image
-#       becomes pure Java (~250 MB instead of ~600 MB).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip libgl1-mesa-glx libglib2.0-0 ffmpeg \
     && pip3 install --no-cache-dir opencv-contrib-python-headless numpy \
@@ -32,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY --from=build /src/target/*.jar app.jar
 
-# Blur pipeline scripts + YuNet model (ADR 0017) — called by ProcessBlurAdapter
+# Blur pipeline scripts + YuNet model (ADR 0017)
 COPY blur-pipeline/ /app/blur-pipeline/
 
 # Sample demo videos (served through DemoRoutes when CEVOC_DEMO_DATA_ENABLED=true)

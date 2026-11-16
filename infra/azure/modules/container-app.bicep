@@ -21,10 +21,10 @@ param deployBlurWorker bool = false
 param deployBrowserWorker bool = false
 
 // ---------- Sizing ----------
-// After the container split the backend is a lean JVM (no Chromium, no Python).
-// 1 CPU / 2Gi is enough for the API; the heavy stuff lives in its own container.
-var cpuCores = environment == 'prod' ? '2.0' : '1.0'
-var memoryGi = environment == 'prod' ? '4Gi' : '2Gi'
+// Lean image still carries Python + OpenCV for blur (until QueueBlurAdapter is default).
+// 2 CPU / 4Gi everywhere until Python is fully split out.
+var cpuCores = '2.0'
+var memoryGi = '4Gi'
 var minReplicas = environment == 'prod' ? 1 : 1
 var maxReplicas = environment == 'prod' ? 3 : 1
 var workerCpu = '1.0'
