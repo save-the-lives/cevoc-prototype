@@ -26,7 +26,7 @@ those.
 - The site's address is the app's address.
 - The Static Web App is removed everywhere (owner, 2026-11-17: "remove and make it consistent"): Bicep and Terraform
   modules, outputs, the `Microsoft.Web` provider registration, `staticwebapp.config.json`, and the resource in
-  `rg-cevoc-dev` (deleted once by `retire-static-web-app.yml`, which is then removed).
+  `rg-cevoc-dev` (deleted once on 2026-11-17 by a one-off workflow, since removed).
 - AWS is made the same shape: the S3 frontend bucket is removed and CloudFront has one origin, the load balancer in
   front of the container, with caching off. CloudFront stays because on AWS an edge is available; it changes nothing in
   the app.

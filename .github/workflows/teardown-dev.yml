@@ -1,0 +1,56 @@
+name: Tear down dev (empty rg-cevoc-dev)
+# Deletes every resource in rg-cevoc-dev and purges its soft-deleted Key Vault, so the next full deploy
+# (iac-validate.yml with deploy=true) builds everything new. No resource is reused.
+# The resource group itself stays: the deploy identity's roles are granted on it (bootstrap.sh), so deleting the group
+# would remove the identity's right to create it again. The identity is an Entra app, not a resource in the group.
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-rg-cevoc-dev
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RG_NAME: rg-cevoc-dev
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Delete every resource in the group
+        run: |
+          set -euo pipefail
+          KVS=$(az keyvault list --resource-group "$RG_NAME" --query '[].name' -o tsv)
+          # Several passes: a resource another depends on (the Container Apps environment, the registry) is refused
+          # until its dependants are gone. --no-wait, then the group is listed: polling a delete operation needs a
+          # subscription-level read this identity does not have (2026-11-17, Static Web App delete).
+          for pass in $(seq 1 12); do
+            IDS=$(az resource list --resource-group "$RG_NAME" --query '[].id' -o tsv)
+            [ -z "$IDS" ] && break
+            echo "Pass $pass: $(echo "$IDS" | wc -l) resource(s) left"
+            echo "$IDS" | sed 's#.*/providers/#  #'
+            for ID in $IDS; do az resource delete --ids "$ID" --no-wait 2>/dev/null || echo "  not yet: ${ID##*/}"; done
+            sleep 60
+          done
+          LEFT=$(az resource list --resource-group "$RG_NAME" --query 'length(@)' -o tsv)
+          [ "$LEFT" = "0" ] || { echo "::error::$LEFT resource(s) still in $RG_NAME"; az resource list --resource-group "$RG_NAME" --query '[].type' -o tsv; exit 1; }
+          echo "KVS=$KVS" >> "$GITHUB_ENV"
+      - name: Purge the soft-deleted Key Vault
+        run: |
+          set -euo pipefail
+          for KV in $KVS $(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv); do
+            echo "Purging $KV"; az keyvault purge --name "$KV"
+          done
+          LEFT=$(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv)
+          [ -z "$LEFT" ] || { echo "::error::Soft-deleted vault(s) still present: $LEFT"; exit 1; }
+          echo "::notice::rg-cevoc-dev is empty and no vault is left soft-deleted"

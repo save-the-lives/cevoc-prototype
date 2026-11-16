@@ -9,6 +9,17 @@ on:
 permissions:
   contents: read
 jobs:
+  # The blur pipeline on the demo videos: the plate given as the notice's own stays sharp in every frame and no other
+  # plate is left visible (decision record 0034). The plate is the one painted into the demo video, passed as input.
+  blur-own-plate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pipeline's tools (as in backend/Dockerfile)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr ffmpeg && pip3 install opencv-contrib-python-headless pytesseract numpy
+      - name: Own plate stays visible in every frame
+        run: for v in backend/samples/video-*.mp4; do python3 backend/blur-pipeline/check_own_plate.py "$v" --offending ABC123; done
   backend:
     runs-on: ubuntu-latest
     steps:

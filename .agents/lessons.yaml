@@ -99,3 +99,13 @@ lessons:
     status: promoted
     opened: 2026-11-17
     promoted: 2026-11-17
+  - id: L-0011
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "The notice's own plate was blurred in every third frame. Two pipeline steps guessed the frame rate (12 and 25) and one truncated timestamps, so positions landed on the wrong frames."
+    right_behaviour: "Read rates, sizes and lengths from the input itself; never default them. Test the property the owner sees (own plate readable in every frame), not only that the step finished."
+    destination: check
+    destination_ref: "backend/blur-pipeline/check_own_plate.py via app-ci.yml job blur-own-plate"
+    status: promoted
+    opened: 2026-11-17
+    promoted: 2026-11-17

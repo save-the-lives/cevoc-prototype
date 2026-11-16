@@ -18,37 +18,48 @@ import cv2
 import numpy as np
 
 
-def load_regions(path):
+def frame_of(det, fps):
+    """Frame number of a detection in THIS video: from its timestamp and the video's own frame rate, rounded.
+    A stored "frame" is used only when there is no timestamp."""
+    if "t" in det:
+        return int(round(det["t"] * fps))
+    return det.get("frame")
+
+
+def load_regions(path, fps):
+    """fps is the video's own frame rate. Never a default: a guessed rate puts every blur box at the wrong moment."""
     with open(path) as f:
         track = json.load(f)
-    fps = track.get("fps", 25)
     by_frame = {}
-    for region in track.get("regions", []):
+    for tid, region in enumerate(track.get("regions", [])):
         label = region.get("label", "PLATE")
         for det in region.get("frames", []):
-            # Support both "frame" (old) and "t" (new, timestamp-based) formats
-            if "frame" in det:
-                fn = det["frame"]
-            elif "t" in det:
-                fn = int(round(det["t"] * fps))
-            else:
+            fn = frame_of(det, fps)
+            if fn is None:
                 continue
-            entry = {**det, "frame": fn, "label": label}
+            entry = {**det, "frame": fn, "label": label, "track": tid}
             by_frame.setdefault(fn, []).append(entry)
     return track, by_frame
 
 
 def interpolate_regions(by_frame, total_frames, hold_frames=5):
-    filled = dict(by_frame)
+    """Holds each track's last box for up to hold_frames frames where THAT track has no detection. Per track: until
+    2026-11-17 a box was held only into frames with no detection of any kind, so a frame with a face but a missing
+    offending-plate entry lost the plate's position."""
+    filled = {fn: list(dets) for fn, dets in by_frame.items()}
+    present = {(fn, d.get("track")) for fn, dets in by_frame.items() for d in dets}
     for frame_num in sorted(by_frame.keys()):
         for det in by_frame[frame_num]:
             for hold in range(1, hold_frames + 1):
                 nf = frame_num + hold
-                if nf < total_frames and nf not in by_frame:
-                    filled.setdefault(nf, []).append({
-                        **det, "frame": nf,
-                        "confidence": det.get("confidence", 0.5) * 0.8
-                    })
+                key = (nf, det.get("track"))
+                if nf >= total_frames or key in present:
+                    break
+                present.add(key)
+                filled.setdefault(nf, []).append({
+                    **det, "frame": nf,
+                    "confidence": det.get("confidence", 0.5) * 0.8
+                })
     return filled
 
 
@@ -79,7 +90,7 @@ def iou(a, b):
     return inter / denom
 
 
-def render_blur_pass(video_path, by_frame, output_path, fps, w, h, pass_name="blur"):
+def render_blur_pass(video_path, by_frame, output_path, fps, w, h, pass_name="blur", keep_visible=None):
     """Render one blur pass over a video. Returns (frame_count, regions_blurred)."""
     cap = cv2.VideoCapture(str(video_path))
     out = cv2.VideoWriter(str(output_path), cv2.VideoWriter.fourcc(*"mp4v"), fps, (w, h))
@@ -93,7 +104,15 @@ def render_blur_pass(video_path, by_frame, output_path, fps, w, h, pass_name="bl
         if not ret:
             break
         dets = by_frame.get(frame_num, [])
-        offending = [d for d in dets if d.get("label") == "PLATE_OFFENDING"]
+        offending = [d for d in dets if d.get("label") == "PLATE_OFFENDING"] + (keep_visible or {}).get(frame_num, [])
+        # The offending plate stays readable whatever else is blurred around it: its pixels are put back after the
+        # blur, so a car-sized backstop box or a widened leak box cannot cover it.
+        kept = []
+        for o in offending:
+            x0, y0 = max(0, int(o["x"])), max(0, int(o["y"]))
+            x1, y1 = min(w, int(o["x"] + o["w"])), min(h, int(o["y"] + o["h"]))
+            if x1 > x0 and y1 > y0:
+                kept.append((x0, y0, frame[y0:y1, x0:x1].copy()))
         for det in dets:
             if det.get("label") == "PLATE_OFFENDING":
                 continue
@@ -101,6 +120,8 @@ def render_blur_pass(video_path, by_frame, output_path, fps, w, h, pass_name="bl
                 continue
             frame = blur_region(frame, det["x"], det["y"], det["w"], det["h"])
             blurred_total += 1
+        for x0, y0, crop in kept:
+            frame[y0:y0 + crop.shape[0], x0:x0 + crop.shape[1]] = crop
         out.write(frame)
         if frame_num % 10 == 0:
             print(f"[render_blur]   frame {frame_num}: {len(dets)} regions", flush=True)
@@ -143,7 +164,7 @@ def verify_and_reblur(blurred_raw_path, fps, w, h, offending_plate, scripts_dir,
     model_path = scripts_dir / "yolov8n-plates.onnx"
     if not model_path.exists():
         print("[render_blur]   Plate model not found, skipping verification", flush=True)
-        return 0, None
+        return 0, None, {}
 
     net = cv2.dnn.readNetFromONNX(str(model_path))
     INPUT_SIZE = 640
@@ -247,7 +268,7 @@ def verify_and_reblur(blurred_raw_path, fps, w, h, offending_plate, scripts_dir,
     # Re-blur
     reblurred_path = blurred_raw_path.with_stem(blurred_raw_path.stem + "-v2")
     render_blur_pass(str(blurred_raw_path), leaked_frames, str(reblurred_path),
-                     fps, w, h, pass_name="re-blur")
+                     fps, w, h, pass_name="re-blur", keep_visible=offending_by_frame)
     return total_leaked, reblurred_path, leaked_frames
 
 
@@ -263,20 +284,22 @@ def main():
     t0 = time.time()
     video_path = Path(args.video)
     scripts_dir = Path(__file__).parent
-    track, by_frame = load_regions(args.regions)
-    fps = track.get("fps", 25)
-    total = int(track.get("duration", track.get("duration_s", 5)) * fps)
-    offending_plate = track.get("offending_plate")  # None: no plate is kept visible
-    by_frame = interpolate_regions(by_frame, total)
-
     output_final = Path(args.output or video_path.with_stem(video_path.stem + "-blurred"))
     output_tmp = output_final.with_suffix(".raw.mp4")
 
+    # Frame rate and length come from the video itself, never from a default.
     cap = cv2.VideoCapture(str(video_path))
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    actual_fps = cap.get(cv2.CAP_PROP_FPS) or fps
+    actual_fps = cap.get(cv2.CAP_PROP_FPS)
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
+    if not actual_fps or actual_fps <= 0 or total <= 0:
+        print("[render_blur] FAIL-CLOSED: cannot read the video's frame rate or length", flush=True)
+        sys.exit(1)
+    track, by_frame = load_regions(args.regions, actual_fps)
+    offending_plate = track.get("offending_plate")  # None: no plate is kept visible
+    by_frame = interpolate_regions(by_frame, total)
 
     # Pass 1: main blur
     frame_count, blurred_total = render_blur_pass(
@@ -284,16 +307,11 @@ def main():
         actual_fps, w, h, pass_name="main blur")
 
     # Build offending plate position lookup for verification
+    # Built from the held (interpolated) positions, so a frame where the detector missed the plate still knows where it is.
     offending_by_frame = {}
-    for region in track.get("regions", []):
-        if region.get("label") == "PLATE_OFFENDING":
-            for det in region.get("frames", []):
-                if "frame" in det:
-                    fn = det["frame"]
-                elif "t" in det:
-                    fn = int(round(det["t"] * fps))
-                else:
-                    continue
+    for fn, dets in by_frame.items():
+        for det in dets:
+            if det.get("label") == "PLATE_OFFENDING":
                 offending_by_frame.setdefault(fn, []).append(det)
 
     # Verification: up to MAX_REBLUR_ROUNDS rounds of "find leaks, re-blur them", then the decision is made by a

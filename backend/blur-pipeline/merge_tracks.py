@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 Merge face and plate region tracks into one combined track for the blur renderer.
-Adds frame numbers from timestamps if missing.
+Carries the timestamps through; the renderer turns them into frame numbers with the video's own frame rate.
+Also carries the offending plate, so the renderer and its verification know which plate stays visible.
 
-Usage: python3 merge_tracks.py <faces.json> <plates.json> [--output merged.json] [--fps 12]
+Usage: python3 merge_tracks.py <faces.json> <plates.json> [--output merged.json]
 """
 import argparse
 import json
@@ -15,7 +16,6 @@ def main():
     parser.add_argument("faces", help="Path to face regions JSON")
     parser.add_argument("plates", help="Path to plate regions JSON")
     parser.add_argument("--output", "-o", default=None)
-    parser.add_argument("--fps", type=float, default=12, help="Video FPS for frame number calculation")
     args = parser.parse_args()
 
     with open(args.faces) as f:
@@ -23,24 +23,15 @@ def main():
     with open(args.plates) as f:
         plates = json.load(f)
 
-    fps = faces.get("fps", args.fps)
-    merged = {"v": 1, "regions": []}
-
-    # Merge face regions, ensure frame numbers exist
-    for r in faces.get("regions", []):
-        for det in r.get("frames", []):
-            det.setdefault("label", r.get("label", "FACE"))
-            if "frame" not in det and "t" in det:
-                det["frame"] = int(det["t"] * fps)
-        merged["regions"].append(r)
-
-    # Merge plate regions, ensure frame numbers exist
-    for r in plates.get("regions", []):
-        for det in r.get("frames", []):
-            det.setdefault("label", r.get("label", "PLATE"))
-            if "frame" not in det and "t" in det:
-                det["frame"] = int(det["t"] * fps)
-        merged["regions"].append(r)
+    # No frame numbers are made here. Until 2026-11-17 this step guessed a frame rate (12) and truncated t * fps, so a
+    # detection at t=0.0833 landed on frame 0 instead of 1: every third frame lost its offending-plate entry and the
+    # verification then blurred the plate that should stay visible. The renderer reads the real rate from the video.
+    merged = {"v": 1, "regions": [], "offending_plate": plates.get("offending_plate")}
+    for source, default_label in ((faces, "FACE"), (plates, "PLATE")):
+        for r in source.get("regions", []):
+            for det in r.get("frames", []):
+                det.setdefault("label", r.get("label", default_label))
+            merged["regions"].append(r)
 
     output_path = Path(args.output) if args.output else Path(args.faces).parent / "merged-regions.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
