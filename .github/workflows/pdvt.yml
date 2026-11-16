@@ -18,6 +18,10 @@ on:
         description: "Expected lookup route (source field). Empty = any. 'REVENUE_NSW' = browser, 'REVENUE_NSW_HTTP' = HTTP."
         type: string
         default: ""
+      base_url:
+        description: "Override backend URL (skip Azure login + FQDN lookup). E.g. https://cevoc-dev-app.orangeriver-57fa442a.australiasoutheast.azurecontainerapps.io"
+        type: string
+        default: ""
 permissions:
   contents: read
   id-token: write
@@ -36,6 +40,7 @@ jobs:
           node-version: 22
 
       - name: Azure Login
+        if: inputs.base_url == ''
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.CEVOCBACKEND_AZURE_CLIENT_ID }}
@@ -50,8 +55,12 @@ jobs:
         run: |
           set +x
           [ -n "$LIVE_CASES_PASS" ] || [ -n "$LIVE_CASES_FAIL" ] || { echo "::error::Neither LIVE_CASES_PASS nor LIVE_CASES_FAIL is set."; exit 1; }
-          fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          echo "base_url=https://$fqdn" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.base_url }}" ]; then
+            echo "base_url=${{ inputs.base_url }}" >> "$GITHUB_OUTPUT"
+          else
+            fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+            echo "base_url=https://$fqdn" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Mask sensitive input values
         env:
