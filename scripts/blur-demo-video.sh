@@ -2,8 +2,8 @@
 # Pre-blur the demo video: detect faces (YuNet) and plates (contour+OCR),
 # merge tracks, render blurred output with ABC123 kept visible.
 #
-# Replaces frontend/public/samples/video-1.mp4 with the blurred version.
-# Keeps the raw original at frontend/public/samples/video-1-raw.mp4.
+# Replaces backend/samples/video-1.mp4 with the blurred version.
+# Keeps the raw original at backend/samples/video-1-raw.mp4.
 #
 # Prerequisites: python3, opencv-contrib-python, pytesseract, tesseract-ocr, ffmpeg
 # Usage: ./scripts/blur-demo-video.sh [--offending ABC123]
@@ -12,7 +12,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SPIKE="$REPO_ROOT/scripts/blur-spike"
-SAMPLES="$REPO_ROOT/frontend/public/samples"
+SAMPLES="$REPO_ROOT/backend/samples"
 OFFENDING="${1:-ABC123}"
 
 RAW="$SAMPLES/video-1-raw.mp4"

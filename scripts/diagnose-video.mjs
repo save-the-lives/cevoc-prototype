@@ -25,6 +25,19 @@ try {
     if (!videoSrc) { await video.first().scrollIntoViewIfNeeded().catch(() => {}); await page.waitForTimeout(2000); }
   }
   console.log(`Video elements on the page: ${await video.count()}; src found: ${videoSrc ? 'yes' : 'no'}`);
+  // Video evidence is never downloadable: no download link on the page may point at the video, and the browser's own
+  // download control must be switched off on every video element.
+  const dl = await page.locator('a[download]').evaluateAll((as) => as.map((a) => a.getAttribute('href') || ''));
+  const videoPath = videoSrc ? new URL(videoSrc, frontend).pathname : '';
+  if (videoPath && dl.some((h) => h && new URL(h, frontend).pathname === videoPath)) {
+    console.log('::error::A download link points at the video');
+    process.exitCode = 1;
+  }
+  const lists = await video.evaluateAll((vs) => vs.map((v) => v.getAttribute('controlslist') || ''));
+  if (lists.some((l) => !/nodownload/.test(l))) {
+    console.log('::error::A video element allows the browser download control');
+    process.exitCode = 1;
+  }
 } finally {
   await browser.close();
 }
@@ -51,4 +64,11 @@ for (let attempt = 1; Date.now() - started < 300000; attempt++) {
   await new Promise((r) => setTimeout(r, 5000));
 }
 if (!ok) { console.log('::error::The blurred video was not served'); process.exit(1); }
+// The blurred video is always served inline, never as an attachment, whatever is asked.
+const asked = await fetch(videoSrc + (videoSrc.includes('?') ? '&' : '?') + 'dl=1', { signal: AbortSignal.timeout(60000) });
+const disposition = asked.headers.get('content-disposition') || '';
+await asked.arrayBuffer();
+console.log(`With ?dl=1: HTTP ${asked.status}, content-disposition=${disposition}`);
+if (/attachment/i.test(disposition)) { console.log('::error::The video was offered as a download'); process.exit(1); }
+if (process.exitCode) process.exit(process.exitCode);
 console.log(`::notice::The blurred video was served after ${((Date.now() - started) / 1000).toFixed(0)}s`);

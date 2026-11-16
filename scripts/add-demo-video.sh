@@ -9,7 +9,7 @@
 #     "https://www.pexels.com/license/"
 #
 # The script:
-# 1. Copies the video to frontend/public/samples/video-1.mp4 (replacing the test pattern)
+# 1. Copies the video to backend/samples/video-1.mp4 (replacing the test pattern)
 # 2. Updates docs/demo-media-manifest.json with source and licence
 # 3. Reports the file size and duration (needs ffprobe)
 
@@ -32,7 +32,7 @@ LICENCE="$3"
 LICENCE_URL="$4"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET="$REPO_ROOT/frontend/public/samples/video-1.mp4"
+TARGET="$REPO_ROOT/backend/samples/video-1.mp4"
 
 if [ ! -f "$VIDEO" ]; then
   echo "Error: File not found: $VIDEO"
@@ -116,7 +116,7 @@ fi
 
 echo ""
 echo "Done. Next steps:"
-echo "  1. git add frontend/public/samples/video-1.mp4 docs/demo-media-manifest.json"
+echo "  1. git add backend/samples/video-1.mp4 docs/demo-media-manifest.json"
 echo "  2. git commit -m 'feat: add copyright-free traffic video to demo cases'"
 echo "  3. git push origin main"
 echo ""

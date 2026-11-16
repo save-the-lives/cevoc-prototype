@@ -89,3 +89,13 @@ lessons:
     status: promoted
     opened: 2026-11-17
     promoted: 2026-11-17
+  - id: L-0010
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "The full-screen video view offered 'Download original' again (an older bug come back). The download rule only blocked HLS playlists, so a plain MP4 video, which the demo uses, got a download link; and the raw demo videos were in the public site folder, downloadable by address."
+    right_behaviour: "One rule for every view and every source: video is never downloadable. Raw media never sits in a public folder. Demo and live take the same path."
+    destination: check
+    destination_ref: scripts/diagnose-video.mjs
+    status: promoted
+    opened: 2026-11-17
+    promoted: 2026-11-17

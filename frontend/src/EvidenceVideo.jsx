@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ZoomPan from './ZoomPan.jsx';
 import { useInView } from './useInView.js';
-import { downloadHref, isHls, isPoorConnection, isSmallScreen, pickLevels } from './media.js';
+import { isHls, isPoorConnection, isSmallScreen, pickLevels } from './media.js';
 
 /**
  * Adaptive video. .m3u8 -> hls.js (loaded on demand), Safari/iOS native HLS as fallback,
@@ -69,7 +69,7 @@ export default function EvidenceVideo({ item, bare = false, autoPlay = false }) 
         video.src = item.url; // Safari / iOS native HLS (adapts by itself)
         setStatus('ready');
       } else {
-        fail('This browser cannot play this video. Use Download original instead.');
+        fail('This browser cannot play this video.');
       }
     })();
 
@@ -90,7 +90,6 @@ export default function EvidenceVideo({ item, bare = false, autoPlay = false }) 
   };
 
   const toggle = () => { const v = videoRef.current; if (v.paused) v.play().catch(() => {}); else v.pause(); };
-  const href = downloadHref(item);
   const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
   const tools = (view) => (
@@ -139,12 +138,17 @@ export default function EvidenceVideo({ item, bare = false, autoPlay = false }) 
     video.play().catch(() => {});
   }, [autoPlay, status]);
 
+  // Video evidence is never downloadable (media.js downloadHref): no download link here, and the browser's own save,
+  // cast and picture-in-picture options are hidden too.
   const videoEl = (
     <>
       <video
         ref={videoRef}
         className="media-video"
         controls
+        controlsList="nodownload noremoteplayback"
+        disablePictureInPicture
+        onContextMenu={(e) => e.preventDefault()}
         playsInline
         webkit-playsinline=""
         preload="none"
@@ -194,7 +198,6 @@ export default function EvidenceVideo({ item, bare = false, autoPlay = false }) 
           {videoEl}
         </ZoomPan>
       )}
-      {!bare && href && <a className="dl" href={href} download>Download original<span className="sr-only"> of {item.title}</span></a>}
     </div>
   );
 }

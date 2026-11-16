@@ -35,7 +35,7 @@ COPY --from=build /src/target/*.jar app.jar
 COPY blur-pipeline/ /app/blur-pipeline/
 
 # Sample demo videos — optional, may not exist in backend/ context.
-# CI should copy frontend/public/samples/*.mp4 here before building.
+# Raw (unblurred) demo videos, kept in backend/samples so the public site never serves them.
 RUN mkdir -p /app/samples
 COPY sample[s]/ /app/samples/
 # The built site (record 0031): the deploy workflows copy frontend/dist here; empty in a local build.

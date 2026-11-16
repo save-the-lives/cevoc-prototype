@@ -14,6 +14,10 @@ describe('media helpers', () => {
     expect(downloadHref({ url: '/a/master.m3u8' })).toBeNull();
     expect(downloadHref({ url: '/a/master.m3u8', downloadUrl: '/a/o.mp4' })).toBe('/a/o.mp4');
     expect(downloadHref({ url: '/a/v.mp4' })).toBe('/a/v.mp4');
+    // Video evidence is never downloadable, whatever its URL, state or source (demo or live).
+    expect(downloadHref({ kind: 'VIDEO', url: '/a/v.mp4' })).toBeNull();
+    expect(downloadHref({ kind: 'VIDEO', url: '/api/media/abcDEF123_-xyz0123' })).toBeNull();
+    expect(downloadHref({ kind: 'VIDEO', url: '/a/master.m3u8', downloadUrl: '/a/o.mp4' })).toBeNull();
   });
   it('asks our media endpoint to save the original rather than show it', () => {
     expect(downloadHref({ url: '/api/media/abcDEF123_-xyz0123' })).toBe('/api/media/abcDEF123_-xyz0123?dl=1');

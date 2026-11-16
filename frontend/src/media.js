@@ -1,7 +1,12 @@
 export const isHls = (url) => /\.m3u8(\?|#|$)/i.test(url || '');
 
-/** Link for "Download original". HLS playlists are not downloadable, so they need an explicit downloadUrl. */
+/**
+ * Link for "Download original", or null when there must be no download. The ONE rule for every view (inline, full
+ * screen, gallery, demo or live): video evidence is never downloadable, whatever its state, blurred or not.
+ * HLS playlists are not downloadable either, so other kinds need an explicit downloadUrl for them.
+ */
 export function downloadHref(item) {
+  if (!item || item.kind === 'VIDEO') return null;
   if (item.downloadUrl) return item.downloadUrl;
   return isHls(item.url) ? null : withDownloadFlag(item.url);
 }

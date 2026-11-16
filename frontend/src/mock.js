@@ -16,7 +16,7 @@ const CERTS = [
 const COVERAGE = { status: 'covered', message: 'A certificate for this camera was in force on the offence date.' };
 const VIDEO = {
   kind: 'VIDEO', title: 'Sample video (adaptive)', url: '/samples/hls/master.m3u8',
-  posterUrl: '/samples/video-1-poster.jpg', downloadUrl: '/samples/video-1.mp4',
+  posterUrl: '/samples/video-1-poster.jpg',
 };
 
 export const SCENARIOS = [

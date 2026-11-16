@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Reads raw demo video files from the filesystem (frontend/public/samples/) or classpath.
+ * Reads raw demo video files from the filesystem (backend/samples, never the public site) or classpath.
  * Used by {@link DemoSignedLinks} to store demo video bytes in the shared media adapter,
  * so they flow through MediaController → BlurPort (the same hot path as live evidence).
  */
@@ -19,7 +19,7 @@ public final class ClasspathVideoSource {
     private final Path samplesDir;
 
     /** Candidate directories tried in order: explicit config, container default, dev default. */
-    private static final String[] FALLBACK_DIRS = {"samples", "../frontend/public/samples"};
+    private static final String[] FALLBACK_DIRS = {"samples", "backend/samples"};
 
     public ClasspathVideoSource(Path samplesDir) {
         this.samplesDir = samplesDir;
@@ -34,7 +34,7 @@ public final class ClasspathVideoSource {
             Optional<byte[]> found = readFile(samplesDir.resolve(name));
             if (found.isPresent()) return found;
         }
-        // Try fallback directories (container: /app/samples, dev: ../frontend/public/samples)
+        // Try fallback directories (container: /app/samples; dev: run from backend/ or the repo root)
         for (String dir : FALLBACK_DIRS) {
             Optional<byte[]> found = readFile(Path.of(dir).resolve(name));
             if (found.isPresent()) return found;

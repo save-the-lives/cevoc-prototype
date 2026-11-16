@@ -243,9 +243,8 @@ jobs:
           test -f ../backend/site/index.html
       - name: Prepare build context
         run: |
-          # Copy sample demo videos into backend/ context (Dockerfile expects them there)
-          mkdir -p backend/samples
-          cp frontend/public/samples/*.mp4 backend/samples/ 2>/dev/null || echo "No sample videos to copy"
+          # The raw demo videos live in backend/samples, never in the public site (they are unblurred).
+          ls backend/samples/*.mp4
       - name: Build and push
         if: needs.deploy-infra.outputs.acr_found == 'true'
         run: |

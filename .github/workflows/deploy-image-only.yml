@@ -41,7 +41,6 @@ jobs:
       - name: Prepare context
         run: |
           mkdir -p backend/samples
-          cp frontend/public/samples/*.mp4 backend/samples/ 2>/dev/null || true
 
       - uses: actions/setup-node@v4
         with:

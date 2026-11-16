@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 /**
  * Generates simple fictitious sample images as SVG text (no fonts or graphics libraries needed, no files, no network).
  * Every image says in words that it is a sample, so it cannot be mistaken for evidence. Deterministic: the same case
- * and image number always give the same bytes. The sample video at {@code frontend/public/samples/video-1.mp4} is the
+ * and image number always give the same bytes. The sample video at {@code backend/samples/video-1.mp4} (never in the public site) is the
  * raw (unblurred) source. It is served through the backend's blur pipeline ({@link cevoc.application.port.out.BlurPort})
  * which blurs faces and non-offending plates at request time, keeping the offending plate (ABC123) visible. When blur
  * is not enabled ({@code CEVOC_BLUR_ENABLED=false}, the default), video returns a 503 (fail-closed, ADR 0017).

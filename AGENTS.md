@@ -31,7 +31,7 @@ not a sentence here. Each lesson in `.agents/lessons.yaml` names where its fix l
 |---|---|
 | The deployed site renders, scripts are served as JavaScript, and the page can call the API | `scripts/release-gate.mjs`, run by the release gate |
 | Real lookups work on the deployed backend | `pdvt.yml`, run by the release gate |
-| A demo case's video is served blurred (503 while blurring, then 200; 451 is a failure) | `scripts/diagnose-video.mjs`, run by the release gate |
+| A demo case's video is served blurred (503 while blurring, then 200; 451 is a failure), never as a download | `scripts/diagnose-video.mjs`, run by the release gate |
 | The running app has exactly the environment variables the workflow lists | "Verify env vars match this workflow" step in both deploy workflows |
 | One deploy to an environment at a time | shared `concurrency` group in both deploy workflows |
 | Backend tests and frontend build | `app-ci.yml` (see `docs/exceptions.md`: currently red, not yet a gate) |
@@ -76,6 +76,9 @@ pushing. These were each learned from a failed deploy:
 - Demo is only an adapter on the live path: no demo-only routes, no fallback to raw video, no code that knows a
   particular demo case, plate or file name.
 - Blur is always on and fails closed: if blurring fails, the media is not served.
+- Video evidence is never downloadable, in any state, demo or live: `downloadHref` in `frontend/src/media.js` is the
+  one rule every view uses, the server always sends video inline, and raw (unblurred) videos never sit in the public
+  site (`backend/samples`, not `frontend/public`). Demo and live take the same path: link, media endpoint, blur.
 - Every external address is one fully qualified URL setting; settings keep the `CEVOC_` prefix.
 - Do not remove a workflow, script or setting until you have read what it does and searched the docs for its name.
   "Looks old" is not evidence. (`docs/decisions/0006`: published URLs must not change.)
