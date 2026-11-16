@@ -12,7 +12,7 @@ jobs:
         with:
           node-version: '20'
       - name: Install Playwright
-        run: npx playwright install chromium
+        run: npm install playwright && npx playwright install chromium
       - name: Check SWA page
         run: |
           node -e "
