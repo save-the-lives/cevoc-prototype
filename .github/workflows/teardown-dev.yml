@@ -43,7 +43,7 @@ jobs:
               echo "  ${ID#*/providers/}"
               case "$ID" in
                 # A Static Web App is deleted through its own command: the generic delete is refused for it.
-                */Microsoft.Web/staticSites/*) az staticwebapp delete --ids "$ID" --yes --no-wait || true ;;
+                */Microsoft.Web/staticSites/*) az staticwebapp delete --name "${ID##*/}" --resource-group "$RG_NAME" --yes --no-wait || true ;;
                 *) az resource delete --ids "$ID" --no-wait || true ;;
               esac
             done <<< "$IDS"
