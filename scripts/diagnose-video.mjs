@@ -12,19 +12,24 @@ const browser = await chromium.launch();
 let videoSrc = '';
 try {
   const page = await browser.newPage();
+  page.setDefaultTimeout(10000); // no single page call may hang the check
+  let mediaUrl = '';
   page.on('response', (r) => {
     const u = r.url();
     if (u.includes('/api/')) console.log(`  page request: HTTP ${r.status()} ${r.request().method()} ${new URL(u).pathname.replace(/[A-Za-z0-9_-]{16,}/g, '<token>')}`);
+    // The video's address is the media request the page makes for it: 503 (still blurring), 451 (failed) or a video.
+    if (!mediaUrl && u.includes('/api/media/') && (r.status() === 503 || r.status() === 451 || /^video\//.test(r.headers()['content-type'] || ''))) {
+      mediaUrl = u;
+    }
   });
   page.on('console', (m) => { if (m.type() === 'error') console.log(`  console error: ${m.text()}`); });
   await page.goto(`${frontend}/?demo=${demoCase}`, { waitUntil: 'networkidle', timeout: 60000 });
   const video = page.locator('video');
-  await video.first().waitFor({ state: 'attached', timeout: 90000 }).catch(() => {});
-  for (let i = 0; i < 30 && !videoSrc; i++) {
-    videoSrc = (await video.first().getAttribute('src').catch(() => '')) || '';
-    if (!videoSrc) { await video.first().scrollIntoViewIfNeeded().catch(() => {}); await page.waitForTimeout(2000); }
-  }
-  console.log(`Video elements on the page: ${await video.count()}; src found: ${videoSrc ? 'yes' : 'no'}`);
+  await video.first().waitFor({ state: 'attached', timeout: 60000 }).catch(() => {});
+  await video.first().scrollIntoViewIfNeeded().catch(() => {});
+  for (let i = 0; i < 30 && !mediaUrl; i++) await page.waitForTimeout(2000);
+  videoSrc = mediaUrl;
+  console.log(`Video elements on the page: ${await video.count()}; video request seen: ${videoSrc ? 'yes' : 'no'}`);
   // Video evidence is never downloadable: no download link on the page may point at the video, and the browser's own
   // download control must be switched off on every video element.
   const dl = await page.locator('a[download]').evaluateAll((as) => as.map((a) => a.getAttribute('href') || ''));
@@ -41,7 +46,7 @@ try {
 } finally {
   await browser.close();
 }
-if (!videoSrc) { console.log('::error::The page never gave the video element an address'); process.exit(1); }
+if (!videoSrc) { console.log('::error::The page never requested the video'); process.exit(1); }
 if (videoSrc.startsWith('/')) videoSrc = backend + videoSrc;
 console.log(`Video path: ${new URL(videoSrc).pathname.replace(/[A-Za-z0-9_-]{16,}/g, '<token>')}`);
 

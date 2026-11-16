@@ -65,6 +65,10 @@ jobs:
 
   live-cases:
     name: Live cases pass
+    # After the video check, not beside it: the blur takes the app's CPU for a minute, which made a Chromium lookup miss
+    # its photos (2026-11-17). Runs whatever the video check's result.
+    needs: demo-video
+    if: always()
     uses: ./.github/workflows/pdvt.yml
     with:
       base_url: ${{ inputs.backend_url }}
