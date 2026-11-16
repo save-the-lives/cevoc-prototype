@@ -441,6 +441,10 @@ jobs:
           APP_NAME="cevoc-dev-app"
           BACKEND_URL="${{ needs.build-frontend.outputs.backend_url }}"
 
+          # ---------- Self-diagnosing health check ----------
+          # Collects ALL the information needed to diagnose failures without
+          # anyone opening the Azure portal.
+
           echo "=== Revision status ==="
           REVISION=$(az containerapp revision list --name "$APP_NAME" --resource-group "$RG_NAME" \
             --query 'reverse(sort_by(@, &properties.createdTime))[0]' -o json 2>/dev/null || echo '{}')
@@ -448,27 +452,61 @@ jobs:
           echo "  Revision: $REV_NAME"
           echo "  Provisioning: $(echo "$REVISION" | jq -r '.properties.provisioningState // "unknown"')"
           echo "  Running: $(echo "$REVISION" | jq -r '.properties.runningState // "unknown"')"
+          echo "  Image: $(echo "$REVISION" | jq -r '.properties.template.containers[0].image // "unknown"')"
+          echo "  CPU: $(echo "$REVISION" | jq -r '.properties.template.containers[0].resources.cpu // "unknown"')"
+          echo "  Memory: $(echo "$REVISION" | jq -r '.properties.template.containers[0].resources.memory // "unknown"')"
+
+          # Show probe config so we can verify it was applied
+          echo ""
+          echo "=== Probe configuration ==="
+          echo "$REVISION" | jq '.properties.template.containers[0].probes // []' 2>/dev/null || echo "(no probes)"
 
           echo ""
           echo "=== Waiting for healthy ==="
-          for i in $(seq 1 16); do
+          for i in $(seq 1 24); do
             RUN_STATE=$(az containerapp revision show --name "$APP_NAME" --resource-group "$RG_NAME" \
               --revision "$REV_NAME" --query 'properties.runningState' -o tsv 2>/dev/null || echo "unknown")
             HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/actuator/health" 2>/dev/null || echo "000")
-            echo "  [$i/16] revision=$RUN_STATE http=$HTTP"
+            echo "  [$i/24] revision=$RUN_STATE http=$HTTP"
 
-            [ "$HTTP" = "200" ] && echo "::notice::Backend healthy" && exit 0
+            [ "$HTTP" = "200" ] && echo "::notice::Backend healthy after $((i * 15))s" && exit 0
 
             if [ "$RUN_STATE" = "Failed" ] || [ "$RUN_STATE" = "Degraded" ]; then
-              echo "::error::Revision $RUN_STATE"
-              az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 80 --format text 2>&1 || true
-              exit 1
+              echo "::error::Revision entered $RUN_STATE"
+              break
             fi
             sleep 15
           done
 
-          echo "::error::Backend not healthy after ~4 min"
-          az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 80 --format text 2>&1 || true
+          # ---------- Collect diagnostics on failure ----------
+          echo ""
+          echo "=== Application logs (stdout/stderr) ==="
+          az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --tail 100 --format text 2>&1 || echo "(no application logs)"
+
+          echo ""
+          echo "=== System logs (probe failures, restarts, OOM) ==="
+          # Log Analytics workspace query for system events
+          LOG_WS=$(az containerapp env show \
+            --name "$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.managedEnvironmentId' -o tsv | xargs -I{} basename {})" \
+            --resource-group "$RG_NAME" \
+            --query 'properties.appLogsConfiguration.logAnalyticsConfiguration.customerId' -o tsv 2>/dev/null || true)
+
+          if [ -n "$LOG_WS" ]; then
+            echo "Querying Log Analytics for container events..."
+            az monitor log-analytics query --workspace "$LOG_WS" \
+              --analytics-query "ContainerAppSystemLogs_CL | where RevisionName_s startswith 'cevoc-dev-app' | where TimeGenerated > ago(15m) | order by TimeGenerated desc | take 30" \
+              --output table 2>&1 || echo "(Log Analytics query failed — data may not be ingested yet)"
+          else
+            echo "(Could not find Log Analytics workspace)"
+          fi
+
+          echo ""
+          echo "=== Replica status ==="
+          az containerapp replica list --name "$APP_NAME" --resource-group "$RG_NAME" \
+            --revision "$REV_NAME" -o table 2>&1 || echo "(no replicas)"
+
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
           exit 1
 
       - name: Health check — frontend
