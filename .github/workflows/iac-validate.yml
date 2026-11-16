@@ -386,20 +386,16 @@ jobs:
           az containerapp registry set --name "$APP_NAME" --resource-group "$RG_NAME" \
             --server "${LOGIN_SERVER}" --identity system --output none
 
-          # Single update: image + env vars + cpu/memory + probes, all in one JSON.
-          # --yaml replaces the full container spec, so everything must be in one call.
-          IMAGE="${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
-          cat > /tmp/container-update.json << ENDJSON
-          {"properties":{"template":{"containers":[{"name":"cevoc-backend","image":"${IMAGE}","resources":{"cpu":2.0,"memory":"4Gi"},"env":[{"name":"SPRING_PROFILES_ACTIVE","value":"dev"},{"name":"CEVOC_DEMO_DATA_ENABLED","value":"true"},{"name":"SERVER_PORT","value":"8080"}],"probes":[{"type":"Startup","httpGet":{"path":"/actuator/health","port":8080},"initialDelaySeconds":1,"periodSeconds":60,"failureThreshold":10,"timeoutSeconds":5},{"type":"Liveness","httpGet":{"path":"/actuator/health","port":8080},"initialDelaySeconds":1,"periodSeconds":30,"failureThreshold":5,"timeoutSeconds":5},{"type":"Readiness","httpGet":{"path":"/actuator/health","port":8080},"initialDelaySeconds":1,"periodSeconds":10,"failureThreshold":3,"timeoutSeconds":5}]}]}}}
-          ENDJSON
-          # Strip leading whitespace (heredoc is indented in the workflow)
-          sed -i 's/^[[:space:]]*//' /tmp/container-update.json
-          echo "Container update JSON:"
-          python3 -m json.tool /tmp/container-update.json | head -5
-          echo "..."
-
+          # Simple update: image + env vars + cpu/memory. No custom probes —
+          # Azure defaults work (this is how the manual deploy succeeded before).
+          # Custom probes can be added later via Bicep once the app is confirmed working.
           az containerapp update --name "$APP_NAME" --resource-group "$RG_NAME" \
-            --yaml /tmp/container-update.json \
+            --image "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" \
+            --set-env-vars \
+              SPRING_PROFILES_ACTIVE=dev \
+              CEVOC_DEMO_DATA_ENABLED=true \
+              SERVER_PORT=8080 \
+            --cpu 2.0 --memory 4Gi \
             --output table
 
       - name: Health check — backend
