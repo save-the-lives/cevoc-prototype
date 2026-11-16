@@ -9,6 +9,11 @@ on:
         description: "Demo case number"
         type: string
         default: "0000000001"
+      what:
+        description: "all = video and logs too; quota = only the environment's core quota and usage (touches nothing)"
+        type: choice
+        options: [all, quota]
+        default: all
 
 permissions:
   id-token: write
@@ -41,9 +46,20 @@ jobs:
           echo "Revision: $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.latestRevisionName' -o tsv)"
           echo "Image:    $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.template.containers[0].image' -o tsv)"
           echo "Size:     $(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.template.containers[0].resources' -o json | tr -d '\n ')"
+      - name: Environment core quota and usage
+        # Documented command (learn.microsoft.com/azure/container-apps/quotas): per-environment quotas such as consumption
+        # cores, the sum of cores requested by every active replica. Read only.
+        run: |
+          ENV_NAME=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.environmentId' -o tsv | sed 's#.*/##')
+          echo "Environment: $ENV_NAME"
+          az containerapp env list-usages --resource-group "$RG_NAME" --name "$ENV_NAME" -o table
+          echo "Apps in the environment and the cores each asks for:"
+          az containerapp list --resource-group "$RG_NAME" --query "[].{app:name, cpu:properties.template.containers[0].resources.cpu, memory:properties.template.containers[0].resources.memory, minReplicas:properties.template.scale.minReplicas, maxReplicas:properties.template.scale.maxReplicas}" -o table
       - name: Install Playwright
+        if: inputs.what != 'quota'
         run: npm install --no-save playwright && npx playwright install chromium
       - name: Request the blurred video
+        if: inputs.what != 'quota'
         id: video
         continue-on-error: true
         env:
@@ -52,6 +68,7 @@ jobs:
           DEMO_CASE: ${{ inputs.demo_case }}
         run: node scripts/diagnose-video.mjs
       - name: Backend log lines about blur and errors
+        if: inputs.what != 'quota'
         run: |
           az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 300 --format text > /tmp/app.log
           echo "Log lines fetched: $(wc -l < /tmp/app.log)"
@@ -60,7 +77,7 @@ jobs:
           echo "Matching lines: $(wc -l < /tmp/filtered.log)"
           cat /tmp/filtered.log
       - name: Result
-        if: steps.video.outcome != 'success'
+        if: inputs.what != 'quota' && steps.video.outcome != 'success'
         run: |
           echo "::error::The blurred video was not served; see the two steps above"
           exit 1
