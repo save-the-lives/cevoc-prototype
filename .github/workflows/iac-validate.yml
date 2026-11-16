@@ -12,7 +12,9 @@ on:
 
 # One deploy to rg-cevoc-dev at a time, across both deploy workflows. Queue, never cancel a deploy half way.
 concurrency:
-  group: deploy-rg-cevoc-dev
+  # Only a run that deploys joins the deploy queue. GitHub keeps one PENDING run per group and cancels an older pending
+  # one, so validate-only push runs in the same group were able to cancel a queued deploy.
+  group: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy) && 'deploy-rg-cevoc-dev' || format('validate-{0}', github.run_id) }}
   cancel-in-progress: false
 
 permissions:
