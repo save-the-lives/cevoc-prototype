@@ -229,7 +229,7 @@ jobs:
           ACR_NAME="${{ needs.deploy-infra.outputs.acr_name }}"
           LOGIN_SERVER="${{ needs.deploy-infra.outputs.acr_login_server }}"
           IMAGE_TAG="${GITHUB_SHA::7}"
-          DOCKERFILE=$( [ -f backend/Dockerfile.lean ] && echo "backend/Dockerfile.lean" || echo "backend/Dockerfile" )
+          DOCKERFILE="backend/Dockerfile"
           echo "Building $DOCKERFILE → ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
 
           # Use docker build + push (az acr build requires ACR Tasks, not available on Basic tier)
@@ -401,7 +401,6 @@ jobs:
             --set-env-vars \
               SPRING_PROFILES_ACTIVE=dev \
               CEVOC_DEMO_DATA_ENABLED=true \
-              CEVOC_PENALTY_LOOKUP_ADAPTER=stub \
               SERVER_PORT=8080 \
             --cpu 2.0 --memory 4Gi \
             --output table
