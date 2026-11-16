@@ -19,8 +19,9 @@ lessons:
     right_behaviour: "The workflow's list of environment variables is the whole truth: replace, never accumulate, and fail the deploy if the running app differs."
     destination: check
     destination_ref: "deploy-image-only.yml and iac-validate.yml, step 'Verify env vars match this workflow (no drift)'"
-    status: open
+    status: promoted
     opened: 2026-11-17
+    promoted: 2026-11-17
   - id: L-0003
     date: 2026-11-17
     source: owner-correction
