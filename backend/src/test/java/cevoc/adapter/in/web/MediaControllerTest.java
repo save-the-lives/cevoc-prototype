@@ -37,8 +37,16 @@ class MediaControllerTest {
         };
     }
 
+    private static org.springframework.beans.factory.ObjectProvider<cevoc.application.port.out.HlsSegmentPort> noHls() {
+        return new org.springframework.beans.factory.ObjectProvider<>() {
+            @Override public cevoc.application.port.out.HlsSegmentPort getObject() { throw new org.springframework.beans.factory.NoSuchBeanDefinitionException("test"); }
+            @Override public cevoc.application.port.out.HlsSegmentPort getIfAvailable() { return null; }
+            @Override public cevoc.application.port.out.HlsSegmentPort getIfUnique() { return null; }
+        };
+    }
+
     private static MockMvc mvc(MediaReadPort port) {
-        return MockMvcBuilders.standaloneSetup(new MediaController(provider(port), noBlur())).build();
+        return MockMvcBuilders.standaloneSetup(new MediaController(provider(port), noBlur(), noHls())).build();
     }
 
     @Test

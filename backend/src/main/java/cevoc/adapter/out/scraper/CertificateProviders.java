@@ -162,11 +162,6 @@ public final class CertificateProviders {
 
     private static CertificateSourcePort searchPageHttp(Environment env) {
         ScraperSettings s = ScraperEvidenceFactory.settings(env);
-        if (s.contact() == null || s.contact().isBlank()) {
-            // Not a crash: say so and run without this source, the same "not available" outcome as any unconfigured source.
-            ScraperEvidenceFactory.logContactMissing("the http certificates provider");
-            return null;
-        }
         String pageUrl = env.getProperty("cevoc.certificates.search-page.url", SearchPageCertificateSource.DEFAULT_PAGE_URL);
         Duration ttl = Duration.ofSeconds(env.getProperty("cevoc.certificates.cache-ttl-seconds", Long.class, 300L));
         CertificateScraperProperties props = new CertificateScraperProperties(pageUrl, s.userAgent(), s.minInterval(),

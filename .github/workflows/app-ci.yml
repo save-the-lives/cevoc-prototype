@@ -1,0 +1,90 @@
+name: App CI (backend + frontend)
+# Only the app. Changes under prototype/ never trigger this.
+on:
+  push:
+    paths: ['backend/**', 'frontend/**', '.github/workflows/app-ci.yml']
+  pull_request:
+    paths: ['backend/**', 'frontend/**', '.github/workflows/app-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      # Banner OCR tests call the tesseract program and must run (not skip) here.
+      - name: Install Tesseract OCR
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+      - run: mvn -B test
+        working-directory: backend
+  # Compiles and unit-tests the opt-in live-browser profile (Playwright classes). Launches no browser, no network to the site.
+  backend-live-browser-profile:
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      # Banner OCR tests call the tesseract program and must run (not skip) here.
+      - name: Install Tesseract OCR
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+      - run: mvn -B -Plive-browser test
+        working-directory: backend
+  # Builds the one Docker image (nothing pushed). It must contain Chromium, and Chromium must start (--version)
+  # so missing OS libraries show up here, not on the owner's phone. No site access.
+  backend-docker-variants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Stage sample videos for Docker build
+        run: mkdir -p backend/samples && cp frontend/public/samples/*.mp4 backend/samples/
+      - name: Build the image (layer cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          load: true
+          tags: cevoc-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Chromium starts, app runs as non-root
+        run: |
+          docker run --rm --entrypoint sh cevoc-backend:ci -c '
+            set -e
+            ls /ms-playwright
+            found=0
+            for b in $(find /ms-playwright -type f \( -name chrome -o -name headless_shell \)); do
+              echo "$b"; "$b" --version; found=1
+            done
+            [ "$found" = 1 ]
+            tesseract --version
+            tesseract --list-langs
+            id -un'
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      # Touch viewer tests on an iPhone-sized Chromium (invented mock data, no backend, no network to any real site).
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npx playwright test
+        working-directory: frontend

@@ -34,7 +34,7 @@ class CertificateProvidersTest {
         assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("curl", "http", "browser");
         assertThat(CertificateProviders.ids(env("", null))).containsExactly("curl", "http", "browser");
         assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("curl", "http", "browser");
-        // No contact: the http leg is skipped, curl (needs no contact) and the browser provider remain.
+        // No contact needed: all three legs are built.
         assertThat(CertificateProviders.create(new MockEnvironment())).isInstanceOf(CertificateProviderChain.class);
         assertThat(CertificateProviders.create(env("  ", null))).isInstanceOf(CertificateProviderChain.class);
     }
@@ -60,8 +60,8 @@ class CertificateProvidersTest {
     }
 
     @Test
-    void theHttpProviderWithoutAContactDoesNotCrashAndHasNoSource() {
-        assertThat(CertificateProviders.create(env("http", null))).isNull();
+    void theHttpProviderNeedsNoContact() {
+        assertThat(CertificateProviders.create(env("http", null))).isInstanceOf(SearchPageHttpCertificateSource.class);
         MockEnvironment withContact = env("http", null).withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid");
         assertThat(CertificateProviders.create(withContact)).isInstanceOf(SearchPageHttpCertificateSource.class);
     }

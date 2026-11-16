@@ -5,7 +5,7 @@ import java.time.Duration;
 /**
  * Settings for the Chromium (browser) evidence route. There is no on/off flag: the route exists only when it is selected
  * ({@code cevoc.penalty-lookup.adapter=browser}, the default). The URL has a fully qualified default ({@link #DEFAULT_URL});
- * the contact has none and is required: without it the route does nothing and says so in the start-up log.
+ * the contact has none and is optional: when set it is added to the User-Agent, when blank the route still runs.
  * {@code url} is the one fully qualified address of the site's login page (env CEVOC_SCRAPER_EVIDENCE_URL).
  */
 public record ScraperSettings(
@@ -34,13 +34,13 @@ public record ScraperSettings(
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_CACHE_TTL, DEFAULT_MAX_BYTES);
     }
 
-    /** True only when configured well enough to know where to go and to identify ourselves. */
+    /** True when there is an address to go to. The contact is optional (owner decision, 2026-11-17): it no longer gates the route. */
     public boolean usable() {
-        return url != null && !url.isBlank() && contact != null && !contact.isBlank();
+        return url != null && !url.isBlank();
     }
 
-    /** Identifies us honestly so the site owner can see who is calling and contact us. */
+    /** Names the caller; carries the contact only when one is set (CEVOC_SCRAPER_EVIDENCE_CONTACT, optional). */
     public String userAgent() {
-        return "CEVOC/1.0 (contact: " + contact + ")";
+        return contact == null || contact.isBlank() ? "CEVOC/1.0" : "CEVOC/1.0 (contact: " + contact.trim() + ")";
     }
 }

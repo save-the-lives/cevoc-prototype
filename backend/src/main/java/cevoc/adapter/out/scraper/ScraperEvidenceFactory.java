@@ -65,16 +65,12 @@ public final class ScraperEvidenceFactory {
         return value == null || value.isBlank() ? fallback : value.trim();
     }
 
-    /** One clear start-up line when the route cannot run: only the contact has no default, so a blank contact is the usual reason. */
+    /** One clear start-up line when the route cannot run. The contact is optional, so the only reason left is a blank address. */
     static void logNotUsable(ScraperSettings s, String what) {
-        if (s.contact() == null || s.contact().isBlank()) {
-            logContactMissing(what);
+        if (!s.usable()) {
+            LOG.error("CEVOC_SCRAPER_EVIDENCE_URL is blank, so {} cannot run. Lookups and certificate checks will answer that they are "
+                    + "not available (the app keeps running).", what);
         }
-    }
-
-    static void logContactMissing(String what) {
-        LOG.error("CEVOC_SCRAPER_EVIDENCE_CONTACT is not set, so {} cannot run. Lookups and certificate checks will answer that they are "
-                + "not available until it is set (the app keeps running). Set it to a contact the site owner can reach.", what);
     }
 
     /**

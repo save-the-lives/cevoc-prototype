@@ -55,15 +55,17 @@ class ScraperDefaultsTest {
     }
 
     @Test
-    void theContactHasNoDefaultAndABlankOneKeepsTheRouteOffWithoutCrashing() {
+    void theContactIsOptionalAndOnlyAddsToTheUserAgent() {
         MockEnvironment env = new MockEnvironment();
         assertThat(ScraperEvidenceFactory.settings(env).contact()).isEmpty();
-        assertThat(ScraperEvidenceFactory.settings(env).usable()).isFalse();
+        // No contact: the default address alone makes the route usable, and the User-Agent carries no contact.
+        assertThat(ScraperEvidenceFactory.settings(env).usable()).isTrue();
+        assertThat(ScraperEvidenceFactory.settings(env).userAgent()).isEqualTo("CEVOC/1.0");
+        // Default build has no browser installed, so a lookup answers "not available" and makes no network call.
         PenaltyLookupPort port = ScraperEvidenceFactory.create(env, null);
         assertThat(port.find(new PenaltyLookupRequest("9555555555", LocalDate.of(2026, 1, 15))).status())
-                .isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
-        // With a contact the default address is enough to be usable.
-        assertThat(ScraperEvidenceFactory.settings(env.withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid")).usable())
-                .isTrue();
+                .isEqualTo(PenaltyLookupResult.Status.UNAVAILABLE);
+        assertThat(ScraperEvidenceFactory.settings(env.withProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid")).userAgent())
+                .isEqualTo("CEVOC/1.0 (contact: test-contact@example.invalid)");
     }
 }
