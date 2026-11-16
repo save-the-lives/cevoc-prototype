@@ -5,15 +5,16 @@
 #
 # Build:  docker build -f Dockerfile.lean -t cevoc-api .
 
-# --- Dependencies (no -Plive-browser: Playwright jars not needed) ---
+# --- Dependencies (build with -Plive-browser for compile, but no Chromium at runtime) ---
 FROM maven:3.9-eclipse-temurin-21 AS deps
 WORKDIR /src
 COPY pom.xml .
-RUN mvn -B -q dependency:go-offline
+RUN mvn -B -q -Plive-browser dependency:go-offline \
+    && mvn -B -q -Plive-browser dependency:copy-dependencies -DincludeArtifactIds=playwright,driver,driver-bundle,gson -DoutputDirectory=/pw
 
 FROM deps AS build
 COPY src ./src
-RUN mvn -B -q -DskipTests package
+RUN mvn -B -q -Plive-browser -DskipTests package
 
 # --- Runtime: JRE + Python/OpenCV for blur (no Chromium, no Tesseract) ---
 # The blur pipeline runs as a subprocess (ProcessBlurAdapter) and needs Python + OpenCV.
