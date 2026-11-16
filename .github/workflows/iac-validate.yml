@@ -105,17 +105,19 @@ jobs:
               FAIL=1
             fi
           done
-          DELETED_KVS=$(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv 2>/dev/null || true)
-          if [ -n "$DELETED_KVS" ]; then
-            echo "::error::Soft-deleted Key Vault(s): $DELETED_KVS. Run teardown.sh first."
-            FAIL=1
-          fi
           RG_EXISTS=$(az group exists --name "$RG_NAME" 2>/dev/null || echo "false")
           if [ "$RG_EXISTS" != "true" ]; then
             echo "::error::Resource group $RG_NAME does not exist. Run bootstrap.sh first."
             FAIL=1
           fi
           [ "$FAIL" -ne 0 ] && exit 1
+          # Vault generation (kvGeneration in main.bicep): keep the vault already in the group; after a teardown, use a
+          # new name, so a soft-deleted vault never blocks the deploy and nothing needs a subscription-wide purge.
+          # Name = cevoc + dev + 4 characters + generation + kv.
+          KV=$(az keyvault list --resource-group "$RG_NAME" --query "[?starts_with(name,'cevocdev')].name | [0]" -o tsv)
+          if [ -n "$KV" ]; then GEN="${KV:12}"; GEN="${GEN%kv}"; else GEN="${{ github.run_number }}"; fi
+          echo "KV_GENERATION=$GEN" >> "$GITHUB_ENV"
+          echo "Key Vault: ${KV:-new} (generation '${GEN}')"
           echo "All pre-flight checks passed."
 
       - name: Deploy Bicep

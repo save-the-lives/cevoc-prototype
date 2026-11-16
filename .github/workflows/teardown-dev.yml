@@ -1,6 +1,7 @@
 name: Tear down dev (empty rg-cevoc-dev)
-# Deletes every resource in rg-cevoc-dev and purges its soft-deleted Key Vault, so the next full deploy
-# (iac-validate.yml with deploy=true) builds everything new. No resource is reused.
+# Deletes every resource in rg-cevoc-dev, so the next full deploy (iac-validate.yml with deploy=true) builds everything
+# new. No resource is reused. The deleted Key Vault is not purged (that needs a subscription-wide right the deploy
+# identity must not have); the next deploy gives the new vault a new name instead (kvGeneration in main.bicep).
 # The resource group itself stays: the deploy identity's roles are granted on it (bootstrap.sh), so deleting the group
 # would remove the identity's right to create it again. The identity is an Entra app, not a resource in the group.
 on:
@@ -30,7 +31,6 @@ jobs:
       - name: Delete every resource in the group
         run: |
           set -euo pipefail
-          KVS=$(az keyvault list --resource-group "$RG_NAME" --query '[].name' -o tsv)
           # Several passes: a resource another depends on (the Container Apps environment, the registry) is refused
           # until its dependants are gone. --no-wait, then the group is listed: polling a delete operation needs a
           # subscription-level read this identity does not have (2026-11-17, Static Web App delete).
@@ -64,13 +64,4 @@ jobs:
           done
           LEFT=$(az resource list --resource-group "$RG_NAME" --query '[].id' -o tsv | real)
           [ -z "$LEFT" ] || { echo "::error::Still in $RG_NAME:"; echo "$LEFT"; exit 1; }
-          echo "KVS=$KVS" >> "$GITHUB_ENV"
-      - name: Purge the soft-deleted Key Vault
-        run: |
-          set -euo pipefail
-          for KV in $KVS $(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv); do
-            echo "Purging $KV"; az keyvault purge --name "$KV"
-          done
-          LEFT=$(az keyvault list-deleted --query "[?starts_with(name,'cevoc')].name" -o tsv)
-          [ -z "$LEFT" ] || { echo "::error::Soft-deleted vault(s) still present: $LEFT"; exit 1; }
-          echo "::notice::rg-cevoc-dev is empty and no vault is left soft-deleted"
+          echo "::notice::$RG_NAME is empty"

@@ -60,7 +60,12 @@ module monitoring 'modules/monitoring.bicep' = {
 }
 
 // ---------- Key Vault ----------
-var kvName = '${baseName}${environment}${take(uniqueSuffix, 4)}kv'  // max 24 chars, unique per env
+// Changes after each teardown (owner direction 2026-11-17): a deleted vault keeps its name for 90 days and purging it
+// needs a subscription-wide right the deploy identity must not have. The deploy workflow passes the generation of the
+// vault already in the group, or a new one when the group is empty. Empty = the original name.
+@maxLength(6)
+param kvGeneration string = ''
+var kvName = '${baseName}${environment}${take(uniqueSuffix, 4)}${kvGeneration}kv'  // max 24 chars, unique per env
 module kv 'modules/key-vault.bicep' = {
   name: 'kv-${environment}'
   params: {

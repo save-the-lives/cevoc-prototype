@@ -8,3 +8,5 @@ param baseName = 'cevoc'
 param location = 'australiasoutheast'
 param springProfile = 'dev'
 param imageTag = 'latest'
+// Set by the deploy workflow (KV_GENERATION); see kvGeneration in main.bicep.
+param kvGeneration = readEnvironmentVariable('KV_GENERATION', '')
