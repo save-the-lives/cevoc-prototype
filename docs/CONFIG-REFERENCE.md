@@ -185,7 +185,7 @@ Converted in this change: `CEVOC_SCRAPER_EVIDENCE_BASE_URL` became `CEVOC_SCRAPE
 | `LIVE_CONTACT` | variable | backend deploy workflow (live mode) | Becomes `CEVOC_SCRAPER_EVIDENCE_CONTACT`. |
 | `LIVE_CASES` | secret | live-check run workflow | JSON list of cases; printed only as redacted summaries. |
 | `LIVE_CHECK_TOKEN` | secret | nothing | **Retired.** No workflow reads it; delete it. |
-| `CEVOC_API_BASE_URL` | variable | static web app workflow | Feeds `VITE_API_BASE_URL`. |
+| `CEVOC_API_BASE_URL` | variable | REMOVED (record 0031) | The site and the API share one address; the site is built with no API address. |
 | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SUBSCRIPTION_ID`, `AZURE_LOG_WORKSPACE_ID` | secrets in environment `log-query` | log query workflow | Read-only log reader; see section 9a. |
 
 The demo flag is deliberately NOT set in any workflow, including the deploy workflow: the owner sets `CEVOC_DEMO_DATA_ENABLED` in the Azure portal.

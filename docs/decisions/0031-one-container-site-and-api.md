@@ -1,4 +1,4 @@
-# 0031. One container serves the site and the API; no CORS; Front Door removed
+# 0031. One container serves the site and the API; no CORS; Front Door and Static Web App removed
 
 Status: DECIDED (owner direction by voice, 2026-11-17); built.
 
@@ -23,9 +23,13 @@ those.
 - Not over-engineered on purpose: no CDN, no caching rules, one address.
 
 ## Consequences
-- The site's address is the app's address. The Static Web App address no longer gets new builds, and its last build
-  cannot call the API (no CORS), so it shows the site but lookups fail there. The Static Web App resource is still in the
-  infrastructure code: `docs/exceptions.md`, `swa-unused`.
+- The site's address is the app's address.
+- The Static Web App is removed everywhere (owner, 2026-11-17: "remove and make it consistent"): Bicep and Terraform
+  modules, outputs, the `Microsoft.Web` provider registration, `staticwebapp.config.json`, and the resource in
+  `rg-cevoc-dev` (deleted once by `retire-static-web-app.yml`, which is then removed).
+- AWS is made the same shape: the S3 frontend bucket is removed and CloudFront has one origin, the load balancer in
+  front of the container, with caching off. CloudFront stays because on AWS an edge is available; it changes nothing in
+  the app.
 - A backend image deploy now also deploys the frontend.
 
 ## Ruled out

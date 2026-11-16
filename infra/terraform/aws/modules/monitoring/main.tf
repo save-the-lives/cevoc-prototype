@@ -1,14 +1,5 @@
 # CEVOC — CloudWatch log group and alarms
 
-variable "environment" { type = string }
-variable "cluster_name" {
-  type    = string
-  default = ""
-}
-variable "service_name" {
-  type    = string
-  default = ""
-}
 
 locals {
   is_prod     = var.environment == "prod"

@@ -1,12 +1,3 @@
-variable "name" { type = string }
-variable "location" { type = string }
-variable "resource_group_name" { type = string }
-variable "sku" {
-  type    = string
-  default = "Basic"
-}
-variable "tags" { type = map(string) }
-
 resource "azurerm_container_registry" "this" {
   name                = var.name
   resource_group_name = var.resource_group_name

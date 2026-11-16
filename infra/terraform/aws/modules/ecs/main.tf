@@ -1,15 +1,5 @@
 # CEVOC — ECS Fargate cluster, service and task definition
 
-variable "environment" { type = string }
-variable "vpc_id" { type = string }
-variable "private_subnet_ids" { type = list(string) }
-variable "target_group_arn" { type = string }
-variable "alb_security_group_id" { type = string }
-variable "image_uri" { type = string }
-variable "task_role_arn" { type = string }
-variable "execution_role_arn" { type = string }
-variable "secret_arn" { type = string }
-variable "log_group_name" { type = string }
 
 locals {
   is_prod = var.environment == "prod"

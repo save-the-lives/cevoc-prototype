@@ -61,22 +61,13 @@ module "ecs" {
   log_group_name        = module.monitoring.log_group_name
 }
 
-# ---------- Frontend (S3 bucket for static files) ----------
-module "frontend" {
-  source      = "./modules/frontend"
-  environment = var.environment
-}
-
-# ---------- CloudFront (frontend + API) ----------
+# ---------- CloudFront: the edge in front of the one container (site and API, record 0031) ----------
 module "cloudfront" {
-  source                               = "./modules/cloudfront"
-  environment                          = var.environment
-  alb_dns_name                         = module.alb.alb_dns_name
-  frontend_bucket_id                   = module.frontend.bucket_id
-  frontend_bucket_arn                  = module.frontend.bucket_arn
-  frontend_bucket_regional_domain_name = module.frontend.bucket_regional_domain_name
-  certificate_arn                      = var.cloudfront_certificate_arn
-  domain_name                          = var.domain_name
+  source          = "./modules/cloudfront"
+  environment     = var.environment
+  alb_dns_name    = module.alb.alb_dns_name
+  certificate_arn = var.cloudfront_certificate_arn
+  domain_name     = var.domain_name
 }
 
 # ---------- Outputs ----------
@@ -90,8 +81,4 @@ output "ecr_repository_uri" {
 
 output "cloudfront_domain" {
   value = module.cloudfront.distribution_domain_name
-}
-
-output "frontend_bucket" {
-  value = module.frontend.bucket_id
 }

@@ -16,8 +16,8 @@ Why this exists: the trial runs on Azure (see `DEPLOY-AZURE.md`), but the real i
 |---|---|---|
 | Container registry | Container Registry | ECR |
 | Backend hosting | Container Apps | ECS on Fargate behind an Application Load Balancer. App Runner is simpler, but check it still accepts new customers before choosing it |
-| Frontend hosting | Static Web Apps | S3 bucket (private) behind CloudFront with origin access control. Amplify Hosting is a lower-effort alternative |
-| `/api` routing | Static Web Apps linked backend | CloudFront behaviour `/api/*` forwarding to the ALB origin, so the browser stays same-origin and CORS is not needed |
+| Frontend hosting | Served by the app container (record 0031) | Served by the same container; no S3 bucket. CloudFront in front of the ALB, caching off |
+| `/api` routing | Same container, same address | Same container, same address; no routing rules needed |
 | Evidence storage | Blob Storage | S3 (private bucket, block public access ON) |
 | Short-lived signed links | SAS URL | CloudFront signed URLs (preferred, they pass through the CDN) or S3 pre-signed URLs |
 | CDN | none for trial | CloudFront |

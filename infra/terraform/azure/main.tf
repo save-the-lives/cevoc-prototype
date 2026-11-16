@@ -92,16 +92,6 @@ resource "azurerm_role_assignment" "acr_pull" {
   principal_type       = "ServicePrincipal"
 }
 
-# ---------- Static Web App (frontend) ----------
-module "swa" {
-  source              = "./modules/static-web-app"
-  base_name           = var.base_name
-  location            = var.location
-  tags                = local.tags
-  environment         = var.environment
-  resource_group_name = local.rg_name
-}
-
 # ---------- Outputs ----------
 output "app_url" {
   value = "https://${module.app.default_host_name}"
@@ -115,11 +105,3 @@ output "key_vault_uri" {
   value = module.kv.vault_uri
 }
 
-output "frontend_url" {
-  value = "https://${module.swa.default_hostname}"
-}
-
-output "frontend_api_key" {
-  value     = module.swa.api_key
-  sensitive = true
-}

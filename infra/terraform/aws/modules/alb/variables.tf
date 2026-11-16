@@ -1,5 +1,6 @@
 variable "certificate_arn" {
-  type = string
+  type    = string
+  default = ""
 }
 
 variable "environment" {

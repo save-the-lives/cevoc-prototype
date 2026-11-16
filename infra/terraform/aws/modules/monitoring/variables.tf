@@ -1,5 +1,6 @@
 variable "cluster_name" {
-  type = string
+  type    = string
+  default = ""
 }
 
 variable "environment" {
@@ -7,5 +8,6 @@ variable "environment" {
 }
 
 variable "service_name" {
-  type = string
+  type    = string
+  default = ""
 }

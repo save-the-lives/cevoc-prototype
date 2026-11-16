@@ -1,24 +1,3 @@
-variable "base_name" { type = string }
-variable "location" { type = string }
-variable "tags" { type = map(string) }
-variable "environment" { type = string }
-variable "acr_login_server" { type = string }
-variable "image_tag" {
-  type    = string
-  default = "latest"
-}
-variable "spring_profile" {
-  type    = string
-  default = "dev"
-}
-variable "key_vault_uri" { type = string }
-variable "app_insights_connection_string" { type = string }
-variable "deploy_blur_worker" {
-  type    = bool
-  default = false
-}
-variable "resource_group_name" { type = string }
-
 locals {
   is_prod         = var.environment == "prod"
   cpu_cores       = local.is_prod ? 2.0 : 1.0

@@ -1,6 +1,5 @@
 # CEVOC — ECR repository with lifecycle policy
 
-variable "environment" { type = string }
 
 resource "aws_ecr_repository" "this" {
   name                 = "cevoc-${var.environment}"

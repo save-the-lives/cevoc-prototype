@@ -1,3 +1,6 @@
+> **Superseded (2026-11-17).** The site and the API now run in one container on one address (record 0031); there is no
+> Static Web App. The current deploy is `iac-validate.yml` and `deploy-image-only.yml`; see `AGENTS.md`. Kept for history.
+
 # Deploying the app to Azure (Australia East)
 
 Untested: written before any Azure account was connected. Treat as a checklist.

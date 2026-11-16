@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       frontend_url:
-        description: "Frontend address, e.g. https://blue-glacier-02525ce00.3.azurestaticapps.net"
+        description: "Site address (the same as the backend since record 0031), e.g. https://cevoc-dev-app.orangeriver-57fa442a.australiasoutheast.azurecontainerapps.io"
         type: string
         required: true
       backend_url:

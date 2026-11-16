@@ -96,7 +96,7 @@ jobs:
         run: |
           echo "=== Pre-flight checks ==="
           FAIL=0
-          for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry Microsoft.Web; do
+          for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry; do
             STATE=$(az provider show --namespace "$NS" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
             if [ "$STATE" != "Registered" ]; then
               echo "::error::Provider $NS not registered. Run bootstrap.sh first."

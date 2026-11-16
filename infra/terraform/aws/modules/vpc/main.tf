@@ -2,11 +2,6 @@
 # Public subnets: ALB. Private subnets: ECS Fargate tasks.
 # NAT: single gateway for dev, HA pair for prod.
 
-variable "environment" { type = string }
-variable "vpc_cidr" {
-  type    = string
-  default = "10.0.0.0/16"
-}
 
 locals {
   is_prod = var.environment == "prod"

@@ -11,7 +11,8 @@ variable "base_name" {
 }
 
 variable "deploy_blur_worker" {
-  type = bool
+  type    = bool
+  default = false
 }
 
 variable "environment" {
@@ -19,7 +20,8 @@ variable "environment" {
 }
 
 variable "image_tag" {
-  type = string
+  type    = string
+  default = "latest"
 }
 
 variable "key_vault_uri" {
@@ -35,7 +37,8 @@ variable "resource_group_name" {
 }
 
 variable "spring_profile" {
-  type = string
+  type    = string
+  default = "dev"
 }
 
 variable "tags" {

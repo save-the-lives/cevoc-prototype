@@ -119,7 +119,7 @@ gh secret set "CEVOCBACKEND_AZURE_SUBSCRIPTION_ID" --repo "$REPO" --body "$SUB_I
 
 # 6. Register resource providers
 echo "--- Registering resource providers..."
-for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry Microsoft.Web; do
+for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry; do
   STATE=$(az provider show --namespace "$NS" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
   if [[ "$STATE" != "Registered" ]]; then
     az provider register --namespace "$NS" --wait || true

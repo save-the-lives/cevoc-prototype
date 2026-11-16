@@ -11,7 +11,8 @@ variable "resource_group_name" {
 }
 
 variable "sku" {
-  type = string
+  type    = string
+  default = "Basic"
 }
 
 variable "tags" {

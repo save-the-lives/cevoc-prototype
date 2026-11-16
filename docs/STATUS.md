@@ -48,7 +48,6 @@ What is implemented, what is prototype quality, and what remains. This is the ha
 | Real Revenue NSW / TfNSW API integration | Port exists (`PenaltyLookupPort`), adapter reserved (`api`). Awaiting API agreement |
 | Authentication | Currently no-login public access. SSO / myServiceNSW integration not designed |
 | Audit logging | No event log for who looked up what. Required for production compliance |
-| Data residency | Azure Static Web Apps region not pinned; needs policy review |
 | Rate limiting / abuse prevention | No throttling on the lookup endpoint |
 | Production database | In-memory only today; shared persistent store (Cosmos DB / DynamoDB) not implemented |
 | Multi-replica scaling | Blocked by in-memory media store; shared store needed first |

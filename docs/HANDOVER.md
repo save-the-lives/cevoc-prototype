@@ -74,7 +74,6 @@ For project status (done / prototype / not started), see `docs/STATUS.md`.
 - Repository and Pages site naming (the repository is still `save-the-lives/cevoc-prototype`; renaming is the owner's call and affects record 0006).
 - Privacy blurring of evidence media (record 0017, research only, nothing built); evidence pack download (0011); road safety message engine (0012, 0016).
 - Per-program configuration beyond red light (0007, 0013 to 0016).
-- Static Web Apps region and data residency (`docs/DEPLOY-AZURE.md`).
 
 ## Known gaps
 - The certificates search host does not resolve from Azure, so the certificate providers cannot run from the current Azure deployment.

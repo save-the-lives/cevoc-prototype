@@ -1,6 +1,5 @@
 # CEVOC — Secrets Manager + IAM roles for ECS tasks
 
-variable "environment" { type = string }
 
 resource "aws_secretsmanager_secret" "app" {
   name        = "cevoc/${var.environment}/app"

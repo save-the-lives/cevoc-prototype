@@ -55,9 +55,9 @@ not a sentence here. Each lesson in `.agents/lessons.yaml` names where its fix l
 Do not guess a limit, a region or a flag. Check the provider's current documentation, or make CI prove it, before
 pushing. These were each learned from a failed deploy:
 
-- Azure Static Web Apps exists only in: centralus, eastus2, westus2, westeurope, eastasia. (Not used for the site since
-  record 0031.) If it is used again, deploy with the SWA CLI: the `Azure/static-web-apps-deploy` action served
-  JavaScript as `application/octet-stream`, which gives a blank page.
+- Static Web Apps (removed, record 0031) existed only in centralus, eastus2, westus2, westeurope and eastasia, and its
+  GitHub Action served JavaScript as `application/octet-stream` (a blank page). Do not reintroduce a second host for
+  the site: one container serves the site and the API.
 - Azure Front Door is not available on this subscription (Free Trial); its module was removed (record 0031).
 - A Basic-tier container registry has no ACR Tasks: use `docker build` and `docker push`, not `az acr build`.
 - Container Apps probe limits: `initialDelaySeconds` 1 to 60, `periodSeconds` 1 to 240, `failureThreshold` 1 to 10,
