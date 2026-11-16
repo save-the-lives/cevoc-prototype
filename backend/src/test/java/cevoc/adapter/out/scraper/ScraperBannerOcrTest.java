@@ -56,13 +56,21 @@ class ScraperBannerOcrTest {
     }
 
     @Test
-    void ocrRunsOnTheFirstImageOnlyAndOnce() {
-        AtomicInteger calls = new AtomicInteger();
-        adapter(image -> {
-            calls.incrementAndGet();
+    void ocrTriesEachPhotoUntilOneReadsAndStopsThere() {
+        // Any photo can carry the banner, so an unreadable one moves OCR to the next; once one reads, no more OCR.
+        AtomicInteger unreadable = new AtomicInteger();
+        PenaltyLookupResult r = adapter(image -> {
+            unreadable.incrementAndGet();
             return new BannerTextReaderPort.Reading("", 1, 1, 1, 0, false);
         }).find(REQ);
-        assertThat(calls).hasValue(1);
+        assertThat(unreadable.get()).isGreaterThan(1);
+        assertThat(r.evidence()).isNotEmpty();
+        AtomicInteger readable = new AtomicInteger();
+        adapter(image -> {
+            readable.incrementAndGet();
+            return new BannerTextReaderPort.Reading("Time since red: 0.4 s", 1, 1, 1, 1, false);
+        }).find(REQ);
+        assertThat(readable).hasValue(1);
     }
 
     @Test

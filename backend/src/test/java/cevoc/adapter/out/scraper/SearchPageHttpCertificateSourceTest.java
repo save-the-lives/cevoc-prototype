@@ -154,11 +154,9 @@ class SearchPageHttpCertificateSourceTest {
     }
 
     @Test
-    void configNeedsOnlyTheContactAndBuildsTheHttpProvider() {
+    void configNeedsNoContactAndBuildsTheHttpProvider() {
         var env = new org.springframework.mock.env.MockEnvironment().withProperty("cevoc.certificates.providers", "http,browser");
-        // No contact: the http provider is skipped (logged, no crash); the browser provider remains.
-        assertThat(CertificateProviders.create(env)).isInstanceOf(SearchPageCertificateSource.class);
-        env.setProperty("cevoc.scraper.evidence.contact", "test-contact@example.invalid");
+        // The contact is optional (record 0029): both providers are built without one.
         assertThat(CertificateProviders.create(env)).isInstanceOf(CertificateProviderChain.class);
         env.setProperty("cevoc.certificates.providers", "http");
         assertThat(CertificateProviders.create(env)).isInstanceOf(SearchPageHttpCertificateSource.class);

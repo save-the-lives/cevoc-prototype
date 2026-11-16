@@ -106,7 +106,7 @@ public class BeanConfig {
     // stub would silently drop) or http (which stores real image bytes too), otherwise "stub".
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && !T(cevoc.config.LookupAdapterKind).evidenceProvidersKeepImageBytes('${cevoc.evidence.providers:}') && !T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}'))")
+            "'${cevoc.media.adapter:}' == 'stub' || ('${cevoc.media.adapter:}' == '' && !T(cevoc.config.LookupAdapterKind).mediaKeepsImageBytes('${cevoc.evidence.providers:}', '${cevoc.penalty-lookup.adapter:}'))")
     StubMediaAdapter stubMedia(@Value("${cevoc.media.base-url:/samples}") String baseUrl) {
         return new StubMediaAdapter(baseUrl);
     }
@@ -117,7 +117,7 @@ public class BeanConfig {
      */
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
-            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && (T(cevoc.config.LookupAdapterKind).evidenceProvidersKeepImageBytes('${cevoc.evidence.providers:}') || T(cevoc.config.LookupAdapterKind).keepsImageBytes('${cevoc.penalty-lookup.adapter:}')))")
+            "'${cevoc.media.adapter:}' == 'memory' || ('${cevoc.media.adapter:}' == '' && T(cevoc.config.LookupAdapterKind).mediaKeepsImageBytes('${cevoc.evidence.providers:}', '${cevoc.penalty-lookup.adapter:}'))")
     cevoc.adapter.out.memory.InMemoryMediaAdapter memoryMedia(
             @Value("${cevoc.media.public-base-url:}") String publicBaseUrl,
             @Value("${cevoc.media.memory.retention-minutes:20}") long retentionMinutes,

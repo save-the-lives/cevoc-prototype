@@ -19,12 +19,13 @@ class LiveBrowserWiringTest {
             Duration.ZERO, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(60), 1024);
     private static final PenaltyLookupRequest REQ = new PenaltyLookupRequest("9000000004", LocalDate.of(2026, 1, 15));
 
+    /** Record 0029: the contact is optional, so only the address decides whether the browser route is requested. */
     @Test
-    void liveBrowserIsOffUnlessUrlAndContactAreSet() {
+    void liveBrowserNeedsOnlyTheUrl() {
         assertThat(ScraperEvidenceFactory.liveRequested(ON)).isTrue();
         assertThat(ScraperEvidenceFactory.liveRequested(ScraperSettings.off())).isFalse();
         assertThat(ScraperEvidenceFactory.liveRequested(new ScraperSettings(BASE, "", Duration.ZERO, Duration.ZERO,
-                Duration.ofSeconds(1), Duration.ZERO, 1))).isFalse();
+                Duration.ofSeconds(1), Duration.ZERO, 1))).isTrue();
         assertThat(ScraperEvidenceFactory.liveRequested(new ScraperSettings("", "test-contact@example.invalid", Duration.ZERO,
                 Duration.ZERO, Duration.ofSeconds(1), Duration.ZERO, 1))).isFalse();
     }
@@ -54,10 +55,13 @@ class LiveBrowserWiringTest {
         assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.UNAVAILABLE);
     }
 
+    /** With no settings the browser route is requested (built-in address, record 0029; exception scrapers-on-by-default).
+     *  In the default build there is no browser, so it answers UNAVAILABLE and contacts nothing. */
     @Test
-    void scrapersStayOffByDefault() {
+    void withNoSettingsTheDefaultBuildAnswersUnavailableAndContactsNothing() {
+        assumeThat(classPresent(ScraperEvidenceFactory.LIVE_FACTORY)).isFalse();
         PenaltyLookupResult r = ScraperEvidenceFactory.create(new MockEnvironment(), null).find(REQ);
-        assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);
+        assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.UNAVAILABLE);
     }
 
     @Test

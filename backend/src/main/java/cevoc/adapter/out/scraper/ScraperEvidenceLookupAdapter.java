@@ -185,6 +185,17 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             LookupDiagnostic.set(LookupDiagnostic.fromUnreadablePage("login", loginHtml));
             return result(Status.UNAVAILABLE, number, "The lookup source returned something we could not read.");
         }
+        // A login page that itself asks for a name (an enabled extra field) and no name given: ask for it and submit nothing,
+        // the same answer as the "Additional penalty information" page below. Not seen on the live page so far (its extra
+        // fields are disabled), but submitting a form with a required field left out is never right.
+        var loginIdentity = IdentityScope.current();
+        boolean loginHasIdentity = loginIdentity != null && ((loginIdentity.familyName() != null && !loginIdentity.familyName().isBlank())
+                || (loginIdentity.organisation() != null && !loginIdentity.organisation().isBlank()));
+        if (!login.unexpectedLoginFields().isEmpty() && !loginHasIdentity) {
+            LOG.info("evidence lookup: login page asks for more fields, no identity provided; asking for input, nothing submitted");
+            return result(Status.FOUND, number, "This notice needs a few more details.")
+                    .withRequiredFields(login.unexpectedLoginFields());
+        }
         // The identity fields on the login page are always disabled (the Angular app enables them on a DIFFERENT
         // page after clicking Next). So we just submit login normally — if the notice type needs identity,
         // Revenue NSW redirects to the "Additional penalty information" page, which is handled below.
@@ -419,7 +430,7 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
         int noBytes = 0;
         int rejected = 0;
         int failed = 0;
-        boolean bannerUnreadable = false;
+        boolean bannerTried = false;
         boolean bannerRead = false;
         for (RevenueNswPageParser.ImageRef ref : refs) {
             if (n >= MAX_IMAGES) {
@@ -452,12 +463,10 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
                 // Try banner OCR on each photo until one succeeds (the banner strip is in the same
                 // position on every camera image, so any photo can supply the camera code).
                 if (!bannerRead && bannerReader != null) {
+                    bannerTried = true;
                     bannerRead = readBanner(data, ocrDetails);
                     if (bannerRead && n > 1) {
                         LOG.info("Banner OCR succeeded on photo {}", n);
-                    }
-                    if (!bannerRead && n == refs.size()) {
-                        bannerUnreadable = true;
                     }
                 }
                 EvidenceItem item = EvidenceItem.ofObject(EvidenceItem.Kind.IMAGE, "Camera image " + ref.ref(), objectKey);
@@ -484,7 +493,9 @@ public class ScraperEvidenceLookupAdapter implements PenaltyLookupPort {
             }
         }
         trace.ok(LookupStep.CAPTURE_IMAGES, (System.nanoTime() - startNanos) / 1_000_000);
-        if (bannerUnreadable) {
+        // Unreadable when OCR was tried and no photo gave a field. Until 2026-11-17 this was only noted when the failing
+        // photo was the last one listed, so a last photo without bytes left the cause out.
+        if (bannerTried && !bannerRead) {
             trace.note(LookupStep.CAPTURE_IMAGES, StepCause.BANNER_UNREADABLE);
         }
         if (items.isEmpty()) {

@@ -30,10 +30,11 @@ class CertificateProvidersTest {
     }
 
     @Test
-    void nothingConfiguredMeansCurlThenHttpThenTheBrowserProvider() {
-        assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("curl", "http", "browser");
-        assertThat(CertificateProviders.ids(env("", null))).containsExactly("curl", "http", "browser");
-        assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("curl", "http", "browser");
+    void nothingConfiguredMeansCurlThenCurlImpersonateThenTheBrowserProvider() {
+        // The default chain as documented in CertificateProviders (curl, curl-impersonate, browser).
+        assertThat(CertificateProviders.ids(new MockEnvironment())).containsExactly("curl", "curl-impersonate", "browser");
+        assertThat(CertificateProviders.ids(env("", null))).containsExactly("curl", "curl-impersonate", "browser");
+        assertThat(CertificateProviders.ids(env("   ", null))).containsExactly("curl", "curl-impersonate", "browser");
         // No contact needed: all three legs are built.
         assertThat(CertificateProviders.create(new MockEnvironment())).isInstanceOf(CertificateProviderChain.class);
         assertThat(CertificateProviders.create(env("  ", null))).isInstanceOf(CertificateProviderChain.class);
@@ -91,7 +92,11 @@ class CertificateProvidersTest {
     @Test
     void browserProviderStartsWithoutAnApprovalReferenceAndWithoutABrowserItRefusesToOpenOne() {
         for (String ref : new String[] {null, "  ", "TEST-REF-1"}) {
-            CertificateSourcePort p = CertificateProviders.create(env("browser", ref));
+            MockEnvironment e = env("browser", ref);
+            // HTTP-first off: with it on, the provider would try the real page over plain HTTP before the browser, and a unit
+            // test must not reach the network. HTTP-first itself is covered in its own tests.
+            e.setProperty("cevoc.certificates.search-page.http-first", "false");
+            CertificateSourcePort p = CertificateProviders.create(e);
             assertThat(p).isInstanceOf(SearchPageCertificateSource.class);
             // No Chromium build / no URL and contact: no session can open, so no network call is possible.
             assertThatThrownBy(() -> p.findCertificates(Q)).isInstanceOf(ScrapeException.class);

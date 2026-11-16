@@ -49,6 +49,16 @@ public enum LookupAdapterKind {
         return false;
     }
 
+    /**
+     * The media default: true when the lookup keeps real image bytes. A set {@code cevoc.evidence.providers} list decides
+     * on its own; only when it is empty does the older {@code cevoc.penalty-lookup.adapter} setting count. Before
+     * 2026-11-17 the two were OR-ed, so {@code providers=stub} still got in-memory media from the older setting's default.
+     */
+    public static boolean mediaKeepsImageBytes(String providers, String legacyAdapter) {
+        if (providers != null && !providers.isBlank()) return evidenceProvidersKeepImageBytes(providers);
+        return keepsImageBytes(legacyAdapter);
+    }
+
     public static LookupAdapterKind of(String raw) {
         String v = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
         return switch (v) {

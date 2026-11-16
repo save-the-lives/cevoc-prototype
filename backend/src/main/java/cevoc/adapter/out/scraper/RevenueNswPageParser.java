@@ -59,7 +59,15 @@ public class RevenueNswPageParser {
      * The parts of the certificateDetails.jsf link: p notice, d offence date-time (as written),
      * s camera code, i incident number, plus the full href (including signed m) for direct fetch.
      */
-    public record CertificationRef(String notice, String offenceDateTime, String cameraCode, String incidentNumber, String fullHref) {}
+    public record CertificationRef(String notice, String offenceDateTime, String cameraCode, String incidentNumber, String fullHref) {
+        /** The signed value in the link (its m parameter) is a key to the certificate: kept for the fetch, never printed. */
+        @Override
+        public String toString() {
+            String shown = fullHref == null ? null : fullHref.replaceAll("([?&]m=)[^&]*", "$1<redacted>");
+            return "CertificationRef[notice=" + notice + ", offenceDateTime=" + offenceDateTime + ", cameraCode=" + cameraCode
+                    + ", incidentNumber=" + incidentNumber + ", fullHref=" + shown + "]";
+        }
+    }
 
     /**
      * What one rendered page shows. Fields that do not apply to the state are null, false or empty.
