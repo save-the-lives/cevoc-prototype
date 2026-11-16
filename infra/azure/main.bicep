@@ -119,11 +119,14 @@ module acrPull 'modules/container-registry.bicep' = {
 }
 
 // ---------- Static Web App (frontend) ----------
+// SWA is only available in a handful of regions (centralus, eastus2, westus2, westeurope, eastasia).
+// It is a global CDN resource; the location is just where the management plane lives.
+// eastasia is closest to Australia.
 module swa 'modules/static-web-app.bicep' = {
   name: 'swa-${environment}'
   params: {
     baseName: '${baseName}-${environment}'
-    location: location
+    location: 'eastasia'
     tags: tags
     environment: environment
     backendOrigin: 'https://${app.outputs.defaultHostName}'

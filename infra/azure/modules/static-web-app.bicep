@@ -8,13 +8,13 @@ param tags object
 @allowed(['dev', 'staging', 'prod'])
 param environment string
 
-@description('Backend API origin the frontend calls (baked into the build as VITE_API_BASE_URL)')
+@description('Backend API origin the frontend calls (baked into the build as VITE_API_BASE_URL). Stored in SWA app settings for reference.')
 param backendOrigin string = ''
 
 resource swa 'Microsoft.Web/staticSites@2022-09-01' = {
   name: '${baseName}-swa'
   location: location
-  tags: tags
+  tags: union(tags, { backendOrigin: backendOrigin })
   sku: {
     name: environment == 'prod' ? 'Standard' : 'Free'
     tier: environment == 'prod' ? 'Standard' : 'Free'
