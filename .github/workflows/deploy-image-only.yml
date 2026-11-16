@@ -3,6 +3,11 @@ name: Deploy image only (skip infra)
 on:
   workflow_dispatch: {}
 
+# One deploy to rg-cevoc-dev at a time, across both deploy workflows. Queue, never cancel a deploy half way.
+concurrency:
+  group: deploy-rg-cevoc-dev
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
