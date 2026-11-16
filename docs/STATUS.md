@@ -15,8 +15,13 @@ What is implemented, what is prototype quality, and what remains. This is the ha
 | Program-specific display | **Working** | Red light visual (signal timeline), speed camera visual (speed scale), config-driven |
 | Road safety messages | **Working** | Condition-based message engine from programs.json config |
 | NSW Design System styling | **Working** | Public Sans, NSW DS colour tokens, buttons, steps, inputs — plain CSS, no framework dependency |
-| IaC — Azure (Bicep) | **Working** | App Service, ACR, Key Vault, Front Door, monitoring; `infra/azure/` |
+| IaC — Azure (Bicep) | **Working** | Container Apps, ACR, Key Vault, Front Door, monitoring; `infra/azure/` |
+| IaC — Azure (Terraform/OpenTofu) | **Working** | Faithful port of Bicep; 5 modules, dev/prod tfvars, deploy.sh, CI via OpenTofu; `infra/terraform/azure/` |
 | IaC — AWS (CloudFormation) | **Working** | ECS Fargate, ECR, ALB, CloudFront, Secrets Manager, VPC; `infra/aws/` |
+| IaC — AWS (Terraform/OpenTofu) | **Working** | 7 modules ported from CloudFormation, LocalStack integration testing; `infra/terraform/aws/` |
+| LocalStack validation | **Working** | Local AWS stack for CloudFormation and Terraform validation without an AWS account |
+| CI/CD pipeline (Azure) | **Working** | Infra → build image → push ACR → update Container App → probe; `iac-validate.yml` |
+| Architecture decision records | **Done** | ADR-0028 documents Terraform/OpenTofu decision; `docs/architecture/` |
 | Scheduled Playwright probe | **Working** | Hourly probe, post-deploy, all demo cases, Chromium + WebKit, GitHub issue open/close |
 | Frame-by-frame leak check | **Working** | YOLO plate detection on blurred video output, frame grid artifact |
 | Banner OCR verification | **Working** | Probe checks camera banner text readability per program type |
@@ -30,7 +35,8 @@ What is implemented, what is prototype quality, and what remains. This is the ha
 | Accessibility | Basic ARIA labels and keyboard navigation done; full WCAG 2.1 AA audit pending (`docs/UI-AUDIT.md`) |
 | Mobile UX | Works on iPhone Safari and Android Chrome; some layout refinements needed |
 | Blur accuracy | No labelled test set for measuring recall/precision; safety nets are in place but not quantified |
-| Streaming blur | Designed but not yet implemented (whole-file processing only) |
+| Streaming blur (HLS) | Implemented (`StreamingBlurAdapter`); enable via `CEVOC_BLUR_STREAMING=true`; needs production load testing |
+| Container split (blur worker) | Separate Python container with vendor-neutral queue adapter (Redis/SQS/Azure); `backend/blur-worker/`, `docker-compose.yml`; needs production queue config |
 | E2E test suite | 17 tests failing after shared media path migration; needs fixing |
 | Performance | No CDN caching strategy; single container, no horizontal scaling yet |
 | Monitoring | App Insights / CloudWatch configured but no custom dashboards or alerts |
@@ -56,6 +62,13 @@ What is implemented, what is prototype quality, and what remains. This is the ha
 1. **In-memory media store** — evidence bytes held in one process; restart drops everything; can't scale beyond 1 replica
 2. **Chromium browser route** — temporary scraper; needs site owner approval for real use; delete when API exists
 3. **Sample/stub data in deployed image** — fictitious notices bundled in the JAR; clean up at cutover
-4. **Python in backend container** — blur pipeline runs as subprocess; container split planned (vendor-neutral queue)
+4. **Python in backend container** — blur pipeline runs as subprocess; container split built (`backend/blur-worker/`) but not yet the default deployment mode
 5. **No result cache on HTTP route** — every lookup hits the source; add cache with TTL for production
 6. **Front-end bundle size** — hls.js (400KB gzip 124KB) loaded even when no video; lazy load only on video cases
+7. **Workflow cleanup candidates** — the following `.github/workflows/` files overlap or are superseded and should be reviewed for removal:
+   - `demo-video-check.yml` — superseded by `demo-probe.yml` (file header says so); manual-only, kept as fallback
+   - `terraform-azure-validate.yml` — overlaps with `terraform-validate.yml` which already covers all of `infra/terraform/**`; one should be removed
+   - `cevoc-backend-AutoDeployTrigger-*.yml` — Azure auto-generated; likely superseded by `iac-validate.yml` CI/CD pipeline
+   - `probe.yml` — header says "TEMPORARY — diagnostic probe for page shape discovery; delete once all programs covered"
+   - `deploy.yml` — deploys to GitHub Pages; may be superseded by Azure deployment if Pages is no longer used
+   - `aws-validate.yml` — validates CloudFormation only; keep if CloudFormation stays as reference, remove if Terraform fully replaces it
