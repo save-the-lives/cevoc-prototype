@@ -107,7 +107,10 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
           probes: imageTag != 'latest' ? [
             {
               type: 'Startup'
-              httpGet: { path: '/actuator/health'; port: 8080 }
+              httpGet: {
+                path: '/actuator/health'
+                port: 8080
+              }
               initialDelaySeconds: 1
               periodSeconds: 60      // 10 × 60s = 10 min max window
               failureThreshold: 10
@@ -115,7 +118,10 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
             }
             {
               type: 'Liveness'
-              httpGet: { path: '/actuator/health'; port: 8080 }
+              httpGet: {
+                path: '/actuator/health'
+                port: 8080
+              }
               initialDelaySeconds: 1  // runs only after startup passes
               periodSeconds: 30
               failureThreshold: 5
@@ -123,7 +129,10 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
             }
             {
               type: 'Readiness'
-              httpGet: { path: '/actuator/health'; port: 8080 }
+              httpGet: {
+                path: '/actuator/health'
+                port: 8080
+              }
               initialDelaySeconds: 1
               periodSeconds: 10
               failureThreshold: 3
