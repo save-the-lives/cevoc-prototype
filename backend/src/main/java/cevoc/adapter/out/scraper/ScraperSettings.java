@@ -28,8 +28,9 @@ public record ScraperSettings(
     public static final Duration DEFAULT_CACHE_TTL = Duration.ofSeconds(120);
     public static final long DEFAULT_MAX_BYTES = 25L * 1024 * 1024;
 
-    /** Fully off: the default address, no contact. */
-    public static ScraperSettings off() {
+    /** The defaults: the built-in address, no contact. Not "off": since record 0029 the address alone switches the route on.
+     *  (Named off() until 2026-11-17, which no longer matched what it does.) */
+    public static ScraperSettings defaults() {
         return new ScraperSettings(DEFAULT_URL, "", DEFAULT_MIN_INTERVAL, DEFAULT_CONNECT_TIMEOUT,
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_CACHE_TTL, DEFAULT_MAX_BYTES);
     }

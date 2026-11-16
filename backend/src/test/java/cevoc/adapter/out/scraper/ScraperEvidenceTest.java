@@ -171,7 +171,7 @@ class ScraperEvidenceTest {
         fake.loginHtml = FakeRenderedPageSession.fixture("fictitious-state1-login-needs-name.html");
         PenaltyLookupResult r = adapter(new Sessions(fake), new FakeStorage(), RegistrationProvider.none()).find(REQ);
         // Same answer as the identity page: the caller is asked for the name (the frontend shows INPUT_REQUIRED).
-        assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.FOUND);
+        assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.INPUT_REQUIRED);
         assertThat(r.requiredFields()).containsExactly("lastName");
         assertThat(fake.calls).containsExactly("loginPage");
     }
@@ -233,9 +233,10 @@ class ScraperEvidenceTest {
     @Test
     void doesNothingWhenNotConfigured() {
         Sessions sessions = new Sessions(new FakeRenderedPageSession());
-        // Only a missing address keeps the route off: the contact is optional (record 0029).
-        for (ScraperSettings s : List.of(ScraperSettings.off(),
-                new ScraperSettings("", "c@example.invalid", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1))) {
+        // Only a missing address keeps the route off: the contact is optional (record 0029), and the defaults carry an address.
+        for (ScraperSettings s : List.of(
+                new ScraperSettings("", "c@example.invalid", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1),
+                new ScraperSettings(null, "", Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, 1))) {
             PenaltyLookupResult r = new ScraperEvidenceLookupAdapter(s, sessions, new RevenueNswPageParser(),
                     new FakeStorage(), Clock.systemUTC()).find(REQ);
             assertThat(r.status()).isEqualTo(PenaltyLookupResult.Status.LIVE_LOOKUP_OFF);

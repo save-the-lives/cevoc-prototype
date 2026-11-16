@@ -23,7 +23,7 @@ class LiveBrowserWiringTest {
     @Test
     void liveBrowserNeedsOnlyTheUrl() {
         assertThat(ScraperEvidenceFactory.liveRequested(ON)).isTrue();
-        assertThat(ScraperEvidenceFactory.liveRequested(ScraperSettings.off())).isFalse();
+        assertThat(ScraperEvidenceFactory.liveRequested(ScraperSettings.defaults())).isTrue();
         assertThat(ScraperEvidenceFactory.liveRequested(new ScraperSettings(BASE, "", Duration.ZERO, Duration.ZERO,
                 Duration.ofSeconds(1), Duration.ZERO, 1))).isTrue();
         assertThat(ScraperEvidenceFactory.liveRequested(new ScraperSettings("", "test-contact@example.invalid", Duration.ZERO,

@@ -32,10 +32,9 @@ describe('hub routes and links', () => {
 
 describe('the generated demo catalog', () => {
   const catalog = fixture.catalog;
-  it('lists seven programs, two built, five reserved', () => {
-    expect(catalog.programs.map((p) => p.prefix)).toEqual(['000000', '100000', '200000', '300000', '400000', '500000', '600000']);
-    expect(catalog.programs.filter((p) => p.built).map((p) => p.prefix)).toEqual(['000000', '100000']);
-    expect(catalog.programs.filter((p) => !p.built).every((p) => p.groups.length === 0)).toBe(true);
+  it('lists only the built programs (unbuilt ones are hidden until their cases exist)', () => {
+    expect(catalog.programs.map((p) => p.prefix)).toEqual(['000000', '100000']);
+    expect(catalog.programs.every((p) => p.built)).toBe(true);
   });
   it('groups every built program as happy, partial, sad, edge', () => {
     for (const p of catalog.programs.filter((x) => x.built)) expect(p.groups.map((g) => g.kind)).toEqual(['happy', 'partial', 'sad', 'edge']);
@@ -102,7 +101,7 @@ describe.each(allCases(fixture.catalog).map((c) => [c.number, c]))('case %s', (n
     it('with a plate the held-back images follow the plate rule', () => {
       const withPlate = toResult(play(run.eventsWithPlate));
       const shown = evidenceState(withPlate, true);
-      expect(shown).toBe(c.plate ? 'show' : 'plate-no-images');
+      expect(shown).toBe(run.plateReleases ? 'show' : 'plate-no-images');
     });
   }
 });

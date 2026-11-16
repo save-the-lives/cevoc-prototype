@@ -132,7 +132,9 @@ final class DemoScenarioChecks {
             if (!seen.equals(s.expected())) {
                 out.add(s.number() + " declares " + s.expected() + " but returns " + seen + " events=" + o.events);
             }
-            if (s.plate() != DemoScenario.Plate.NONE) {
+            // The plate rule only applies where images would be returned: a notice not found, a timeout or a failed image step
+            // returns none whatever the plate (every case is plate-gated since 61d3777, these included).
+            if (s.plate() != DemoScenario.Plate.NONE && s.outcome() == DemoScenario.Outcome.FOUND) {
                 if (!o.plateRequired || !o.evidence.isEmpty()) {
                     out.add(s.number() + " must hold images back without a plate");
                 }

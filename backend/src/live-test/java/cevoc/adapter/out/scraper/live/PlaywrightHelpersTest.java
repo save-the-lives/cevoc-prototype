@@ -30,7 +30,7 @@ class PlaywrightHelpersTest {
 
     @Test
     void stepTimeoutIsGenerousButBounded() {
-        ScraperSettings s = ScraperSettings.off();
+        ScraperSettings s = ScraperSettings.defaults();
         assertThat(PlaywrightSessionFactory.stepTimeout(s)).isEqualTo(Duration.ofSeconds(45));
         ScraperSettings tiny = new ScraperSettings("", "", Duration.ZERO, Duration.ZERO, Duration.ofSeconds(1), Duration.ZERO, 1);
         ScraperSettings huge = new ScraperSettings("", "", Duration.ZERO, Duration.ZERO, Duration.ofMinutes(10), Duration.ZERO, 1);
@@ -57,7 +57,7 @@ class PlaywrightHelpersTest {
 
     @Test
     void certificatesContextUserAgentIsTheHeadedChromeOneAndNeverHeadless() {
-        ScraperSettings s = ScraperSettings.off();
+        ScraperSettings s = ScraperSettings.defaults();
         var certificates = PlaywrightSessionFactory.contextOptions(s, true, "131.0.6778.33");
         assertThat(certificates.userAgent)
                 .isNotNull()
@@ -82,7 +82,7 @@ class PlaywrightHelpersTest {
         // The script run before any page makes navigator.webdriver read false.
         assertThat(PlaywrightSessionFactory.WEBDRIVER_INIT_SCRIPT)
                 .contains("navigator", "'webdriver'", "get: () => false");
-        ScraperSettings s = ScraperSettings.off();
+        ScraperSettings s = ScraperSettings.defaults();
         var c = PlaywrightSessionFactory.contextOptions(s, true, "131.0.6778.33");
         assertThat(c.viewportSize).isPresent();
         assertThat(c.viewportSize.get().width).isEqualTo(1920);

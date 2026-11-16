@@ -136,8 +136,10 @@ class DemoCertificateSourceTest {
                         && o.coverage.status() == CertificateCoverage.Status.COVERED; // three on the page, one bears on the offence
                 case NONE -> none |= items.isEmpty() && cert.get().outcome() == StepOutcome.OK
                         && o.coverage.status() == CertificateCoverage.Status.NONE;
-                case NOT_COVERING -> notCovering |= items.size() == 2 && items.stream().noneMatch(CertificateItem::coversOffence)
-                        && o.coverage.status() == CertificateCoverage.Status.GAP;
+                // One type, none of its rows in force: no card (only a covering row makes a card, CertificateAssessment) and one
+                // uncovered type with its gap message.
+                case NOT_COVERING -> notCovering |= items.isEmpty() && o.coverage.status() == CertificateCoverage.Status.GAP
+                        && o.uncoveredTypes != null && o.uncoveredTypes.size() == 1;
                 case FAILED -> failedWithCause |= cert.get().outcome() == StepOutcome.FAILED && cert.get().cause() == StepCause.TIMEOUT;
                 case ALL_TYPES_COVERED -> allTypesCovered |= items.size() == 2
                         && items.stream().allMatch(CertificateItem::coversOffence)

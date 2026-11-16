@@ -86,7 +86,11 @@ public final class DemoArtifacts {
             Map<String, Object> one = new LinkedHashMap<>();
             one.put("offenceDate", s.offenceDate().toString());
             one.put("events", events(factory, s, null));
-            if (s.plate() != DemoScenario.Plate.NONE) {
+            // Only where images would be returned at all (a notice not found, a timeout or a failed image step returns none
+            // whatever the plate). plateReleases says whether the plate given here releases them: the demo plate for a
+            // gated case, a wrong one for a case that refuses every plate.
+            if (s.plate() != DemoScenario.Plate.NONE && s.outcome() == DemoScenario.Outcome.FOUND) {
+                one.put("plateReleases", s.plate() == DemoScenario.Plate.GATED);
                 one.put("eventsWithPlate", events(factory, s, s.plate() == DemoScenario.Plate.GATED ? DemoCaseFactory.PLATE : WRONG_PLATE));
             }
             Map<String, String> media = new TreeMap<>();
