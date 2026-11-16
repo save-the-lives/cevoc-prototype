@@ -206,8 +206,8 @@ jobs:
   # =========================================================================
   build-backend:
     name: Build backend image (lean)
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && needs.detect-changes.outputs.backend_changed == 'true'
-    needs: [deploy-infra, detect-changes]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: [deploy-infra]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -236,8 +236,8 @@ jobs:
 
   build-browser-worker:
     name: Build browser worker image
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && needs.detect-changes.outputs.browser_changed == 'true'
-    needs: [deploy-infra, detect-changes]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: [deploy-infra]
     runs-on: ubuntu-latest
     outputs:
       built: ${{ steps.build.outputs.built }}
@@ -270,8 +270,8 @@ jobs:
 
   build-frontend:
     name: Build frontend
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && needs.detect-changes.outputs.frontend_changed == 'true'
-    needs: [deploy-infra, detect-changes]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+    needs: [deploy-infra]
     runs-on: ubuntu-latest
     env:
       RG_NAME: rg-cevoc-dev
@@ -329,7 +329,7 @@ jobs:
   # =========================================================================
   deploy-apps:
     name: Deploy apps & verify
-    needs: [deploy-infra, detect-changes, build-backend, build-browser-worker, build-frontend]
+    needs: [deploy-infra, build-backend, build-browser-worker, build-frontend]
     if: always() && needs.deploy-infra.result == 'success' && (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped')
     runs-on: ubuntu-latest
     env:
