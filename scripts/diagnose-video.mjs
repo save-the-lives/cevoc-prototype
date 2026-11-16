@@ -32,20 +32,23 @@ if (!videoSrc) { console.log('::error::The page never gave the video element an 
 if (videoSrc.startsWith('/')) videoSrc = backend + videoSrc;
 console.log(`Video path: ${new URL(videoSrc).pathname.replace(/[A-Za-z0-9_-]{16,}/g, '<token>')}`);
 
+// The server answers 503 with Retry-After while it is still blurring, 200 with the blurred video when done, 451 when
+// blurring failed (it will not send the unblurred video). Poll like the page does, for up to 5 minutes.
 let ok = false;
-for (const attempt of [1, 2]) {
-  const started = Date.now();
+const started = Date.now();
+for (let attempt = 1; Date.now() - started < 300000; attempt++) {
   try {
-    const res = await fetch(videoSrc, { headers: { Origin: frontend }, signal: AbortSignal.timeout(300000) });
+    const res = await fetch(videoSrc, { signal: AbortSignal.timeout(60000) });
     const buf = Buffer.from(await res.arrayBuffer());
-    const secs = ((Date.now() - started) / 1000).toFixed(1);
-    console.log(`Attempt ${attempt}: HTTP ${res.status} in ${secs}s, type=${res.headers.get('content-type')}, bytes=${buf.length}, ` +
-      `cors=${res.headers.get('access-control-allow-origin')}`);
-    if (res.status !== 200) console.log(`  body: ${buf.toString('utf8').slice(0, 300)}`);
-    if (res.status === 200 && buf.length > 1000) ok = true;
+    const secs = ((Date.now() - started) / 1000).toFixed(0);
+    console.log(`Attempt ${attempt} at ${secs}s: HTTP ${res.status}, type=${res.headers.get('content-type')}, bytes=${buf.length}`);
+    if (res.status === 200 && /^video\//.test(res.headers.get('content-type') || '') && buf.length > 1000) { ok = true; break; }
+    if (res.status === 451) { console.log(`  ${buf.toString('utf8').slice(0, 200)}`); break; }
+    if (res.status !== 503) { console.log(`  unexpected answer: ${buf.toString('utf8').slice(0, 200)}`); break; }
   } catch (e) {
-    console.log(`Attempt ${attempt}: failed after ${((Date.now() - started) / 1000).toFixed(1)}s: ${e.message}`);
+    console.log(`Attempt ${attempt} failed: ${e.message}`);
   }
+  await new Promise((r) => setTimeout(r, 5000));
 }
 if (!ok) { console.log('::error::The blurred video was not served'); process.exit(1); }
-console.log('::notice::The blurred video was served');
+console.log(`::notice::The blurred video was served after ${((Date.now() - started) / 1000).toFixed(0)}s`);

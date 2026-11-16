@@ -44,6 +44,25 @@ jobs:
           BACKEND_URL: ${{ inputs.backend_url }}
         run: node scripts/release-gate.mjs
 
+  demo-video:
+    name: Demo video is served blurred
+    # Opens a demo case in a real browser, takes the video address the page was given and waits for the server to
+    # blur it (503 while blurring, 200 when done, 451 if blurring failed). Needs demo data switched on, as on dev.
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: npm install --no-save playwright && npx playwright install chromium
+      - name: Request the demo video and wait for the blurred copy
+        env:
+          FRONTEND_URL: ${{ inputs.frontend_url }}
+          BACKEND_URL: ${{ inputs.backend_url }}
+        run: node scripts/diagnose-video.mjs
+
   live-cases:
     name: Live cases pass
     uses: ./.github/workflows/pdvt.yml

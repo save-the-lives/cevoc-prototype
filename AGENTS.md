@@ -31,6 +31,7 @@ not a sentence here. Each lesson in `.agents/lessons.yaml` names where its fix l
 |---|---|
 | The deployed site renders, scripts are served as JavaScript, and the page can call the API | `scripts/release-gate.mjs`, run by the release gate |
 | Real lookups work on the deployed backend | `pdvt.yml`, run by the release gate |
+| A demo case's video is served blurred (503 while blurring, then 200; 451 is a failure) | `scripts/diagnose-video.mjs`, run by the release gate |
 | The running app has exactly the environment variables the workflow lists | "Verify env vars match this workflow" step in both deploy workflows |
 | One deploy to an environment at a time | shared `concurrency` group in both deploy workflows |
 | Backend tests and frontend build | `app-ci.yml` (see `docs/exceptions.md`: currently red, not yet a gate) |
