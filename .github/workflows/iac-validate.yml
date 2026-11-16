@@ -534,3 +534,17 @@ jobs:
           echo "  Backend:  ${{ needs.build-frontend.outputs.backend_url }}"
           echo "  Browser worker: ${{ needs.build-browser-worker.result }}"
           echo "========================================"
+
+  # =========================================================================
+  # Job 5: Release gate. A deploy is green only when the deployed site works in a
+  # real browser and the live cases pass against the deployed backend.
+  # =========================================================================
+  release-gate:
+    needs: [build-frontend, deploy-apps]
+    # always(): an optional build (browser worker) may be skipped or failed; the gate still runs if the deploy itself succeeded.
+    if: always() && needs.deploy-apps.result == 'success' && needs.build-frontend.result == 'success'
+    uses: ./.github/workflows/release-gate.yml
+    with:
+      frontend_url: ${{ needs.build-frontend.outputs.swa_url }}
+      backend_url: ${{ needs.build-frontend.outputs.backend_url }}
+    secrets: inherit

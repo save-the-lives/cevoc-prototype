@@ -8,6 +8,7 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 | `backend/` | Spring Boot API, hexagonal (ports and adapters) |
 | `prototype/` | The original clickable mockup (demo hub, public site, staff workspace). Still published to GitHub Pages at the same URL |
 | `docs/` | Architecture notes; start with `docs/HANDOVER.md` |
+| `AGENTS.md` | Rules for anyone changing this repo, with `.agents/lessons.yaml` and `docs/exceptions.md`. Read first |
 
 ## Run
     cd backend && CEVOC_PENALTY_LOOKUP_ADAPTER=stub CEVOC_CERTIFICATES_PROVIDERS=none mvn spring-boot:run     # http://127.0.0.1:8080 (fictitious data, nothing contacted)
@@ -18,7 +19,7 @@ Camera-fine evidence for motorists: see the images, video and camera certificate
 |---|---|---|
 | `CEVOC_CORS_ALLOWED_ORIGINS` | published front end | Origins allowed to call `/api` |
 | `AZURE_STORAGE_CONNECTION_STRING` | none | Only with `cevoc.media.adapter=azure-blob` |
-| `CEVOC_SCRAPER_EVIDENCE_CONTACT` | none, **required** | The contact put in the User-Agent of the real lookup. Without it the app starts, logs one clear error line, and lookups answer "not available". The only variable the deployment must set |
+| `CEVOC_SCRAPER_EVIDENCE_CONTACT` | none, optional | When set, added to the User-Agent of the real lookup so the site owner can reach us. Blank does not stop lookups (record 0029) |
 | `CEVOC_PENALTY_LOOKUP_ADAPTER` | `browser` | Optional override of the one setting that picks the lookup route: `browser` (default, temporary Chromium route to the Revenue NSW page), `stub` (explicit: fictitious data, nothing contacted), `http` (plain request route), `api` (reserved). See `docs/ARCHITECTURE.md` and record 0022 |
 | `CEVOC_SCRAPER_EVIDENCE_URL` | the Revenue NSW login page | Optional override: one fully qualified https login page address |
 

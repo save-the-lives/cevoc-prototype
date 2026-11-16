@@ -1,0 +1,52 @@
+name: Release gate (frontend renders + live cases pass)
+# The last job of every deploy. A deploy is green only when a real browser can use the deployed frontend AND the
+# live cases pass against the deployed backend. Before this, "success" meant only that the upload finished.
+# Can also be run by hand against any pair of addresses.
+on:
+  workflow_call:
+    inputs:
+      frontend_url:
+        type: string
+        required: true
+      backend_url:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      frontend_url:
+        description: "Frontend address, e.g. https://blue-glacier-02525ce00.3.azurestaticapps.net"
+        type: string
+        required: true
+      backend_url:
+        description: "Backend address, e.g. https://cevoc-dev-app.orangeriver-57fa442a.australiasoutheast.azurecontainerapps.io"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  frontend:
+    name: Frontend works in a real browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: npm install --no-save playwright && npx playwright install chromium
+      - name: Check the deployed site
+        env:
+          FRONTEND_URL: ${{ inputs.frontend_url }}
+          BACKEND_URL: ${{ inputs.backend_url }}
+        run: node scripts/release-gate.mjs
+
+  live-cases:
+    name: Live cases pass
+    uses: ./.github/workflows/pdvt.yml
+    with:
+      base_url: ${{ inputs.backend_url }}
+    secrets: inherit

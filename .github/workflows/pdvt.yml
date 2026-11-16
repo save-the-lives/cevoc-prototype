@@ -8,6 +8,17 @@ name: Deployment smoke tests
 #    "tags":["smoke"],"input":{"notice":"<10 digits>","date":"<yyyy-mm-dd>","plate":"<rego>"},
 #    "expect":{"status":"FOUND","noticeStatus":"PAID","minPhotos":1,"certificates":"covered"}}
 on:
+  workflow_call:
+    inputs:
+      tags:
+        type: string
+        default: ""
+      route:
+        type: string
+        default: ""
+      base_url:
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       tags:

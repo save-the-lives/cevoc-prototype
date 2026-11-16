@@ -1,0 +1,80 @@
+# What went wrong once, and where the fix lives, so a later session does not repeat it.
+# source: owner-correction | test-break | reversal.   destination: check | rule | decision-log.
+# status: open (fix not built yet) | promoted (the destination exists and does the job) | retired.
+schema_version: "1"
+lessons:
+  - id: L-0001
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "Deploys were reported as successful while the frontend was a blank page and real lookups failed. The owner found each failure by opening the site on a phone."
+    right_behaviour: "A deploy is green only when a real browser renders the deployed site and the live cases pass against the deployed backend."
+    destination: check
+    destination_ref: .github/workflows/release-gate.yml
+    status: open
+    opened: 2026-11-17
+  - id: L-0002
+    date: 2026-11-17
+    source: reversal
+    what_happened: "One deploy set CEVOC_PENALTY_LOOKUP_ADAPTER=stub. It was removed from the workflow, but the variable stayed on the running app because --set-env-vars only adds. Every real lookup then answered LIVE_LOOKUP_DISABLED and the cause was misread as a missing contact."
+    right_behaviour: "The workflow's list of environment variables is the whole truth: replace, never accumulate, and fail the deploy if the running app differs."
+    destination: check
+    destination_ref: "deploy-image-only.yml and iac-validate.yml, step 'Verify env vars match this workflow (no drift)'"
+    status: open
+    opened: 2026-11-17
+  - id: L-0003
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "Cloud settings were guessed and pushed: probe limits outside the allowed range, a region where Static Web Apps does not exist, az acr build on a Basic registry, a health path that does not exist. Each cost a full deploy cycle."
+    right_behaviour: "Check the provider's documentation or make CI prove the value before pushing; fix a step known to be failing before triggering a run."
+    destination: rule
+    destination_ref: "AGENTS.md, 'Cloud and build facts checked the hard way'"
+    status: promoted
+    opened: 2026-11-17
+    promoted: 2026-11-17
+  - id: L-0004
+    date: 2026-11-17
+    source: reversal
+    what_happened: "Eight workflows were deleted as redundant without reading what each did. Three were not: the test workflow (nothing else runs the backend tests), the prototype's GitHub Pages deploy (decision 0006 says its URL must not change), and the deploy pair for the first environment."
+    right_behaviour: "Before removing a workflow, script or setting, read it and search the docs for its name; list what only it does."
+    destination: rule
+    destination_ref: "AGENTS.md, 'Standing rules'"
+    status: promoted
+    opened: 2026-11-17
+    promoted: 2026-11-17
+  - id: L-0005
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "The owner had to paste system logs and screenshots because the agent could not reach the deployed addresses and did not build a way to look for itself."
+    right_behaviour: "Diagnose through CI: a workflow that loads the page in a browser, reads the logs or runs the live cases. Report 'could not verify' rather than 'working' when no check ran."
+    destination: check
+    destination_ref: .github/workflows/release-gate.yml
+    status: open
+    opened: 2026-11-17
+  - id: L-0006
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "The lean backend image (no Chromium) was deployed to dev, so a real lookup failed. 'Dev' was treated as a cut-down environment."
+    right_behaviour: "Every environment runs the full app. The lean image is not deployed until the browser worker serves lookups."
+    destination: check
+    destination_ref: "pdvt.yml via release-gate.yml (real lookups must pass)"
+    status: open
+    opened: 2026-11-17
+  - id: L-0007
+    date: 2026-11-17
+    source: test-break
+    what_happened: "The backend tests had stopped compiling and nobody noticed, because the Docker build skips them and the test workflow was not watched. When restored, 29 of 455 backend tests and some frontend tests failed."
+    right_behaviour: "Tests run on every change and a red run blocks the deploy. Until they are green again the gap is an explicit exception with an expiry."
+    destination: check
+    destination_ref: .github/workflows/app-ci.yml
+    status: open
+    opened: 2026-11-17
+  - id: L-0008
+    date: 2026-11-17
+    source: owner-correction
+    what_happened: "A contact address was invented and committed as a default so lookups would run."
+    right_behaviour: "Never invent an identity, address or credential. Ask, use a value the owner already set, or remove the need."
+    destination: rule
+    destination_ref: "AGENTS.md, 'Cloud and build facts checked the hard way' (do not guess) and decision record 0029"
+    status: promoted
+    opened: 2026-11-17
+    promoted: 2026-11-17

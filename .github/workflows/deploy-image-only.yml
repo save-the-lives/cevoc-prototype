@@ -18,6 +18,9 @@ jobs:
     env:
       RG_NAME: rg-cevoc-dev
       APP_NAME: cevoc-dev-app
+    outputs:
+      frontend_url: ${{ steps.swa.outputs.url }}
+      backend_url: ${{ steps.backend.outputs.url }}
     steps:
       - uses: actions/checkout@v4
       - name: Azure login
@@ -103,10 +106,12 @@ jobs:
           fi
 
       - name: Health check
+        id: backend
         run: |
           APP_URL=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" \
             --query 'properties.configuration.ingress.fqdn' -o tsv)
           echo "Backend: https://${APP_URL}"
+          echo "url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
           for i in $(seq 1 24); do
             HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${APP_URL}/api/demo/cases" 2>/dev/null || echo "000")
             echo "  [$i/24] http=$HTTP"
@@ -128,3 +133,12 @@ jobs:
           echo "  Backend:  https://${APP_URL}"
           echo "  Frontend: ${{ steps.swa.outputs.url }}"
           echo "========================================"
+
+  # A deploy is green only when the deployed site works in a real browser and the live cases pass.
+  release-gate:
+    needs: deploy
+    uses: ./.github/workflows/release-gate.yml
+    with:
+      frontend_url: ${{ needs.deploy.outputs.frontend_url }}
+      backend_url: ${{ needs.deploy.outputs.backend_url }}
+    secrets: inherit
