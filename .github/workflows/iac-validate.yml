@@ -229,17 +229,18 @@ jobs:
         run: |
           BACKEND_URL="${{ steps.backend_url.outputs.url }}"
           echo "Checking backend health at ${BACKEND_URL}/actuator/health..."
-          for i in 1 2 3 4 5 6; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${BACKEND_URL}/actuator/health" || true)
-            echo "  Attempt $i: HTTP $STATUS"
+          echo "Note: Container App may need 2-3 min cold start (minReplicas=0 + Spring Boot)"
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "${BACKEND_URL}/actuator/health" || true)
+            echo "  Attempt $i/12: HTTP $STATUS"
             if [ "$STATUS" = "200" ]; then
               echo "Backend is healthy"
               echo "healthy=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            sleep 10
+            sleep 15
           done
-          echo "::error::Backend health check failed after 6 attempts"
+          echo "::error::Backend health check failed after 12 attempts (~3 min)"
           echo "healthy=false" >> "$GITHUB_OUTPUT"
           exit 1
 
