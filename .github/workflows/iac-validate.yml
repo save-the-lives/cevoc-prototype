@@ -2,7 +2,7 @@ name: IaC Validate & Deploy (Azure Dev)
 
 on:
   push:
-    paths: ['infra/azure/**']
+    paths: ['infra/azure/**', 'frontend/**', 'backend/**']
   workflow_dispatch:
     inputs:
       deploy:
@@ -43,7 +43,7 @@ jobs:
 
           # 1. Check required resource providers
           echo "Checking resource providers..."
-          for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry; do
+          for NS in Microsoft.App Microsoft.KeyVault Microsoft.OperationalInsights microsoft.insights Microsoft.ContainerRegistry Microsoft.Web; do
             STATE=$(az provider show --namespace "$NS" --query registrationState -o tsv 2>/dev/null || echo "NotRegistered")
             if [ "$STATE" != "Registered" ]; then
               echo "::error::Provider $NS is not registered. Run bootstrap.sh first (it registers providers as subscription Owner)."
@@ -159,8 +159,113 @@ jobs:
 
           # Get the app URL
           APP_URL=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv)
-          echo "::notice::Dev app URL: https://${APP_URL}"
+          echo "::notice::Dev backend URL: https://${APP_URL}"
           echo "app_url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
+
+      # --- Build and deploy frontend to Static Web App ---
+      - name: Setup Node.js
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Get backend URL for frontend build
+        id: backend_url
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          APP_URL=$(az containerapp show --name "cevoc-dev-app" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv 2>/dev/null || true)
+          if [ -n "$APP_URL" ]; then
+            echo "url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
+            echo "Backend URL for frontend: https://${APP_URL}"
+          else
+            echo "::error::Cannot determine backend URL for frontend build"
+            exit 1
+          fi
+
+      - name: Build frontend
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ${{ steps.backend_url.outputs.url }}
+        run: |
+          npm ci
+          npm run build
+          echo "Frontend built with API_BASE_URL=$VITE_API_BASE_URL"
+
+      - name: Deploy frontend to Static Web App
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_CALM_WATER_028CFD500 }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "./frontend"
+          output_location: "dist"
+          skip_app_build: true  # We already built it above with the correct env vars
+
+      - name: Get SWA URL
+        id: swa
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          # The SWA name follows the pattern from the existing workflow
+          SWA_URL="https://calm-water-028cfd500.5.azurestaticapps.net"
+          echo "url=${SWA_URL}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Dev frontend URL: ${SWA_URL}"
+
+      # --- Health check: both frontend and backend must respond ---
+      - name: Health check — backend
+        id: health_backend
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          BACKEND_URL="${{ steps.backend_url.outputs.url }}"
+          echo "Checking backend health at ${BACKEND_URL}/actuator/health..."
+          for i in 1 2 3 4 5 6; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${BACKEND_URL}/actuator/health" || true)
+            echo "  Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is healthy"
+              echo "healthy=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Backend health check failed after 6 attempts"
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Health check — frontend
+        id: health_frontend
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          FRONTEND_URL="${{ steps.swa.outputs.url }}"
+          echo "Checking frontend at ${FRONTEND_URL}..."
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${FRONTEND_URL}" || true)
+            echo "  Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Frontend is responding"
+              echo "healthy=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Frontend health check failed"
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Deploy summary
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: |
+          echo "========================================"
+          echo "  CEVOC Dev Deployment Complete"
+          echo "========================================"
+          echo "  Frontend: ${{ steps.swa.outputs.url }}"
+          echo "  Backend:  ${{ steps.backend_url.outputs.url }}"
+          echo "  Backend health: ${{ steps.health_backend.outputs.healthy }}"
+          echo "  Frontend health: ${{ steps.health_frontend.outputs.healthy }}"
+          echo "========================================"
 
       # Validate and what-if (non-deploy path: push trigger)
       - name: Validate deployment

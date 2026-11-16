@@ -118,6 +118,18 @@ module acrPull 'modules/container-registry.bicep' = {
   }
 }
 
+// ---------- Static Web App (frontend) ----------
+module swa 'modules/static-web-app.bicep' = {
+  name: 'swa-${environment}'
+  params: {
+    baseName: '${baseName}-${environment}'
+    location: location
+    tags: tags
+    environment: environment
+    backendOrigin: 'https://${app.outputs.defaultHostName}'
+  }
+}
+
 // ---------- Front Door (prod only) ----------
 module frontDoor 'modules/front-door.bicep' = if (enableFrontDoor) {
   name: 'frontdoor-${environment}'
@@ -133,3 +145,5 @@ output appUrl string = 'https://${app.outputs.defaultHostName}'
 output acrLoginServer string = acr.outputs.loginServer
 output keyVaultUri string = kv.outputs.vaultUri
 output frontDoorEndpoint string = enableFrontDoor ? frontDoor.outputs.endpointHostName : ''
+output swaHostname string = swa.outputs.defaultHostname
+output swaName string = swa.outputs.name
