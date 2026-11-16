@@ -14,7 +14,7 @@ RUN mvn -B -q -Plive-browser dependency:go-offline \
 
 FROM deps AS build
 COPY src ./src
-RUN mvn -B -q -Plive-browser -DskipTests package
+RUN mvn -B -q -Plive-browser -Dmaven.test.skip=true package
 
 # --- Runtime: JRE + Python/OpenCV for blur (no Chromium, no Tesseract) ---
 # The blur pipeline runs as a subprocess (ProcessBlurAdapter) and needs Python + OpenCV.
