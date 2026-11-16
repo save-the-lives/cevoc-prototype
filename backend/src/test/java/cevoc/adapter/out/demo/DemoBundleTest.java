@@ -143,7 +143,8 @@ class DemoBundleTest {
         DemoScenario s = new DemoCaseFactory(source).scenario("1000000001").orElseThrow();
         DemoMediaSet set = source.mediaFor(s);
         assertThat(set.items()).extracting(DemoMediaSet.Item::key)
-                .containsExactly("demo/1000000001/image-1.svg", "demo/1000000001/image-2.svg", "demo/1000000001/image-3.svg", "demo/1000000001/video-1.mp4");
+                .containsExactly("demo/1000000001/image-1.svg", "demo/1000000001/image-2.svg", "demo/1000000001/image-3.svg",
+                        "demo/1000000001/image-4.svg", "demo/1000000001/video-1.mp4");
         assertThat(source.read("1000000001", "image-2.svg")).hasValueSatisfying(b -> {
             assertThat(b.contentType()).isEqualTo("image/svg+xml");
             assertThat(b.data()).isEqualTo(IMAGE);

@@ -1,0 +1,29 @@
+name: Regenerate demo artifacts
+# docs/DEMO-DATA.md and scripts/visual-check-demo-cases.json are generated from the demo case list (DemoArtifactsTest).
+# Maven cannot run in the agent's sandbox, so this regenerates them here and uploads both files to commit.
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Regenerate
+        working-directory: backend
+        run: mvn -q -B test -Dtest=DemoArtifactsTest -Dcevoc.demo.regenerate=true -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Show what changed
+        run: git diff --stat
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-artifacts
+          path: |
+            docs/DEMO-DATA.md
+            scripts/visual-check-demo-cases.json

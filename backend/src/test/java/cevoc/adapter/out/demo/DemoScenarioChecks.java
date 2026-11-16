@@ -49,12 +49,22 @@ final class DemoScenarioChecks {
         @Override public void error(String cause) { events.add("error"); error = cause; }
     }
 
+    /**
+     * The link maker behind the demo links in these checks. The sample video goes through the shared media path (the same
+     * blur path as live evidence), so its key reaches this link maker; any other key reaching it is a mistake.
+     */
+    static final cevoc.application.port.out.SignedLinkPort SAMPLE_VIDEO_LINKS = (k, v) -> {
+        if (k == null || !k.startsWith("samples/")) {
+            throw new IllegalStateException("not a demo key");
+        }
+        return new cevoc.domain.SignedLink("/api/media/test-" + k.substring("samples/".length()),
+                java.time.Instant.now().plus(v));
+    };
+
     static Observed run(DemoCaseFactory factory, String number, String plate) {
         Observed o = new Observed();
         var service = new cevoc.application.service.LookupPenaltyService(new DemoPenaltyLookupAdapter(factory),
-                DemoSignedLinks.wrapping((k, v) -> {
-                    throw new IllegalStateException("not a demo key");
-                }), new DemoCertificateSource(), null);
+                DemoSignedLinks.wrapping(DemoScenarioChecks.SAMPLE_VIDEO_LINKS), new DemoCertificateSource(), null);
         LookupTrace.begin(false);
         try {
             PenaltyLookupRequest request = new PenaltyLookupRequest(number, LocalDate.of(2026, 11, 5));

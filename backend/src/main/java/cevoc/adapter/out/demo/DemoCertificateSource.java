@@ -43,15 +43,18 @@ public final class DemoCertificateSource implements CertificateSourcePort {
         String what = "Fictitious " + (camera.redLight() ? "red light" : "default block") + " camera certificate";
         List<CertificateRef> rows = new ArrayList<>();
         switch (camera.certs()) {
+            // One type over several periods: the same description on every row. Since 2026-11-07 each distinct description is
+            // its own certificate type (CertificateAssessment), so the old " (current)" style suffixes made three types, two of
+            // them uncovered, and a covering camera read as a gap.
             case COVERING -> {
-                rows.add(yearly(what + " (superseded)", d.minusYears(3), d.minusYears(1).minusDays(1)));
-                rows.add(yearly(what + " (current)", d.minusYears(1), d.plusYears(1)));
-                rows.add(yearly(what + " (next year)", d.plusYears(1).plusDays(1), d.plusYears(3)));
+                rows.add(yearly(what, d.minusYears(3), d.minusYears(1).minusDays(1)));
+                rows.add(yearly(what, d.minusYears(1), d.plusYears(1)));
+                rows.add(yearly(what, d.plusYears(1).plusDays(1), d.plusYears(3)));
             }
             case SINGLE -> rows.add(yearly(what, d.minusYears(1), d.plusYears(1)));
             case NOT_COVERING -> {
-                rows.add(yearly(what + " (expired before the offence)", d.minusYears(3), d.minusDays(40)));
-                rows.add(yearly(what + " (starts after the offence)", d.plusDays(40), d.plusYears(2)));
+                rows.add(yearly(what, d.minusYears(3), d.minusDays(40)));
+                rows.add(yearly(what, d.plusDays(40), d.plusYears(2)));
             }
             case NONE -> { }
             case FAILED -> throw new IllegalStateException("demo certificate source: timeout (simulated failure)");

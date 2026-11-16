@@ -86,9 +86,11 @@ describe('the details map travels through the lookup state', () => {
 
 // FICTITIOUS notices only (9000000004, camera 7109).
 describe('default block and switch inheritance', () => {
+  // The red light program by id, not by position: a speed camera program was added before it (73fce15).
+  const redLightProgram = config.programs.find((p) => p.id === 'RED_LIGHT_SPEED');
   const cfgWith = (types) => ({
     ...config,
-    programs: [{ ...config.programs[0], versions: [{ ...config.programs[0].versions[0], types }] }],
+    programs: [{ ...redLightProgram, versions: [{ ...redLightProgram.versions[0], types }] }],
   });
   const video = { kind: 'VIDEO', title: 'Sample video', url: '/samples/video-1.mp4' };
   const rl = (evidence) => ({ ...redLight(), infringementNumber: '9000000004', evidence });
@@ -163,10 +165,11 @@ describe('default block and switch inheritance', () => {
     expect(pickMessage(r, cfg)).toBeNull();
   });
   it('pickMessage falls back to default messages for an unknown program', () => {
-    const r = { notice: { offenceDescription: 'Unknown offence', offenceDate: '2026-01-15' }, details: { speedKmh: 50, speedOverLimit: 15 } };
+    // No speedKmh: since 73fce15 that key alone makes the notice a speed camera one, so it would not be unknown.
+    const r = { notice: { offenceDescription: 'Unknown offence', offenceDate: '2026-01-15' }, details: { speedOverLimit: 15 } };
     const msg = pickMessage(r);
     expect(msg).not.toBeNull();
-    expect(msg.text).toMatch(/risk of serious injury/);
+    expect(msg.text).toMatch(/stopping distance/); // the default block's speedOverLimit message
   });
   it('pickMessage never throws on null input', () => {
     expect(pickMessage(null)).toBeNull();

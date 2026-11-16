@@ -81,7 +81,9 @@ class DemoCaseFactoryTest {
         assertThat(text.cameraCode()).isEqualTo("DEMO-RL-1");
         // the media set: images and a video, no text fields
         assertThat(media.evidence()).extracting(EvidenceItem::kind)
-                .containsExactly(EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.VIDEO);
+                // Four photos by default since 055dc1e (four frames from the demo video), then the video.
+                .containsExactly(EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.IMAGE, EvidenceItem.Kind.IMAGE,
+                        EvidenceItem.Kind.VIDEO);
         assertThat(media.items()).allMatch(i -> i.key().startsWith("demo/1000000001/") || i.key().startsWith("samples/"));
     }
 
