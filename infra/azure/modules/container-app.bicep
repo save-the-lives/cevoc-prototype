@@ -17,17 +17,21 @@ param appInsightsConnectionString string
 @description('Deploy the blur worker as a separate container app')
 param deployBlurWorker bool = false
 
+@description('Deploy the browser (Chromium) worker as a separate container app. Built but dormant: scales to zero, wakes on first browser-route lookup. Failure is a warning unless the config selects the browser adapter.')
+param deployBrowserWorker bool = false
+
 // ---------- Sizing ----------
-// The backend image includes Chromium, Python/OpenCV, Tesseract, ffmpeg + JVM.
-// 1 CPU / 2Gi is not enough — the JVM never finishes starting. Use 2 CPU / 4Gi everywhere.
-var cpuCores = '2.0'
-var memoryGi = '4Gi'
-// minReplicas=1 for dev too — a cold-start Spring Boot app on Container Apps takes 2+ min
-// and returns HTTP 000 the whole time, breaking CI health checks. Scale to zero manually if needed.
-var minReplicas = 1
+// After the container split the backend is a lean JVM (no Chromium, no Python).
+// 1 CPU / 2Gi is enough for the API; the heavy stuff lives in its own container.
+var cpuCores = environment == 'prod' ? '2.0' : '1.0'
+var memoryGi = environment == 'prod' ? '4Gi' : '2Gi'
+var minReplicas = environment == 'prod' ? 1 : 1
 var maxReplicas = environment == 'prod' ? 3 : 1
 var workerCpu = '1.0'
 var workerMemory = '2Gi'
+// Browser worker: Chromium is heavy — needs 2 CPU / 4Gi
+var browserWorkerCpu = '2.0'
+var browserWorkerMemory = '4Gi'
 
 // ---------- Log Analytics (required for managed environment) ----------
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -104,9 +108,8 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
                 path: '/actuator/health'
                 port: 8080
               }
-              // The image includes Chromium + Python + OpenCV + JVM — startup takes 2-3 min.
-              // A 30s initial delay kills the container before Spring Boot finishes.
-              initialDelaySeconds: 180
+              // Lean JVM image starts in ~30-60s, but allow headroom.
+              initialDelaySeconds: 60
               periodSeconds: 30
               failureThreshold: 5
             }
@@ -116,11 +119,11 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
                 path: '/actuator/health'
                 port: 8080
               }
-              // Startup probe: Container Apps checks this first. Liveness/readiness don't
-              // start until the startup probe succeeds. 30 × 10s = 5 min window.
+              // Startup probe runs first; liveness/readiness don't start until it passes.
+              // 18 × 10s = 3 min window for the lean JVM image.
               initialDelaySeconds: 10
               periodSeconds: 10
-              failureThreshold: 30
+              failureThreshold: 18
             }
             {
               type: 'Readiness'
@@ -194,6 +197,99 @@ resource blurWorker 'Microsoft.App/containerApps@2023-05-01' = if (deployBlurWor
   }
 }
 
+// ---------- Browser Worker Container App (optional, scale-to-zero) ----------
+// Built but dormant: CI always builds the image, but the worker only starts on the first
+// browser-route lookup. If the config doesn't select the browser adapter, a failure here
+// is a warning, not a deploy blocker.
+resource browserWorker 'Microsoft.App/containerApps@2023-05-01' = if (deployBrowserWorker) {
+  name: '${baseName}-browser-worker'
+  location: location
+  tags: tags
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    managedEnvironmentId: env.id
+    configuration: {
+      ingress: {
+        // Internal only — the backend calls this worker via its internal FQDN
+        external: false
+        targetPort: 8080
+        transport: 'http'
+      }
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'browser-worker'
+          image: '${acrLoginServer}/cevoc-browser-worker:${imageTag}'
+          resources: {
+            cpu: json(browserWorkerCpu)
+            memory: browserWorkerMemory
+          }
+          env: [
+            { name: 'SPRING_PROFILES_ACTIVE', value: springProfile }
+            { name: 'SERVER_PORT', value: '8080' }
+          ]
+          probes: [
+            {
+              type: 'Startup'
+              httpGet: {
+                path: '/actuator/health'
+                port: 8080
+              }
+              // Chromium takes a long time to start: 30 × 10s = 5 min window
+              initialDelaySeconds: 10
+              periodSeconds: 10
+              failureThreshold: 30
+            }
+            {
+              type: 'Liveness'
+              httpGet: {
+                path: '/actuator/health'
+                port: 8080
+              }
+              initialDelaySeconds: 180
+              periodSeconds: 30
+              failureThreshold: 5
+            }
+            {
+              type: 'Readiness'
+              httpGet: {
+                path: '/actuator/health'
+                port: 8080
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 10
+            }
+          ]
+        }
+      ]
+      scale: {
+        // Scale to zero: the worker only runs when the backend sends a request
+        minReplicas: 0
+        maxReplicas: 1
+        rules: [
+          {
+            name: 'http-rule'
+            http: {
+              metadata: {
+                concurrentRequests: '5'
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
 // ---------- Outputs ----------
 output defaultHostName string = app.properties.configuration.ingress.fqdn
 output identityPrincipalId string = app.identity.principalId
@@ -201,3 +297,5 @@ output identityTenantId string = tenant().tenantId
 output appId string = app.id
 output environmentId string = env.id
 output blurWorkerPrincipalId string = deployBlurWorker ? blurWorker.identity.principalId : ''
+output browserWorkerPrincipalId string = deployBrowserWorker ? browserWorker.identity.principalId : ''
+output browserWorkerFqdn string = deployBrowserWorker ? browserWorker.properties.configuration.ingress.fqdn : ''

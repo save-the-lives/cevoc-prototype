@@ -109,21 +109,66 @@ jobs:
             echo "ACR: $ACR_NAME ($LOGIN_SERVER)"
           fi
 
-      - name: Build and push image to ACR
+      - name: Build and push backend image (lean) to ACR
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'
         run: |
           ACR_NAME="${{ steps.acr.outputs.name }}"
           LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
           IMAGE_TAG="${GITHUB_SHA::7}"
 
-          echo "Building image: ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          # Use lean Dockerfile if it exists, fall back to monolith
+          if [ -f backend/Dockerfile.lean ]; then
+            DOCKERFILE="backend/Dockerfile.lean"
+            echo "Building LEAN image (no Chromium/Python): ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          else
+            DOCKERFILE="backend/Dockerfile"
+            echo "Building MONOLITH image: ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          fi
+
           az acr build \
             --registry "$ACR_NAME" \
             --image "cevoc:${IMAGE_TAG}" \
             --image "cevoc:latest" \
-            --file backend/Dockerfile \
+            --file "$DOCKERFILE" \
             backend/ \
             2>&1 | tail -20
+
+      - name: Build and push browser worker image to ACR
+        id: browser_build
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'
+        continue-on-error: true
+        run: |
+          ACR_NAME="${{ steps.acr.outputs.name }}"
+          LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
+          IMAGE_TAG="${GITHUB_SHA::7}"
+
+          if [ ! -f backend/Dockerfile.browser ]; then
+            echo "::notice::No Dockerfile.browser found — browser worker not built"
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Building browser worker: ${LOGIN_SERVER}/cevoc-browser-worker:${IMAGE_TAG}"
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "cevoc-browser-worker:${IMAGE_TAG}" \
+            --image "cevoc-browser-worker:latest" \
+            --file backend/Dockerfile.browser \
+            backend/ \
+            2>&1 | tail -20
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check browser worker build result
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.browser_build.outcome == 'failure'
+        run: |
+          # Browser worker build failed. Warning if not in config, error if it is.
+          ADAPTER=$(echo "${{ vars.CEVOC_PENALTY_LOOKUP_ADAPTER }}" | tr '[:upper:]' '[:lower:]')
+          if [ "$ADAPTER" = "browser" ]; then
+            echo "::error::Browser worker build failed and CEVOC_PENALTY_LOOKUP_ADAPTER=browser — this is a deploy blocker"
+            exit 1
+          else
+            echo "::warning::Browser worker build failed, but adapter is '${ADAPTER:-demo}' — continuing (warning only)"
+          fi
 
       - name: Update container app to use new image
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true' && steps.acr.outputs.found == 'true'

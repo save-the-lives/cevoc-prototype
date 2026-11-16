@@ -28,6 +28,9 @@ param enableFrontDoor bool = environment == 'prod'
 @description('Deploy the blur worker as a separate container app')
 param deployBlurWorker bool = false
 
+@description('Deploy the browser (Chromium) worker. Built but dormant — scales to zero, wakes on first browser-route lookup.')
+param deployBrowserWorker bool = false
+
 // Unique suffix for globally unique resource names (ACR, Key Vault)
 var uniqueSuffix = uniqueString(resourceGroup().id)
 
@@ -84,6 +87,7 @@ module app 'modules/container-app.bicep' = {
     keyVaultUri: kv.outputs.vaultUri
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     deployBlurWorker: deployBlurWorker
+    deployBrowserWorker: deployBrowserWorker
   }
 }
 
@@ -150,3 +154,4 @@ output keyVaultUri string = kv.outputs.vaultUri
 output frontDoorEndpoint string = enableFrontDoor ? frontDoor.outputs.endpointHostName : ''
 output swaHostname string = swa.outputs.defaultHostname
 output swaName string = swa.outputs.name
+output browserWorkerFqdn string = deployBrowserWorker ? app.outputs.browserWorkerFqdn : ''

@@ -1,0 +1,57 @@
+# Browser worker — Chromium + Playwright + Tesseract + curl-impersonate.
+# Runs the same Java app configured with CEVOC_PENALTY_LOOKUP_ADAPTER=browser.
+# Scales to zero when the browser route is not in use; wakes on the first browser lookup.
+#
+# No Python/OpenCV/blur pipeline — that belongs in the blur worker container.
+#
+# Build:  docker build -f Dockerfile.browser -t cevoc-browser-worker .
+
+# --- Dependencies (with -Plive-browser for Playwright jars) ---
+FROM maven:3.9-eclipse-temurin-21 AS deps
+WORKDIR /src
+COPY pom.xml .
+RUN mvn -B -q -Plive-browser dependency:go-offline \
+    && mvn -B -q -Plive-browser dependency:copy-dependencies \
+       -DincludeArtifactIds=playwright,driver,driver-bundle,gson \
+       -DoutputDirectory=/pw
+
+FROM deps AS build
+COPY src ./src
+RUN mvn -B -q -Plive-browser -DskipTests package
+
+# --- Browser runtime: Chromium + Tesseract + curl-impersonate ---
+FROM eclipse-temurin:21-jre-jammy AS browser
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    CEVOC_BROWSER_CONTAINER=true
+COPY --from=deps /pw /pw
+
+# Tesseract OCR: banner text reading (BannerTextReaderPort, record 0019).
+# curl-impersonate: certificate fetch with Chrome TLS fingerprint (record 0025).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL -o /tmp/curl-impersonate.tar.gz \
+       https://github.com/lwthiker/curl-impersonate/releases/download/v0.6.1/curl-impersonate-v0.6.1.x86_64-linux-gnu.tar.gz \
+    && tar -xzf /tmp/curl-impersonate.tar.gz -C /usr/local/bin/ curl_chrome116 \
+    && mv /usr/local/bin/curl_chrome116 /usr/local/bin/curl-impersonate \
+    && chmod +x /usr/local/bin/curl-impersonate \
+    && rm /tmp/curl-impersonate.tar.gz
+
+RUN java -cp "/pw/*" com.microsoft.playwright.CLI install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/* /pw \
+    && useradd --system --no-create-home app && chmod -R a+rX /ms-playwright
+
+# Prevent runtime browser downloads — everything is baked in.
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+# --- App layer ---
+FROM browser
+WORKDIR /app
+COPY --from=build /src/target/*.jar app.jar
+
+# No blur-pipeline/ or samples/ — the browser worker handles lookups only.
+# Demo samples are served by the API container.
+
+USER app
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
