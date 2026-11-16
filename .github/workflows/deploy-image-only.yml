@@ -67,7 +67,7 @@ jobs:
           DOCKERFILE="backend/Dockerfile"
           echo "Building $DOCKERFILE → ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
           az acr login --name "${{ steps.acr.outputs.name }}"
-          docker build -t "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:latest" \
+          docker build --build-arg BUILD_SHA="${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:latest" \
             -f "$DOCKERFILE" backend/
           docker push "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
           docker push "${LOGIN_SERVER}/cevoc:latest"
@@ -110,10 +110,12 @@ jobs:
             --query 'properties.configuration.ingress.fqdn' -o tsv)
           echo "Backend: https://${APP_URL}"
           echo "url=https://${APP_URL}" >> "$GITHUB_OUTPUT"
-          for i in $(seq 1 24); do
-            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${APP_URL}/api/demo/cases" 2>/dev/null || echo "000")
-            echo "  [$i/24] http=$HTTP"
-            [ "$HTTP" = "200" ] && echo "::notice::Backend healthy" && exit 0
+          # Healthy means THIS build answers: the previous revision keeps serving until the new one is ready.
+          for i in $(seq 1 40); do
+            SERVED=$(curl -s --max-time 10 "https://${APP_URL}/api/version" || echo "none")
+            SITE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://${APP_URL}/" || echo "000")
+            echo "  [$i/40] serving=${SERVED} site=${SITE} (want ${GITHUB_SHA::7}, 200)"
+            [ "$SERVED" = "${GITHUB_SHA::7}" ] && [ "$SITE" = "200" ] && echo "::notice::This build is serving" && exit 0
             sleep 15
           done
           echo "::error::Backend not healthy"

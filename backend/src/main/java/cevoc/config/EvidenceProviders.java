@@ -22,7 +22,8 @@ import org.springframework.core.env.Environment;
  * A single value like {@code browser} selects just that adapter (backward compatible with the old setting).
  * The value {@code http,browser} activates the adaptive (circuit-breaker) adapter: try HTTP first, fall to browser.
  * <p>When unset or empty, the legacy {@code cevoc.penalty-lookup.adapter} is used instead (full backward compatibility).
- * <p>When both are unset or empty, the default is {@code http,browser}: cheapest route first (record 0030).
+ * <p>When both are unset or empty, the default is the browser route. {@code http,browser} (cheapest first) is opt-in
+ * until the plain HTTP route passes the live cases (record 0030).
  */
 public final class EvidenceProviders {
 
@@ -57,13 +58,9 @@ public final class EvidenceProviders {
             LOG.warn("{} lists no known provider; falling back to {}", PROPERTY, LookupAdapterKind.PROPERTY);
         }
 
-        // Nothing set at all: cheapest route first (record 0030), plain HTTP then Chromium, adjusting itself when the source
-        // refuses the cheap route (AdaptivePenaltyLookupAdapter).
+        // Cheapest-first (http,browser) is NOT the default: on 2026-11-17 the release gate showed the plain HTTP route giving
+        // wrong final answers (record 0030). It stays available as CEVOC_EVIDENCE_PROVIDERS=http,browser.
         String legacy = env.getProperty(LookupAdapterKind.PROPERTY, "");
-        if (legacy == null || legacy.isBlank()) {
-            LOG.info("Evidence providers (default, cheapest first): [{}, {}]", HTTP, BROWSER);
-            return new Result(List.of(HTTP, BROWSER), false);
-        }
 
         // Legacy: read the single adapter setting.
         LookupAdapterKind kind = LookupAdapterKind.of(legacy);

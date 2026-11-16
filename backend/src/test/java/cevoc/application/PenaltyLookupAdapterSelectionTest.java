@@ -45,12 +45,6 @@ class PenaltyLookupAdapterSelectionTest {
         assertSharedDefaults(ctx);
     }
 
-    /** The default with no settings: cheapest route first, plain HTTP then Chromium (record 0030). */
-    private static void assertCheapestFirstDefault(PenaltyLookupPort port, ApplicationContext ctx) {
-        assertThat(port).isInstanceOf(cevoc.adapter.out.revenuensw.AdaptivePenaltyLookupAdapter.class);
-        assertSharedDefaults(ctx);
-    }
-
     private static void assertSharedDefaults(ApplicationContext ctx) {
         assertThat(ctx.getBean(MediaStoragePort.class)).isInstanceOf(InMemoryMediaAdapter.class);
         assertThat(ctx.getBean(CertificateSourcePort.class)).isInstanceOf(cevoc.adapter.out.scraper.CertificateProviderChain.class);
@@ -65,8 +59,8 @@ class PenaltyLookupAdapterSelectionTest {
         @Autowired PenaltyLookupPort port;
 
         @Test
-        void startsAndDefaultsToCheapestFirst() {
-            assertCheapestFirstDefault(port, ctx);
+        void startsAndDefaultsToTheBrowserRoute() {
+            assertBrowserRoute(port, ctx);
         }
     }
 
@@ -91,7 +85,7 @@ class PenaltyLookupAdapterSelectionTest {
 
         @Test
         void emptyIsTheDefault() {
-            assertCheapestFirstDefault(port, ctx);
+            assertBrowserRoute(port, ctx);
         }
     }
 
@@ -204,7 +198,7 @@ class PenaltyLookupAdapterSelectionTest {
 
         @Test
         void stillTheDefault() {
-            assertCheapestFirstDefault(port, ctx);
+            assertBrowserRoute(port, ctx);
         }
     }
 

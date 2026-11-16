@@ -1,6 +1,6 @@
 # 0030. Cheapest lookup route first, adjusting itself when a route is refused
 
-Status: DECIDED (owner direction by voice, 2026-11-17); built. Live result: see "Verified" below.
+Status: BUILT, NOT THE DEFAULT. Owner direction by voice 2026-11-17; the default was reverted the same day because the release gate showed wrong answers (see "Verified"). Opt in with `CEVOC_EVIDENCE_PROVIDERS=http,browser`.
 
 ## Context
 Every live lookup on 2026-11-17 was answered by the Chromium route (`source=SCRAPER_EVIDENCE` on all ten live cases),
@@ -28,5 +28,16 @@ one of them a path segment nobody had configured.
 - Docs that describe the HTTP route as needing four settings (`docs/CONFIG-REFERENCE.md`, record 0010 "How to select")
   are out of date on that point; this record wins.
 
-## Verified
-(Filled in from the release gate run after deploy.)
+## Verified (live cases, release gate, 2026-11-17)
+- The HTTP route ran live with no settings: it learned its service path from the first Chromium lookup and answered
+  6 of 9 cases afterwards, in about 2 seconds each against about 45 for Chromium.
+- It gave **wrong final answers** in three of them, which the self-adjusting fallback cannot catch because they look
+  like normal answers:
+  - seat belt with identity given: `NOT_FOUND` (Chromium: `FOUND` with photos). The identity fields are not sent the way
+    the service expects.
+  - seat belt without identity: `FOUND` (Chromium: `INPUT_REQUIRED` asking for the name). The route does not detect that
+    the notice needs identity.
+  - mobile phone with plate: `FOUND` with no photos and no error (Chromium: three photos).
+- So the default is the browser route again. The HTTP route goes back to first place when it passes the live cases on
+  its own: run `pdvt.yml` with `route=REVENUE_NSW_HTTP` against an app set to `CEVOC_EVIDENCE_PROVIDERS=http,browser`.
+  `docs/exceptions.md`: `http-route-not-equivalent`.

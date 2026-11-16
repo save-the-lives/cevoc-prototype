@@ -40,6 +40,9 @@ RUN mkdir -p /app/samples
 COPY sample[s]/ /app/samples/
 # The built site (record 0031): the deploy workflows copy frontend/dist here; empty in a local build.
 COPY site/ /app/site/
+# The commit this image was built from, answered by /api/version (the deploy waits for it).
+ARG BUILD_SHA=unknown
+ENV CEVOC_BUILD_SHA=$BUILD_SHA
 
 USER app
 EXPOSE 8080

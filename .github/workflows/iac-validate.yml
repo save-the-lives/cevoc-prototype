@@ -255,7 +255,7 @@ jobs:
 
           # Use docker build + push (az acr build requires ACR Tasks, not available on Basic tier)
           az acr login --name "$ACR_NAME"
-          docker build -t "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:latest" \
+          docker build --build-arg BUILD_SHA="${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:latest" \
             -f "$DOCKERFILE" backend/
           docker push "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
           docker push "${LOGIN_SERVER}/cevoc:latest"
@@ -426,10 +426,12 @@ jobs:
           for i in $(seq 1 24); do
             RUN_STATE=$(az containerapp revision show --name "$APP_NAME" --resource-group "$RG_NAME" \
               --revision "$REV_NAME" --query 'properties.runningState' -o tsv 2>/dev/null || echo "unknown")
-            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/api/demo/cases" 2>/dev/null || echo "000")
-            echo "  [$i/24] revision=$RUN_STATE http=$HTTP"
+            # Healthy means THIS build answers: the previous revision keeps serving until the new one is ready.
+            SERVED=$(curl -s --max-time 10 "${BACKEND_URL}/api/version" || echo "none")
+            SITE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${BACKEND_URL}/" || echo "000")
+            echo "  [$i/24] revision=$RUN_STATE serving=${SERVED} site=${SITE} (want ${GITHUB_SHA::7}, 200)"
 
-            [ "$HTTP" = "200" ] && echo "::notice::Backend healthy after $((i * 15))s" && exit 0
+            [ "$SERVED" = "${GITHUB_SHA::7}" ] && [ "$SITE" = "200" ] && echo "::notice::This build is serving after $((i * 15))s" && exit 0
 
             if [ "$RUN_STATE" = "Failed" ] || [ "$RUN_STATE" = "Degraded" ]; then
               echo "::error::Revision entered $RUN_STATE"

@@ -15,4 +15,15 @@ public class PingController {
     public String ping() {
         return "ok";
     }
+
+    /**
+     * The commit the running image was built from (build argument BUILD_SHA, baked in as CEVOC_BUILD_SHA). The deploy
+     * workflows wait until this matches what they deployed, so a check never runs against the previous revision, which
+     * keeps answering until the new one is ready.
+     */
+    @GetMapping(value = "/api/version", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String version() {
+        String v = System.getenv("CEVOC_BUILD_SHA");
+        return v == null || v.isBlank() ? "unknown" : v;
+    }
 }
