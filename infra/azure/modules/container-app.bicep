@@ -104,8 +104,23 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
                 path: '/actuator/health'
                 port: 8080
               }
-              initialDelaySeconds: 30
+              // The image includes Chromium + Python + OpenCV + JVM — startup takes 2-3 min.
+              // A 30s initial delay kills the container before Spring Boot finishes.
+              initialDelaySeconds: 180
               periodSeconds: 30
+              failureThreshold: 5
+            }
+            {
+              type: 'Startup'
+              httpGet: {
+                path: '/actuator/health'
+                port: 8080
+              }
+              // Startup probe: Container Apps checks this first. Liveness/readiness don't
+              // start until the startup probe succeeds. 30 × 10s = 5 min window.
+              initialDelaySeconds: 10
+              periodSeconds: 10
+              failureThreshold: 30
             }
             {
               type: 'Readiness'
