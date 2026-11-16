@@ -66,7 +66,9 @@ public class MediaController {
         if (content.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        Blurred blurred = applyBlur(token + (variant != null ? ":" + variant : ""), content.get());
+        // The person's own plate, held with this link since the lookup (record 0033); none means every plate is blurred.
+        String keepPlate = port.keepVisiblePlate(token).orElse(null);
+        Blurred blurred = applyBlur(token + (variant != null ? ":" + variant : ""), content.get(), keepPlate);
         if (blurred.pending()) {
             // Still being blurred: not a failure. 503 with Retry-After tells the page to ask again shortly.
             return ResponseEntity.status(503)
@@ -113,7 +115,7 @@ public class MediaController {
      * Blur video and image content before serving. Non-media types pass through.
      * Fail-closed: if blur fails, returns empty (content not served).
      */
-    private Blurred applyBlur(String cacheKey, MediaContent content) {
+    private Blurred applyBlur(String cacheKey, MediaContent content, String plate) {
         BlurPort blurPort = blur.getIfAvailable();
         if (blurPort == null) {
             return Blurred.of(content); // no blur adapter wired — pass through (e.g. tests)
@@ -124,8 +126,6 @@ public class MediaController {
         }
         String ct = content.contentType();
         if (ct != null && ct.startsWith("video/")) {
-            // The offending plate comes from the lookup context (set per-request by the lookup service).
-            String plate = OffendingPlateContext.get();
             BlurPort.Result result = blurPort.blurVideo(content.data(), plate);
             if (result.pending()) {
                 return Blurred.stillRunning();
@@ -139,7 +139,6 @@ public class MediaController {
             return Blurred.of(blurred);
         }
         if (ct != null && ct.startsWith("image/") && !ct.contains("svg")) {
-            String plate = OffendingPlateContext.get();
             BlurPort.Result result = blurPort.blurImage(content.data(), plate);
             if (!result.success()) {
                 LOG.warn("Image blur failed (fail-closed): {}", result.detail());

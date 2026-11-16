@@ -33,3 +33,4 @@ One short record per architectural decision: what was chosen, why, what was rule
 | 0030 | Cheapest lookup route first (`http,browser` by default), refusals remembered for a day, HTTP path learned from the page | Owner direction, 2026-11-17; built |
 | 0031 | One container serves the site and the API; CORS removed; Front Door removed (not available on the subscription) | Owner direction, 2026-11-17; built |
 | 0032 | Blur verification judges the final video; no built-in offending plate; pending is not failed | Owner direction, 2026-11-17; built |
+| 0033 | The person's own plate rides with the video link, in memory only, so the blur keeps only that plate visible | Owner direction, 2026-11-17; built |

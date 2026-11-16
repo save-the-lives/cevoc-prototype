@@ -17,6 +17,7 @@ import cevoc.domain.LookupTrace;
 import cevoc.domain.StepCause;
 import cevoc.domain.PenaltyLookupRequest;
 import cevoc.domain.PenaltyLookupResult;
+import cevoc.domain.RegistrationScope;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -75,7 +76,11 @@ public class LookupPenaltyService implements LookupPenaltyUseCase {
         }
         return items.stream().map(e -> {
             String key = e.url();
-            EvidenceItem linked = e.withUrl(signedLinks.linkFor(key, LINK_VALIDITY).url());
+            // A video is blurred when it is fetched, by a separate request. The person's own plate (the registration of this
+            // lookup) rides with the video's link so the blur keeps that plate visible and blurs every other (record 0033).
+            EvidenceItem linked = e.kind() == EvidenceItem.Kind.VIDEO
+                    ? e.withUrl(signedLinks.linkFor(key, LINK_VALIDITY, RegistrationScope.current()).url())
+                    : e.withUrl(signedLinks.linkFor(key, LINK_VALIDITY).url());
             if (e.kind() == EvidenceItem.Kind.IMAGE) {
                 String thumb = signedLinks.linkFor(key, ImageVariant.THUMBNAIL, LINK_VALIDITY).map(SignedLink::url).orElse(null);
                 String medium = signedLinks.linkFor(key, ImageVariant.MEDIUM, LINK_VALIDITY).map(SignedLink::url).orElse(null);

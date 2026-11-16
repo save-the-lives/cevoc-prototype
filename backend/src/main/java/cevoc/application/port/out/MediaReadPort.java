@@ -11,4 +11,9 @@ import java.util.Optional;
 public interface MediaReadPort {
     /** The bytes for a link token (null variant = original), or empty when unknown or expired. */
     Optional<MediaContent> read(String token, ImageVariant variant);
+
+    /** The plate to keep visible when blurring the media behind this link (record 0033), or empty: blur every plate. */
+    default Optional<String> keepVisiblePlate(String token) {
+        return Optional.empty();
+    }
 }

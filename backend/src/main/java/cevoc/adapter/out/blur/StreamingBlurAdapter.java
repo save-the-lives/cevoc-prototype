@@ -80,7 +80,10 @@ public final class StreamingBlurAdapter implements BlurPort, HlsSegmentPort {
      */
     @Override
     public Result blurVideo(byte[] videoBytes, String offendingPlate) {
-        String hash = sha256(videoBytes) + "-" + (offendingPlate != null ? offendingPlate : "NONE");
+        // The plate is part of the cache identity (a different plate kept visible is a different result) but never kept
+        // as text: only a digest of it is in the key.
+        String hash = sha256(videoBytes) + "-" + (offendingPlate != null
+                ? sha256(offendingPlate.getBytes(java.nio.charset.StandardCharsets.UTF_8)).substring(0, 16) : "NONE");
         evictExpired();
         CachedStream cached = cache.get(hash);
         if (cached != null && cached.expiresAt.isAfter(clock.instant())) {

@@ -23,7 +23,6 @@ Every demo video was refused (HTTP 451) and the page showed "Preparing video for
   and stops with a plain message on 451.
 
 ## Consequences
-- The offending plate is blurred in videos too until a plate is passed to the blur step. Doing that without storing
-  the registration (standing rule) is an open design question for the owner.
+- The person's own plate reaches the blur step with the video link (record 0033); without it every plate is blurred.
 - Over-blur: interpolation holds a region for a few frames after a vehicle moves, so a grey block can trail a moving
   car briefly. Privacy-safe; cosmetic.

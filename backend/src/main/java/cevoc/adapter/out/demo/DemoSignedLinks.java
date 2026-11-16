@@ -66,6 +66,19 @@ public final class DemoSignedLinks implements SignedLinkPort {
     }
 
     @Override
+    public SignedLink linkFor(String objectKey, Duration validFor, String keepVisiblePlate) {
+        // Only the sample video goes through the blur path; everything else is the same as the plain link.
+        if (objectKey != null && objectKey.startsWith("samples/") && objectKey.endsWith(".mp4")) {
+            ensureStored(objectKey);
+            return delegate.linkFor(objectKey, validFor, keepVisiblePlate);
+        }
+        if (objectKey != null && (objectKey.startsWith("demo/") || objectKey.startsWith("samples/"))) {
+            return linkFor(objectKey, validFor);
+        }
+        return delegate.linkFor(objectKey, validFor, keepVisiblePlate);
+    }
+
+    @Override
     public Optional<SignedLink> linkFor(String objectKey, ImageVariant variant, Duration validFor) {
         if (objectKey != null && objectKey.startsWith("demo/")) {
             return Optional.empty(); // SVGs have no variants
@@ -83,8 +96,8 @@ public final class DemoSignedLinks implements SignedLinkPort {
     /**
      * Store the video bytes in the shared media adapter if not already there.
      * This lets the video flow through MediaController → applyBlur() — the same
-     * hot path as live evidence. The offending plate comes from OffendingPlateContext
-     * (set per-request by PenaltyLookupStreamController from the person's registration).
+     * hot path as live evidence. The plate kept visible rides with the link (record 0033)
+     * (the person's registration from the lookup, held with the link in memory only).
      */
     private void ensureStored(String objectKey) {
         if (storage == null || videoSource == null) {

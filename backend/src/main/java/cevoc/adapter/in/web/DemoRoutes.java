@@ -19,7 +19,7 @@ import org.springframework.web.servlet.function.ServerResponse;
  *
  * <p>Demo video is served through the shared media path (MediaController → BlurPort), not through a demo-specific route.
  * DemoSignedLinks stores the video bytes in MediaStoragePort, and MediaController applies blur using the plate from
- * OffendingPlateContext (set per-request from the person's registration). This is the same hot path as live evidence.
+ * the plate held with the media link (record 0033: the person's registration from the lookup, in memory only). This is the same hot path as live evidence.
  */
 public final class DemoRoutes {
 

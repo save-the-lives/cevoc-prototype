@@ -137,4 +137,28 @@ class InMemoryMediaAdapterTest {
         assertThat(new InMemoryMediaAdapter("", Duration.ofMinutes(1), 10, new MutableClock()).toString()).isEqualTo("InMemoryMediaAdapter");
         assertThat(new MediaContent("image/png", new byte[] {9}).toString()).isEqualTo("MediaContent");
     }
+
+    @Test
+    void theOwnPlateRidesWithItsVideoLinkInMemoryOnlyAndGoesWithIt() {
+        MutableClock clock = new MutableClock();
+        InMemoryMediaAdapter m = new InMemoryMediaAdapter("", Duration.ofMinutes(20), 64L << 20, clock);
+        byte[] video = {1, 2, 3, 4};
+        m.store("scraped/abc/video-1.mp4", "video/mp4", new ByteArrayInputStream(video), video.length);
+        // Fictitious plate.
+        String withPlate = token(m.linkFor("scraped/abc/video-1.mp4", Duration.ofMinutes(15), " TST123 ").url());
+        String withoutPlate = token(m.linkFor("scraped/abc/video-1.mp4", Duration.ofMinutes(15)).url());
+
+        assertThat(m.keepVisiblePlate(withPlate)).contains("TST123");
+        assertThat(m.keepVisiblePlate(withoutPlate)).isEmpty();
+        assertThat(m.keepVisiblePlate("unknowntoken0000001")).isEmpty();
+        // Never in the link itself.
+        assertThat(m.linkFor("scraped/abc/video-1.mp4", Duration.ofMinutes(15), "TST123").url()).doesNotContain("TST123");
+        // Reading keeps the link alive and keeps the plate with it.
+        m.read(withPlate, null);
+        assertThat(m.keepVisiblePlate(withPlate)).contains("TST123");
+        // Gone when the link expires.
+        clock.now = clock.now.plus(Duration.ofHours(2));
+        assertThat(m.keepVisiblePlate(withPlate)).isEmpty();
+        assertThat(m.toString()).doesNotContain("TST123");
+    }
 }

@@ -57,7 +57,8 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
     /** Total life of an object however often it is read. */
     static final Duration MAX_LIFE = Duration.ofMinutes(60);
 
-    private record Token(String objectKey, Instant expiresAt) {}
+    /** keepPlate: the person's own plate for blurring (record 0033); in memory only, gone with the token. Never logged. */
+    private record Token(String objectKey, Instant expiresAt, String keepPlate) {}
 
     private final Clock clock;
     private final Duration retention;
@@ -111,7 +112,19 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
 
     @Override
     public SignedLink linkFor(String objectKey, Duration validFor) {
-        return make(objectKey, validFor, "");
+        return make(objectKey, validFor, "", null);
+    }
+
+    @Override
+    public SignedLink linkFor(String objectKey, Duration validFor, String keepVisiblePlate) {
+        return make(objectKey, validFor, "", keepVisiblePlate == null || keepVisiblePlate.isBlank() ? null : keepVisiblePlate.trim());
+    }
+
+    @Override
+    public synchronized Optional<String> keepVisiblePlate(String token) {
+        purge();
+        Token t = tokens.get(token);
+        return t == null ? Optional.empty() : Optional.ofNullable(t.keepPlate());
     }
 
     @Override
@@ -122,10 +135,10 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
                 return Optional.empty();
             }
         }
-        return Optional.of(make(objectKey, validFor, variant == ImageVariant.THUMBNAIL ? "?s=thumb" : "?s=medium"));
+        return Optional.of(make(objectKey, validFor, variant == ImageVariant.THUMBNAIL ? "?s=thumb" : "?s=medium", null));
     }
 
-    private synchronized SignedLink make(String objectKey, Duration validFor, String query) {
+    private synchronized SignedLink make(String objectKey, Duration validFor, String query, String keepPlate) {
         purge();
         Stored s = objects.get(objectKey);
         Instant limit = s == null ? clock.instant().plus(validFor) : s.expiresAt;
@@ -136,7 +149,7 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
         byte[] raw = new byte[18];
         random.nextBytes(raw);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-        tokens.put(token, new Token(objectKey, expires));
+        tokens.put(token, new Token(objectKey, expires, keepPlate));
         return new SignedLink(base + PATH + token + query, expires);
     }
 
@@ -159,7 +172,7 @@ public class InMemoryMediaAdapter implements MediaStoragePort, SignedLinkPort, M
                 if (extended.isAfter(s.expiresAt)) {
                     s.expiresAt = extended;
                 }
-                tokens.put(token, new Token(t.objectKey(), extended.isAfter(t.expiresAt()) ? extended : t.expiresAt()));
+                tokens.put(token, new Token(t.objectKey(), extended.isAfter(t.expiresAt()) ? extended : t.expiresAt(), t.keepPlate()));
             }
         }
         if (s == null) {
