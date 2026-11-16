@@ -227,12 +227,18 @@ jobs:
         if: needs.deploy-infra.outputs.acr_found == 'true'
         run: |
           ACR_NAME="${{ needs.deploy-infra.outputs.acr_name }}"
+          LOGIN_SERVER="${{ needs.deploy-infra.outputs.acr_login_server }}"
           IMAGE_TAG="${GITHUB_SHA::7}"
           DOCKERFILE=$( [ -f backend/Dockerfile.lean ] && echo "backend/Dockerfile.lean" || echo "backend/Dockerfile" )
-          echo "Building $DOCKERFILE → cevoc:${IMAGE_TAG}"
-          az acr build --registry "$ACR_NAME" \
-            --image "cevoc:${IMAGE_TAG}" --image "cevoc:latest" \
-            --file "$DOCKERFILE" backend/ 2>&1 | tail -30
+          echo "Building $DOCKERFILE → ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+
+          # Use docker build + push (az acr build requires ACR Tasks, not available on Basic tier)
+          az acr login --name "$ACR_NAME"
+          docker build -t "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}" -t "${LOGIN_SERVER}/cevoc:latest" \
+            -f "$DOCKERFILE" backend/
+          docker push "${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
+          docker push "${LOGIN_SERVER}/cevoc:latest"
+          echo "Image pushed: ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
 
   build-browser-worker:
     name: Build browser worker image
@@ -261,11 +267,15 @@ jobs:
             exit 0
           fi
           ACR_NAME="${{ needs.deploy-infra.outputs.acr_name }}"
+          LOGIN_SERVER="${{ needs.deploy-infra.outputs.acr_login_server }}"
           IMAGE_TAG="${GITHUB_SHA::7}"
-          echo "Building browser worker → cevoc-browser-worker:${IMAGE_TAG}"
-          az acr build --registry "$ACR_NAME" \
-            --image "cevoc-browser-worker:${IMAGE_TAG}" --image "cevoc-browser-worker:latest" \
-            --file backend/Dockerfile.browser backend/ 2>&1 | tail -30
+          echo "Building browser worker → ${LOGIN_SERVER}/cevoc-browser-worker:${IMAGE_TAG}"
+          az acr login --name "$ACR_NAME"
+          docker build -t "${LOGIN_SERVER}/cevoc-browser-worker:${IMAGE_TAG}" \
+            -t "${LOGIN_SERVER}/cevoc-browser-worker:latest" \
+            -f backend/Dockerfile.browser backend/
+          docker push "${LOGIN_SERVER}/cevoc-browser-worker:${IMAGE_TAG}"
+          docker push "${LOGIN_SERVER}/cevoc-browser-worker:latest"
           echo "built=true" >> "$GITHUB_OUTPUT"
 
   build-frontend:
