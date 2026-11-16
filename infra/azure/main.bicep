@@ -137,13 +137,14 @@ module swa 'modules/static-web-app.bicep' = {
   }
 }
 
-// ---------- Front Door (prod only) ----------
+// ---------- Front Door: one public address, /api/* to the backend, the rest to the frontend ----------
 module frontDoor 'modules/front-door.bicep' = if (enableFrontDoor) {
   name: 'frontdoor-${environment}'
   params: {
     baseName: '${baseName}-${environment}'
     tags: tags
-    originHostName: app.outputs.defaultHostName
+    apiOriginHostName: app.outputs.defaultHostName
+    siteOriginHostName: swa.outputs.defaultHostname
   }
 }
 

@@ -1,0 +1,93 @@
+name: Front Door trial (dev)
+# Manual. Proves, without guessing, whether this subscription can create Azure Front Door and whether the one-address
+# design works: validates the module, then (create=true) deploys ONLY the Front Door module in front of the existing dev
+# backend and frontend, and checks both routes through the new address. It changes nothing else: the app keeps its
+# current addresses until the pipeline is switched over. Cost when it succeeds: Front Door Standard has a monthly base
+# fee (about US$35) plus usage.
+on:
+  workflow_dispatch:
+    inputs:
+      create:
+        description: "Actually create Front Door (false = validate and what-if only)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-rg-cevoc-dev
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RG_NAME: rg-cevoc-dev
+      APP_NAME: cevoc-dev-app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: Subscription offer and provider state (names only)
+        run: |
+          echo "Offer (quotaId): $(az rest --method get --url "https://management.azure.com/subscriptions/$(az account show --query id -o tsv)?api-version=2022-12-01" --query 'subscriptionPolicies.quotaId' -o tsv)"
+          echo "Microsoft.Cdn provider: $(az provider show --namespace Microsoft.Cdn --query registrationState -o tsv)"
+      - name: Resolve origins
+        id: o
+        run: |
+          API=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" --query 'properties.configuration.ingress.fqdn' -o tsv)
+          SWA_NAME=$(az staticwebapp list --resource-group "$RG_NAME" --query '[0].name' -o tsv)
+          SITE=$(az staticwebapp show --name "$SWA_NAME" --query 'defaultHostname' -o tsv)
+          echo "api=$API" >> "$GITHUB_OUTPUT"
+          echo "site=$SITE" >> "$GITHUB_OUTPUT"
+          echo "api origin:  $API"
+          echo "site origin: $SITE"
+      - name: Validate the module
+        run: |
+          az deployment group validate --resource-group "$RG_NAME" --name frontdoor-dev \
+            --template-file infra/azure/modules/front-door.bicep \
+            --parameters baseName=cevoc-dev tags='{"project":"cevoc","environment":"dev"}' \
+              apiOriginHostName="${{ steps.o.outputs.api }}" siteOriginHostName="${{ steps.o.outputs.site }}" \
+            --query 'properties.provisioningState' -o tsv
+      - name: What-if
+        run: |
+          az deployment group what-if --resource-group "$RG_NAME" --name frontdoor-dev \
+            --template-file infra/azure/modules/front-door.bicep \
+            --parameters baseName=cevoc-dev tags='{"project":"cevoc","environment":"dev"}' \
+              apiOriginHostName="${{ steps.o.outputs.api }}" siteOriginHostName="${{ steps.o.outputs.site }}"
+      - name: Create Front Door
+        if: inputs.create
+        id: fd
+        run: |
+          HOST=$(az deployment group create --resource-group "$RG_NAME" --name frontdoor-dev \
+            --template-file infra/azure/modules/front-door.bicep \
+            --parameters baseName=cevoc-dev tags='{"project":"cevoc","environment":"dev"}' \
+              apiOriginHostName="${{ steps.o.outputs.api }}" siteOriginHostName="${{ steps.o.outputs.site }}" \
+            --query 'properties.outputs.endpointHostName.value' -o tsv)
+          echo "host=$HOST" >> "$GITHUB_OUTPUT"
+          echo "::notice::Front Door address: https://$HOST"
+      - name: Check both routes through the one address
+        if: inputs.create
+        run: |
+          HOST="${{ steps.fd.outputs.host }}"
+          # A new Front Door address takes a while to reach every edge location; wait for both routes, up to 30 minutes.
+          for i in $(seq 1 60); do
+            API=$(curl -s -o /tmp/api.txt -w '%{http_code}' --max-time 20 "https://$HOST/api/ping" || echo 000)
+            SITE=$(curl -s -o /tmp/site.html -w '%{http_code}' --max-time 20 "https://$HOST/" || echo 000)
+            echo "  [$i/60] /api/ping=$API  /=$SITE"
+            if [ "$API" = "200" ] && [ "$SITE" = "200" ] && grep -q '<div id="root">' /tmp/site.html; then
+              echo "api body: $(head -c 40 /tmp/api.txt)"
+              echo "::notice::Both routes answer through https://$HOST"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::Front Door was created but its routes did not answer within 30 minutes"
+          exit 1
