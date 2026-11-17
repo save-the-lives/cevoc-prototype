@@ -7,7 +7,7 @@ async function openGallery(page) {
   await page.fill('#od-d', '14'); await page.fill('#od-m', '3'); await page.fill('#od-y', '2026');
   await page.fill('#rego', 'ZZZ999'); // the registration is required since 61d3777 (invented plate)
   await page.tap('button[type=submit]');
-  await page.waitForSelector('h1');
+  await page.waitForSelector('.query-line');
   await page.locator('.mg').first().waitFor({ timeout: 15_000 });
   await page.locator('.cert-list').waitFor({ timeout: 15_000 });
   await page.locator('video').first().waitFor({ state: 'attached', timeout: 15_000 });
