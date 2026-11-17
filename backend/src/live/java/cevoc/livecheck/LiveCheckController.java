@@ -68,9 +68,11 @@ public class LiveCheckController {
         }
     }
 
-    public record Body(String notice, String offenceDate, String registration, Boolean includeImages, Boolean networkMap) {
+    /** familyName/givenNames/organisation: optional, for notice types that ask for a name (same fields as the public API). */
+    public record Body(String notice, String offenceDate, String registration, Boolean includeImages, Boolean networkMap,
+                       String familyName, String givenNames, String organisation) {
         public Body(String notice, String offenceDate, String registration) {
-            this(notice, offenceDate, registration, null, null);
+            this(notice, offenceDate, registration, null, null, null, null, null);
         }
 
         @Override
@@ -106,11 +108,19 @@ public class LiveCheckController {
         // Network map: structure-only call map, only when asked for (default off). See NetworkMapRedaction.
         boolean wantMap = Boolean.TRUE.equals(body.networkMap());
         LiveCheckRunner.Outcome outcome;
+        boolean named = (body.familyName() != null && !body.familyName().isBlank())
+                || (body.organisation() != null && !body.organisation().isBlank());
+        cevoc.domain.IdentityScope.Identity identity = named ? new cevoc.domain.IdentityScope.Identity(
+                body.familyName() == null ? null : body.familyName().trim(),
+                body.givenNames() == null ? "" : body.givenNames().trim(),
+                body.organisation() == null ? null : body.organisation().trim()) : null;
+        java.util.function.Supplier<LiveCheckRunner.Outcome> run = () -> LiveCheckRunner.run(useCase,
+                new PenaltyLookupRequest(body.notice(), date), plate, includeImages,
+                wantMap ? NetworkMapHolder::request : () -> { },
+                () -> (wantMap ? String.join("\n", NetworkMapHolder.take()) + "\n" : "")
+                        + cevoc.adapter.out.scraper.HostReachability.report(certPageUrl), this::fetch);
         try {
-            outcome = LiveCheckRunner.run(useCase, new PenaltyLookupRequest(body.notice(), date), plate, includeImages,
-                    wantMap ? NetworkMapHolder::request : () -> { },
-                    () -> (wantMap ? String.join("\n", NetworkMapHolder.take()) + "\n" : "")
-                            + cevoc.adapter.out.scraper.HostReachability.report(certPageUrl), this::fetch);
+            outcome = identity == null ? run.get() : cevoc.domain.IdentityScope.with(identity, run);
         } finally {
             NetworkMapHolder.take();
         }

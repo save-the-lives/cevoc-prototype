@@ -1,9 +1,7 @@
-name: Live check run (reads the LIVE_CASES secret, prints only redacted summaries)
-# Manual only. Repo secret LIVE_CASES is a JSON array, for example (fictitious values):
-#   [{"label":"case 1","notice":"9000000004","date":"15/01/2026","plate":"TST123"},
-#    {"label":"case 2","notice":"9000000001","date":"15/01/2026"}]
-# "plate" is optional, "date" is DD/MM/YYYY. Each case is sent to the deployed app's live-check endpoint and only the
-# app's redacted summary is printed under its label. Values are masked in the log and never echoed.
+name: Live check run (smoke-test cases through /live-check, prints only redacted summaries)
+# Manual only. Uses the smoke test's secrets (LIVE_CASES_PASS, LIVE_CASES_FAIL) and sends each case to the app's
+# /live-check/lookup endpoint, which exists only while the app was deployed with live_check=true (deploy-image-only.yml).
+# With network_map, the summary adds the redacted call map (names and shapes only, no values). Values are masked.
 on:
   workflow_dispatch:
     inputs:
@@ -34,34 +32,31 @@ jobs:
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
       - name: Run the cases
+        # Same cases as the smoke test: secrets LIVE_CASES_PASS and LIVE_CASES_FAIL (arrays of {id, input:{notice, date
+        # YYYY-MM-DD, plate?, familyName?, givenNames?, organisation?}}, or an object holding the array under the secret's
+        # name). Every value is masked before anything runs; only the app's redacted summary is printed.
         env:
-          LIVE_CASES: ${{ secrets.LIVE_CASES }}
+          LIVE_CASES_PASS: ${{ secrets.LIVE_CASES_PASS }}
+          LIVE_CASES_FAIL: ${{ secrets.LIVE_CASES_FAIL }}
           NETWORK_MAP: ${{ inputs.network_map }}
           ONLY: ${{ inputs.only }}
         run: |
           set +x
-          [ -n "$LIVE_CASES" ] || { echo "::error::Secret LIVE_CASES is not set."; exit 1; }
-          # Mask every value first so nothing can leak into the log.
-          while IFS= read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done < <(printf %s "$LIVE_CASES" | jq -r '.[]? | .notice, .date, .plate' 2>/dev/null)
-          printf %s "$LIVE_CASES" | jq -e 'type=="array" and length>0 and all(.[]; (.notice|type=="string") and (.date|test("^[0-9]{2}/[0-9]{2}/[0-9]{4}$")))' >/dev/null 2>&1 \
-            || { echo "::error::LIVE_CASES is not valid. It must be a JSON array of {label, notice, date (DD/MM/YYYY), plate optional}. Contents not shown."; exit 1; }
+          cases=$(jq -cn --argjson p "${LIVE_CASES_PASS:-[]}" --argjson f "${LIVE_CASES_FAIL:-[]}" \
+            '[($p | if type=="object" then .LIVE_CASES_PASS else . end)[], ($f | if type=="object" then .LIVE_CASES_FAIL else . end)[]]' 2>/dev/null) \
+            || { echo "::error::LIVE_CASES_PASS / LIVE_CASES_FAIL are not valid JSON. Contents not shown."; exit 1; }
+          while IFS= read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done < <(printf %s "$cases" | jq -r '.[].input | .notice, .date, .plate, .familyName, .givenNames, .organisation | select(. != null)')
           fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          # Public stream probe through the ingress: a notice number with a space is refused by the adapter before any
-          # network call, so this never contacts the source. Prints status, content type, event names and CORS only.
-          probe=$(curl -m 30 -s -N -D hdr.txt -X POST "https://$fqdn/api/penalty-lookups/stream" -H 'Content-Type: application/json' \
-            -H 'Accept: text/event-stream' -d '{"infringementNumber":"ZZ ZZ","offenceDate":"2026-01-15"}' || true)
-          echo "public stream probe: HTTP $(head -1 hdr.txt | cut -d' ' -f2), type $(grep -i '^content-type' hdr.txt | cut -d' ' -f2 | tr -d '\r;'), cors $(grep -ic '^access-control-allow-origin' hdr.txt), events: $(printf %s "$probe" | grep -o '^event:[a-z]*' | tr '\n' ' ')"
-          n=$(printf %s "$LIVE_CASES" | jq 'length')
-          echo "Running $n case(s) against the deployed app"
+          n=$(printf %s "$cases" | jq 'length')
           for i in $(seq 0 $((n-1))); do
-            label=$(printf %s "$LIVE_CASES" | jq -r ".[$i].label // \"case $((i+1))\"")
+            label=$(printf %s "$cases" | jq -r ".[$i].id // \"case $((i+1))\"")
             if [ -n "$ONLY" ] && ! printf %s "$label" | grep -Eq "$ONLY"; then continue; fi
-            body=$(printf %s "$LIVE_CASES" | jq -c --arg nm "$NETWORK_MAP" ".[$i] | {notice:.notice, offenceDate:(.date[6:10]+\"-\"+.date[3:5]+\"-\"+.date[0:2]), registration:(.plate // null), networkMap:(\$nm==\"true\")}")
+            body=$(printf %s "$cases" | jq -c --arg nm "$NETWORK_MAP" ".[$i].input | {notice, offenceDate:.date, registration:(.plate // null), familyName, givenNames, organisation, networkMap:(\$nm==\"true\")}")
             code=$(curl -m 170 -s -o resp.txt -w '%{http_code}' -X POST "https://$fqdn/live-check/lookup" -H 'Content-Type: application/json' -d "$body" || true)
             echo "::group::$label (HTTP $code)"
             cat resp.txt
             echo
             echo "::endgroup::"
             { echo "### $label (HTTP $code)"; echo '```'; cat resp.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-            sleep 6
+            sleep $((1 + RANDOM % 5))
           done
