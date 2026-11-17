@@ -11,12 +11,18 @@ on:
         description: "Also print the redacted NETWORK MAP (structure only: paths with ids replaced, header and key names, value types, sizes). Default off."
         type: boolean
         default: false
+      only:
+        description: "Run only the cases whose label matches this regular expression (empty = all)"
+        type: string
+        default: ""
 permissions:
   contents: read
   id-token: write
+# Dev since 2026-11-17 (the first environment is deleted). The app must be deployed with live_check=true
+# (deploy-image-only.yml), which switches the endpoint on until the next deploy without it.
 env:
-  APP_NAME: cevoc-backend
-  RESOURCE_GROUP: cevoc
+  APP_NAME: cevoc-dev-app
+  RESOURCE_GROUP: rg-cevoc-dev
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -24,13 +30,14 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CEVOCBACKEND_AZURE_CLIENT_ID }}
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
       - name: Run the cases
         env:
           LIVE_CASES: ${{ secrets.LIVE_CASES }}
           NETWORK_MAP: ${{ inputs.network_map }}
+          ONLY: ${{ inputs.only }}
         run: |
           set +x
           [ -n "$LIVE_CASES" ] || { echo "::error::Secret LIVE_CASES is not set."; exit 1; }
@@ -42,13 +49,13 @@ jobs:
           # Public stream probe through the ingress: a notice number with a space is refused by the adapter before any
           # network call, so this never contacts the source. Prints status, content type, event names and CORS only.
           probe=$(curl -m 30 -s -N -D hdr.txt -X POST "https://$fqdn/api/penalty-lookups/stream" -H 'Content-Type: application/json' \
-            -H 'Accept: text/event-stream' -H "Origin: https://calm-water-028cfd500.3.azurestaticapps.net" \
-            -d '{"infringementNumber":"ZZ ZZ","offenceDate":"2026-01-15"}' || true)
+            -H 'Accept: text/event-stream' -d '{"infringementNumber":"ZZ ZZ","offenceDate":"2026-01-15"}' || true)
           echo "public stream probe: HTTP $(head -1 hdr.txt | cut -d' ' -f2), type $(grep -i '^content-type' hdr.txt | cut -d' ' -f2 | tr -d '\r;'), cors $(grep -ic '^access-control-allow-origin' hdr.txt), events: $(printf %s "$probe" | grep -o '^event:[a-z]*' | tr '\n' ' ')"
           n=$(printf %s "$LIVE_CASES" | jq 'length')
           echo "Running $n case(s) against the deployed app"
           for i in $(seq 0 $((n-1))); do
             label=$(printf %s "$LIVE_CASES" | jq -r ".[$i].label // \"case $((i+1))\"")
+            if [ -n "$ONLY" ] && ! printf %s "$label" | grep -Eq "$ONLY"; then continue; fi
             body=$(printf %s "$LIVE_CASES" | jq -c --arg nm "$NETWORK_MAP" ".[$i] | {notice:.notice, offenceDate:(.date[6:10]+\"-\"+.date[3:5]+\"-\"+.date[0:2]), registration:(.plate // null), networkMap:(\$nm==\"true\")}")
             code=$(curl -m 170 -s -o resp.txt -w '%{http_code}' -X POST "https://$fqdn/live-check/lookup" -H 'Content-Type: application/json' -d "$body" || true)
             echo "::group::$label (HTTP $code)"
