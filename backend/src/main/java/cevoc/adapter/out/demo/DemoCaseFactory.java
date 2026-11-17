@@ -84,7 +84,9 @@ public final class DemoCaseFactory {
         if (s.shape() == Shape.UNKNOWN_PROGRAM_TEXT) {
             return "Camera recorded offence";
         }
-        return s.program() == DemoProgram.RED_LIGHT ? "Fail to stop at red traffic light" : "Exceed speed limit by 10km/h or less";
+        // Default block cases name no configured offence (owner, 2026-11-17: "if it's not configured, it should be default").
+        // Speeding text here made the page treat them as speed camera notices, so they never showed the default block.
+        return s.program() == DemoProgram.RED_LIGHT ? "Fail to stop at red traffic light" : "Camera recorded offence";
     }
 
     private static String location(DemoScenario s) {
@@ -130,12 +132,8 @@ public final class DemoCaseFactory {
                 m.put("speedLimit", s.shape() == Shape.EXTREME_VALUES ? 130 : 60);
             }
         } else {
-            int limit = s.shape() == Shape.EXTREME_VALUES ? 130 : 60;
-            int speed = s.shape() == Shape.EXTREME_VALUES ? 161 : 78;
-            m.put("offenceText", "Exceed speed limit - camera recorded");
-            m.put("speedKmh", speed);
-            m.put("speedLimit", limit);
-            m.put("speedOverLimit", speed - limit);
+            // No speed keys: speedKmh alone marks a speed camera notice (programs.json), and these are default block cases.
+            m.put("offenceText", "Camera recorded offence");
             m.put("cameraDirection", "Northbound");
             m.put("lane", "Lane 1");
         }
