@@ -111,6 +111,8 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
         String authorization;
         int calls;
         long lastMillis;
+        /** Whether the service accepted the name sent with the first token (null: no name was sent or it did not say). */
+        Boolean nameAccepted;
 
         Call(String number) {
             this.number = number;
@@ -176,6 +178,17 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
         long detailsMs = (System.nanoTime() - wallStart) / 1_000_000;
 
         LookupTrace trace = LookupTrace.current();
+        // ---- What else this notice asks for (owner direction 2026-11-17): number and date always; then the service says.
+        // A name given and refused is a real answer, not a retry.
+        if (hasPerson && Boolean.FALSE.equals(call.nameAccepted)) {
+            return new PenaltyLookupResult(Status.NOT_FOUND, call.number, "The name given does not match this notice.", null,
+                    List.of(), SOURCE, null, List.of(), null, false, Map.of());
+        }
+        if (!hasPerson && !hasOrg && needsName(call)) {
+            LookupDiagnostic.note("service-asks-for=recipientName");
+            return new PenaltyLookupResult(Status.FOUND, call.number, "This notice needs a few more details.", null, List.of(),
+                    SOURCE, null, List.of(), null, false, Map.of()).withRequiredFields(List.of("lastName", "firstName", "organisation"));
+        }
         boolean hasImages = summary.imageCount() > 0 && !summary.imageIds().isEmpty();
         boolean plateRequired = hasImages && plate == null;
         Map<String, Object> details = new LinkedHashMap<>(summary.details());
@@ -252,6 +265,8 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
             trace.ok(LookupStep.SUBMIT_LOGIN, call.lastMillis);
             throw stop(LookupStep.READ_SUMMARY, StepCause.NOT_MATCHED, Status.NOT_FOUND, "We could not match that notice number and offence date.", tokenResp.status(), 0);
         }
+        JsonNode nameOk = tokenJson.path("credentials").path("recipientName").path("individual");
+        call.nameAccepted = nameOk.isBoolean() ? nameOk.asBoolean() : null;
         useToken(call, tokenJson, tokenResp, LookupStep.SUBMIT_LOGIN);
         trace.ok(LookupStep.SUBMIT_LOGIN, call.lastMillis);
 
@@ -314,6 +329,28 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
             LookupDiagnostic.note("organisation-name-not-sent (shape not yet observed)");
         }
         return body;
+    }
+
+    /**
+     * True when the service's own list of what this notice needs ({@code GET /fines/services}) asks for the recipient's name
+     * for its notifications step: that is the step the public page shows as "Additional penalty information" before the
+     * summary (seen in the redacted network map 2026-11-17: seat belt notices list {@code recipientName.individual} there, a
+     * mobile phone notice does not). A failed or unreadable answer counts as "not asked": it never blocks the lookup.
+     */
+    private boolean needsName(Call call) {
+        try {
+            HttpTransport.Response r = exchange(call, LookupStep.READ_SUMMARY, "GET", "/services", null, MAX_JSON_BYTES);
+            if (r.status() != 200) {
+                return false;
+            }
+            JsonNode creds = JSON.readTree(r.body()).path("services").path("notifications").path("credentials");
+            return creds.has("recipientName");
+        } catch (Stop | IOException | RuntimeException e) {
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     /** The registration was given but the source did not accept it. */

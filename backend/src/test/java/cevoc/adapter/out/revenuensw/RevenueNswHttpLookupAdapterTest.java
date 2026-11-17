@@ -133,6 +133,48 @@ class RevenueNswHttpLookupAdapterTest {
         return LookupTrace.current().entries().stream().filter(e -> e.step() == s).findFirst().orElseThrow().cause();
     }
 
+    // ---- the service asks for more (owner direction 2026-11-17) ----
+
+    private static FakeTransport.Handler asksForName(String tokenFixture) {
+        FakeTransport.Handler base = happy("summary-camera.json");
+        return r -> {
+            String u = r.uri().toString();
+            if (u.endsWith("/services")) {
+                return FakeTransport.json(200, FakeTransport.resource("services-name.json"));
+            }
+            if (tokenFixture != null && r.method().equals("POST") && u.endsWith("/token") && r.body().contains("recipientName")) {
+                return FakeTransport.json(200, FakeTransport.resource(tokenFixture));
+            }
+            return base.answer(r);
+        };
+    }
+
+    @Test
+    void whenTheServiceAsksForANameAndNoneIsGivenTheAnswerAsksForIt() {
+        FakeTransport t = new FakeTransport(asksForName(null));
+        PenaltyLookupResult r = adapter(t, plate()).find(REQ);
+        assertThat(r.status()).isEqualTo(Status.INPUT_REQUIRED);
+        assertThat(r.requiredFields()).contains("lastName", "firstName");
+        assertThat(t.count("GET", "/images/fict-img-1?size=full")).isZero();
+    }
+
+    @Test
+    void aNameGivenGoesInTheServiceShapeAndTheLookupCarriesOn() {
+        FakeTransport t = new FakeTransport(asksForName(null));
+        PenaltyLookupResult r = cevoc.domain.IdentityScope.with(new cevoc.domain.IdentityScope.Identity("Citizen", "Jane", null),
+                () -> adapter(t, plate()).find(REQ));
+        assertThat(r.status()).isEqualTo(Status.FOUND);
+        assertThat(r.evidence()).isNotEmpty();
+    }
+
+    @Test
+    void aNameTheServiceRefusesIsARealAnswer() {
+        FakeTransport t = new FakeTransport(asksForName("token-name-refused.json"));
+        PenaltyLookupResult r = cevoc.domain.IdentityScope.with(new cevoc.domain.IdentityScope.Identity("Citizen", "Jane", null),
+                () -> adapter(t, plate()).find(REQ));
+        assertThat(r.status()).isEqualTo(Status.NOT_FOUND);
+    }
+
     // ---- found ----
 
     @Test

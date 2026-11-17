@@ -1,0 +1,1 @@
+{"pnNum":"9000000004","services":{"summary":{"eligible":true,"credentials":{"pnNum":true,"offenceDate":true}},"images":{"eligible":true,"credentials":{"pnNum":true,"offenceDate":true,"vehicleRego":true}},"notifications":{"eligible":true,"credentials":{"pnNum":true,"offenceDate":true,"recipientName":{"individual":true}}}},"timestamp":"2026-01-15T10:00:00"}
