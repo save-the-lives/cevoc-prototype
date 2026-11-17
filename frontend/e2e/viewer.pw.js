@@ -10,7 +10,8 @@ async function openGallery(page) {
   await page.waitForSelector('.query-line');
   await page.locator('.mg').first().waitFor({ timeout: 15_000 });
   await page.locator('.cert-list').waitFor({ timeout: 15_000 });
-  await page.locator('video').first().waitFor({ state: 'attached', timeout: 15_000 });
+  // The gallery shows one item at a time with a picker; a video is mounted only when it is the selected item.
+  await page.getByRole('group', { name: 'Choose an image or video' }).waitFor({ timeout: 15_000 });
   await page.waitForTimeout(500);
 }
 
