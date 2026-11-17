@@ -38,7 +38,9 @@ public final class NetworkMapRedaction {
 
     private static final int MAX_DEPTH = 6;
     private static final int MAX_KEYS = 25;
-    private static final int MAX_SHAPE = 1500;
+    private static final int MAX_SHAPE = 8000;
+    // Words joined by underscores only (NOT_ELIGIBLE): a plate or a notice number never has that form.
+    private static final Pattern CODE = Pattern.compile("[A-Z][A-Z0-9]*(_[A-Z0-9]+)+");
 
     private NetworkMapRedaction() {}
 
@@ -368,7 +370,8 @@ public final class NetworkMapRedaction {
             return "null";
         }
         if (n.isBoolean()) {
-            return "bool";
+            // The value too: flags such as eligible or a credential being needed say how the service decides, never who.
+            return "bool:" + n.asBoolean();
         }
         if (n.isNumber()) {
             return "number";
@@ -398,6 +401,11 @@ public final class NetworkMapRedaction {
             var it = n.fields();
             while (it.hasNext()) {
                 var e = it.next();
+                // A system code (key "code", upper-case word) is printed: it names a rule of the service, not a person.
+                if ("code".equals(e.getKey()) && e.getValue().isTextual() && CODE.matcher(e.getValue().asText()).matches()) {
+                    parts.add("code:string=" + e.getValue().asText());
+                    continue;
+                }
                 parts.add(key(e.getKey()) + ":" + shape(e.getValue(), depth + 1));
             }
             return "{" + String.join(",", parts) + "}";

@@ -81,9 +81,14 @@ class NetworkMapRedactionTest {
                 + "{\"ref\":\"7109\",\"url\":\"https://img.example.invalid/a/9000000004/full?sig=s3cr3tT0kenValue&se=1\"}],"
                 + "\"token\":\"" + JWT + "\",\"9000000004\":\"x\",\"TST123\":1}";
         String shape = NetworkMapRedaction.jsonShape(body);
-        assertThat(shape).contains("notice:{number:string,plate:string,amount:number,paid:bool,when:string:date,note:null,name:string}");
+        assertThat(shape).contains("notice:{number:string,plate:string,amount:number,paid:bool:false,when:string:date,note:null,name:string}");
         assertThat(shape).contains("images:array<2>({ref:string,url:string:url{img.example.invalid /a/{n}/full?se&sig}})");
         assertThat(shape).contains("token:string:jwt");
+        // A system code is shown; any other text is not.
+        assertThat(NetworkMapRedaction.jsonShape("{\"reason\":{\"code\":\"NOT_ELIGIBLE\",\"text\":\"Jane Citizen\"}}"))
+                .contains("code:string=NOT_ELIGIBLE").doesNotContain("Jane");
+        assertThat(NetworkMapRedaction.jsonShape("{\"code\":\"Jane Citizen\"}")).doesNotContain("Jane");
+        assertThat(NetworkMapRedaction.jsonShape("{\"code\":\"TST123\"}")).doesNotContain("TST123");
         assertThat(shape).contains("?:string").contains("?:number");
         assertClean(shape);
     }
