@@ -240,20 +240,8 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
         String offenceDate = request.offenceDate().format(dateFormat);
 
         // Token call: identify the notice. The token comes back in the body; the server may also rotate it in a header.
-        ObjectNode body = JSON.createObjectNode().put("offenceDate", offenceDate);
-        // Pass identity fields when provided (person and organisation are mutually exclusive).
-        if (identity != null) {
-            boolean orgMode = identity.organisation() != null && !identity.organisation().isBlank()
-                    && (identity.familyName() == null || identity.familyName().isBlank());
-            if (orgMode) {
-                body.put("organisation", identity.organisation());
-            } else if (identity.familyName() != null && !identity.familyName().isBlank()) {
-                body.put("lastName", identity.familyName());
-                if (identity.givenNames() != null && !identity.givenNames().isBlank()) {
-                    body.put("firstName", identity.givenNames());
-                }
-            }
-        }
+        // The body carries whatever the person gave, in the service's own shape (credentials()).
+        ObjectNode body = credentials(offenceDate, null, identity);
         HttpTransport.Response tokenResp = exchange(call, LookupStep.SUBMIT_LOGIN, "POST", "/token", body.toString(), MAX_JSON_BYTES);
         if (isNoMatch(tokenResp.status())) {
             trace.ok(LookupStep.SUBMIT_LOGIN, call.lastMillis);
@@ -306,6 +294,28 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
         return summary;
     }
 
+    /**
+     * The token request body from the inputs that were given, in the shape the service itself uses (seen in the redacted
+     * network map of the public page, 2026-11-17): {@code offenceDate} always, {@code vehicleRego} when a plate is given,
+     * {@code recipientName.individual.{first,last}} when a person's name is given. Until then this route sent top-level
+     * lastName/firstName, which the service ignores, so a name never counted. An organisation is not sent: its shape has
+     * not been observed, and it is not guessed (lesson L-0003).
+     */
+    static ObjectNode credentials(String offenceDate, String plate, IdentityScope.Identity identity) {
+        ObjectNode body = JSON.createObjectNode().put("offenceDate", offenceDate);
+        if (plate != null) {
+            body.put("vehicleRego", plate);
+        }
+        if (identity != null && identity.familyName() != null && !identity.familyName().isBlank()) {
+            ObjectNode person = body.putObject("recipientName").putObject("individual");
+            person.put("first", identity.givenNames() == null ? "" : identity.givenNames());
+            person.put("last", identity.familyName());
+        } else if (identity != null && identity.organisation() != null && !identity.organisation().isBlank()) {
+            LookupDiagnostic.note("organisation-name-not-sent (shape not yet observed)");
+        }
+        return body;
+    }
+
     /** The registration was given but the source did not accept it. */
     private static final class PlateNotAccepted extends Exception {
         PlateNotAccepted() {
@@ -316,8 +326,9 @@ public class RevenueNswHttpLookupAdapter implements PenaltyLookupPort {
     private List<EvidenceItem> images(Call call, PenaltyLookupRequest request, String plate, RevenueNswSummaryMapper.Summary summary,
                                       String offenceDate) throws Stop, PlateNotAccepted, IOException, InterruptedException {
         LookupTrace trace = LookupTrace.current();
-        // Second token call: the registration travels in the body of this one call only.
-        ObjectNode body = JSON.createObjectNode().put("offenceDate", offenceDate).put("vehicleRego", plate);
+        // Second token call: the registration travels in the body of this one call only, with the name when one was given
+        // (the page's own image token call carries both, network map 2026-11-17).
+        ObjectNode body = credentials(offenceDate, plate, IdentityScope.current());
         HttpTransport.Response resp = exchange(call, LookupStep.GIVE_PLATE, "POST", "/token", body.toString(), MAX_JSON_BYTES);
         trace.ok(LookupStep.GIVE_PLATE, call.lastMillis);
         if (isNoMatch(resp.status())) {
