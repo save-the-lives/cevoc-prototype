@@ -1213,8 +1213,15 @@ final class PlaywrightSession implements RenderedPageSession {
     }
 
     /** Redacted facts about the refusal (header names, size bucket, client category); see SearchPageDiagnostic. */
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PlaywrightSession.class);
+
+    /**
+     * The same already-redacted refusal profile also goes to the console (no values, URLs, cookies or body text),
+     * so a production refusal can be read from the container logs, not only from the live-check trace.
+     */
     private void refusalProfile(com.microsoft.playwright.Response r, String body) {
         String label = "srch-refusal-profile";
+        String line;
         try {
             java.util.Map<String, String> headers = java.util.Map.of();
             java.util.Map<String, String> sent = java.util.Map.of();
@@ -1230,12 +1237,18 @@ final class PlaywrightSession implements RenderedPageSession {
                     sent = r.request().headers();
                 }
             }
-            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(label, "same", headers,
+            line = cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfile(label, "same", headers,
                     body == null ? 0 : body.length(), body != null && body.toLowerCase(Locale.ROOT).contains("<html"),
                     (headless ? "headless-chromium" : "headed-chromium"), userAgentCategory,
-                    containsKeyIgnoreCase(sent, "referer"), containsKeyIgnoreCase(sent, "origin")));
+                    containsKeyIgnoreCase(sent, "referer"), containsKeyIgnoreCase(sent, "origin"));
         } catch (RuntimeException e) {
-            note(cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfileUnavailable(label, e));
+            line = cevoc.adapter.out.scraper.SearchPageDiagnostic.refusalProfileUnavailable(label, e);
+        }
+        note(line);
+        try {
+            LOG.warn("Certificate search refused: status={}; {}", r == null ? 0 : r.status(), line);
+        } catch (RuntimeException ignored) {
+            // diagnostics must never break the flow
         }
     }
 
