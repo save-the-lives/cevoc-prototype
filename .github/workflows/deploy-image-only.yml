@@ -1,7 +1,13 @@
 name: Deploy app image only (site and API; skips infra)
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      blur_mode:
+        description: "http = blur in the blur worker (record 0036); process = blur inside the app (roll back)"
+        type: choice
+        options: [http, process]
+        default: http
 
 # One deploy to rg-cevoc-dev at a time, across both deploy workflows. Queue, never cancel a deploy half way.
 concurrency:
@@ -72,6 +78,12 @@ jobs:
           docker push "${LOGIN_SERVER}/cevoc:latest"
           echo "Pushed ${LOGIN_SERVER}/cevoc:${IMAGE_TAG}"
 
+      - name: Build and push blur worker
+        run: scripts/blur-worker.sh build "${{ steps.acr.outputs.login_server }}" "${GITHUB_SHA::7}"
+
+      - name: Point the blur worker at its image
+        run: scripts/blur-worker.sh deploy "${{ steps.acr.outputs.login_server }}" "${GITHUB_SHA::7}" "$RG_NAME" "${{ inputs.blur_mode || 'http' }}"
+
       - name: Update container app
         run: |
           LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
@@ -84,6 +96,8 @@ jobs:
               SPRING_PROFILES_ACTIVE=dev \
               CEVOC_DEMO_DATA_ENABLED=true \
               SERVER_PORT=8080 \
+              CEVOC_BLUR_MODE="${{ inputs.blur_mode || 'http' }}" \
+              CEVOC_BLUR_WORKERURL=http://cevoc-dev-blur-worker \
             --cpu 2.0 --memory 4Gi \
             --output table
 
@@ -92,7 +106,7 @@ jobs:
       # The list above is the whole truth: fail if the running app carries anything else. Names only, no values.
       - name: Verify env vars match this workflow (no drift)
         run: |
-          EXPECTED="CEVOC_DEMO_DATA_ENABLED SERVER_PORT SPRING_PROFILES_ACTIVE"
+          EXPECTED="CEVOC_BLUR_MODE CEVOC_BLUR_WORKERURL CEVOC_DEMO_DATA_ENABLED SERVER_PORT SPRING_PROFILES_ACTIVE"
           ACTUAL=$(az containerapp show --name "$APP_NAME" --resource-group "$RG_NAME" \
             --query 'properties.template.containers[0].env[].name' -o tsv | sort | xargs)
           echo "Expected: $EXPECTED"

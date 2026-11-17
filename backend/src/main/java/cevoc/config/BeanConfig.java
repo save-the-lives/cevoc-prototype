@@ -169,7 +169,8 @@ public class BeanConfig {
             @Value("${cevoc.blur.mode:process}") String mode,
             @Value("${cevoc.blur.shared-dir:/shared/blur-data}") String sharedDir,
             @Value("${cevoc.blur.worker-script:blur-worker/worker.py}") String workerScript,
-            @Value("${cevoc.blur.streaming:false}") boolean streamingLegacy) {
+            @Value("${cevoc.blur.streaming:false}") boolean streamingLegacy,
+            @Value("${cevoc.blur.worker-url:}") String workerUrl) {
         // Legacy env var support: CEVOC_BLUR_STREAMING=true -> streaming mode
         String effectiveMode = streamingLegacy && "process".equals(mode) ? "streaming" : mode;
         return switch (effectiveMode) {
@@ -179,6 +180,8 @@ public class BeanConfig {
                     java.nio.file.Path.of(sharedDir),
                     new cevoc.adapter.out.blur.RedisQueueClient(java.nio.file.Path.of(workerScript)));
             case "deny" -> new cevoc.adapter.out.blur.DenyAllBlurAdapter();
+            // Record 0036: the pipeline runs in the blur worker container; caching and fail-closed rules stay here.
+            case "http" -> new cevoc.adapter.out.blur.ProcessBlurAdapter(new cevoc.adapter.out.blur.HttpBlurPipeline(workerUrl));
             default -> new cevoc.adapter.out.blur.ProcessBlurAdapter(
                     java.nio.file.Path.of(scriptsDir));
         };

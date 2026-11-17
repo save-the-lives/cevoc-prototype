@@ -1,0 +1,16 @@
+# Blur worker over HTTP (record 0036). Build context: backend/ (it copies backend/blur-pipeline).
+#   docker build -f backend/blur-worker/Dockerfile.http backend
+# Same tools as the app image's blur step (backend/Dockerfile): OpenCV, Tesseract, ffmpeg.
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      tesseract-ocr libgl1 libglib2.0-0 ffmpeg \
+    && pip install --no-cache-dir opencv-contrib-python-headless pytesseract numpy \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --no-create-home worker
+WORKDIR /app
+COPY blur-pipeline/ /app/blur-pipeline/
+COPY blur-worker/server.py /app/server.py
+USER worker
+ENV BLUR_SCRIPTS_DIR=/app/blur-pipeline PORT=8080 PYTHONUNBUFFERED=1
+EXPOSE 8080
+CMD ["python3", "/app/server.py"]

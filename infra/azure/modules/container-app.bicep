@@ -159,7 +159,10 @@ resource app 'Microsoft.App/containerApps@2023-05-01' = {
   }
 }
 
-// ---------- Blur Worker Container App (optional) ----------
+// ---------- Blur Worker Container App (optional, record 0036) ----------
+// Runs the blur pipeline over HTTP so blurring does not take the app's CPU. Internal ingress only: reachable by other apps
+// in this environment as http://<name>, never from the internet. The deploy workflow sets its image; until then (a new
+// environment) it runs the same placeholder image as the app.
 resource blurWorker 'Microsoft.App/containerApps@2023-05-01' = if (deployBlurWorker) {
   name: '${baseName}-blur-worker'
   location: location
@@ -170,30 +173,25 @@ resource blurWorker 'Microsoft.App/containerApps@2023-05-01' = if (deployBlurWor
   properties: {
     managedEnvironmentId: env.id
     configuration: {
-      registries: [
-        {
-          server: acrLoginServer
-          identity: 'system'
-        }
-      ]
-      // No ingress — worker pulls from queue, not HTTP
+      ingress: {
+        external: false
+        targetPort: 8080
+        transport: 'http'
+      }
     }
     template: {
       containers: [
         {
           name: 'blur-worker'
-          image: '${acrLoginServer}/cevoc-blur-worker:${imageTag}'
+          image: imageTag == 'latest' ? 'mcr.microsoft.com/k8se/quickstart:latest' : '${acrLoginServer}/cevoc-blur-worker:${imageTag}'
           resources: {
             cpu: json(workerCpu)
             memory: workerMemory
           }
-          env: [
-            { name: 'QUEUE_TYPE', value: 'redis' }
-            // REDIS_URL injected via Key Vault secret ref at deploy time
-          ]
         }
       ]
       scale: {
+        // Scales to zero when idle; the app answers "still preparing" while it starts.
         minReplicas: 0
         maxReplicas: 1
       }

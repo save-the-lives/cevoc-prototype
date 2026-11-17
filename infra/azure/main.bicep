@@ -124,6 +124,19 @@ module acrPull 'modules/container-registry.bicep' = {
   }
 }
 
+// Grant the blur worker AcrPull too (record 0036), so the workflow can point it at its image.
+module acrPullBlur 'modules/container-registry.bicep' = if (deployBlurWorker) {
+  name: 'acr-pull-blur-${environment}'
+  params: {
+    name: '${baseName}${uniqueSuffix}acr'
+    location: location
+    sku: environment == 'prod' ? 'Standard' : 'Basic'
+    tags: tags
+    acrPullPrincipalId: app.outputs.blurWorkerPrincipalId
+  }
+  dependsOn: [acrPull]
+}
+
 // ---------- Outputs ----------
 output appUrl string = 'https://${app.outputs.defaultHostName}'
 output acrLoginServer string = acr.outputs.loginServer

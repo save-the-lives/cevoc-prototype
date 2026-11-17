@@ -32,7 +32,7 @@ public final class ProcessBlurAdapter implements BlurPort {
     /** Max total cached bytes (same as InMemoryMediaAdapter default). */
     private static final long CACHE_MAX_BYTES = 96 * 1024 * 1024;
 
-    private final Path scriptsDir;
+    private final Path scriptsDir; // null when the pipeline runs in the blur worker
     private final Map<String, CachedEntry> cache = new ConcurrentHashMap<>();
     /** Tracks hashes currently being processed in the background to avoid duplicate work. */
     private final java.util.Set<String> processing = ConcurrentHashMap.newKeySet();
@@ -41,6 +41,14 @@ public final class ProcessBlurAdapter implements BlurPort {
     private final Map<String, java.time.Instant> failedUntil = new ConcurrentHashMap<>();
     private final Clock clock;
 
+    /** Runs the blur pipeline once on a video: in this container (scripts) or in the blur worker (record 0036). */
+    @FunctionalInterface
+    public interface Pipeline {
+        Result run(byte[] videoBytes, String offendingPlate, String hash);
+    }
+
+    private final Pipeline pipeline;
+
     public ProcessBlurAdapter(Path scriptsDir) {
         this(scriptsDir, Clock.systemUTC());
     }
@@ -48,6 +56,17 @@ public final class ProcessBlurAdapter implements BlurPort {
     ProcessBlurAdapter(Path scriptsDir, Clock clock) {
         this.scriptsDir = scriptsDir;
         this.clock = clock;
+        this.pipeline = this::blurSync;
+    }
+
+    /**
+     * Same caching, "still blurring" and fail-closed rules, with the pipeline run elsewhere (the blur worker). Demo and live
+     * take this one path whichever pipeline runs.
+     */
+    public ProcessBlurAdapter(Pipeline pipeline) {
+        this.scriptsDir = null;
+        this.clock = Clock.systemUTC();
+        this.pipeline = pipeline;
     }
 
     @Override
@@ -78,7 +97,12 @@ public final class ProcessBlurAdapter implements BlurPort {
             log.info("Starting async blur for video hash {} ({} bytes)", hash.substring(0, 12), videoBytes.length);
             Thread.startVirtualThread(() -> {
                 try {
-                    Result result = blurSync(videoBytes, offendingPlate, hash);
+                    Result result;
+                    try {
+                        result = pipeline.run(videoBytes, offendingPlate, hash);
+                    } catch (RuntimeException e) {
+                        result = Result.failed("Blur pipeline error: " + e.getClass().getSimpleName());
+                    }
                     if (result.success()) {
                         evictIfOverSize(result.data().length);
                         cache.put(hash, new CachedEntry(result, clock.instant().plus(CACHE_TTL), result.data().length));
