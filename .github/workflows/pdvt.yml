@@ -30,15 +30,17 @@ on:
         type: string
         default: ""
       base_url:
-        description: "Override backend URL (skip Azure login + FQDN lookup). E.g. https://cevoc-dev-app.orangeriver-57fa442a.australiasoutheast.azurecontainerapps.io"
+        description: "One-off app address. Empty = the repo's choice: CEVOC_APP_URL_FROM_AZURE=true (look up) or CEVOC_APP_URL (scripts/app-url.sh)"
         type: string
         default: ""
 permissions:
   contents: read
   id-token: write
 env:
-  APP_NAME: cevoc-backend
-  RESOURCE_GROUP: cevoc
+  CEVOC_APP_NAME: cevoc-dev-app
+  CEVOC_RESOURCE_GROUP: rg-cevoc-dev
+  CEVOC_APP_URL_FROM_AZURE: ${{ vars.CEVOC_APP_URL_FROM_AZURE }}
+  CEVOC_APP_URL: ${{ vars.CEVOC_APP_URL }}
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -51,10 +53,10 @@ jobs:
           node-version: 22
 
       - name: Azure Login
-        if: inputs.base_url == ''
+        if: inputs.base_url == '' && vars.CEVOC_APP_URL_FROM_AZURE == 'true'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CEVOCBACKEND_AZURE_CLIENT_ID }}
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
           tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
 
@@ -66,12 +68,8 @@ jobs:
         run: |
           set +x
           [ -n "$LIVE_CASES_PASS" ] || [ -n "$LIVE_CASES_FAIL" ] || { echo "::error::Neither LIVE_CASES_PASS nor LIVE_CASES_FAIL is set."; exit 1; }
-          if [ -n "${{ inputs.base_url }}" ]; then
-            echo "base_url=${{ inputs.base_url }}" >> "$GITHUB_OUTPUT"
-          else
-            fqdn=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-            echo "base_url=https://$fqdn" >> "$GITHUB_OUTPUT"
-          fi
+          scripts/app-url.sh "${{ inputs.base_url }}"
+          sed -n 's/^url=/base_url=/p' "$GITHUB_OUTPUT" | tail -1 >> "$GITHUB_OUTPUT"
 
       - name: Mask sensitive input values
         env:

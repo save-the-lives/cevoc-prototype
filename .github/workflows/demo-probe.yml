@@ -6,35 +6,47 @@ name: Demo probe (Playwright)
 on:
   schedule:
     - cron: "42 * * * *"           # Hourly at :42 (jittered off the hour)
-  workflow_run:
-    workflows: ["Trigger auto deployment for cevoc-backend"]
-    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
+  id-token: write
   issues: write                    # open/close issues on failure/recovery
 
 concurrency:
   group: demo-probe
   cancel-in-progress: true
 
+# The app's address follows scripts/app-url.sh (owner, 2026-11-17): looked up from Azure or set by a person, never typed
+# in here. Site and API share one address since record 0031.
 env:
-  FRONTEND_URL: ${{ vars.CEVOC_FRONTEND_URL || 'https://calm-water-028cfd500.3.azurestaticapps.net' }}
-  API_BASE: ${{ vars.CEVOC_API_BASE_URL || 'https://cevoc-backend.ambitiousdesert-0ce8e229.australiaeast.azurecontainerapps.io' }}
+  CEVOC_APP_NAME: cevoc-dev-app
+  CEVOC_RESOURCE_GROUP: rg-cevoc-dev
+  CEVOC_APP_URL_FROM_AZURE: ${{ vars.CEVOC_APP_URL_FROM_AZURE }}
+  CEVOC_APP_URL: ${{ vars.CEVOC_APP_URL }}
 
 jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Skip the scheduled/workflow_run probe if the deploy failed
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
       - uses: actions/checkout@v4
+      - name: Azure login
+        if: vars.CEVOC_APP_URL_FROM_AZURE == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_DEV_CLIENT_ID }}
+          tenant-id: ${{ secrets.CEVOCBACKEND_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CEVOCBACKEND_AZURE_SUBSCRIPTION_ID }}
+      - name: App address
+        id: app
+        run: |
+          scripts/app-url.sh
+          url=$(sed -n 's/^url=//p' "$GITHUB_OUTPUT" | tail -1)
+          echo "FRONTEND_URL=$url" >> "$GITHUB_ENV"
+          echo "API_BASE=$url" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:

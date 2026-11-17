@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Bootstrap CEVOC Azure deployment identity + GitHub OIDC trust.
-# Run ONCE from a developer's laptop with:
-#   az login (as subscription Owner)
-#   gh auth login (with repo admin)
+# Run ONCE, as subscription Owner (az login), for example in Azure Cloud Shell:
+#   bash <(curl -fsSL https://raw.githubusercontent.com/save-the-lives/cevoc-prototype/main/infra/azure/bootstrap.sh) dev
+# GitHub: give a token for this run only (GH_TOKEN=... in front of the command: nothing is saved), or let the script
+# sign you in. A stored GitHub sign-in is removed when the script ends, whether it worked or not (owner, 2026-11-17):
+# Cloud Shell has no keyring, so gh keeps the token in a plain file in your home folder, which persists between sessions.
 #
 # Usage: ./bootstrap.sh <environment> [resource-group]
 #   environment: dev | staging | prod
@@ -18,6 +20,18 @@
 #
 # Idempotent: safe to re-run.
 set -euo pipefail
+
+# GitHub sign-in for this run only.
+if [ -z "${GH_TOKEN:-}" ] && ! gh auth status --hostname github.com >/dev/null 2>&1; then
+  gh auth login --hostname github.com --git-protocol https --web
+fi
+gh_logout() {
+  if [ -z "${GH_TOKEN:-}" ] && gh auth status --hostname github.com >/dev/null 2>&1; then
+    gh auth logout --hostname github.com </dev/null >/dev/null 2>&1 || true
+    echo "==> Signed out of GitHub: the token is not kept on this machine."
+  fi
+}
+trap gh_logout EXIT
 
 ENV="${1:?Usage: $0 <dev|staging|prod> [resource-group]}"
 RG="${2:-rg-cevoc-${ENV}}"

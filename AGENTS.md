@@ -45,6 +45,9 @@ not a sentence here. Each lesson in `.agents/lessons.yaml` names where its fix l
   To add or remove a variable, change the list in **both** deploy workflows and the `EXPECTED` line of the check.
 - **Real lookups need the full image** (`backend/Dockerfile`, with Chromium). `Dockerfile.lean` has no browser and
   can only serve demo data until the browser worker is wired in (record 0027).
+- **The app's address is never typed into a workflow** (owner, 2026-11-17). `scripts/app-url.sh` decides: repo variable
+  `CEVOC_APP_URL_FROM_AZURE=true` looks it up from Azure at run time; otherwise `CEVOC_APP_URL` must be set by a person.
+  Both set, or neither, fails clearly. The address changes whenever the Container Apps environment is rebuilt.
 - **One container, one address** (record 0031). The deploy workflows build the site with no API address and copy
   it into `backend/site`; the app serves it from `/app/site`. There is no CORS configuration and none is needed.
   Page paths the frontend reads from the address bar are listed in `SiteController`; add a new one there.

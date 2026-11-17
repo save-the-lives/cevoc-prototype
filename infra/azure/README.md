@@ -14,7 +14,7 @@ The full hands-off path:
 
 ```bash
 # 1. Bootstrap (once per environment, as subscription Owner)
-./bootstrap.sh dev
+bash <(curl -fsSL https://raw.githubusercontent.com/save-the-lives/cevoc-prototype/main/infra/azure/bootstrap.sh) dev   # signs out of GitHub at the end
 
 # 2. Deploy (from GitHub Actions — no manual steps)
 gh workflow run iac-validate.yml --repo save-the-lives/cevoc-prototype -f deploy=true
