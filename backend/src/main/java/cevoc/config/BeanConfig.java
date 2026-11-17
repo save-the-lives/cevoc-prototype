@@ -173,6 +173,7 @@ public class BeanConfig {
             @Value("${cevoc.blur.worker-url:}") String workerUrl) {
         // Legacy env var support: CEVOC_BLUR_STREAMING=true -> streaming mode
         String effectiveMode = streamingLegacy && "process".equals(mode) ? "streaming" : mode;
+        org.slf4j.LoggerFactory.getLogger(BeanConfig.class).info("Blur mode: {}", effectiveMode);
         return switch (effectiveMode) {
             case "streaming" -> new cevoc.adapter.out.blur.StreamingBlurAdapter(
                     java.nio.file.Path.of(scriptsDir));

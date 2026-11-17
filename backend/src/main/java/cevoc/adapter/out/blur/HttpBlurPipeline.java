@@ -44,6 +44,7 @@ public final class HttpBlurPipeline implements ProcessBlurAdapter.Pipeline {
             HttpResponse<byte[]> r = http.send(b.build(), HttpResponse.BodyHandlers.ofByteArray());
             String type = r.headers().firstValue("Content-Type").orElse("");
             if (r.statusCode() == 200 && type.startsWith("video/") && r.body().length > 0) {
+                log.info("Blurred in the blur worker: {} -> {} bytes ({})", videoBytes.length, r.body().length, hash.substring(0, 12));
                 return Result.ok(r.body(), "video/mp4");
             }
             String why = new String(r.body(), java.nio.charset.StandardCharsets.UTF_8);
