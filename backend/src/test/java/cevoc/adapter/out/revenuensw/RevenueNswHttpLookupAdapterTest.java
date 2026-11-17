@@ -356,7 +356,8 @@ class RevenueNswHttpLookupAdapterTest {
     void summaryTimeoutIsRetriedOnceThenSucceeds() {
         int[] summaryCalls = {0};
         FakeTransport.Handler h = r -> {
-            if (!r.uri().toString().endsWith("/token") && !r.uri().toString().contains("/images/") && summaryCalls[0]++ == 0) {
+            if (!r.uri().toString().endsWith("/token") && !r.uri().toString().contains("/images/")
+                    && !r.uri().toString().endsWith("/services") && summaryCalls[0]++ == 0) {
                 throw new HttpTransport.TimeoutException();
             }
             return happy("summary-camera.json").answer(r);
@@ -468,9 +469,11 @@ class RevenueNswHttpLookupAdapterTest {
         adapter(settings(1, "Custom"), t, plate()).find(REQ);
         assertThat(t.seen.get(0).headers()).doesNotContainKey("authorization");
         assertThat(t.seen.get(1).headers()).containsEntry("authorization", "Custom fictitious.token.one");
+        // seen.get(2) is the /services check (what else the notice needs), sent with the newest value too.
         assertThat(t.seen.get(2).headers()).containsEntry("authorization", "rotated-one");
-        assertThat(t.seen.get(3).headers()).containsEntry("authorization", "rotated-two");
-        assertThat(t.seen.get(4).headers()).containsEntry("authorization", "rotated-three");
+        assertThat(t.seen.get(3).headers()).containsEntry("authorization", "rotated-one");
+        assertThat(t.seen.get(4).headers()).containsEntry("authorization", "rotated-two");
+        assertThat(t.seen.get(5).headers()).containsEntry("authorization", "rotated-three");
     }
 
     @Test
@@ -484,7 +487,8 @@ class RevenueNswHttpLookupAdapterTest {
         }
         assertThat(t.seen.get(0).method()).isEqualTo("POST");
         assertThat(t.seen.get(0).body()).isEqualTo("{\"offenceDate\":\"2026-01-15\"}");
-        assertThat(t.seen.get(2).body()).contains("\"vehicleRego\":\"TST123\"");
+        assertThat(t.seen.get(2).uri()).endsWith("/services");
+        assertThat(t.seen.get(3).body()).contains("\"vehicleRego\":\"TST123\"");
     }
 
     @Test
