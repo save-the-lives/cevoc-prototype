@@ -72,7 +72,7 @@ jobs:
         run: |
           az containerapp logs show --name "$APP_NAME" --resource-group "$RG_NAME" --tail 300 --format text > /tmp/app.log
           echo "Log lines fetched: $(wc -l < /tmp/app.log)"
-          grep -iE "blur|ffmpeg|hls|python|traceback|killed|OutOfMemory|No such file|ModuleNotFound|MediaController|Penalty lookup route|revenue-nsw-http|Evidence providers|service path" /tmp/app.log \
+          grep -iE "blur|ffmpeg|hls|python|traceback|killed|OutOfMemory|No such file|ModuleNotFound|MediaController|Penalty lookup route|revenue-nsw-http|Evidence providers|service path|evidence lookup|identity|WARN|ERROR" /tmp/app.log \
             | sed -E 's/[0-9]{10}/<number>/g' | cut -c1-400 | tail -150 > /tmp/filtered.log
           echo "Matching lines: $(wc -l < /tmp/filtered.log)"
           cat /tmp/filtered.log
@@ -81,3 +81,7 @@ jobs:
         run: |
           echo "::error::The blurred video was not served; see the two steps above"
           exit 1
+      - name: Blur worker log (record 0036)
+        if: inputs.what != 'quota'
+        run: |
+          az containerapp logs show --name cevoc-dev-blur-worker --resource-group "$RG_NAME" --tail 50 --format text 2>&1 | tail -30 || true
