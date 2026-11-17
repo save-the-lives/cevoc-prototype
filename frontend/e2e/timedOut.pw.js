@@ -50,6 +50,7 @@ test('full-screen viewer: timed-out photo uses the single message', async ({ pag
   await page.goto('/?mock=1');
   await page.fill('#pn', '9000000001');
   await page.fill('#od-d', '14'); await page.fill('#od-m', '3'); await page.fill('#od-y', '2026');
+  await page.fill('#rego', 'ZZZ999'); // the registration is required since 61d3777 (invented plate)
   await page.tap('button[type=submit]');
   await page.locator('.mg').first().waitFor({ timeout: 15_000 });
   // In the new gallery, images in the stage may show an error state

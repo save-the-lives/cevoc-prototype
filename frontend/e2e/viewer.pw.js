@@ -5,6 +5,7 @@ async function openGallery(page) {
   await page.goto('/?mock=1');
   await page.fill('#pn', '9000000001');
   await page.fill('#od-d', '14'); await page.fill('#od-m', '3'); await page.fill('#od-y', '2026');
+  await page.fill('#rego', 'ZZZ999'); // the registration is required since 61d3777 (invented plate)
   await page.tap('button[type=submit]');
   await page.waitForSelector('h1');
   await page.locator('.mg').first().waitFor({ timeout: 15_000 });
@@ -96,6 +97,7 @@ test('a viewer that fails to load says so and offers Try again', async ({ page }
   await page.goto('/?mock=1');
   await page.fill('#pn', '9000000001');
   await page.fill('#od-d', '14'); await page.fill('#od-m', '3'); await page.fill('#od-y', '2026');
+  await page.fill('#rego', 'ZZZ999'); // the registration is required since 61d3777 (invented plate)
   await page.tap('button[type=submit]');
   await page.locator('.mg').first().waitFor({ timeout: 15_000 });
   // Try to open full-screen — ZoomPan will fail to load
