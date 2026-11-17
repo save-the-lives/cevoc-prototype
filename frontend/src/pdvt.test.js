@@ -13,7 +13,7 @@
  *
  * Design doc: https://claude.ai/artifact/5eksi8fQJ6EmEf6gQxyfvi
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // ---- SSE reader ----
 
@@ -110,8 +110,22 @@ function filterByTags(cases) {
   return cases.filter((c) => c.tags && wanted.some((t) => c.tags.includes(t)));
 }
 
-const passCases = filterByTags(loadCases('LIVE_CASES_PASS'));
-const failCases = filterByTags(loadCases('LIVE_CASES_FAIL'));
+// Owner direction 2026-11-17: run like real people, not a fixed robot pattern. The order is shuffled every run and each
+// case waits a random 1 to 5 seconds first (the same nine cases in the same order a few seconds apart, many times a day,
+// coincided with the source refusing logins). Each case is its own lookup: the app opens a fresh browser context per lookup
+// (PlaywrightSessionFactory), so no cookies or session carry over between cases.
+function shuffled(list) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+const randomGap = () => new Promise((r) => setTimeout(r, 1000 + Math.floor(Math.random() * 4001)));
+
+const passCases = shuffled(filterByTags(loadCases('LIVE_CASES_PASS')));
+const failCases = shuffled(filterByTags(loadCases('LIVE_CASES_FAIL')));
 const baseUrl = process.env.PDVT_BASE_URL;
 const noBase = !baseUrl;
 const skipPass = noBase || !passCases.length;
@@ -141,6 +155,7 @@ describe('Smoke test config', () => {
 });
 
 describe.skipIf(skipPass)('Smoke pass cases', () => {
+  beforeEach(randomGap, 10_000);
 
   it.each(passCases.map((c) => [caseLabel(c), c]))('%s', async (_label, c) => {
     const id = c.id;
@@ -202,6 +217,7 @@ describe.skipIf(skipPass)('Smoke pass cases', () => {
 });
 
 describe.skipIf(skipFail)('Smoke fail cases', () => {
+  beforeEach(randomGap, 10_000);
 
   it.each(failCases.map((c) => [caseLabel(c), c]))('%s', async (_label, c) => {
     const id = c.id;
