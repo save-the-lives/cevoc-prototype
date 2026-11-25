@@ -229,3 +229,8 @@
 .ls-chip.is-prio { color: #334155; background: #f1f5f9; border-color: #cbd5e1; }
 .ls-chip.is-prio.is-high { color: #9a3412; background: #fff7ed; border-color: #fed7aa; }
 .ls-chip.is-prio.is-low { color: #64748b; background: #f8fafc; border-color: #e2e8f0; }
+
+.ad-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 12px 0; }
+.ad-opt { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px; background: #f8fafc; }
+.ad-opt h3 { margin: 0 0 8px; color: #134e4a; }
+.ad-opt p { margin: 6px 0; }
