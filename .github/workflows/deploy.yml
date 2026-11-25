@@ -35,7 +35,9 @@ jobs:
         with:
           name: cevoc-site
           path: cevoc-site.zip
+  # GitHub Pages is off while the repo is private. Set the repo variable PAGES_ENABLED=true to turn this back on.
   deploy:
+    if: vars.PAGES_ENABLED == 'true'
     needs: build
     runs-on: ubuntu-latest
     environment:
