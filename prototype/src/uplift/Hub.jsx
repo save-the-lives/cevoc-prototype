@@ -1,0 +1,256 @@
+import '../styles/uplift-hub.css';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from '../shared/ui.jsx';
+import {
+  FIELDS, JOURNEY, LABELS, LABEL_KEYS, OPEN, QUESTIONS, RECORD_SAMPLES, SAMPLES, STATUS, STORIES, qById, recordLink, searchLink, storyReady,
+} from './data.js';
+import { HUB_TABS, LabelSwitch, Q } from './kit.jsx';
+
+// CERTIFICATE UPLIFT HUB (#/uplift/hub): the phase 1 uplift's own hub, modelled on enf-site-onboarding.
+// Start here, screens to try, and a companion layer (journey, entry from the apps, legacy and target, field delta,
+// stories, questions), each linking to the others and to the exact screen.
+
+function Shell({ tab, title, lede, children }) {
+  useEffect(() => { document.title = `${title} · Certificate uplift hub`; }, [title]);
+  return (
+    <div className="uh-hub">
+      <header className="uh-hub__head">
+        <div className="pub-wrap">
+          <p className="uh-hub__kicker">CEVOC · phase 1 certificate uplift · prototype hub</p>
+          <nav aria-label="Uplift hub" className="uh-tabs">
+            {HUB_TABS.map(([id, label]) => <Link key={id} to={`/uplift/hub${id ? `/${id}` : ''}`} className={tab === id ? 'on' : ''} aria-current={tab === id ? 'page' : undefined}>{label}</Link>)}
+            <Link to="/uplift" className="uh-tabs__go">Search screen ↗</Link>
+            <Link to={recordLink(RECORD_SAMPLES[0])} className="uh-tabs__go">Record screen ↗</Link>
+          </nav>
+        </div>
+      </header>
+      <main className="pub-wrap uh-hub__main" id="main">
+        <div className="uh-hub__title"><h1>{title}</h1><LabelSwitch /></div>
+        {lede && <p className="uh-lede">{lede}</p>}
+        {children}
+      </main>
+      <footer className="pub-wrap uh-hub__foot">Mockup only. All locations and certificates are invented. Legacy wording comes from the owner’s screenshots, which are not stored here. <Link to="/demo">Main CEVOC demo hub</Link></footer>
+    </div>
+  );
+}
+
+const Tag = ({ open, children }) => <span className={`uh-tag ${open ? 'is-open' : 'is-done'}`}>{children}</span>;
+
+function Home() {
+  const open = QUESTIONS.filter(OPEN).length;
+  const ready = STORIES.filter(storyReady).length;
+  return (
+    <Shell tab="" title="Certificate uplift hub" lede="Phase 1 uplifts the legacy certificate search (Customer Enquiry and Verification of Certificate) to the NSW Design System, for two kinds of user, neither of whom logs in: a person checking the camera on their notice, and Revenue NSW staff searching many cameras.">
+      <div className="uh-grid2">
+        <section className="uh-card">
+          <h2>Start here</h2>
+          <h3>What this is</h3>
+          <p>A clickable mock-up with invented data. It keeps every function of the legacy page and changes how it looks and works: several locations at once, a day range in one calendar, rows that expand in place, and clear messages when a certificate is missing or the system fails.</p>
+          <h3>Who it is for</h3>
+          <p>Revenue NSW and Transport users, the CMCS data owner, Legal, and the delivery team.</p>
+          <h3>How to read it</h3>
+          <p><span className="uh-q__b" aria-hidden="true">?</span> marks an open question exactly where it matters; click it. <em>Show labels</em> switches every screen between the legacy names and the proposed new names. Each screen’s footer lists its stories.</p>
+          <p className="uh-meta">{STORIES.length} stories, {ready} ready for dev · {QUESTIONS.length} questions, {open} open</p>
+        </section>
+        <section className="uh-card">
+          <h2>Things to try</h2>
+          <ol className="uh-try">
+            {SAMPLES.map((s) => <li key={s.label}><Link to={searchLink(s)}>{s.label}</Link>: {s.note.toLowerCase()}.</li>)}
+            {RECORD_SAMPLES.slice(0, 4).map((s) => <li key={s.label}><Link to={recordLink(s)}>Person with a notice: {s.label.toLowerCase()}</Link>.</li>)}
+            <li>On the search screen, type <em>Testville</em> in the locations box, pick both, open the calendar and click two days.</li>
+            <li>Switch <em>Show labels</em> to Legacy names and back.</li>
+          </ol>
+        </section>
+      </div>
+      <h2 className="uh-h2">Screens</h2>
+      <div className="uh-tiles">
+        <Link to="/uplift" className="uh-tile"><h3>Certificate search (Revenue NSW staff)</h3><p>Several locations by code or address, day range, sortable results that expand in place, gap and fault messages.</p></Link>
+        <Link to={recordLink(RECORD_SAMPLES[0])} className="uh-tile"><h3>Certificate record (person with a notice)</h3><p>Reached from the Service NSW app or myPenalty. Only the certificates in force on the offence day.</p></Link>
+      </div>
+      <h2 className="uh-h2">Companion layer</h2>
+      <div className="uh-tiles">
+        <Link to="/uplift/hub/journey" className="uh-tile"><h3>Journey</h3><p>The public user first, forked by app, then staff.</p></Link>
+        <Link to="/uplift/hub/entry" className="uh-tile"><h3>Entry from the apps</h3><p>Step by step from the Service NSW app or myPenalty to the record and back. Waiting on screenshots.</p></Link>
+        <Link to="/uplift/hub/compare" className="uh-tile"><h3>Legacy and target</h3><p>Each part of the page, side by side.</p></Link>
+        <Link to="/uplift/hub/fields" className="uh-tile"><h3>Field delta</h3><p>Fields on the legacy page against what the BRD asks for, and the label changes.</p></Link>
+        <Link to="/uplift/hub/stories" className="uh-tile"><h3>Stories</h3><p>Given/When/Then acceptance criteria, ready or not.</p></Link>
+        <Link to="/uplift/hub/questions" className="uh-tile"><h3>Questions</h3><p>Everything still undecided, who can answer, and what it changes.</p></Link>
+      </div>
+    </Shell>
+  );
+}
+
+function Lane({ title, steps }) {
+  return (
+    <section className="uh-lane">
+      <h2>{title}</h2>
+      <ol className="uh-steps">
+        {steps.map((s, i) => (
+          <li key={s.id} className={`uh-step is-${s.kind}`}>
+            <span className="uh-step__n">{i + 1}</span>
+            <strong>{s.name}</strong>
+            {s.fork ? <span className="uh-fork">{s.fork.map((f, j) => <span key={f}>{j > 0 && <em> or </em>}{f}</span>)}</span> : <span className="uh-step__who">{s.who}</span>}
+            <small>{s.note}</small>
+            {s.to && <Link to={s.to}>Open this step ↗</Link>}
+            {s.qs && <span>{s.qs.map((id) => <Q key={id} id={id} />)}</span>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function Journey() {
+  return (
+    <Shell tab="journey" title="Journey" lede="Who reaches the certificate page and how. Dashed: existing services. Orange: CEVOC. The public user comes first.">
+      <Lane title="Public user: someone with a penalty notice" steps={JOURNEY.public} />
+      <Lane title="Staff: Revenue NSW officer" steps={JOURNEY.staff} />
+    </Shell>
+  );
+}
+
+function Entry() {
+  const steps = [
+    ['Their notice in the app', 'The Service NSW app or myPenalty shows the notice: time, place, photos.'],
+    ['The link or button', 'A link such as “Check the camera’s certificate” carries the location code and the offence date.'],
+    ['The CEVOC record', 'Only the certificates in force that day.', recordLink(RECORD_SAMPLES[0])],
+    ['Back to decide', 'Pay, request a review or elect to go to court, in the same app.'],
+  ];
+  return (
+    <Shell tab="entry" title="Entry from the apps" lede="How someone gets from the Service NSW app or myPenalty to the certificate record and back. The app screens will be recreated from the owner’s screenshots once they arrive; the screenshots themselves are never stored in this public repo.">
+      {['Service NSW app', 'myPenalty (Revenue NSW)'].map((app) => (
+        <section key={app} className="uh-lane">
+          <h2>{app}</h2>
+          <ol className="uh-steps">
+            {steps.map(([t, d, to], i) => (
+              <li key={t} className={`uh-step is-${i === 2 ? 'ours' : 'ext'}`}>
+                <span className="uh-step__n">{i + 1}</span><strong>{t}</strong><small>{d}</small>
+                {to ? <Link to={to}>Open ↗</Link> : <span className="uh-pending">Mock screen waiting on the owner’s screenshot</span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+      <p><Q id="U15" /> How each app links to the record, and what the link carries.</p>
+    </Shell>
+  );
+}
+
+// Legacy and target, one accordion per part, legacy look recreated on the left, target on the right.
+const Lg = {
+  Banner: () => <div className="lg-banner"><span>Customer Enquiry and Verification of Certificate</span><span className="lg-logo">NSW</span></div>,
+  Bar: () => <div className="lg-bar">✉ Contact us · ? Help · Wednesday, 25 November 2026</div>,
+  Box: ({ w = 110, v = '' }) => <span className="lg-box" style={{ width: w }}>{v}</span>,
+  Btn: ({ red, children }) => <span className={`lg-btn${red ? ' is-red' : ''}`}><span className="lg-btn__i">{red ? 'X' : '➔'}</span>{children}</span>,
+};
+const Tg = {
+  Btn: ({ outline, children }) => <span className={`tg-btn${outline ? ' is-outline' : ''}`}>{children}</span>,
+  Field: ({ label, children }) => <span className="tg-field"><span className="tg-label">{label}</span>{children}</span>,
+};
+const COMPARE = [
+  { part: 'Header', change: 'Same content, new look', legacy: <><Lg.Banner /><Lg.Bar /></>, target: <><div className="tg-head"><span className="tg-logo">NSW</span> Customer Enquiry and Verification of Certificate</div><div className="tg-bar">Contact us · Help · Wednesday 25 November 2026</div></> },
+  { part: 'Instructions', change: 'Clearer wording (label switch)', legacy: <div className="lg-text"><span className="lg-h">Search</span><br />Please enter the search parameters<br /><small><span className="lg-star">*</span>indicates mandatory fields.</small></div>, target: <div className="tg-text"><strong className="tg-h">Find camera certificates</strong><br />Search by camera location and a date range.<br /><small>All fields are required.</small></div> },
+  { part: 'Location', change: 'One location becomes several, by code or address', legacy: <div className="lg-text"><span className="lg-star">*</span> <b>Location code</b> : <Lg.Box w={80} v="1234" /></div>, target: <Tg.Field label="Camera locations"><span className="tg-chips"><span className="tg-chip">1234 · Example St… ✕</span><span className="tg-chip">4567 · Specimen Pde… ✕</span><span className="tg-ph">Add another</span></span></Tg.Field> },
+  { part: 'Dates', change: 'Date and time become days; one calendar picks the range', legacy: <div className="lg-text"><span className="lg-star">*</span> <b>Date/Time from</b> : <Lg.Box w={120} /> <span className="lg-cal">▦</span>&nbsp; <span className="lg-star">*</span> <b>Date/Time to</b> : <Lg.Box w={120} v="25/11/2026 12:03" /> <span className="lg-cal">▦</span></div>, target: <span className="tg-row"><Tg.Field label="From"><span className="tg-input">01/11/2025</span></Tg.Field><Tg.Field label="To"><span className="tg-input">30/06/2026</span></Tg.Field><span className="tg-calbtn">▦</span></span> },
+  { part: 'Buttons', change: 'Same three actions, full-size, aligned', legacy: <div><Lg.Btn>SEARCH</Lg.Btn> <Lg.Btn>CLEAR</Lg.Btn> <Lg.Btn red>CLOSE</Lg.Btn></div>, target: <span className="tg-row"><Tg.Btn>Search</Tg.Btn><Tg.Btn outline>Clear</Tg.Btn><Tg.Btn outline>Close</Tg.Btn></span> },
+  { part: 'Errors', change: 'Error summary linked to each field', legacy: <div className="lg-text">Little guidance on what is wrong.</div>, target: <div className="tg-err"><strong>There is a problem</strong><br /><u>Add at least one camera location.</u><br /><u>Enter the From date.</u></div> },
+  { part: 'Results', change: 'Same columns plus Location; rows expand in place', legacy: <table className="lg-table"><thead><tr><th>Certificate Description</th><th>Certificate type ⇕</th><th>Period ⇕</th><th>Certified date ⇕</th><th>Expiry date ⇕</th></tr></thead><tbody><tr><td>Approved Traffic Enforcement Device</td><td>Red Light Speed Camera</td><td>YEARLY</td><td>12/08/2025</td><td>12/08/2026</td></tr></tbody></table>, target: <table className="tg-table"><thead><tr><th /><th>Location</th><th>Certificate</th><th>Camera type</th><th>Certification cycle</th><th>Certified on</th><th>Expires on</th></tr></thead><tbody><tr><td>▾</td><td>1234</td><td>Approved Traffic Enforcement Device</td><td>Red Light Speed Camera</td><td>YEARLY</td><td>12/08/2025</td><td>12/08/2026</td></tr><tr><td /><td colSpan={6}><small>Status: Published · Device model: awaiting CMCS…</small></td></tr></tbody></table> },
+  { part: 'Nothing to show', change: 'Three distinct messages: no match, missing certificate, system fault', legacy: <table className="lg-table"><tbody><tr><td>No records found.</td></tr></tbody></table>, target: <div className="tg-stack"><span className="tg-empty">No certificates found · Change the dates</span><span className="tg-warn">Missing certificate: no quarterly certificate from 01/03/2026 to 14/03/2026</span><span className="tg-danger">We couldn’t get certificates right now. This is a problem with our system, not a missing certificate.</span></div> },
+  { part: 'Downloads', change: 'Same: none', legacy: <div className="lg-text">None</div>, target: <div className="tg-text">None</div> },
+];
+function Compare() {
+  return (
+    <Shell tab="compare" title="Legacy and target" lede="Each part of the page. Open a part to see the legacy look, recreated from the owner’s screenshots, beside the target.">
+      <div className="uh-acc">
+        {COMPARE.map((r, i) => (
+          <details key={r.part} open={i === 0}>
+            <summary><strong>{r.part}</strong><span>{r.change}</span></summary>
+            <div className="uh-sbs">
+              <figure><figcaption>Legacy today</figcaption><div className="lg">{r.legacy}</div></figure>
+              <figure><figcaption>Target (phase 1)</figcaption><div className="tg">{r.target}</div></figure>
+            </div>
+          </details>
+        ))}
+      </div>
+    </Shell>
+  );
+}
+
+function Fields() {
+  return (
+    <Shell tab="fields" title="Field delta" lede="Every field on the legacy page against what the BRD asks for. “New” means the API or data may need to change; the source is to be confirmed from CMCS samples.">
+      <div className="up-scroll">
+        <table className="uh-tbl">
+          <thead><tr><th>Field</th><th>On legacy page</th><th>In the BRD</th><th>Delta</th><th>Change</th><th>Likely source</th><th>Question</th></tr></thead>
+          <tbody>{FIELDS.map((f) => (
+            <tr key={f.field}><td><strong>{f.field}</strong></td><td>{f.legacy}</td><td>{f.brd}</td><td><span className={`uh-tag ${f.delta === 'New' ? 'is-warn' : f.delta === 'Changed' ? 'is-open' : 'is-done'}`}>{f.delta}</span></td><td>{f.change}</td><td>{f.source}</td><td>{f.q && <Q id={f.q} />}</td></tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <h2 className="uh-h2">Label changes <Q id="U28" /></h2>
+      <div className="up-scroll">
+        <table className="uh-tbl">
+          <thead><tr><th>Legacy name</th><th>New name</th></tr></thead>
+          <tbody>{LABEL_KEYS.map((k) => <tr key={k}><td>{LABELS.legacy[k]}</td><td>{LABELS.next[k]}</td></tr>)}</tbody>
+        </table>
+      </div>
+      <h2 className="uh-h2">API for other government sites <Q id="U7" /></h2>
+      <p><code>GET /api/v1/certificates?locations=1234,4567&amp;from=2025-11-01&amp;to=2026-06-30</code> returns the rows the search shows, as JSON, including status, re-issue and gaps. Same answer for Service NSW, Revenue NSW and this page.</p>
+    </Shell>
+  );
+}
+
+function Stories({ query }) {
+  const [f, setF] = useState(query.screen || 'all');
+  const rows = STORIES.filter((s) => f === 'all' || s.screen === f);
+  return (
+    <Shell tab="stories" title="Stories" lede="A story is ready for dev only when it has acceptance criteria and none of its questions is open.">
+      <div className="seg2 uh-seg" role="group" aria-label="Filter by screen">
+        {[['all', 'All'], ['search', 'Search'], ['record', 'Record'], ['fields', 'API']].map(([k, t]) => <button key={k} type="button" aria-pressed={f === k} onClick={() => setF(k)}>{t}</button>)}
+      </div>
+      {rows.map((s) => (
+        <article key={s.id} className={`uh-card uh-st${query.s === s.id ? ' is-hl' : ''}`} id={s.id}>
+          <p className="uh-st__h"><strong>{s.id}</strong> <Tag open={!storyReady(s)}>{storyReady(s) ? 'Ready for dev' : 'Not ready'}</Tag> <span className="uh-meta">Phase 1 · {s.screen === 'search' ? 'Search screen' : s.screen === 'record' ? 'Record screen' : 'API'}</span></p>
+          <p>As a <strong>{s.role}</strong>, I want to {s.want}, so {s.so}.</p>
+          <ol className="uh-ac">{s.ac.map((a) => <li key={a.w + a.t}><b>Given</b> {a.g}, <b>when</b> {a.w}, <b>then</b> {a.t}.</li>)}</ol>
+          {s.qs.length > 0 && <p className="uh-meta">Questions: {s.qs.map((id) => <span key={id} className="uh-qref">{id} <Q id={id} />{OPEN(qById(id)) ? ' open' : ' settled'}</span>)}</p>}
+        </article>
+      ))}
+    </Shell>
+  );
+}
+
+function Questions({ query }) {
+  const [f, setF] = useState('All');
+  const rows = useMemo(() => QUESTIONS.filter((q) => (f === 'All' || q.status === f) && (!query.screen || (q.at || []).includes(query.screen))), [f, query.screen]);
+  useEffect(() => { if (query.q) document.getElementById(`q-${query.q}`)?.scrollIntoView({ block: 'center' }); }, [query.q]);
+  return (
+    <Shell tab="questions" title="Questions" lede={`Everything still undecided, who can answer it, and what it changes.${query.screen ? ` Showing questions for the ${query.screen} screen.` : ''}`}>
+      <div className="seg2 uh-seg" role="group" aria-label="Filter by status">
+        {['All', ...STATUS].map((s) => <button key={s} type="button" aria-pressed={f === s} onClick={() => setF(s)}>{s} ({s === 'All' ? QUESTIONS.length : QUESTIONS.filter((q) => q.status === s).length})</button>)}
+      </div>
+      <div className="up-scroll">
+        <table className="uh-tbl">
+          <thead><tr><th>#</th><th>Question</th><th>Why it matters</th><th>Current assumption</th><th>Who can answer</th><th>Status</th><th>Next step</th><th>Stories</th></tr></thead>
+          <tbody>{rows.map((q) => (
+            <tr key={q.id} id={`q-${q.id}`} className={query.q === q.id ? 'is-hl' : ''}>
+              <td>{q.id}</td><td><strong>{q.topic}</strong><br />{q.q}</td><td>{q.why}</td><td>{q.assume}</td><td>{q.who}</td>
+              <td><Tag open={OPEN(q)}>{q.status}</Tag></td><td>{q.action}</td>
+              <td>{STORIES.filter((s) => s.qs.includes(q.id)).map((s) => <Link key={s.id} to={`/uplift/hub/stories?s=${s.id}`}>{s.id} </Link>)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </Shell>
+  );
+}
+
+export default function Hub({ page, query = {} }) {
+  if (page === 'journey') return <Journey />;
+  if (page === 'entry') return <Entry />;
+  if (page === 'compare') return <Compare />;
+  if (page === 'fields') return <Fields />;
+  if (page === 'stories') return <Stories query={query} />;
+  if (page === 'questions') return <Questions query={query} />;
+  return <Home />;
+}
