@@ -253,3 +253,13 @@
 .ls-ac__kind { color: #64748b; font: 12px system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; align-self: center; }
 .ls-search input[aria-invalid="true"] { border-color: #b91c1c; }
 .uh-card.ad.is-hl { outline: 3px solid #2dd4bf; }
+/* Shared storage indicator, add / delete (owner, 26 Nov 2026) */
+.ls-store { margin: 0; font-size: 14px; padding: 6px 10px; border-radius: 4px; border-left: 4px solid; }
+.ls-store.is-server { background: #ecfdf5; border-color: #047857; }
+.ls-store.is-browser { background: #fffbeb; border-color: #b45309; }
+.ls-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; min-height: 40px; }
+.ls-btn.is-danger { border-color: #b91c1c; color: #b91c1c !important; }
+.is-deleted { opacity: .7; }
+.uh-card.is-deleted { border-style: dashed; }
+.uh-qref.is-gone { text-decoration: line-through; color: #64748b; }
+.ls-edit .ls-meta.is-wide { flex: 1 1 100%; }

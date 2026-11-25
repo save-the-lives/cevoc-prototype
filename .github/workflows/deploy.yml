@@ -28,14 +28,8 @@ jobs:
       # Downloadable copy of the same build, for hosting locally (relative paths and hash routing, so any folder works).
       - name: Package the site as a zip
         run: |
-          cat > prototype/dist/HOW-TO-RUN.txt <<'TXT'
-          CEVOC prototype: downloaded copy of the site.
-          Serve this folder with a small local web server, then open the address it prints:
-            npx serve .            (needs Node.js)
-            python3 -m http.server (needs Python; then open http://localhost:8000/)
-          Opening index.html straight from disk (file://) does not work: browsers block the page's scripts there.
-          All data in it is invented.
-          TXT
+          # HOW-TO-RUN.txt ships from prototype/public (XAMPP/PHP and plain web server steps).
+          test -s prototype/dist/HOW-TO-RUN.txt
           (cd prototype/dist && zip -qr ../../cevoc-site.zip .)
       - uses: actions/upload-artifact@v4
         with:

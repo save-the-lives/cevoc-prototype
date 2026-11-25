@@ -1,56 +1,136 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
-import { OPEN, PATHS, PRIORITIES, QUESTIONS, STATUS, STORIES, USERS, qById, storyReady } from './data.js';
+import { OPEN, PATHS, PRIORITIES, QUESTIONS, STATUS, STORIES, USERS } from './data.js';
 import { ADRS, ADR_STATUS } from './adrs.js';
 import { compile, suggest, unknownField } from './jql.js';
-import { exportXlsx, importXlsx, useItemState } from './state.js';
+import { exportXlsx, idNum, importXlsx, useItemState } from './state.js';
 
-// Hub Stories, Questions and ADRs pages (owner, 25 Nov 2026): tagged, filterable, JQL-style searchable with
-// autocomplete, sortable; a pencil button edits each item in place (saved in this browser); export the latest state
-// to Excel and import it back. The published data is the baseline; edits stay in this browser until the exported
-// file is handed back and the site updated. Every question links to at least one story, or says why it can't.
+// Hub Stories, Questions and ADRs pages (owner, 25-26 Nov 2026): tagged, filterable, JQL-style searchable with
+// autocomplete, sortable; a pencil button edits each item in place; Add creates a new item with the next free ID;
+// Delete is soft (hidden, restorable, exported with Deleted = Yes). Changes are kept on the server when the site runs
+// on Apache/XAMPP with PHP (shared, no login), otherwise in this browser (see state.js). Export the latest state to
+// Excel and import it back. Every question links to at least one story, or says why it can't.
 
 const Tag = ({ open, children }) => <span className={`uh-tag ${open ? 'is-open' : 'is-done'}`}>{children}</span>;
 const BRDS = ['BR_01', 'BR_02', 'BR_03', 'BR_04', 'BR_05', 'BR_06', 'BR_07', 'BR_08', 'BR_09', 'BR_10'];
 const SCREENS = ['search', 'record', 'fields', 'entry', 'journey'];
 const today = () => new Date().toISOString().slice(0, 10);
 const split = (v) => (Array.isArray(v) ? v : String(v || '').split(/[,;]+|\s+(?=BR_)/).map((x) => x.trim()).filter(Boolean));
-const storiesFor = (qid) => STORIES.filter((s) => s.qs.includes(qid));
-const adrsFor = (key, id) => ADRS.filter((a) => a[key].includes(id));
 const uniq = (xs) => [...new Set(xs.filter(Boolean))].sort();
 
-function StateBar({ kind, st, columns, items, label }) {
+// Published baselines and templates for new items (shared by all three pages, so links stay consistent).
+const STORY_BASE = STORIES.map((s) => ({ ...s, comment: '', tags: '' }));
+const Q_BASE = QUESTIONS.map((x) => ({ ...x, answer: '', tags: '', priority: x.priority || '' }));
+const ADR_BASE = ADRS.map((a) => ({ ...a, notes: '', tags: '' }));
+const STORY_NEW = { role: '', want: '', so: '', screen: 'search', acText: '', qs: [], priority: 'Medium', user: USERS[0], path: PATHS[0], brd: [], tags: '', comment: '' };
+const Q_NEW = { topic: '', q: '', why: '', assume: '', who: '', action: '', at: [], status: 'Assumption to validate', priority: '', tags: '', answer: '', noStoryReason: '' };
+const ADR_NEW = { title: '', context: '', options: [], decision: '', consequences: '', qs: [], stories: [], status: 'Proposed', tags: '', notes: '' };
+
+const acOf = (s) => (Array.isArray(s.ac) && s.ac.length ? s.ac.map((a) => `Given ${a.g}, when ${a.w}, then ${a.t}.`) : String(s.acText || '').split(/\n+/).map((x) => x.trim()).filter(Boolean));
+const byId = (list) => Object.fromEntries(list.map((x) => [x.id, x]));
+const readyOf = (s, qmap) => {
+  if (s.readyOverride === 'Ready') return true;
+  if (s.readyOverride === 'Not ready') return false;
+  return acOf(s).length > 0 && !split(s.qs).some((id) => qmap[id] && !qmap[id].deleted && OPEN(qmap[id]));
+};
+
+// The three lists, live (published + changes), for cross-links on every page.
+function useAll() {
+  const stories = useItemState('stories', STORY_BASE, STORY_NEW);
+  const questions = useItemState('questions', Q_BASE, Q_NEW);
+  const adrs = useItemState('adrs', ADR_BASE, ADR_NEW);
+  const qmap = byId(questions.all);
+  return {
+    stories, questions, adrs, qmap, smap: byId(stories.all), amap: byId(adrs.all),
+    storiesFor: (qid) => stories.items.filter((s) => split(s.qs).includes(qid)),
+    adrsFor: (key, id) => adrs.items.filter((a) => split(a[key]).includes(id)),
+  };
+}
+
+// A link to another item; says so when it was deleted or does not exist.
+function Ref({ kind, id, map, open }) {
+  const it = map[id];
+  const to = kind === 'q' ? `/uplift/hub/questions?q=${id}` : kind === 's' ? `/uplift/hub/stories?s=${id}` : `/uplift/hub/adr?a=${id}`;
+  if (!it) return <span className="uh-qref is-gone">{id} (not found)</span>;
+  return <Link to={to} className={`uh-qref${it.deleted ? ' is-gone' : ''}`}>{id}{it.deleted ? ' (deleted)' : open && OPEN(it) ? ' (open)' : ''}</Link>;
+}
+const Refs = ({ ids, ...p }) => split(ids).map((id) => <Ref key={id} id={id} {...p} />);
+
+function StateBar({ kind, st, columns, label, one, onAdd, flash, setFlash, showDeleted, setShowDeleted }) {
   const file = useRef(null);
   const [msg, setMsg] = useState('');
-  const edits = Object.keys(st.local).length;
+  const changes = Object.keys(st.local).length;
+  const server = st.mode.mode === 'server';
+  const where = server ? 'on this server' : 'in this browser';
   return (
     <div className="ls-state">
+      <p className={`ls-store ${server ? 'is-server' : 'is-browser'}`} data-storage={st.mode.mode}>
+        <strong>{st.mode.mode === 'checking' ? 'Checking storage…' : server ? 'Shared storage: changes are saved on this server for everyone who opens this site.' : 'Browser storage: changes are saved in this browser only.'}</strong>
+        {server && ' There is no login: anyone who can open this site can change and delete items.'}
+        {!server && st.mode.mode !== 'checking' && ' To share them, export to Excel and hand the file back, or run the site on Apache/XAMPP with PHP (see HOW-TO-RUN.txt).'}
+      </p>
+      {st.error && <p className="ls-err" role="alert">{st.error}</p>}
       <div className="ls-state__btns">
-        <button type="button" onClick={() => exportXlsx(`cevoc-uplift-${kind}-${today()}.xlsx`, columns, items).then(() => setMsg('Exported.')).catch((e) => setMsg(`Export failed: ${e.message}`))}>Export to Excel</button>
+        <button type="button" onClick={() => exportXlsx(`cevoc-uplift-${kind}-${today()}.xlsx`, columns, st.all).then(() => setMsg('Exported.')).catch((e) => setMsg(`Export failed: ${e.message}`))}>Export to Excel</button>
         <button type="button" onClick={() => file.current?.click()}>Import from Excel</button>
+        <button type="button" onClick={onAdd}>Add {one}</button>
         <input ref={file} type="file" accept=".xlsx" hidden onChange={async (e) => {
           const f = e.target.files?.[0]; e.target.value = '';
           if (!f) return;
           try {
             const rec = await importXlsx(f, columns);
-            // Keep only rows that differ from the published baseline, so an untouched export changes nothing.
-            const changed = Object.fromEntries(Object.entries(rec).filter(([id, r]) => {
-              const base = items.find((x) => x.id === id)?.base;
-              return base && columns.some((c) => c.key && r[c.key] !== undefined && String(r[c.key]) !== String(c.get(base) ?? ''));
-            }));
-            st.save({ ...st.local, ...changed });
-            setMsg(`Imported ${f.name}: ${Object.keys(changed).length} changed ${label}, ${Object.keys(rec).length - Object.keys(changed).length} unchanged.`);
+            const pattern = { questions: /^U[1-9]\d{0,3}$/, stories: /^S[1-9]\d{0,3}$/, adrs: /^ADR-\d{3,4}$/ }[kind];
+            const set = {}; const n = { changed: 0, added: 0, deleted: 0, same: 0, skipped: [] };
+            Object.entries(rec).forEach(([id, r]) => {
+              const cur = st.all.find((x) => x.id === id);
+              const now = new Date().toISOString();
+              if (cur?.base) {
+                // Published item: keep only fields that differ from the baseline, so an untouched export changes nothing.
+                const diff = Object.fromEntries(columns.filter((c) => c.key && r[c.key] !== undefined && String(r[c.key]) !== String(c.get(cur.base) ?? '')).map((c) => [c.key, r[c.key]]));
+                if (r.deleted) n.deleted += 1;
+                if (!Object.keys(diff).length && !r.deleted && !cur.deleted) { n.same += 1; return; }
+                if (Object.keys(diff).length) n.changed += 1;
+                set[id] = { ...(st.local[id] || {}), ...diff, deleted: !!r.deleted, updatedAt: now, imported: f.name };
+                if (!r.deleted) { delete set[id].deleted; delete set[id].deletedAt; }
+                return;
+              }
+              if (!pattern.test(id)) { n.skipped.push(id); return; }
+              if (!cur) n.added += 1; else n.changed += 1;
+              if (r.deleted) n.deleted += 1;
+              const { deleted, ...fields } = r;
+              set[id] = { ...(st.local[id] || {}), ...fields, isNew: true, updatedAt: now, imported: f.name, ...(deleted ? { deleted: true } : {}) };
+              if (!deleted) delete set[id].deleted;
+            });
+            st.save({ ...st.local, ...set });
+            setMsg(`Imported ${f.name}: ${n.changed} changed, ${n.added} new, ${n.deleted} marked deleted, ${n.same} unchanged ${label}${n.skipped.length ? `; skipped bad IDs ${n.skipped.join(', ')}` : ''}.`);
           } catch (err) { setMsg(`Import failed: ${err.message}`); }
         }} />
-        {edits > 0 && <button type="button" onClick={() => { if (window.confirm(`Discard ${edits} edit(s) made in this browser?`)) st.reset(); }}>Discard edits in this browser ({edits})</button>}
+        {changes > 0 && <button type="button" onClick={() => { if (window.confirm(`Discard all ${changes} change(s) saved ${where}, including added and deleted ${label}? This cannot be undone.`)) st.reset(); }}>Discard all changes ({changes})</button>}
+        {st.deleted.length > 0 && <label className="ls-check"><input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} /> Show deleted ({st.deleted.length})</label>}
       </div>
       <p className="ls-meta" role="status">
+        {flash && <strong>{flash.text} {flash.undo && <button type="button" className="ls-link" onClick={() => { flash.undo(); setFlash(null); }}>Undo</button>} </strong>}
         {msg && <strong>{msg} </strong>}
-        {edits > 0 ? `${edits} ${label} edited in this browser. ` : ''}Edits and imports stay in this browser only. To make them permanent, export and hand the file back.
+        {changes > 0 ? `${changes} ${label} changed ${where}. ` : ''}{server ? 'Export to Excel keeps a copy.' : 'To make them permanent, export and hand the file back.'}
       </p>
     </div>
   );
 }
+
+// Delete / restore controls used in every edit panel and on deleted items.
+function useDelete(st, label, setEditing, setFlash) {
+  return {
+    del: (id) => {
+      if (!window.confirm(`Delete ${id}? It is hidden from the list and can be restored (tick “Show deleted”).`)) return;
+      st.remove(id); setEditing(null);
+      setFlash({ text: `Deleted ${id}.`, undo: () => st.restore(id) });
+    },
+    restore: (id) => { st.restore(id); setFlash({ text: `Restored ${id}.` }); },
+  };
+}
+const DeletedBar = ({ it, restore }) => (it.deleted ? (
+  <p className="ls-meta ls-deleted"><span className="uh-tag is-open">Deleted</span> {it.deletedAt ? `on ${String(it.deletedAt).slice(0, 10)}` : ''} <button type="button" className="ls-link" onClick={() => restore(it.id)}>Restore {it.id}</button></p>
+) : null);
 
 // Search box with Jira-style autocomplete: fields, then operators, then values from the data; AND / OR / NOT.
 // Arrow keys move, Tab or Enter accepts, Esc closes.
@@ -126,9 +206,15 @@ const Pencil = ({ id, on, toggle }) => (
 
 function EditedNote({ it, st }) {
   if (!it.local) return null;
+  const where = st.mode.mode === 'server' ? 'on this server' : 'in this browser';
+  const when = String(it.local.updatedAt || '').slice(0, 10);
+  const from = it.local.imported ? `, imported from ${it.local.imported}` : '';
+  if (!it.base) return <p className="ls-meta ls-edited">New, added {where}{when ? ` (last change ${when})` : ''}{from}.</p>;
+  const edited = Object.keys(it.local).some((k) => !['updatedAt', 'imported', 'deleted', 'deletedAt'].includes(k));
+  if (!edited) return null;
   return (
     <p className="ls-meta ls-edited">
-      Edited in this browser {String(it.local.updatedAt).slice(0, 10)}{it.local.imported ? `, imported from ${it.local.imported}` : ''}.{' '}
+      Edited {where} {when}{from}.{' '}
       <button type="button" className="ls-link" onClick={() => st.undo(it.id)}>Undo edits</button>
     </p>
   );
@@ -137,33 +223,35 @@ function EditedNote({ it, st }) {
 const Tags = ({ tags }) => split(tags).map((t) => <span key={t} className="ls-chip is-tag">#{t}</span>);
 
 const sorter = (get, dir) => (a, b) => { const x = get(a); const y = get(b); return (x > y ? 1 : x < y ? -1 : 0) * dir; };
-const idNum = (id) => Number(String(id).replace(/\D/g, ''));
+
+const sortBtnOf = (sort, setSort) => (k, t) => <button type="button" className={`ls-sort${sort.k === k ? ' on' : ''}`} aria-pressed={sort.k === k} onClick={() => setSort((x) => ({ k, dir: x.k === k ? -x.dir : 1 }))}>{t}{sort.k === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}</button>;
+const scrollTo = (id) => setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'center' }), 60);
 
 // --------------------------------------------------------------------------------------------------------------
 export function StoriesPage({ query = {} }) {
-  const st = useItemState('stories', STORIES.map((s) => ({ ...s, comment: '', tags: '' })));
+  const all = useAll();
+  const st = all.stories;
   const [q, setQ] = useState('');
   const [f, setF] = useState({ user: '', path: '', screen: query.screen || '', ready: '', brd: '', priority: '' });
   const [sort, setSort] = useState({ k: 'id', dir: 1 });
   const [editing, setEditing] = useState(query.s && query.edit ? query.s : null);
-  const ready = (s) => {
-    if (s.readyOverride === 'Ready') return true;
-    if (s.readyOverride === 'Not ready') return false;
-    return storyReady(s);
-  };
+  const [flash, setFlash] = useState(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const { del, restore } = useDelete(st, 'stories', setEditing, setFlash);
+  const ready = (s) => readyOf(s, all.qmap);
   const fields = useMemo(() => ({
     id: (s) => s.id, priority: (s) => s.priority, user: (s) => s.user, path: (s) => s.path, screen: (s) => s.screen, brd: (s) => split(s.brd),
-    ready: (s) => (ready(s) ? 'yes' : 'no'), question: (s) => s.qs, adr: (s) => adrsFor('stories', s.id).map((a) => a.id), tag: (s) => split(s.tags), role: (s) => s.role,
-    text: (s) => `${s.want} ${s.so} ${s.ac.map((a) => `${a.g} ${a.w} ${a.t}`).join(' ')} ${s.comment || ''}`,
-  }), []); // eslint-disable-line react-hooks/exhaustive-deps
+    ready: (s) => (ready(s) ? 'yes' : 'no'), question: (s) => split(s.qs), adr: (s) => all.adrsFor('stories', s.id).map((a) => a.id), tag: (s) => split(s.tags), role: (s) => s.role,
+    text: (s) => `${s.want} ${s.so} ${acOf(s).join(' ')} ${s.comment || ''}`,
+  }), [all]); // eslint-disable-line react-hooks/exhaustive-deps
   const values = useMemo(() => ({
-    id: STORIES.map((s) => s.id), priority: PRIORITIES, user: USERS, path: PATHS, screen: ['search', 'record', 'fields'], brd: BRDS, ready: ['yes', 'no'],
-    question: QUESTIONS.map((x) => x.id), adr: ADRS.map((a) => a.id), tag: uniq(st.items.flatMap((s) => split(s.tags))), role: uniq(STORIES.map((s) => s.role)),
-  }), [st.items]);
+    id: st.items.map((s) => s.id), priority: PRIORITIES, user: USERS, path: PATHS, screen: ['search', 'record', 'fields'], brd: BRDS, ready: ['yes', 'no'],
+    question: all.questions.items.map((x) => x.id), adr: all.adrs.items.map((a) => a.id), tag: uniq(st.items.flatMap((s) => split(s.tags))), role: uniq(st.items.map((s) => s.role)),
+  }), [st.items, all.questions.items, all.adrs.items]);
   const { test, errors } = useMemo(() => compile(q, fields), [q, fields]);
-  const rows = st.items
+  const rows = (showDeleted ? st.all : st.items)
     .filter((s) => (!f.user || s.user === f.user) && (!f.path || s.path === f.path) && (!f.screen || s.screen === f.screen) && (!f.ready || (f.ready === 'Ready') === ready(s)) && (!f.brd || split(s.brd).includes(f.brd)) && (!f.priority || s.priority === f.priority))
-    .filter(test)
+    .filter((s) => s.id === editing || test(s))
     .sort(sorter(sort.k === 'id' ? (s) => idNum(s.id) : sort.k === 'ready' ? (s) => (ready(s) ? 0 : 1) : sort.k === 'priority' ? (s) => PRIORITIES.indexOf(s.priority) : (s) => String(s[sort.k] || ''), sort.dir));
   useEffect(() => { if (query.s) document.getElementById(query.s)?.scrollIntoView({ block: 'center' }); }, [query.s]);
   const columns = [
@@ -173,20 +261,24 @@ export function StoriesPage({ query = {} }) {
     { header: 'Path', key: 'path', get: (s) => s.path },
     { header: 'BRD', key: 'brd', get: (s) => split(s.brd).join(', ') },
     { header: 'Tags', key: 'tags', get: (s) => split(s.tags).join(', ') },
-    { header: 'Screen', get: (s) => s.screen },
+    { header: 'Screen', nkey: 'screen', get: (s) => s.screen },
+    { header: 'Role', nkey: 'role', get: (s) => s.role },
+    { header: 'I want to', nkey: 'want', get: (s) => s.want },
+    { header: 'So that', nkey: 'so', get: (s) => s.so },
     { header: 'Story', get: (s) => `As a ${s.role}, I want to ${s.want}, so ${s.so}.` },
-    { header: 'Acceptance criteria', get: (s) => s.ac.map((a, i) => `${i + 1}. Given ${a.g}, when ${a.w}, then ${a.t}.`).join('\n') },
-    { header: 'Related questions', get: (s) => s.qs.join(', ') },
-    { header: 'Related ADRs', get: (s) => adrsFor('stories', s.id).map((a) => a.id).join(', ') },
-    { header: 'Ready (computed)', get: (s) => (storyReady(s) ? 'Ready' : 'Not ready') },
+    { header: 'Acceptance criteria', nkey: 'acText', get: (s) => acOf(s).join('\n') },
+    { header: 'Related questions', key: 'qs', get: (s) => split(s.qs).join(', ') },
+    { header: 'Related ADRs', get: (s) => all.adrsFor('stories', s.id).map((a) => a.id).join(', ') },
+    { header: 'Ready (computed)', get: (s) => (readyOf({ ...s, readyOverride: '' }, all.qmap) ? 'Ready' : 'Not ready') },
     { header: 'Ready override', key: 'readyOverride', get: (s) => s.readyOverride || '' },
     { header: 'Comment', key: 'comment', get: (s) => s.comment || '' },
   ];
-  const sortBtn = (k, t) => <button type="button" className={`ls-sort${sort.k === k ? ' on' : ''}`} aria-pressed={sort.k === k} onClick={() => setSort((x) => ({ k, dir: x.k === k ? -x.dir : 1 }))}>{t}{sort.k === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}</button>;
+  const sortBtn = sortBtnOf(sort, setSort);
+  const onAdd = () => { const id = st.add(); setQ(''); setF({ user: '', path: '', screen: '', ready: '', brd: '', priority: '' }); setEditing(id); setFlash({ text: `Added ${id}. Fill it in below.` }); scrollTo(id); };
 
   return (
     <>
-      <StateBar kind="stories" st={st} columns={columns} items={st.items} label="stories" />
+      <StateBar kind="stories" st={st} columns={columns} label="stories" one="story" onAdd={onAdd} flash={flash} setFlash={setFlash} showDeleted={showDeleted} setShowDeleted={setShowDeleted} />
       <SearchBox value={q} onChange={setQ} errors={errors} fields={fields} values={values} example='user = "Revenue NSW officer" AND path = exception AND ready = no' />
       <div className="ls-filters">
         <Select label="User type" value={f.user} onChange={(v) => setF({ ...f, user: v })} options={USERS} />
@@ -197,35 +289,46 @@ export function StoriesPage({ query = {} }) {
         <Select label="Priority" value={f.priority} onChange={(v) => setF({ ...f, priority: v })} options={PRIORITIES} />
         <span className="ls-sortby">Sort: {sortBtn('id', 'ID')} {sortBtn('user', 'User')} {sortBtn('path', 'Path')} {sortBtn('ready', 'Ready')} {sortBtn('priority', 'Priority')}</span>
       </div>
-      <p className="ls-meta">{rows.length} of {STORIES.length} stories · BRD requirements with no story: {BRDS.filter((b) => !STORIES.some((s) => s.brd.includes(b))).join(', ') || 'none'}</p>
+      <p className="ls-meta">{rows.length} of {st.items.length} stories · BRD requirements with no story: {BRDS.filter((b) => !st.items.some((s) => split(s.brd).includes(b))).join(', ') || 'none'}</p>
       {rows.map((s) => {
-        const adrs = adrsFor('stories', s.id);
+        const adrs = all.adrsFor('stories', s.id);
+        const ac = acOf(s);
         return (
-          <article key={s.id} id={s.id} className={`uh-card uh-st${query.s === s.id ? ' is-hl' : ''}`}>
+          <article key={s.id} id={s.id} className={`uh-card uh-st${query.s === s.id ? ' is-hl' : ''}${s.deleted ? ' is-deleted' : ''}`}>
             <p className="uh-st__h">
               <strong>{s.id}</strong> <Tag open={!ready(s)}>{ready(s) ? 'Ready for dev' : 'Not ready'}</Tag>
-              <span className={`ls-chip is-prio is-${String(s.priority).toLowerCase()}`}>{s.priority} priority</span><span className="ls-chip is-user">{s.user}</span><span className={`ls-chip is-path is-${s.path.split(' ')[0]}`}>{s.path}</span>
+              {s.priority && <span className={`ls-chip is-prio is-${String(s.priority).toLowerCase()}`}>{s.priority} priority</span>}{s.user && <span className="ls-chip is-user">{s.user}</span>}{s.path && <span className={`ls-chip is-path is-${String(s.path).split(' ')[0]}`}>{s.path}</span>}
               {split(s.brd).map((b) => <span key={b} className="ls-chip is-brd">{b}</span>)}
               <Tags tags={s.tags} />
               <span className="uh-meta">{s.screen === 'search' ? 'Search screen' : s.screen === 'record' ? 'Record screen' : 'API'}</span>
-              <Pencil id={s.id} on={editing === s.id} toggle={() => setEditing(editing === s.id ? null : s.id)} />
+              {!s.deleted && <Pencil id={s.id} on={editing === s.id} toggle={() => setEditing(editing === s.id ? null : s.id)} />}
             </p>
-            <p>As a <strong>{s.role}</strong>, I want to {s.want}, so {s.so}.</p>
-            <ol className="uh-ac">{s.ac.map((a) => <li key={a.w + a.t}><b>Given</b> {a.g}, <b>when</b> {a.w}, <b>then</b> {a.t}.</li>)}</ol>
-            <p className="uh-meta">Related questions: {s.qs.length ? s.qs.map((id) => <Link key={id} to={`/uplift/hub/questions?q=${id}`} className="uh-qref">{id}{OPEN(qById(id)) ? ' (open)' : ''}</Link>) : 'none'}
-              {adrs.length > 0 && <> · Related ADRs: {adrs.map((a) => <Link key={a.id} to={`/uplift/hub/adr?a=${a.id}`} className="uh-qref">{a.id}</Link>)}</>}</p>
+            <DeletedBar it={s} restore={restore} />
+            <p>As a <strong>{s.role || '…'}</strong>, I want to {s.want || '…'}, so {s.so || '…'}.</p>
+            {ac.length ? <ol className="uh-ac">{ac.map((a) => <li key={a}>{a}</li>)}</ol> : <p className="ls-meta">No acceptance criteria yet.</p>}
+            <p className="uh-meta">Related questions: {split(s.qs).length ? <Refs ids={s.qs} kind="q" map={all.qmap} open /> : 'none'}
+              {adrs.length > 0 && <> · Related ADRs: {adrs.map((a) => <Ref key={a.id} id={a.id} kind="a" map={all.amap} />)}</>}</p>
             {s.comment && <p className="ls-ans"><strong>Comment:</strong> {s.comment}</p>}
             <EditedNote it={s} st={st} />
-            {editing === s.id && (
+            {editing === s.id && !s.deleted && (
               <div className="ls-edit">
+                {!s.base && <>
+                  <label>As a (role)<input defaultValue={s.role} onBlur={(e) => st.edit(s.id, { role: e.target.value })} /></label>
+                  <label className="is-wide">I want to<input defaultValue={s.want} onBlur={(e) => st.edit(s.id, { want: e.target.value })} /></label>
+                  <label className="is-wide">So that<input defaultValue={s.so} onBlur={(e) => st.edit(s.id, { so: e.target.value })} /></label>
+                  <label className="is-wide">Acceptance criteria (one per line)<textarea rows={3} defaultValue={s.acText || ''} onBlur={(e) => st.edit(s.id, { acText: e.target.value })} /></label>
+                  <label>Screen<select defaultValue={s.screen} onChange={(e) => st.edit(s.id, { screen: e.target.value })}>{['search', 'record', 'fields'].map((u) => <option key={u}>{u}</option>)}</select></label>
+                </>}
                 <label className="is-wide">Comment<textarea rows={3} defaultValue={s.comment || ''} onBlur={(e) => st.edit(s.id, { comment: e.target.value })} /></label>
-                <label>Ready<select defaultValue={s.readyOverride || ''} onChange={(e) => st.edit(s.id, { readyOverride: e.target.value })}><option value="">Computed ({storyReady(s) ? 'Ready' : 'Not ready'})</option><option>Ready</option><option>Not ready</option></select></label>
+                <label>Ready<select defaultValue={s.readyOverride || ''} onChange={(e) => st.edit(s.id, { readyOverride: e.target.value })}><option value="">Computed ({readyOf({ ...s, readyOverride: '' }, all.qmap) ? 'Ready' : 'Not ready'})</option><option>Ready</option><option>Not ready</option></select></label>
                 <label>Priority<select defaultValue={s.priority} onChange={(e) => st.edit(s.id, { priority: e.target.value })}>{PRIORITIES.map((u) => <option key={u}>{u}</option>)}</select></label>
                 <label>Tags (comma separated)<input defaultValue={split(s.tags).join(', ')} onBlur={(e) => st.edit(s.id, { tags: split(e.target.value).join(', ') })} /></label>
                 <label>User type<select defaultValue={s.user} onChange={(e) => st.edit(s.id, { user: e.target.value })}>{USERS.map((u) => <option key={u}>{u}</option>)}</select></label>
                 <label>Path<select defaultValue={s.path} onChange={(e) => st.edit(s.id, { path: e.target.value })}>{PATHS.map((u) => <option key={u}>{u}</option>)}</select></label>
                 <label>BRD<input defaultValue={split(s.brd).join(', ')} onBlur={(e) => st.edit(s.id, { brd: split(e.target.value) })} /></label>
+                <label>Related questions (IDs)<input defaultValue={split(s.qs).join(', ')} onBlur={(e) => st.edit(s.id, { qs: split(e.target.value).map((x) => x.toUpperCase()) })} /></label>
                 <button type="button" className="ls-btn" onClick={() => setEditing(null)}>Done</button>
+                <button type="button" className="ls-btn is-danger" onClick={() => del(s.id)}>Delete {s.id}</button>
               </div>
             )}
           </article>
@@ -237,54 +340,60 @@ export function StoriesPage({ query = {} }) {
 
 // --------------------------------------------------------------------------------------------------------------
 export function QuestionsPage({ query = {} }) {
-  const st = useItemState('questions', QUESTIONS.map((x) => ({ ...x, answer: '', tags: '', priority: x.priority || '' })));
+  const all = useAll();
+  const st = all.questions;
   const [q, setQ] = useState('');
   const [f, setF] = useState({ status: '', owner: '', screen: query.screen || '', linked: '' });
   const [sort, setSort] = useState({ k: 'id', dir: 1 });
   const [editing, setEditing] = useState(null);
-  const owners = useMemo(() => uniq(QUESTIONS.flatMap((x) => x.who.split(/,\s*|;\s*| and /).map((w) => w.replace(/\(.*?\)/g, '').trim()))), []);
+  const [flash, setFlash] = useState(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const { del, restore } = useDelete(st, 'questions', setEditing, setFlash);
+  const owners = useMemo(() => uniq(st.items.flatMap((x) => String(x.who || '').split(/,\s*|;\s*| and /).map((w) => w.replace(/\(.*?\)/g, '').trim()))), [st.items]);
   const fields = useMemo(() => ({
-    id: (x) => x.id, status: (x) => x.status, owner: (x) => x.who, screen: (x) => x.at || [], topic: (x) => x.topic, priority: (x) => x.priority,
-    tag: (x) => split(x.tags), answered: (x) => (x.answer ? 'yes' : 'no'), story: (x) => storiesFor(x.id).map((s) => s.id), adr: (x) => adrsFor('qs', x.id).map((a) => a.id),
-    linked: (x) => (storiesFor(x.id).length ? 'yes' : 'no'),
+    id: (x) => x.id, status: (x) => x.status, owner: (x) => x.who, screen: (x) => split(x.at), topic: (x) => x.topic, priority: (x) => x.priority,
+    tag: (x) => split(x.tags), answered: (x) => (x.answer ? 'yes' : 'no'), story: (x) => all.storiesFor(x.id).map((s) => s.id), adr: (x) => all.adrsFor('qs', x.id).map((a) => a.id),
+    linked: (x) => (all.storiesFor(x.id).length ? 'yes' : 'no'),
     text: (x) => `${x.topic} ${x.q} ${x.why} ${x.assume} ${x.action} ${x.answer || ''}`,
-  }), []);
+  }), [all]);
   const values = useMemo(() => ({
-    id: QUESTIONS.map((x) => x.id), status: STATUS, owner: owners, screen: SCREENS, topic: uniq(QUESTIONS.map((x) => x.topic)), priority: PRIORITIES,
-    tag: uniq(st.items.flatMap((x) => split(x.tags))), answered: ['yes', 'no'], story: STORIES.map((s) => s.id), adr: ADRS.map((a) => a.id), linked: ['yes', 'no'],
-  }), [owners, st.items]);
+    id: st.items.map((x) => x.id), status: STATUS, owner: owners, screen: SCREENS, topic: uniq(st.items.map((x) => x.topic)), priority: PRIORITIES,
+    tag: uniq(st.items.flatMap((x) => split(x.tags))), answered: ['yes', 'no'], story: all.stories.items.map((s) => s.id), adr: all.adrs.items.map((a) => a.id), linked: ['yes', 'no'],
+  }), [owners, st.items, all.stories.items, all.adrs.items]);
   const { test, errors } = useMemo(() => compile(q, fields), [q, fields]);
   const keyOf = { id: (x) => idNum(x.id), topic: (x) => x.topic, status: (x) => STATUS.indexOf(x.status), who: (x) => x.who, answer: (x) => (x.answer ? 0 : 1) };
-  const rows = st.items
-    .filter((x) => (!f.status || x.status === f.status) && (!f.owner || x.who.includes(f.owner)) && (!f.screen || (x.at || []).includes(f.screen)) && (!f.linked || (f.linked === 'No story linked') === !storiesFor(x.id).length))
-    .filter(test)
+  const rows = (showDeleted ? st.all : st.items)
+    .filter((x) => (!f.status || x.status === f.status) && (!f.owner || String(x.who).includes(f.owner)) && (!f.screen || split(x.at).includes(f.screen)) && (!f.linked || (f.linked === 'No story linked') === !all.storiesFor(x.id).length))
+    .filter((x) => x.id === editing || test(x))
     .sort(sorter(keyOf[sort.k], sort.dir));
   useEffect(() => { if (query.q) document.getElementById(`q-${query.q}`)?.scrollIntoView({ block: 'center' }); }, [query.q]);
-  const orphans = QUESTIONS.filter((x) => !storiesFor(x.id).length);
+  const orphans = st.items.filter((x) => !all.storiesFor(x.id).length);
   const columns = [
     { header: 'ID', get: (x) => x.id },
-    { header: 'Topic', get: (x) => x.topic },
-    { header: 'Question', get: (x) => x.q },
-    { header: 'Why it matters', get: (x) => x.why },
-    { header: 'Current assumption', get: (x) => x.assume },
-    { header: 'Who can answer', get: (x) => x.who },
+    { header: 'Topic', nkey: 'topic', get: (x) => x.topic },
+    { header: 'Question', nkey: 'q', get: (x) => x.q },
+    { header: 'Why it matters', nkey: 'why', get: (x) => x.why },
+    { header: 'Current assumption', nkey: 'assume', get: (x) => x.assume },
+    { header: 'Who can answer', nkey: 'who', get: (x) => x.who },
     { header: 'Status', key: 'status', get: (x) => x.status },
     { header: 'Priority', key: 'priority', get: (x) => x.priority || '' },
     { header: 'Tags', key: 'tags', get: (x) => split(x.tags).join(', ') },
     { header: 'Answer', key: 'answer', get: (x) => x.answer || '' },
-    { header: 'Next step', get: (x) => x.action },
-    { header: 'Screens', get: (x) => (x.at || []).join(', ') },
-    { header: 'Related stories', get: (x) => storiesFor(x.id).map((s) => s.id).join(', ') || `No story linked${x.noStoryReason ? `: ${x.noStoryReason}` : ''}` },
-    { header: 'Related ADRs', get: (x) => adrsFor('qs', x.id).map((a) => a.id).join(', ') },
+    { header: 'Next step', nkey: 'action', get: (x) => x.action },
+    { header: 'Screens', nkey: 'at', get: (x) => split(x.at).join(', ') },
+    { header: 'Related stories', get: (x) => all.storiesFor(x.id).map((s) => s.id).join(', ') || `No story linked${x.noStoryReason ? `: ${x.noStoryReason}` : ''}` },
+    { header: 'No story reason', key: 'noStoryReason', get: (x) => x.noStoryReason || '' },
+    { header: 'Related ADRs', get: (x) => all.adrsFor('qs', x.id).map((a) => a.id).join(', ') },
   ];
   const th = (k, t) => (
     <th scope="col" aria-sort={sort.k === k ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}>
       <button type="button" className="ls-th" onClick={() => setSort((s) => ({ k, dir: s.k === k ? -s.dir : 1 }))}>{t}<span aria-hidden="true">{sort.k === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ' ⇅'}</span></button>
     </th>
   );
+  const onAdd = () => { const id = st.add(); setQ(''); setF({ status: '', owner: '', screen: '', linked: '' }); setEditing(id); setFlash({ text: `Added ${id}. Fill it in below.` }); scrollTo(`q-${id}`); };
   return (
     <>
-      <StateBar kind="questions" st={st} columns={columns} items={st.items} label="questions" />
+      <StateBar kind="questions" st={st} columns={columns} label="questions" one="question" onAdd={onAdd} flash={flash} setFlash={setFlash} showDeleted={showDeleted} setShowDeleted={setShowDeleted} />
       <SearchBox value={q} onChange={setQ} errors={errors} fields={fields} values={values} example='status IN ("Assumption to validate", "Confirmation required") AND owner ~ CMCS' />
       <div className="ls-filters">
         <Select label="Status" value={f.status} onChange={(v) => setF({ ...f, status: v })} options={STATUS} />
@@ -292,35 +401,48 @@ export function QuestionsPage({ query = {} }) {
         <Select label="Screen" value={f.screen} onChange={(v) => setF({ ...f, screen: v })} options={SCREENS} />
         <Select label="Stories" value={f.linked} onChange={(v) => setF({ ...f, linked: v })} options={['Linked to a story', 'No story linked']} />
       </div>
-      <p className="ls-meta">{rows.length} of {QUESTIONS.length} questions · {QUESTIONS.filter(OPEN).length} open · {orphans.length} with no story linked ({orphans.map((x) => x.id).join(', ') || 'none'}), each with a reason</p>
+      <p className="ls-meta">{rows.length} of {st.items.length} questions · {st.items.filter(OPEN).length} open · {orphans.length} with no story linked ({orphans.map((x) => x.id).join(', ') || 'none'}), each with a reason</p>
       <div className="up-scroll">
         <table className="uh-tbl ls-tbl">
           <thead><tr>{th('id', '#')}{th('topic', 'Question')}{th('status', 'Status')}{th('who', 'Who can answer')}{th('answer', 'Answer')}<th scope="col">Related</th><th scope="col">Edit</th></tr></thead>
           <tbody>{rows.map((x) => {
-            const sts = storiesFor(x.id); const adrs = adrsFor('qs', x.id);
+            const sts = all.storiesFor(x.id); const adrs = all.adrsFor('qs', x.id);
             return (
               <Fragment key={x.id}>
-                <tr id={`q-${x.id}`} className={query.q === x.id ? 'is-hl' : ''}>
+                <tr id={`q-${x.id}`} className={`${query.q === x.id ? 'is-hl' : ''}${x.deleted ? ' is-deleted' : ''}`}>
                   <td>{x.id}</td>
-                  <td><strong>{x.topic}</strong><br />{x.q}{x.see && <><br /><Link to={x.see.to}>{x.see.label} ↗</Link></>} <Tags tags={x.tags} />{x.priority && <span className={`ls-chip is-prio is-${x.priority.toLowerCase()}`}>{x.priority} priority</span>}
-                    <details className="ls-more"><summary>Why, assumption, next step</summary><p><b>Why it matters:</b> {x.why}</p><p><b>Current assumption:</b> {x.assume}</p><p><b>Next step:</b> {x.action}</p></details></td>
-                  <td><Tag open={OPEN(x)}>{x.status}</Tag>{x.local?.status && x.local.status !== x.base.status && <span className="ls-meta"> (was {x.base.status})</span>}</td>
+                  <td><strong>{x.topic || 'New question'}</strong><br />{x.q}{x.see && <><br /><Link to={x.see.to}>{x.see.label} ↗</Link></>} <Tags tags={x.tags} />{x.priority && <span className={`ls-chip is-prio is-${x.priority.toLowerCase()}`}>{x.priority} priority</span>}
+                    <details className="ls-more"><summary>Why, assumption, next step</summary><p><b>Why it matters:</b> {x.why}</p><p><b>Current assumption:</b> {x.assume}</p><p><b>Next step:</b> {x.action}</p></details>
+                    <DeletedBar it={x} restore={restore} /></td>
+                  <td><Tag open={OPEN(x)}>{x.status}</Tag>{x.base && x.local?.status && x.local.status !== x.base.status && <span className="ls-meta"> (was {x.base.status})</span>}</td>
                   <td>{x.who}</td>
                   <td>{x.answer ? <p className="ls-ans">{x.answer}</p> : <span className="ls-meta">None yet</span>}<EditedNote it={x} st={st} /></td>
                   <td>
-                    {sts.length ? <>Stories: {sts.map((s) => <Link key={s.id} to={`/uplift/hub/stories?s=${s.id}`} className="uh-qref">{s.id}</Link>)}</> : <><span className="uh-tag is-open">No story linked</span>{x.noStoryReason && <span className="ls-meta"> {x.noStoryReason}</span>}</>}
-                    {adrs.length > 0 && <><br />ADRs: {adrs.map((a) => <Link key={a.id} to={`/uplift/hub/adr?a=${a.id}`} className="uh-qref">{a.id}</Link>)}</>}
+                    {sts.length ? <>Stories: {sts.map((s) => <Ref key={s.id} id={s.id} kind="s" map={all.smap} />)}</> : <><span className="uh-tag is-open">No story linked</span>{x.noStoryReason && <span className="ls-meta"> {x.noStoryReason}</span>}</>}
+                    {adrs.length > 0 && <><br />ADRs: {adrs.map((a) => <Ref key={a.id} id={a.id} kind="a" map={all.amap} />)}</>}
                   </td>
-                  <td><Pencil id={x.id} on={editing === x.id} toggle={() => setEditing(editing === x.id ? null : x.id)} /></td>
+                  <td>{!x.deleted && <Pencil id={x.id} on={editing === x.id} toggle={() => setEditing(editing === x.id ? null : x.id)} />}</td>
                 </tr>
-                {editing === x.id && (
+                {editing === x.id && !x.deleted && (
                   <tr className="ls-editrow"><td /><td colSpan={6}>
                     <div className="ls-edit">
+                      {!x.base && <>
+                        <label>Topic<input defaultValue={x.topic} onBlur={(e) => st.edit(x.id, { topic: e.target.value })} /></label>
+                        <label className="is-wide">Question<textarea rows={2} defaultValue={x.q} onBlur={(e) => st.edit(x.id, { q: e.target.value })} /></label>
+                        <label className="is-wide">Why it matters<textarea rows={2} defaultValue={x.why} onBlur={(e) => st.edit(x.id, { why: e.target.value })} /></label>
+                        <label className="is-wide">Current assumption<textarea rows={2} defaultValue={x.assume} onBlur={(e) => st.edit(x.id, { assume: e.target.value })} /></label>
+                        <label>Who can answer<input defaultValue={x.who} onBlur={(e) => st.edit(x.id, { who: e.target.value })} /></label>
+                        <label className="is-wide">Next step<input defaultValue={x.action} onBlur={(e) => st.edit(x.id, { action: e.target.value })} /></label>
+                        <label>Screens<input defaultValue={split(x.at).join(', ')} onBlur={(e) => st.edit(x.id, { at: split(e.target.value) })} /></label>
+                      </>}
                       <label className="is-wide">Answer<textarea rows={3} defaultValue={x.answer || ''} onBlur={(e) => st.edit(x.id, { answer: e.target.value })} /></label>
                       <label>Status<select defaultValue={x.status} onChange={(e) => st.edit(x.id, { status: e.target.value })}>{STATUS.map((s) => <option key={s}>{s}</option>)}</select></label>
                       <label>Priority<select defaultValue={x.priority || ''} onChange={(e) => st.edit(x.id, { priority: e.target.value })}><option value="">Not set</option>{PRIORITIES.map((s) => <option key={s}>{s}</option>)}</select></label>
                       <label>Tags (comma separated)<input defaultValue={split(x.tags).join(', ')} onBlur={(e) => st.edit(x.id, { tags: split(e.target.value).join(', ') })} /></label>
+                      {!sts.length && <label className="is-wide">Why no story is linked<input defaultValue={x.noStoryReason || ''} onBlur={(e) => st.edit(x.id, { noStoryReason: e.target.value })} /></label>}
+                      <p className="ls-meta is-wide">Link a story from the story's own edit panel (Related questions).</p>
                       <button type="button" className="ls-btn" onClick={() => setEditing(null)}>Done</button>
+                      <button type="button" className="ls-btn is-danger" onClick={() => del(x.id)}>Delete {x.id}</button>
                     </div>
                   </td></tr>
                 )}
@@ -335,43 +457,49 @@ export function QuestionsPage({ query = {} }) {
 
 // --------------------------------------------------------------------------------------------------------------
 export function AdrPage({ query = {} }) {
-  const st = useItemState('adrs', ADRS.map((a) => ({ ...a, notes: '', tags: '' })));
+  const all = useAll();
+  const st = all.adrs;
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);
+  const [flash, setFlash] = useState(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const { del, restore } = useDelete(st, 'ADRs', setEditing, setFlash);
   const fields = useMemo(() => ({
-    id: (a) => a.id, status: (a) => a.status, title: (a) => a.title, question: (a) => a.qs, story: (a) => a.stories, tag: (a) => split(a.tags),
-    text: (a) => `${a.title} ${a.context} ${a.options.map((o) => `${o.name} ${o.how} ${o.pros.join(' ')} ${o.cons.join(' ')}`).join(' ')} ${a.decision} ${a.consequences} ${a.notes || ''}`,
+    id: (a) => a.id, status: (a) => a.status, title: (a) => a.title, question: (a) => split(a.qs), story: (a) => split(a.stories), tag: (a) => split(a.tags),
+    text: (a) => `${a.title} ${a.context} ${(a.options || []).map((o) => `${o.name} ${o.how} ${o.pros.join(' ')} ${o.cons.join(' ')}`).join(' ')} ${a.decision} ${a.consequences} ${a.notes || ''}`,
   }), []);
-  const values = useMemo(() => ({ id: ADRS.map((a) => a.id), status: ADR_STATUS, title: ADRS.map((a) => a.title), question: QUESTIONS.map((x) => x.id), story: STORIES.map((s) => s.id), tag: uniq(st.items.flatMap((a) => split(a.tags))) }), [st.items]);
+  const values = useMemo(() => ({ id: st.items.map((a) => a.id), status: ADR_STATUS, title: st.items.map((a) => a.title), question: all.questions.items.map((x) => x.id), story: all.stories.items.map((s) => s.id), tag: uniq(st.items.flatMap((a) => split(a.tags))) }), [st.items, all.questions.items, all.stories.items]);
   const { test, errors } = useMemo(() => compile(q, fields), [q, fields]);
-  const rows = st.items.filter(test);
+  const rows = (showDeleted ? st.all : st.items).filter((a) => a.id === editing || test(a));
   useEffect(() => { if (query.a) document.getElementById(query.a)?.scrollIntoView({ block: 'start' }); }, [query.a]);
   const columns = [
     { header: 'ID', get: (a) => a.id },
-    { header: 'Title', get: (a) => a.title },
+    { header: 'Title', nkey: 'title', get: (a) => a.title },
     { header: 'Status', key: 'status', get: (a) => a.status },
-    { header: 'Context', get: (a) => a.context },
-    { header: 'Options', get: (a) => a.options.map((o) => `${o.name}: ${o.how} For: ${o.pros.join('; ')}. Against: ${o.cons.join('; ')}.`).join('\n') },
+    { header: 'Context', nkey: 'context', get: (a) => a.context },
+    { header: 'Options', get: (a) => (a.options || []).map((o) => `${o.name}: ${o.how} For: ${o.pros.join('; ')}. Against: ${o.cons.join('; ')}.`).join('\n') },
     { header: 'Decision', key: 'decision', get: (a) => a.decision },
     { header: 'Consequences', key: 'consequences', get: (a) => a.consequences },
-    { header: 'Related questions', get: (a) => a.qs.join(', ') },
-    { header: 'Related stories', get: (a) => a.stories.join(', ') },
+    { header: 'Related questions', key: 'qs', get: (a) => split(a.qs).join(', ') },
+    { header: 'Related stories', key: 'stories', get: (a) => split(a.stories).join(', ') },
     { header: 'Tags', key: 'tags', get: (a) => split(a.tags).join(', ') },
     { header: 'Notes', key: 'notes', get: (a) => a.notes || '' },
   ];
+  const onAdd = () => { const id = st.add(); setQ(''); setEditing(id); setFlash({ text: `Added ${id}. Fill it in below.` }); scrollTo(id); };
   return (
     <>
-      <StateBar kind="adrs" st={st} columns={columns} items={st.items} label="ADRs" />
+      <StateBar kind="adrs" st={st} columns={columns} label="ADRs" one="ADR" onAdd={onAdd} flash={flash} setFlash={setFlash} showDeleted={showDeleted} setShowDeleted={setShowDeleted} />
       <SearchBox value={q} onChange={setQ} errors={errors} fields={fields} values={values} example='status = Proposed AND question = U16' />
-      <p className="ls-meta">{rows.length} of {ADRS.length} ADRs · {ADRS.map((a) => <Fragment key={a.id}><a href={`#${a.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(a.id)?.scrollIntoView({ block: 'start' }); }}>{a.id}</a> </Fragment>)}</p>
+      <p className="ls-meta">{rows.length} of {st.items.length} ADRs · {st.items.map((a) => <Fragment key={a.id}><a href={`#${a.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(a.id)?.scrollIntoView({ block: 'start' }); }}>{a.id}</a> </Fragment>)}</p>
       {rows.map((a) => (
-        <article key={a.id} id={a.id} className={`uh-card ad${query.a === a.id ? ' is-hl' : ''}`}>
+        <article key={a.id} id={a.id} className={`uh-card ad${query.a === a.id ? ' is-hl' : ''}${a.deleted ? ' is-deleted' : ''}`}>
           <p className="uh-meta"><span className={`uh-tag ${a.status === 'Accepted' ? 'is-done' : 'is-open'}`}>{a.status}</span> <Tags tags={a.tags} />
-            Related questions: {a.qs.map((id) => <Link key={id} to={`/uplift/hub/questions?q=${id}`} className="uh-qref">{id}</Link>)} · Related stories: {a.stories.map((id) => <Link key={id} to={`/uplift/hub/stories?s=${id}`} className="uh-qref">{id}</Link>)}
-            <Pencil id={a.id} on={editing === a.id} toggle={() => setEditing(editing === a.id ? null : a.id)} /></p>
-          <h2 className="uh-h2">{a.id}: {a.title}</h2>
-          <p><strong>Context.</strong> {a.context}</p>
-          <div className="ad-opts">
+            Related questions: {split(a.qs).length ? <Refs ids={a.qs} kind="q" map={all.qmap} /> : 'none'} · Related stories: {split(a.stories).length ? <Refs ids={a.stories} kind="s" map={all.smap} /> : 'none'}
+            {!a.deleted && <Pencil id={a.id} on={editing === a.id} toggle={() => setEditing(editing === a.id ? null : a.id)} />}</p>
+          <DeletedBar it={a} restore={restore} />
+          <h2 className="uh-h2">{a.id}: {a.title || 'New ADR'}</h2>
+          {a.context && <p><strong>Context.</strong> {a.context}</p>}
+          {(a.options || []).length > 0 && <div className="ad-opts">
             {a.options.map((o) => (
               <section key={o.name} className="ad-opt">
                 <h3>{o.name}</h3>
@@ -380,19 +508,26 @@ export function AdrPage({ query = {} }) {
                 <p><strong>Against</strong></p><ul>{o.cons.map((x) => <li key={x}>{x}</li>)}</ul>
               </section>
             ))}
-          </div>
-          <p><strong>Decision.</strong> {a.decision}</p>
-          <p><strong>Consequences.</strong> {a.consequences}</p>
+          </div>}
+          {a.decision && <p><strong>Decision.</strong> {a.decision}</p>}
+          {a.consequences && <p><strong>Consequences.</strong> {a.consequences}</p>}
           {a.notes && <p className="ls-ans"><strong>Notes:</strong> {a.notes}</p>}
           <EditedNote it={a} st={st} />
-          {editing === a.id && (
+          {editing === a.id && !a.deleted && (
             <div className="ls-edit">
+              {!a.base && <>
+                <label className="is-wide">Title<input defaultValue={a.title} onBlur={(e) => st.edit(a.id, { title: e.target.value })} /></label>
+                <label className="is-wide">Context<textarea rows={3} defaultValue={a.context} onBlur={(e) => st.edit(a.id, { context: e.target.value })} /></label>
+              </>}
               <label>Status<select defaultValue={a.status} onChange={(e) => st.edit(a.id, { status: e.target.value })}>{ADR_STATUS.map((s) => <option key={s}>{s}</option>)}</select></label>
               <label>Tags (comma separated)<input defaultValue={split(a.tags).join(', ')} onBlur={(e) => st.edit(a.id, { tags: split(e.target.value).join(', ') })} /></label>
+              <label>Related questions (IDs)<input defaultValue={split(a.qs).join(', ')} onBlur={(e) => st.edit(a.id, { qs: split(e.target.value).map((x) => x.toUpperCase()) })} /></label>
+              <label>Related stories (IDs)<input defaultValue={split(a.stories).join(', ')} onBlur={(e) => st.edit(a.id, { stories: split(e.target.value).map((x) => x.toUpperCase()) })} /></label>
               <label className="is-wide">Decision<textarea rows={2} defaultValue={a.decision} onBlur={(e) => st.edit(a.id, { decision: e.target.value })} /></label>
               <label className="is-wide">Consequences<textarea rows={2} defaultValue={a.consequences} onBlur={(e) => st.edit(a.id, { consequences: e.target.value })} /></label>
               <label className="is-wide">Notes<textarea rows={2} defaultValue={a.notes || ''} onBlur={(e) => st.edit(a.id, { notes: e.target.value })} /></label>
               <button type="button" className="ls-btn" onClick={() => setEditing(null)}>Done</button>
+              <button type="button" className="ls-btn is-danger" onClick={() => del(a.id)}>Delete {a.id}</button>
             </div>
           )}
         </article>

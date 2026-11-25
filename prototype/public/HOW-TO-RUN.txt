@@ -1,0 +1,39 @@
+CEVOC prototype: built copy of the site. All data in it is invented.
+
+The site is plain files with relative paths, so it works from any folder of any web server.
+Opening index.html straight from disk (file://) does not work: browsers block the page's scripts there.
+
+WHERE EDITS ARE KEPT
+The Questions, Stories and ADRs pages (Uplift hub) let you edit, add and delete items.
+  - On Apache with PHP (XAMPP), changes are saved on the server in one SQLite file, data/cevoc.sqlite,
+    and everyone who opens the site sees the same state. There is NO LOGIN: anyone who can reach the server
+    can change or delete items. Deletes are soft (tick "Show deleted" to restore).
+  - Anywhere else (npx serve, python http.server, GitHub Pages) changes stay in that browser only.
+  Each page says at the top which one is in use. "Export to Excel" works in both and is a good backup.
+
+OPTION 1: XAMPP / Apache with PHP on Windows (shared edits)
+  Needs: XAMPP with Apache and PHP 8 (pdo_sqlite is on by default in XAMPP), Git for Windows.
+  1. Get the site into htdocs (example path; use your own):
+       cd C:\xampp\htdocs\MSCR
+       git clone --branch site --single-branch https://github.com/save-the-lives/cevoc-prototype.git cevoc-site
+     The repository is private: Git asks you to sign in (Git Credential Manager) or use a fine-grained token
+     with read access to Contents. If an old saved login gives 403, remove it first:
+       cmdkey /delete:git:https://github.com
+  2. Start Apache in the XAMPP Control Panel and open
+       https://<your-server>/MSCR/cevoc-site/        (or http://localhost/MSCR/cevoc-site/)
+     Go to Uplift hub > Questions. The box at the top should say "Shared storage".
+  3. Check the database cannot be downloaded: open .../MSCR/cevoc-site/data/cevoc.sqlite in a browser
+     (after the first edit). It must say 403 Forbidden. If it downloads, Apache is ignoring .htaccess:
+     set "AllowOverride All" for the htdocs folder in C:\xampp\apache\conf\httpd.conf and restart Apache.
+  4. To update to the latest build:
+       cd C:\xampp\htdocs\MSCR\cevoc-site
+       git pull
+     data\cevoc.sqlite is not in git (see .gitignore), so git pull keeps all edits.
+     A scheduled task can run "git -C C:\xampp\htdocs\MSCR\cevoc-site pull" every 15 minutes.
+  Back up the edits by copying data\cevoc.sqlite, or with "Export to Excel" on each page.
+  If saving fails, the page says so; check that Apache can write to the data folder and see
+  C:\xampp\apache\logs\error.log.
+
+OPTION 2: any small local web server (edits stay in your browser)
+  npx serve .              (needs Node.js)
+  python -m http.server    (needs Python; then open http://localhost:8000/)
