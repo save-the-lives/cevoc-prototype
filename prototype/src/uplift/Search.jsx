@@ -153,7 +153,7 @@ export default function Search({ query = {} }) {
             <label htmlFor="uh-loc">{L.loc} <span className="up-req" aria-hidden="true">*</span></label>
             <span className="dr-hint" id="uh-loc-hint">Type a location code or part of an address, then pick it. Add as many as you need.</span>
             {errs.locs && <span className="dr-err">{errs.locs}</span>}
-            <Combobox items={ITEMS} multiple value={v.locs} onValueChange={(locs) => setV((x) => ({ ...x, locs }))}>
+            <Combobox items={ITEMS} multiple value={v.locs} onValueChange={(locs, d) => { if (d?.reason !== 'escape-key') setV((x) => ({ ...x, locs })); }}>
               <ComboboxChips ref={anchor} className="uh-chips">
                 <ComboboxValue>
                   {(vals) => (

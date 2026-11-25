@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
+import { Combobox, ComboboxChip, ComboboxChips, ComboboxChipsInput, ComboboxContent, ComboboxEmpty, ComboboxItem, ComboboxList, ComboboxValue, useComboboxAnchor } from '@nswds/ui';
 import { OPEN, PATHS, PRIORITIES, QUESTIONS, STATUS, STORIES, USERS } from './data.js';
 import { ADRS, ADR_STATUS } from './adrs.js';
 import { compile, suggest, unknownField } from './jql.js';
@@ -80,6 +81,47 @@ function Ref({ kind, id, map, open }) {
   return <Link to={to} className={`uh-qref${it.deleted ? ' is-gone' : ''}`}>{id}{it.deleted ? ' (deleted)' : open && OPEN(it) ? ' (open)' : ''}</Link>;
 }
 const Refs = ({ ids, ...p }) => split(ids).map((id) => <Ref key={id} id={id} {...p} />);
+
+// Searchable multi-select for links (owner, 26 Nov 2026): the NSW Design System combobox with chips, as on the
+// staff search. Items are "ID · title"; the value is a list of IDs. Escape closes the list and never clears the
+// links (the combobox's default clears every chip on Escape).
+const optLabel = { q: (x) => `${x.id} · ${x.topic || x.q || 'New question'}`, s: (x) => `${x.id} · ${x.want || 'New story'}`, a: (x) => `${x.id} · ${x.title || 'New ADR'}` };
+const idOfLabel = (l) => String(l).split(' · ')[0];
+function LinkPicker({ label, kind, items, value, onChange }) {
+  const id = useId();
+  const anchor = useComboboxAnchor();
+  const all = items.map(optLabel[kind]);
+  const byIdLabel = Object.fromEntries(items.map((x) => [x.id, optLabel[kind](x)]));
+  const sel = split(value).map((v) => byIdLabel[v] || v);
+  return (
+    <div className="ls-pick is-wide">
+      <label htmlFor={`${id}-in`}>{label}</label>
+      <Combobox items={all} multiple value={sel} onValueChange={(v, d) => { if (d?.reason !== 'escape-key') onChange(v.map(idOfLabel)); }}>
+        <ComboboxChips ref={anchor} className="uh-chips">
+          <ComboboxValue>{(vals) => vals.map((item) => <ComboboxChip key={item} removeLabel={`Unlink ${idOfLabel(item)}`}>{item}</ComboboxChip>)}</ComboboxValue>
+          <ComboboxChipsInput id={`${id}-in`} placeholder={sel.length ? 'Link another' : 'Type an ID or words to link'} />
+        </ComboboxChips>
+        <ComboboxContent anchor={anchor}>
+          <ComboboxEmpty>Nothing matches.</ComboboxEmpty>
+          <ComboboxList>{(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}</ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </div>
+  );
+}
+
+// Change links held on other items, so both sides stay in step: for each item in `list`, add or remove `id`
+// in its `field` according to whether it is in `want`.
+function relink(st, list, field, id, want) {
+  const w = new Set(want);
+  const changes = {};
+  list.forEach((it) => {
+    const has = split(it[field]).includes(id);
+    if (has === w.has(it.id)) return;
+    changes[it.id] = { [field]: has ? split(it[field]).filter((v) => v !== id) : [...split(it[field]), id] };
+  });
+  if (Object.keys(changes).length) st.editMany(changes);
+}
 
 function StateBar({ kind, st, columns, label, one, onAdd, flash, setFlash, showDeleted, setShowDeleted }) {
   const file = useRef(null);
@@ -286,10 +328,10 @@ export function StoriesPage({ query = {} }) {
     { header: 'Path', key: 'path', get: (s) => s.path },
     { header: 'BRD', key: 'brd', get: (s) => split(s.brd).join(', ') },
     { header: 'Tags', key: 'tags', get: (s) => split(s.tags).join(', ') },
-    { header: 'Screen', nkey: 'screen', get: (s) => s.screen },
-    { header: 'Role', nkey: 'role', get: (s) => s.role },
-    { header: 'I want to', nkey: 'want', get: (s) => s.want },
-    { header: 'So that', nkey: 'so', get: (s) => s.so },
+    { header: 'Screen', key: 'screen', get: (s) => s.screen },
+    { header: 'Role', key: 'role', get: (s) => s.role },
+    { header: 'I want to', key: 'want', get: (s) => s.want },
+    { header: 'So that', key: 'so', get: (s) => s.so },
     { header: 'Story', get: (s) => `As a ${s.role}, I want to ${s.want}, so ${s.so}.` },
     { header: 'Acceptance criteria', key: 'acText', get: (s) => acOf(s).map((a, i) => `${i + 1}. ${a}`).join('\n') },
     { header: 'Criteria BRD', get: (s) => acOf(s).map((_, i) => `${i + 1}. ${acBrd(s, i + 1)}`).join('\n') },
@@ -342,12 +384,12 @@ export function StoriesPage({ query = {} }) {
             <EditedNote it={s} st={st} />
             {editing === s.id && !s.deleted && (
               <div className="ls-edit">
-                {!s.base && <>
+                <>
                   <label>As a (role)<input defaultValue={s.role} onBlur={(e) => st.edit(s.id, { role: e.target.value })} /></label>
                   <label className="is-wide">I want to<input defaultValue={s.want} onBlur={(e) => st.edit(s.id, { want: e.target.value })} /></label>
                   <label className="is-wide">So that<input defaultValue={s.so} onBlur={(e) => st.edit(s.id, { so: e.target.value })} /></label>
                   <label>Screen<select defaultValue={s.screen} onChange={(e) => st.edit(s.id, { screen: e.target.value })}>{['search', 'record', 'fields'].map((u) => <option key={u}>{u}</option>)}</select></label>
-                </>}
+                </>
                 <label className="is-wide">Acceptance criteria, one per line: Given …, when …, then …<textarea rows={4} defaultValue={acOf(s).join('\n')} onBlur={(e) => { const v = e.target.value.trim(); if (v !== acOf(s).join('\n')) st.edit(s.id, { acText: v }); }} /></label>
                 <label className="is-wide">Comment<textarea rows={3} defaultValue={s.comment || ''} onBlur={(e) => st.edit(s.id, { comment: e.target.value })} /></label>
                 <label>Ready<select defaultValue={s.readyOverride || ''} onChange={(e) => st.edit(s.id, { readyOverride: e.target.value })}><option value="">Computed ({readyOf({ ...s, readyOverride: '' }, all.qmap) ? 'Ready' : 'Not ready'})</option><option>Ready</option><option>Not ready</option></select></label>
@@ -356,7 +398,8 @@ export function StoriesPage({ query = {} }) {
                 <label>User type<select defaultValue={s.user} onChange={(e) => st.edit(s.id, { user: e.target.value })}>{USERS.map((u) => <option key={u}>{u}</option>)}</select></label>
                 <label>Path<select defaultValue={s.path} onChange={(e) => st.edit(s.id, { path: e.target.value })}>{PATHS.map((u) => <option key={u}>{u}</option>)}</select></label>
                 <label>BRD<input defaultValue={split(s.brd).join(', ')} onBlur={(e) => st.edit(s.id, { brd: split(e.target.value) })} /></label>
-                <label>Related questions (IDs)<input defaultValue={split(s.qs).join(', ')} onBlur={(e) => st.edit(s.id, { qs: split(e.target.value).map((x) => x.toUpperCase()) })} /></label>
+                <LinkPicker label="Related questions" kind="q" items={all.questions.items} value={s.qs} onChange={(ids) => st.edit(s.id, { qs: ids })} />
+                <LinkPicker label="Related ADRs" kind="a" items={all.adrs.items} value={adrs.map((a) => a.id)} onChange={(ids) => relink(all.adrs, all.adrs.items, 'stories', s.id, ids)} />
                 <button type="button" className="ls-btn" onClick={() => setEditing(null)}>Done</button>
                 <button type="button" className="ls-btn is-danger" onClick={() => del(s.id)}>Delete {s.id}</button>
               </div>
@@ -400,17 +443,17 @@ export function QuestionsPage({ query = {} }) {
   const orphans = st.items.filter((x) => !all.storiesFor(x.id).length);
   const columns = [
     { header: 'ID', get: (x) => x.id },
-    { header: 'Topic', nkey: 'topic', get: (x) => x.topic },
-    { header: 'Question', nkey: 'q', get: (x) => x.q },
-    { header: 'Why it matters', nkey: 'why', get: (x) => x.why },
-    { header: 'Current assumption', nkey: 'assume', get: (x) => x.assume },
-    { header: 'Who can answer', nkey: 'who', get: (x) => x.who },
+    { header: 'Topic', key: 'topic', get: (x) => x.topic },
+    { header: 'Question', key: 'q', get: (x) => x.q },
+    { header: 'Why it matters', key: 'why', get: (x) => x.why },
+    { header: 'Current assumption', key: 'assume', get: (x) => x.assume },
+    { header: 'Who can answer', key: 'who', get: (x) => x.who },
     { header: 'Status', key: 'status', get: (x) => x.status },
     { header: 'Priority', key: 'priority', get: (x) => x.priority || '' },
     { header: 'Tags', key: 'tags', get: (x) => split(x.tags).join(', ') },
     { header: 'Answer', key: 'answer', get: (x) => x.answer || '' },
-    { header: 'Next step', nkey: 'action', get: (x) => x.action },
-    { header: 'Screens', nkey: 'at', get: (x) => split(x.at).join(', ') },
+    { header: 'Next step', key: 'action', get: (x) => x.action },
+    { header: 'Screens', key: 'at', get: (x) => split(x.at).join(', ') },
     { header: 'Related stories', get: (x) => all.storiesFor(x.id).map((s) => s.id).join(', ') || `No story linked${x.noStoryReason ? `: ${x.noStoryReason}` : ''}` },
     { header: 'No story reason', key: 'noStoryReason', get: (x) => x.noStoryReason || '' },
     { header: 'Related ADRs', get: (x) => all.adrsFor('qs', x.id).map((a) => a.id).join(', ') },
@@ -456,7 +499,7 @@ export function QuestionsPage({ query = {} }) {
                 {editing === x.id && !x.deleted && (
                   <tr className="ls-editrow"><td /><td colSpan={6}>
                     <div className="ls-edit">
-                      {!x.base && <>
+                      <>
                         <label>Topic<input defaultValue={x.topic} onBlur={(e) => st.edit(x.id, { topic: e.target.value })} /></label>
                         <label className="is-wide">Question<textarea rows={2} defaultValue={x.q} onBlur={(e) => st.edit(x.id, { q: e.target.value })} /></label>
                         <label className="is-wide">Why it matters<textarea rows={2} defaultValue={x.why} onBlur={(e) => st.edit(x.id, { why: e.target.value })} /></label>
@@ -464,13 +507,14 @@ export function QuestionsPage({ query = {} }) {
                         <label>Who can answer<input defaultValue={x.who} onBlur={(e) => st.edit(x.id, { who: e.target.value })} /></label>
                         <label className="is-wide">Next step<input defaultValue={x.action} onBlur={(e) => st.edit(x.id, { action: e.target.value })} /></label>
                         <label>Screens<input defaultValue={split(x.at).join(', ')} onBlur={(e) => st.edit(x.id, { at: split(e.target.value) })} /></label>
-                      </>}
+                      </>
                       <label className="is-wide">Answer<textarea rows={3} defaultValue={x.answer || ''} onBlur={(e) => st.edit(x.id, { answer: e.target.value })} /></label>
                       <label>Status<select defaultValue={x.status} onChange={(e) => st.edit(x.id, { status: e.target.value })}>{STATUS.map((s) => <option key={s}>{s}</option>)}</select></label>
                       <label>Priority<select defaultValue={x.priority || ''} onChange={(e) => st.edit(x.id, { priority: e.target.value })}><option value="">Not set</option>{PRIORITIES.map((s) => <option key={s}>{s}</option>)}</select></label>
                       <label>Tags (comma separated)<input defaultValue={split(x.tags).join(', ')} onBlur={(e) => st.edit(x.id, { tags: split(e.target.value).join(', ') })} /></label>
                       {!sts.length && <label className="is-wide">Why no story is linked<input defaultValue={x.noStoryReason || ''} onBlur={(e) => st.edit(x.id, { noStoryReason: e.target.value })} /></label>}
-                      <p className="ls-meta is-wide">Link a story from the story's own edit panel (Related questions).</p>
+                      <LinkPicker label="Related stories" kind="s" items={all.stories.items} value={sts.map((y) => y.id)} onChange={(ids) => relink(all.stories, all.stories.items, 'qs', x.id, ids)} />
+                      <LinkPicker label="Related ADRs" kind="a" items={all.adrs.items} value={adrs.map((a) => a.id)} onChange={(ids) => relink(all.adrs, all.adrs.items, 'qs', x.id, ids)} />
                       <button type="button" className="ls-btn" onClick={() => setEditing(null)}>Done</button>
                       <button type="button" className="ls-btn is-danger" onClick={() => del(x.id)}>Delete {x.id}</button>
                     </div>
@@ -504,9 +548,9 @@ export function AdrPage({ query = {} }) {
   useEffect(() => { if (query.a) document.getElementById(query.a)?.scrollIntoView({ block: 'start' }); }, [query.a]);
   const columns = [
     { header: 'ID', get: (a) => a.id },
-    { header: 'Title', nkey: 'title', get: (a) => a.title },
+    { header: 'Title', key: 'title', get: (a) => a.title },
     { header: 'Status', key: 'status', get: (a) => a.status },
-    { header: 'Context', nkey: 'context', get: (a) => a.context },
+    { header: 'Context', key: 'context', get: (a) => a.context },
     { header: 'Options', get: (a) => (a.options || []).map((o) => `${o.name}: ${o.how} For: ${o.pros.join('; ')}. Against: ${o.cons.join('; ')}.`).join('\n') },
     { header: 'Decision', key: 'decision', get: (a) => a.decision },
     { header: 'Consequences', key: 'consequences', get: (a) => a.consequences },
@@ -545,14 +589,14 @@ export function AdrPage({ query = {} }) {
           <EditedNote it={a} st={st} />
           {editing === a.id && !a.deleted && (
             <div className="ls-edit">
-              {!a.base && <>
+              <>
                 <label className="is-wide">Title<input defaultValue={a.title} onBlur={(e) => st.edit(a.id, { title: e.target.value })} /></label>
                 <label className="is-wide">Context<textarea rows={3} defaultValue={a.context} onBlur={(e) => st.edit(a.id, { context: e.target.value })} /></label>
-              </>}
+              </>
               <label>Status<select defaultValue={a.status} onChange={(e) => st.edit(a.id, { status: e.target.value })}>{ADR_STATUS.map((s) => <option key={s}>{s}</option>)}</select></label>
               <label>Tags (comma separated)<input defaultValue={split(a.tags).join(', ')} onBlur={(e) => st.edit(a.id, { tags: split(e.target.value).join(', ') })} /></label>
-              <label>Related questions (IDs)<input defaultValue={split(a.qs).join(', ')} onBlur={(e) => st.edit(a.id, { qs: split(e.target.value).map((x) => x.toUpperCase()) })} /></label>
-              <label>Related stories (IDs)<input defaultValue={split(a.stories).join(', ')} onBlur={(e) => st.edit(a.id, { stories: split(e.target.value).map((x) => x.toUpperCase()) })} /></label>
+              <LinkPicker label="Related questions" kind="q" items={all.questions.items} value={a.qs} onChange={(ids) => st.edit(a.id, { qs: ids })} />
+              <LinkPicker label="Related stories" kind="s" items={all.stories.items} value={a.stories} onChange={(ids) => st.edit(a.id, { stories: ids })} />
               <label className="is-wide">Decision<textarea rows={2} defaultValue={a.decision} onBlur={(e) => st.edit(a.id, { decision: e.target.value })} /></label>
               <label className="is-wide">Consequences<textarea rows={2} defaultValue={a.consequences} onBlur={(e) => st.edit(a.id, { consequences: e.target.value })} /></label>
               <label className="is-wide">Notes<textarea rows={2} defaultValue={a.notes || ''} onBlur={(e) => st.edit(a.id, { notes: e.target.value })} /></label>

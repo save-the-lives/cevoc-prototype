@@ -82,7 +82,16 @@ export function useItemState(kind, baseline, blank = {}) {
   }, [kind, mode.mode]);
 
   const now = () => new Date().toISOString();
-  const edit = (id, patch) => apply({ [id]: { ...(local[id] || {}), ...patch, updatedAt: now() } });
+  // A field left as it was (e.g. a text box blurred without typing) is not saved as an edit.
+  const same = (a, b) => JSON.stringify(a ?? '') === JSON.stringify(b ?? '');
+  const current = (id) => ({ ...blank, ...(baseline.find((b) => b.id === id) || {}), ...(local[id] || {}) });
+  const edit = (id, patch) => {
+    const cur = current(id);
+    if (Object.entries(patch).every(([k, v]) => same(v, cur[k]))) return;
+    apply({ [id]: { ...(local[id] || {}), ...patch, updatedAt: now() } });
+  };
+  // Several items in one save (used when a link changes on the other side), so the server gets one request.
+  const editMany = (changes) => apply(Object.fromEntries(Object.entries(changes).map(([id, patch]) => [id, { ...(local[id] || {}), ...patch, updatedAt: now() }])));
   const undo = (id) => apply({ [id]: null });
   const reset = () => apply(Object.fromEntries(Object.keys(local).map((id) => [id, null])));
   const save = (next) => {
@@ -106,7 +115,7 @@ export function useItemState(kind, baseline, blank = {}) {
   const all = [...merged, ...added];
   const items = all.filter((x) => !x.deleted);
   const deleted = all.filter((x) => x.deleted);
-  return { items, all, deleted, local, mode, error, edit, undo, reset, save, add, remove, restore, nextId };
+  return { items, all, deleted, local, mode, error, edit, editMany, undo, reset, save, add, remove, restore, nextId };
 }
 
 // Excel round trip. One sheet, one row per item (deleted ones too, flagged), stable ID first, every editable field a column.
