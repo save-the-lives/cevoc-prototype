@@ -7,6 +7,7 @@ import Capabilities from './sections/Capabilities.jsx';
 import { PublicScenarios, StaffScenarios } from './sections/Scenarios.jsx';
 import { InfoArchitecture, Journey } from './sections/Reference.jsx';
 import Register from './sections/Register.jsx';
+import { UpliftCompare, UpliftRegister, UpliftScenarios, UpliftStories } from './sections/Uplift.jsx';
 
 // DEMO HUB: the only place for scenarios, framing, controls and open questions.
 // A left menu groups it by who the person is, so nothing is buried at the bottom of one long page.
@@ -20,6 +21,10 @@ const SECTIONS = {
   register: { label: 'Validation register', render: () => <Register /> },
   capabilities: { label: 'Capability status', render: () => <Capabilities /> },
   controls: { label: 'Run mode and reset', render: () => <Controls /> },
+  'uplift-scenarios': { label: 'Scenarios', render: () => <UpliftScenarios /> },
+  'uplift-stories': { label: 'User stories', render: () => <UpliftStories /> },
+  'uplift-register': { label: 'Open questions', render: () => <UpliftRegister /> },
+  'uplift-compare': { label: 'Legacy and target', render: () => <UpliftCompare /> },
   ...Object.fromEntries(ARCHETYPES.map((a) => [a.id, { label: a.name, render: () => <Archetype a={a} /> }])),
 };
 
@@ -27,6 +32,7 @@ const MENU = [
   { items: ['overview'] },
   { title: 'User kinds', items: ARCHETYPES.map((a) => a.id) },
   { title: 'Scenarios', items: ['public-scenarios', 'staff-scenarios'] },
+  { title: 'Certificate uplift (phase 1)', items: ['uplift-scenarios', 'uplift-stories', 'uplift-register', 'uplift-compare'] },
   { title: 'Reference', items: ['register', 'capabilities', 'journey', 'ia'] },
   { title: 'Controls', items: ['controls'] },
 ];
@@ -49,6 +55,7 @@ export default function Demo({ section }) {
           <p className="demo-menu__h">Open the prototype</p>
           <Link to="/">Public site ↗</Link>
           <Link to="/staff">Staff workspace ↗</Link>
+          <Link to="/uplift">Certificate uplift ↗</Link>
         </div>
       </nav>
       <main className="demo-main" id="main" key={key}>{SECTIONS[key].render()}</main>

@@ -29,7 +29,7 @@ function Routes() {
   const { raw, parts, query } = useRoute();
   let body;
   if (parts[0] === 'demo') body = <Demo section={parts[1]} />;
-  else if (parts[0] === 'uplift') body = <Uplift />;
+  else if (parts[0] === 'uplift') body = <><Uplift query={query} /><DemoDock /></>;
   else if (parts[0] === 'source') body = <><SourceSystem /><DemoDock /></>;
   else if (parts[0] === 'staff') body = <><StaffSite parts={parts} query={query} /><DemoDock /></>;
   else body = <><PublicSite parts={parts} /><DemoDock /></>;

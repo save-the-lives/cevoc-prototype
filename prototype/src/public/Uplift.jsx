@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { UPLIFT_SAMPLES } from '../demo/uplift.js';
 import { Button, Field, FieldError, FieldLabel, Header, HeaderBrand, Input, Masthead } from '@nswds/ui';
 
 // PHASE 1 UPLIFT MOCK-UP (#/uplift): the legacy certificate search page (Customer Enquiry and Verification of
@@ -74,9 +75,11 @@ function DateTimeField({ id, label, value, onChange, error }) {
   );
 }
 
-export default function Uplift() {
+export default function Uplift({ query = {} }) {
   const fresh = () => ({ loc: '', from: '', to: fmt(new Date()) });
-  const [v, setV] = useState(fresh);
+  const [v, setV] = useState(() => ({ ...fresh(), ...Object.fromEntries(['loc', 'from', 'to'].filter((k) => query[k]).map((k) => [k, query[k]])) }));
+  const [samples, setSamples] = useState(false);
+  const formRef = useRef(null);
   const [errs, setErrs] = useState({});
   const [result, setResult] = useState(null);
   const [sort, setSort] = useState(null); // { key, dir: 1 | -1 }
@@ -86,6 +89,8 @@ export default function Uplift() {
   const today = useMemo(() => new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), []);
 
   useEffect(() => { document.title = 'Customer Enquiry and Verification of Certificate (uplift mock-up)'; }, []);
+  // A demo link (?run=1) opens the page with the search already run.
+  useEffect(() => { if (query.run === '1') formRef.current?.requestSubmit(); }, []); // eslint-disable-line
 
   const set = (k) => (val) => { setV((x) => ({ ...x, [k]: val })); setNote(''); };
 
@@ -142,7 +147,7 @@ export default function Uplift() {
         <p className="up-lede">Please enter the search parameters</p>
         <p className="up-mand"><span className="up-req" aria-hidden="true">*</span> indicates mandatory fields.</p>
 
-        <form className="pub-form up-form" onSubmit={search} noValidate>
+        <form ref={formRef} className="pub-form up-form" onSubmit={search} noValidate>
           {problems.length > 0 && (
             <div className="pub-errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="up-err-h">
               <h3 id="up-err-h">Please fix the following</h3>
@@ -153,7 +158,21 @@ export default function Uplift() {
             <Field className="pub-field up-loc" invalid={!!errs.loc}>
               <FieldLabel htmlFor="up-loc">Location code <span className="up-req" aria-hidden="true">*</span></FieldLabel>
               {errs.loc && <FieldError match>{errs.loc}</FieldError>}
-              <Input id="up-loc" value={v.loc} onChange={(e) => set('loc')(e.target.value)} inputMode="numeric" autoComplete="off" required aria-invalid={!!errs.loc || undefined} />
+              <div className="pn-wrap">
+                <Input id="up-loc" value={v.loc} onChange={(e) => set('loc')(e.target.value)} inputMode="numeric" autoComplete="off" required aria-invalid={!!errs.loc || undefined} />
+                <button type="button" className="pn-samples" onClick={() => setSamples(!samples)} aria-expanded={samples}>Samples ▾</button>
+              </div>
+              {samples && (
+                <div className="snp-pop" role="listbox" aria-label="Sample searches">
+                  <div className="snp-strip">PROTOTYPE · SAMPLE SEARCHES</div>
+                  {UPLIFT_SAMPLES.map((s) => (
+                    <button key={s.label} type="button" role="option" className="snp-item" onClick={() => { setV({ loc: s.loc, from: s.from, to: s.to }); setErrs({}); setSamples(false); }}>
+                      <span className="snp-num">{s.loc}</span>
+                      <span className="snp-meta"><strong>{s.label}</strong><br />{s.from} to {s.to} · {s.note}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </Field>
             <DateTimeField id="up-from" label="Date/Time from" value={v.from} onChange={set('from')} error={errs.from} />
             <DateTimeField id="up-to" label="Date/Time to" value={v.to} onChange={set('to')} error={errs.to} />
@@ -199,7 +218,7 @@ export default function Uplift() {
           </section>
         )}
 
-        <p className="up-foot">Mock-up: any numeric location code returns the sample certificates in force in the range; 0000 shows the no-records case. Today’s date fills Date/Time to, as on the legacy page.</p>
+        <p className="up-foot">Mock-up: use Samples ▾ for ready-made searches, or any numeric location code (0000 shows the no-records case). Stories, open questions and the legacy comparison are in the <a href="#/demo/uplift-scenarios">demo hub</a>.</p>
       </main>
     </div>
   );

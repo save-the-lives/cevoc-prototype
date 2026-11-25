@@ -5,15 +5,15 @@ const STATUSES = ['All', 'Confirmed requirement', 'Assumption to validate', 'Pro
 const COLOUR = { 'Confirmed requirement': '#86efac', 'Assumption to validate': '#fca5a5', 'Proposed UX improvement': '#fcd34d', 'Out of scope': '#cbd5e1' };
 
 // The business validation register: every assumption the prototype makes, who can settle it, and what it changes.
-export default function Register() {
+export default function Register({ rows: all = REGISTER, title = 'Business validation register', lede }) {
   const [f, setF] = useState('All');
-  const rows = useMemo(() => REGISTER.filter((r) => f === 'All' || r.status === f), [f]);
+  const rows = useMemo(() => all.filter((r) => f === 'All' || r.status === f), [f, all]);
   return (
     <>
-      <h1>Business validation register</h1>
-      <p className="demo-lede">Every assumption this prototype makes, who can settle it, and what it changes. Nothing is promoted to a requirement without an owner. All people, notices and certificates are fictitious, and no agency system is connected.</p>
+      <h1>{title}</h1>
+      <p className="demo-lede">{lede || <>Every assumption this prototype makes, who can settle it, and what it changes. Nothing is promoted to a requirement without an owner. All people, notices and certificates are fictitious, and no agency system is connected.</>}</p>
       <div className="seg2" role="group" aria-label="Filter by status">
-        {STATUSES.map((s) => <button key={s} type="button" aria-pressed={f === s} onClick={() => setF(s)}>{s}{s !== 'All' ? ` (${REGISTER.filter((r) => r.status === s).length})` : ` (${REGISTER.length})`}</button>)}
+        {STATUSES.map((s) => <button key={s} type="button" aria-pressed={f === s} onClick={() => setF(s)}>{s}{s !== 'All' ? ` (${all.filter((r) => r.status === s).length})` : ` (${all.length})`}</button>)}
       </div>
       <div className="demo-tablewrap">
         <table className="demo-table">
