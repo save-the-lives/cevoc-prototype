@@ -7,6 +7,7 @@ import StaffSite from './staff/Staff.jsx';
 import Demo from './demo/Demo.jsx';
 import SourceSystem from './staff/SourceSystem.jsx';
 import Uplift from './public/Uplift.jsx';
+import UpliftRecord from './public/UpliftRecord.jsx';
 
 // Three areas, never mixed: /demo (presenter), /staff (officers), everything else is public.
 
@@ -29,6 +30,7 @@ function Routes() {
   const { raw, parts, query } = useRoute();
   let body;
   if (parts[0] === 'demo') body = <Demo section={parts[1]} />;
+  else if (parts[0] === 'uplift' && parts[1] === 'record') body = <><UpliftRecord query={query} /><DemoDock /></>;
   else if (parts[0] === 'uplift') body = <><Uplift query={query} /><DemoDock /></>;
   else if (parts[0] === 'source') body = <><SourceSystem /><DemoDock /></>;
   else if (parts[0] === 'staff') body = <><StaffSite parts={parts} query={query} /><DemoDock /></>;

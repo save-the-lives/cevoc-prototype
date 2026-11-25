@@ -16,14 +16,24 @@ export const UPLIFT_SAMPLES = [
 
 export const upliftLink = (s) => `/uplift?loc=${encodeURIComponent(s.loc)}&from=${encodeURIComponent(s.from)}&to=${encodeURIComponent(s.to)}&run=1`;
 
+export const recordLink = (loc, at) => `/uplift/record?loc=${encodeURIComponent(loc)}&at=${encodeURIComponent(at)}`;
+
 export const UPLIFT_STORIES = [
+  {
+    title: '0. Check the camera on my notice (end user)',
+    who: 'Person who received a red-light notice, no login',
+    context: 'The notice carries a link with the camera’s location code and the offence time.',
+    pain: 'A list of every certificate for the camera is hard to read; they only care about their moment.',
+    job: 'When I open the link on my notice, I want to see only the certificate in force at my offence time, so I can trust the camera was certified.',
+    links: [['Open the record for an offence on 14/03/2026 08:30', recordLink('1234', '14/03/2026 08:30')], ['Open a link for an unknown location', recordLink('0000', '14/03/2026 08:30')]],
+  },
   {
     title: '1. Confirm a camera was certified on the day',
     who: 'Customer enquiry officer, Transport',
     context: 'A customer calls about a red-light notice and asks whether the camera was certified when the photo was taken.',
     pain: 'The legacy page works but looks dated and gives no help when a field is wrong.',
     job: 'When a customer asks about a camera, I want to list its certificates around the offence date, so I can answer on the call.',
-    links: [['Search a month around the offence', upliftLink(UPLIFT_SAMPLES[1])], ['Widen to a year and sort by expiry', upliftLink(UPLIFT_SAMPLES[0])]],
+    links: [['Search a month around the offence', upliftLink(UPLIFT_SAMPLES[1])], ['Widen to a year and sort by expiry', upliftLink(UPLIFT_SAMPLES[0])], ['Press View on a row to open the same record a customer sees', upliftLink(UPLIFT_SAMPLES[1])]],
   },
   {
     title: '2. Wrong or unknown location code',
@@ -94,11 +104,33 @@ export const UPLIFT_USER_STORIES = [
     story: 'As the business, I want the page restyled to the NSW Design System without adding functions, so phase 1 is a low-risk lift and shift.',
     source: OWNER,
     ac: [
-      'No download, save, print or PDF function, and no links in the results.',
+      'No download, save, print or PDF function. The only control on a result row is View, which opens the record view (US9).',
       'Meets WCAG 2.2 AA: labels, focus order, contrast, keyboard use for every control including the calendar and sorting.',
       'Works at phone width without sideways page scrolling (the results table may scroll inside its box).',
     ],
     blockers: ['U11'],
+  },
+  {
+    id: 'US8', title: 'See only the certificate for my offence (end user)',
+    story: 'As a person with a notice, I want the link on my notice to show only the certificate(s) in force at my offence time, without logging in.',
+    source: OWNER + '; ' + BRD + ' BR_01',
+    ac: [
+      'Given a link with location code and offence date and time, the page shows only certificates whose certified date is on or before, and expiry date on or after, that time.',
+      'No login is asked for. No other certificate for the location is listed.',
+      'Given none applies, the page says “No records found.”.',
+      'No download, save or print function.',
+    ],
+    blockers: ['U5', 'U3'],
+  },
+  {
+    id: 'US9', title: 'Open one record from the list (Revenue)',
+    story: 'As a Revenue NSW user, I want to open any row from the search results and see the same record view a customer sees, without logging in.',
+    source: OWNER + '; ' + BRD + ' BR_10',
+    ac: [
+      'Each result row has a View control that opens that certificate’s record view.',
+      'The record view shows the same fields as the end-user view, and a way back to the results.',
+    ],
+    blockers: ['U3'],
   },
   {
     id: 'US6', title: 'Show only approved or published certificates',
@@ -120,7 +152,7 @@ export const UPLIFT_USER_STORIES = [
 ];
 
 export const UPLIFT_REGISTER = [
-  { id: 'U1', topic: 'No PDF or new functions in phase 1', q: 'Does the uplift add a certificate download?', now: 'No. The legacy page offers none, and lift and shift adds no new functions.', source: OWNER + '; ' + BRD + ' BR_03', owner: 'Product owner', status: 'Confirmed requirement', action: 'None.', impact: 'No download, print or result links.' },
+  { id: 'U1', topic: 'No PDF or new functions in phase 1', q: 'Does the uplift add a certificate download?', now: 'No. The legacy page offers none, and lift and shift adds no new functions.', source: OWNER + '; ' + BRD + ' BR_03', owner: 'Product owner', status: 'Confirmed requirement', action: 'None.', impact: 'No download, save or print anywhere.' },
   { id: 'U2', topic: 'When a certificate appears', q: 'Is availability a delay in days, or the certificate’s status?', now: 'Status: only approved or published certificates appear. No delay in days. This settles the BRD conflict between BR_04 (5 to 6 business days) and BR_07 (immediate).', source: OWNER, owner: 'Product owner', status: 'Confirmed requirement', action: 'Confirm the exact status values in the source system.', impact: 'Filter on status in the API, not on dates.' },
   { id: 'U3', topic: 'Sample certificate data from CMCS', q: 'Which certificate fields exist today, and in which form?', now: 'The legacy grid shows five columns. The BRD (BR_01) asks for device model, Gazette reference, approval scope, street location, camera code, inspection date and time, and an inspection narrative. None are on the legacy grid.', source: SHOTS + '; ' + BRD + ' BR_01', owner: 'CMCS data owner', status: 'Assumption to validate', action: 'Request anonymised sample certificates from CMCS (the source of truth) showing every field, its status values and where it is stored.', impact: 'Decides whether the API must change. Stories that need these fields stay not ready for dev.' },
   { id: 'U4', topic: 'Duplicate rows', q: 'Are identical rows in the legacy grid re-issued certificates?', now: 'The legacy grid shows some rows with the same type, period, certified and expiry dates, and nothing tells them apart.', source: SHOTS + '; ' + BRD + ' BR_09', owner: 'CMCS data owner', status: 'Assumption to validate', action: 'Check against the CMCS samples.', impact: 'A re-issued marker (BR_09) needs a re-issue flag in the data.' },
@@ -132,6 +164,7 @@ export const UPLIFT_REGISTER = [
   { id: 'U10', topic: 'Default dates', q: 'What do the date fields hold when the page opens?', now: 'Date/Time from is empty; Date/Time to holds the current date and time.', source: SHOTS, owner: 'Product owner', status: 'Confirmed requirement', action: 'None.', impact: 'Form defaults.' },
   { id: 'U11', topic: 'Contact us and Help', q: 'Where do Contact us and Help go?', now: 'Shown on the legacy page; destinations not known.', source: SHOTS, owner: 'Product owner', status: 'Assumption to validate', action: 'Capture the current destinations.', impact: 'Header links.' },
   { id: 'U12', topic: 'Location code format', q: 'What is a valid location code?', now: 'Assumed digits only. The mock-up rejects anything else.', source: 'Prototype behaviour', owner: 'CMCS data owner', status: 'Assumption to validate', action: 'Confirm the format and length.', impact: 'Validation message.' },
+  { id: 'U14', topic: 'Login', q: 'Do the end-user and Revenue views need a login?', now: 'No. The information is no more sensitive in one view than the other. The difference is scope: one record for the offence, or the list for a location.', source: OWNER, owner: 'Product owner', status: 'Confirmed requirement', action: 'None for the prototype; confirm with Cyber before build.', impact: 'No sign-in on either view.' },
   { id: 'U13', topic: 'Help text for customers', q: 'What explanatory text helps people read a certificate?', now: 'The BRD asks for it (BR_06) and for directing court matters to customer enquiries (BR_08). Not part of the staff lift and shift.', source: BRD + ' BR_06, BR_08', owner: 'Transport', status: 'Out of scope', action: 'Revisit for the public phase.', impact: 'None in phase 1.' },
 ];
 

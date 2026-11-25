@@ -1,3 +1,4 @@
+import { go } from '../lib/router.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { UPLIFT_SAMPLES } from '../demo/uplift.js';
 import { Button, Field, FieldError, FieldLabel, Header, HeaderBrand, Input, Masthead } from '@nswds/ui';
@@ -11,16 +12,16 @@ import { Button, Field, FieldError, FieldLabel, Header, HeaderBrand, Input, Mast
 
 const FORMAT = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/;
 const pad = (n) => String(n).padStart(2, '0');
-const fmt = (d) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+export const fmt = (d) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const day = (d) => fmt(d).slice(0, 10);
-const parse = (s) => {
+export const parse = (s) => {
   const m = FORMAT.exec(String(s).trim());
   if (!m) return null;
   const [, d, mo, y, h, mi] = m.map(Number);
   const t = new Date(y, mo - 1, d, h, mi);
   return t.getDate() === d && t.getMonth() === mo - 1 && h < 24 && mi < 60 ? t : null;
 };
-const parseDay = (s) => parse(`${s} 00:00`);
+export const parseDay = (s) => parse(`${s} 00:00`);
 // <input type="datetime-local"> value <-> DD/MM/YYYY HH:MM
 const toLocal = (s) => { const t = parse(s); return t ? `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}` : ''; };
 const fromLocal = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : ''; };
@@ -38,9 +39,9 @@ const SAMPLE = [
   ['YEARLY', '10/08/2026', '10/08/2027'],
   ['QUARTERLY', '07/09/2026', '06/12/2026'],
 ];
-const ROWS = SAMPLE.map(([period, certified, expiry], i) => ({ id: i, desc: DESC, type: TYPE, period, certified, expiry }));
+export const ROWS = SAMPLE.map(([period, certified, expiry], i) => ({ id: i, desc: DESC, type: TYPE, period, certified, expiry }));
 
-const COLS = [
+export const COLS = [
   { key: 'desc', label: 'Certificate Description', sortable: false },
   { key: 'type', label: 'Certificate type', sortable: true },
   { key: 'period', label: 'Period', sortable: true },
@@ -204,13 +205,14 @@ export default function Uplift({ query = {} }) {
                         ) : c.label}
                       </th>
                     ))}
+                    <th scope="col"><span className="up-sr">Details</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.id}>{COLS.map((c) => <td key={c.key}>{r[c.key]}</td>)}</tr>
+                    <tr key={r.id}>{COLS.map((c) => <td key={c.key}>{r[c.key]}</td>)}<td><button type="button" className="up-view" onClick={() => go(`/uplift/record?loc=${encodeURIComponent(result.loc)}&id=${r.id}`)}>View<span className="up-sr"> certificate certified {r.certified}</span></button></td></tr>
                   ))}
-                  {rows.length === 0 && <tr><td colSpan={COLS.length} className="up-empty">No records found.</td></tr>}
+                  {rows.length === 0 && <tr><td colSpan={COLS.length + 1} className="up-empty">No records found.</td></tr>}
                 </tbody>
               </table>
             </div>
