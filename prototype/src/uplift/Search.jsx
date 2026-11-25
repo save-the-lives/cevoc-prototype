@@ -7,7 +7,7 @@ import {
 import { go } from '../lib/router.js';
 import DateRange from './DateRange.jsx';
 import { APP_SETTINGS, CERTIFICATES, FAULT_CODES, lifecycle, LOCATIONS, SAMPLES, fmtDay, locByCode, locLabel, parseDay, searchCertificates } from './data.js';
-import { useLabels } from './kit.jsx';
+import { Dyn, useLabels } from './kit.jsx';
 import TourLayer, { useTour } from './Tour.jsx';
 
 // PHASE 1 UPLIFT (#/uplift): the legacy certificate search for power users (Revenue NSW staff), no login.
@@ -34,7 +34,13 @@ const COLS = ['location', 'desc', 'type', 'period', 'certified', 'expiry'];
 const SORTABLE = new Set(['location', 'type', 'period', 'certified', 'expiry']);
 const DATE = new Set(['certified', 'expiry']);
 
-const TOUR_SAMPLES = (setV, run) => (
+const TOUR_SAMPLES = (setV, run, t) => (
+  <>
+  <section>
+    <h3>Content</h3>
+    <label className="tr-check"><input type="checkbox" checked={t.dyn} onChange={(e) => t.set({ dyn: e.target.checked })} /> Highlight dynamic data</label>
+    <p className="tr-meta">Outlines every value that comes from CMCS, the search entered or today's date, with its source.</p>
+  </section>
   <section>
     <h3>Sample searches</h3>
     <ul className="tr-list">{SAMPLES.map((s) => (
@@ -44,6 +50,7 @@ const TOUR_SAMPLES = (setV, run) => (
       }}>{s.label}</button> <small>{s.note}</small></li>
     ))}</ul>
   </section>
+  </>
 );
 
 // Lifecycle status tag (U22): text and colour together, never colour alone.
@@ -53,11 +60,11 @@ export function StatusTag({ r }) {
 }
 
 export function SupportBar() {
-  const today = useMemo(() => new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), []);
+  const today = useMemo(() => new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), []);
   return (
     <div className="up-bar"><div className="pub-wrap up-bar__in">
       <nav aria-label="Support" className="up-bar__nav" data-tour="support"><a href="#/uplift">Contact us</a><a href="#/uplift">Help</a></nav>
-      <span>{today}</span>
+      <span><Dyn src="Today's date (Sydney)">{today}</Dyn></span>
     </div></div>
   );
 }
@@ -67,9 +74,9 @@ export function Details({ r }) {
   const replaced = r.reissueOf && CERTIFICATES.find((x) => x.id === r.reissueOf);
   return (
     <dl className="uh-dl">
-      <dt>Location</dt><dd>{locByCode(r.loc)?.address} ({r.loc})</dd>
-      <dt>Status</dt><dd>{r.status}{r.withdrawn ? `, withdrawn ${r.withdrawn}` : ''}</dd>
-      {replaced && <><dt>Re-issue of</dt><dd>{replaced.period} certificate {replaced.certified} to {replaced.expiry}, withdrawn {replaced.withdrawn}</dd></>}
+      <dt>Location</dt><dd><Dyn src="CMCS site record">{locByCode(r.loc)?.address} ({r.loc})</Dyn></dd>
+      <dt>Status</dt><dd><Dyn src="CMCS: certificate status">{r.status}{r.withdrawn ? `, withdrawn ${r.withdrawn}` : ''}</Dyn></dd>
+      {replaced && <><dt>Re-issue of</dt><dd><Dyn src="CMCS: replaced certificate">{replaced.period} certificate {replaced.certified} to {replaced.expiry}, withdrawn {replaced.withdrawn}</Dyn></dd></>}
       {tour && ['Device model', 'Gazette reference', 'Approved for', 'Inspection date and time', 'Inspection details'].map((k) => (
         <Fragment key={k}><dt className="tr-ghost">{k}</dt><dd className="tr-ghost">BRD BR_01 field, awaiting CMCS sample data (U3)</dd></Fragment>
       ))}
@@ -79,6 +86,7 @@ export function Details({ r }) {
 
 export default function Search({ query = {} }) {
   const { L, mode } = useLabels();
+  const tour = useTour();
   const init = () => ({ locs: (query.locs || '').split(',').map(locByCode).filter(Boolean).map(locLabel), from: query.from || DEFAULT_RANGE().from, to: query.to || DEFAULT_RANGE().to });
   const [v, setV] = useState(init);
   const [errs, setErrs] = useState({});
@@ -120,7 +128,7 @@ export default function Search({ query = {} }) {
   }, [res, sort]);
   const toggle = (id) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const problems = [['locs', 'uh-loc'], ['from', 'dr-from'], ['to', 'dr-to']].filter(([k]) => errs[k]);
-  const searched = res && `${res.codes.join(', ')}, ${fmtDay(res.f)} to ${fmtDay(res.t)}`;
+  const searched = res && <Dyn src="The search entered">{`${res.codes.join(', ')}, ${fmtDay(res.f)} to ${fmtDay(res.t)}`}</Dyn>;
 
   return (
     <div className="pub up uh">
@@ -198,7 +206,7 @@ export default function Search({ query = {} }) {
 
             {!res.fault && res.gaps.length > 0 && (
               <Callout status="warning" title={`Missing certificate${res.gaps.length > 1 ? 's' : ''}: no certificate was in force on some days`}>
-                <ul className="uh-gaps">{res.gaps.map((g) => <li key={`${g.code}${g.cycle}${g.from}`}>Location {g.code}: no {g.cycle.toLowerCase()} certificate from {fmtDay(g.from)} to {fmtDay(g.to)}.</li>)}</ul>
+                <ul className="uh-gaps">{res.gaps.map((g) => <li key={`${g.code}${g.cycle}${g.from}`}>Location <Dyn src="CMCS site record">{g.code}</Dyn>: no <Dyn src="CMCS: missing certificate period">{g.cycle.toLowerCase()}</Dyn> certificate from <Dyn src="CMCS: gap start">{fmtDay(g.from)}</Dyn> to <Dyn src="CMCS: gap end">{fmtDay(g.to)}</Dyn>.</li>)}</ul>
                 <p className="uh-meta">This is a genuine gap in the records, not a search or system problem.</p>
               </Callout>
             )}
@@ -218,7 +226,7 @@ export default function Search({ query = {} }) {
             </div>
             {!res.fault && rows.length > 0 && (
               <>
-                <p role="status" className="up-note">{rows.length} certificate{rows.length === 1 ? '' : 's'} for {searched}. Select a row to see its details.</p>
+                <p role="status" className="up-note"><Dyn src="CMCS: count of results">{rows.length}</Dyn> certificate{rows.length === 1 ? '' : 's'} for {searched}. Select a row to see its details.</p>
                 <div className="up-scroll">
                   <table className="up-table uh-table">
                     <thead><tr>
@@ -239,16 +247,16 @@ export default function Search({ query = {} }) {
                         const newGroup = res.codes.length > 1 && (idx === 0 || rows[idx - 1].loc !== r.loc);
                         return (
                           <Fragment key={r.id}>
-                            {newGroup && <tr className="uh-group"><th scope="rowgroup" colSpan={COLS.length + 1}>{locByCode(r.loc)?.address} <span className="uh-group__code">{r.loc} · {rows.filter((x) => x.loc === r.loc).length} certificate{rows.filter((x) => x.loc === r.loc).length === 1 ? '' : 's'}</span></th></tr>}
+                            {newGroup && <tr className="uh-group"><th scope="rowgroup" colSpan={COLS.length + 1}><Dyn src="CMCS site record">{locByCode(r.loc)?.address}</Dyn> <span className="uh-group__code"><Dyn src="CMCS site record">{r.loc}</Dyn> · <Dyn src="CMCS: count of results">{rows.filter((x) => x.loc === r.loc).length}</Dyn> certificate{rows.filter((x) => x.loc === r.loc).length === 1 ? '' : 's'}</span></th></tr>}
                             <tr className={`uh-row${isOpen ? ' is-open' : ''}${r.status === 'Withdrawn' ? ' is-withdrawn' : ''}`} onClick={() => toggle(r.id)}>
                               <td>
                                 <button type="button" className="uh-exp" aria-expanded={isOpen} aria-controls={`uh-d-${r.id}`} onClick={(e) => { e.stopPropagation(); toggle(r.id); }}>
                                   <span aria-hidden="true">{isOpen ? '▾' : '▸'}</span><span className="up-sr">{isOpen ? 'Hide' : 'Show'} details for the {r.period.toLowerCase()} certificate certified {r.certified}, location {r.loc}</span>
                                 </button>
                               </td>
-                              <td>{r.loc}</td>
-                              <td>{r.desc}<StatusTag r={r} />{r.duplicates > 0 && <span className="st-tag is-error" title="The source holds identical copies of this certificate">Data error: duplicate ×{r.duplicates + 1}</span>}</td>
-                              <td>{r.type}</td><td>{r.period}</td><td>{r.certified}</td><td>{r.expiry}</td>
+                              <td><Dyn src="CMCS site record">{r.loc}</Dyn></td>
+                              <td><Dyn src="CMCS: certificate description">{r.desc}</Dyn><Dyn src="CMCS: certificate status today"><StatusTag r={r} /></Dyn>{r.duplicates > 0 && <Dyn src="CMCS: duplicate rows"><span className="st-tag is-error" title="The source holds identical copies of this certificate">Data error: duplicate ×{r.duplicates + 1}</span></Dyn>}</td>
+                              <td><Dyn src="CMCS: certificate type">{r.type}</Dyn></td><td><Dyn src="CMCS: period">{r.period}</Dyn></td><td><Dyn src="CMCS: certified date">{r.certified}</Dyn></td><td><Dyn src="CMCS: expiry date">{r.expiry}</Dyn></td>
                             </tr>
                             {isOpen && <tr className="uh-detail" id={`uh-d-${r.id}`}><td /><td colSpan={COLS.length}><Details r={r} /></td></tr>}
                           </Fragment>
@@ -263,7 +271,7 @@ export default function Search({ query = {} }) {
           </section>
         )}
       </main>
-      <TourLayer screen="search" controls={TOUR_SAMPLES(setV, run)} />
+      <TourLayer screen="search" controls={TOUR_SAMPLES(setV, run, tour)} />
     </div>
   );
 }

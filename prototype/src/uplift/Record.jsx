@@ -7,6 +7,7 @@ import { COPY, DISCLAIMER, GIPA_URL } from './tour.js';
 import TourLayer, { useTour } from './Tour.jsx';
 import { StatusTag, SupportBar } from './Search.jsx';
 import { go } from '../lib/router.js';
+import { Dyn } from './kit.jsx';
 
 // PHASE 1 UPLIFT (#/uplift/record): the legacy end-user certificate page (certificateDetails.jsf), lifted and
 // shifted. Reached from "View camera certification" on the Revenue NSW fines site (Service NSW path) or from
@@ -21,10 +22,6 @@ const fromD = (d) => {
   return m ? { day: new Date(+m[1], +m[2] - 1, +m[3]), time: `${m[4]}:${m[5]}` } : null;
 };
 const longDay = (d) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
-
-function Dyn({ src, children }) {
-  return <span className="tr-dynv" data-dyn={src}>{children}</span>;
-}
 
 export default function Record({ query = {} }) {
   const { copy } = useTour();
@@ -67,7 +64,7 @@ export default function Record({ query = {} }) {
         <section className="cd-sec" data-tour="offence" aria-labelledby="cd-off">
           <h2 id="cd-off">Offence Details</h2>
           <dl className="cd-dl">
-            <dt>Penalty notice number</dt><dd><Dyn src="Signed link: p">{off ? off.p : 'Not in this link'}</Dyn></dd>
+            <dt>Penalty notice number</dt><dd>{off ? <Dyn src="Signed link: p">{off.p}</Dyn> : 'Not in this link'}</dd>
             <dt>Program type</dt><dd><Dyn src="CMCS site record">{off ? off.program : PROGRAM[loc.program]}</Dyn></dd>
             <dt>Site, zone or camera number</dt><dd><Dyn src="Signed link: s">{loc.code}</Dyn></dd>
             <dt>Site location</dt><dd><Dyn src="CMCS site record">{loc.address}</Dyn></dd>
@@ -79,16 +76,16 @@ export default function Record({ query = {} }) {
         <section className="cd-sec" data-tour="cert" aria-labelledby="cd-cert">
           <h2 id="cd-cert">Camera certificate details for this offence</h2>
           {tested && <p className="cd-lead">{renderCert(C, tested, one ? null : when.day)}</p>}
-          {(inForce.length + withdrawn.length) > 0 && <p className="cd-status">Certificate status: {[...inForce, ...withdrawn].map((r) => <span key={r.id} className="cd-status__i">{r.period.toLowerCase()} <StatusTag r={r} /></span>)}</p>}
+          {(inForce.length + withdrawn.length) > 0 && <p className="cd-status">Certificate status: {[...inForce, ...withdrawn].map((r) => <span key={r.id} className="cd-status__i"><Dyn src="CMCS: certificate period">{r.period.toLowerCase()}</Dyn> <Dyn src="CMCS: certificate status today"><StatusTag r={r} /></Dyn></span>)}</p>}
           <div data-tour="states" className="cd-states">
             {missing.length > 0 && (
-              <Callout status="warning" title={`No ${missing.map((m) => m.toLowerCase()).join(' or ')} certificate was in force on ${fmtDay(day)}`}>
+              <Callout status="warning" title={<>No <Dyn src="CMCS: missing certificate period">{missing.map((m) => m.toLowerCase()).join(' or ')}</Dyn> certificate was in force on <Dyn src="Signed link: d">{fmtDay(day)}</Dyn></>}>
                 <p>Our records show a gap in certification for this camera on that day. This is not a system problem. If this affects your decision, call 13 22 13 before you choose what to do.</p>
               </Callout>
             )}
             {withdrawn.length > 0 && (
               <Callout status="info" title="A certificate covering this day was withdrawn">
-                <p>The {withdrawn.map((w) => w.period.toLowerCase()).join(' and ')} certificate certified on {withdrawn.map((w) => w.certified).join(', ')} was withdrawn on {withdrawn.map((w) => w.withdrawn).join(', ')} and does not count.</p>
+                <p>The <Dyn src="CMCS: certificate period">{withdrawn.map((w) => w.period.toLowerCase()).join(' and ')}</Dyn> certificate certified on <Dyn src="CMCS: certification date">{withdrawn.map((w) => w.certified).join(', ')}</Dyn> was withdrawn on <Dyn src="CMCS: withdrawal date">{withdrawn.map((w) => w.withdrawn).join(', ')}</Dyn> and does not count.</p>
               </Callout>
             )}
           </div>
@@ -113,7 +110,7 @@ export default function Record({ query = {} }) {
         <p className="cd-disclaimer" data-tour="disclaimer">{DISCLAIMER.before}<a href={GIPA_URL} target="_blank" rel="noreferrer">{DISCLAIMER.link}</a>{DISCLAIMER.after}</p>
         <div className="uh-actions" data-tour="close">
           {off && query.r && SOURCES[query.r]
-            ? <a className="cd-return" href={SOURCES[query.r].url} target="_blank" rel="noreferrer">Return to {SOURCES[query.r].name}</a>
+            ? <a className="cd-return" href={SOURCES[query.r].url} target="_blank" rel="noreferrer">Return to <Dyn src="Signed link: r, app setting record.returnLinks">{SOURCES[query.r].name}</Dyn></a>
             : <p className="cd-closetab">You can close this tab.</p>}
         </div>
       </main>
@@ -133,7 +130,9 @@ export default function Record({ query = {} }) {
 
 function renderCert(C, tested, offenceDay) {
   const t = longDay(tested);
-  const text = C.cert('\u0000', offenceDay ? longDay(offenceDay) : null);
-  const [a, b] = text.split('\u0000');
-  return <>{a}<Dyn src="CMCS / CES (FAES): certification date">{t}</Dyn>{b}</>;
+  // Both values (certification date, and the offence date in variant A) are marked, whatever the wording.
+  const text = C.cert('\u0000', offenceDay ? '\u0001' : null);
+  return text.split(/(\u0000|\u0001)/).map((part, i) => (
+    part === '\u0000' ? <Dyn key={i} src="CMCS / CES (FAES): certification date">{t}</Dyn>
+      : part === '\u0001' ? <Dyn key={i} src="Signed link: d">{longDay(offenceDay)}</Dyn> : part));
 }

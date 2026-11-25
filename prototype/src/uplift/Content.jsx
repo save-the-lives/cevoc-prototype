@@ -94,10 +94,10 @@ export default function Content() {
       <p>Rows marked <span className="uh-tag is-warn">New</span> are asked for by the BRD but not on the page today; their source and owner are unknown until CMCS sample data arrives (U3).</p>
       <div className="up-scroll">
         <table className="uh-tbl">
-          <thead><tr><th>Field</th><th>Where it comes from</th><th>Owner of the data</th><th>In the BRD</th><th>Status</th></tr></thead>
+          <thead><tr><th>Field</th><th>Page</th><th>Where it comes from</th><th>Owner of the data</th><th>In the BRD</th><th>Status</th></tr></thead>
           <tbody>{DYNAMIC.map((r) => (
             <tr key={r.field} className={r.status === 'New' ? 'ct-new' : ''}>
-              <td><strong>{r.field}</strong></td><td>{r.source}</td><td>{r.owner}</td><td>{r.brd}</td>
+              <td><strong>{r.field}</strong></td><td>{r.page}</td><td>{r.source}</td><td>{r.owner}</td><td>{r.brd}</td>
               <td><span className={`uh-tag ${r.status === 'New' ? 'is-warn' : 'is-done'}`}>{r.status}</span></td>
             </tr>
           ))}</tbody>

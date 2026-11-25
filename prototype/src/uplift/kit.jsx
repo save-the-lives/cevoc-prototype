@@ -1,4 +1,5 @@
 import '../styles/uplift.css';
+import '../styles/uplift-dyn.css';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
 import { LABELS, OPEN, qById } from './data.js';
@@ -63,3 +64,10 @@ export const HUB_TABS = [
   ['', 'Hub'], ['journey', 'Journey'], ['entry', 'Entry from the apps'], ['compare', 'Legacy and target'], ['content', 'Page content'],
   ['fields', 'Field delta'], ['lifecycle', 'Lifecycle'], ['settings', 'App settings'], ['adr', 'ADRs'], ['stories', 'Stories'], ['questions', 'Questions'],
 ];
+
+// A value that comes from data or from the signed link (not fixed wording). The Tour's "Highlight dynamic data"
+// outlines it with its source; otherwise it renders as plain text. Every such value on the record page and the
+// staff search is wrapped, and listed in tour.js DYNAMIC (owner audit, 26 Nov 2026).
+export function Dyn({ src, children }) {
+  return <span className="tr-dynv" data-dyn={src}>{children}</span>;
+}

@@ -1,0 +1,6 @@
+/* Dynamic-data labels (Tour "Highlight dynamic data") wrap inside the page width instead of widening it
+   (phone width check, 26 Nov 2026). Kept apart from the .tr-* tour panel styles. */
+body.tr-dyn .tr-dynv::after { white-space: normal; width: max-content; max-width: min(240px, calc(100vw - 32px)); }
+body.tr-dyn .cd-return .tr-dynv::after, body.tr-dyn td .tr-dynv::after { left: auto; right: 0; }
+/* A label near the right edge must not widen the page; clip it at the page edge instead. */
+body.tr-dyn .pub.up { overflow-x: clip; }
