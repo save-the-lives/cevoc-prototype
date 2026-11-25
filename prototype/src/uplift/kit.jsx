@@ -61,5 +61,5 @@ export function Q({ id }) {
 
 export const HUB_TABS = [
   ['', 'Hub'], ['journey', 'Journey'], ['entry', 'Entry from the apps'], ['compare', 'Legacy and target'], ['content', 'Page content'],
-  ['fields', 'Field delta'], ['lifecycle', 'Lifecycle'], ['settings', 'App settings'], ['decisions', 'Decisions'], ['stories', 'Stories'], ['questions', 'Questions'],
+  ['fields', 'Field delta'], ['lifecycle', 'Lifecycle'], ['settings', 'App settings'], ['adr', 'ADRs'], ['stories', 'Stories'], ['questions', 'Questions'],
 ];

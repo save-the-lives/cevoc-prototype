@@ -237,3 +237,19 @@
 
 .sl { margin-top: 24px; }
 .sl-url { overflow-wrap: anywhere; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; }
+
+/* Pencil edit, tags and search autocomplete (25 Nov 2026) */
+.ls-pencil { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: auto; border: 2px solid #0f766e; border-radius: 4px; background: #fff; color: #0f766e; cursor: pointer; flex: none; }
+.ls-pencil.on, .ls-pencil:hover { background: #0f766e; color: #fff; }
+.ls-pencil:focus-visible { outline: 3px solid #2dd4bf; outline-offset: 2px; }
+.uh-st__h, .ad > .uh-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ls-chip.is-tag { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+.ls-link { background: none; border: 0; padding: 0; color: #0f766e; text-decoration: underline; font: inherit; cursor: pointer; }
+.ls-edited { margin: 4px 0 0; }
+.ls-ac { position: relative; }
+.ls-ac__list { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px 0; list-style: none; background: #fff; border: 2px solid #475569; border-radius: 4px; box-shadow: 0 6px 18px rgba(15, 23, 42, .15); max-height: 300px; overflow: auto; }
+.ls-ac__list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; cursor: pointer; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.ls-ac__list li.is-active { background: #ccfbf1; }
+.ls-ac__kind { color: #64748b; font: 12px system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; align-self: center; }
+.ls-search input[aria-invalid="true"] { border-color: #b91c1c; }
+.uh-card.ad.is-hl { outline: 3px solid #2dd4bf; }
