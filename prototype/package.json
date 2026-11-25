@@ -10,6 +10,7 @@
     "test:e2e": "node tests/e2e/run.cjs"
   },
   "dependencies": {
+    "@fontsource/public-sans": "^5.1.1",
     "@nswds/ui": "^9.3.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
