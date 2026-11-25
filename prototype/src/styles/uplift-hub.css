@@ -234,3 +234,6 @@
 .ad-opt { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px; background: #f8fafc; }
 .ad-opt h3 { margin: 0 0 8px; color: #134e4a; }
 .ad-opt p { margin: 6px 0; }
+
+.sl { margin-top: 24px; }
+.sl-url { overflow-wrap: anywhere; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; }

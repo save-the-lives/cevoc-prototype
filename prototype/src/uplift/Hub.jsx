@@ -9,6 +9,7 @@ import Content from './Content.jsx';
 import Settings from './Settings.jsx';
 import Decisions from './Decisions.jsx';
 import Lifecycle from './Lifecycle.jsx';
+import SignedLink from './SignedLink.jsx';
 import { QuestionsPage, StoriesPage } from './Lists.jsx';
 import EntryFlows from './Entry.jsx';
 import JourneyViews from './JourneyViews.jsx';
@@ -120,6 +121,7 @@ function Entry() {
   return (
     <Shell tab="entry" title="Entry from the apps" lede="The two journeys that reach the CEVOC certificate page today, recreated as mock screens with one invented fine. Only the CEVOC page is uplifted; every other step stays as it is.">
       <EntryFlows />
+      <SignedLink />
     </Shell>
   );
 }

@@ -18,7 +18,17 @@ import TourLayer, { useTour } from './Tour.jsx';
 const ITEMS = LOCATIONS.map(locLabel);
 const CHIP_LIMIT = 6; // chips shown before “+N more” (display only; there is no limit on how many can be picked, U25)
 // Default range: the last search.defaultRangeMonths months (app setting, U10).
-const DEFAULT_RANGE = () => { const t = new Date(); t.setHours(0, 0, 0, 0); const f = new Date(t.getFullYear(), t.getMonth() - Number(APP_SETTINGS.find((x) => x.key === 'search.defaultRangeMonths').value), t.getDate()); return { from: fmtDay(f), to: fmtDay(t) }; };
+// Date presets (U27, owner): each sets From; To is always today, Sydney time. Both are app settings.
+const PRESETS = APP_SETTINGS.find((x) => x.key === 'search.datePresets').value.split(', ');
+const DEFAULT_PRESET = APP_SETTINGS.find((x) => x.key === 'search.defaultPreset').value;
+const sydneyToday = () => parseDay(new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }));
+const presetRange = (name) => {
+  const t = sydneyToday(); const m = /Last (\d+) (days|months)/.exec(name);
+  const n = Number(m[1]);
+  const f = m[2] === 'days' ? new Date(t.getFullYear(), t.getMonth(), t.getDate() - (n - 1)) : new Date(t.getFullYear(), t.getMonth() - n, t.getDate());
+  return { from: fmtDay(f), to: fmtDay(t) };
+};
+const DEFAULT_RANGE = () => presetRange(DEFAULT_PRESET);
 const codeOf = (label) => label.split(' · ')[0];
 const COLS = ['location', 'desc', 'type', 'period', 'certified', 'expiry'];
 const SORTABLE = new Set(['location', 'type', 'period', 'certified', 'expiry']);
@@ -76,6 +86,7 @@ export default function Search({ query = {} }) {
   const [open, setOpen] = useState(() => new Set());
   const [sort, setSort] = useState(null);
   const [allChips, setAllChips] = useState(false);
+  const [preset, setPreset] = useState(query.from || query.to ? 'Custom' : DEFAULT_PRESET);
     const anchor = useComboboxAnchor();
   const sumRef = useRef(null);
   const resRef = useRef(null);
@@ -98,7 +109,7 @@ export default function Search({ query = {} }) {
   };
   useEffect(() => { if (query.run === '1') run(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const clear = () => { setV({ locs: [], ...DEFAULT_RANGE() }); setErrs({}); setRes(null); setOpen(new Set()); };
+  const clear = () => { setPreset(DEFAULT_PRESET); setV({ locs: [], ...DEFAULT_RANGE() }); setErrs({}); setRes(null); setOpen(new Set()); };
   const rows = useMemo(() => {
     if (!res?.rows) return [];
     const base = res.rows.map((r) => ({ ...r, location: r.loc }));
@@ -154,7 +165,16 @@ export default function Search({ query = {} }) {
             {v.locs.length > 1 && <button type="button" className="uh-clearall" onClick={() => setV((x) => ({ ...x, locs: [] }))}>Clear all locations ({v.locs.length})</button>}
           </div>
           <div className="uh-dates" data-tour="dates">
-            <DateRange labels={L} from={v.from} to={v.to} errors={errs} onChange={({ from, to }) => setV((x) => ({ ...x, from, to }))} />
+            <fieldset className="uh-presets">
+              <legend>Date range</legend>
+              {[...PRESETS, 'Custom'].map((p) => (
+                <label key={p} className={preset === p ? 'on' : ''}>
+                  <input type="radio" name="uh-preset" value={p} checked={preset === p} onChange={() => { setPreset(p); if (p !== 'Custom') setV((x) => ({ ...x, ...presetRange(p) })); else document.getElementById('dr-from')?.focus(); }} />
+                  {p}
+                </label>
+              ))}
+            </fieldset>
+            <DateRange calendar={false} labels={L} from={v.from} to={v.to} errors={errs} onChange={({ from, to }) => { setPreset('Custom'); setV((x) => ({ ...x, from, to })); }} />
           </div>
           <div className="uh-actions" data-tour="actions">
             <Button type="submit">{L.search}</Button>

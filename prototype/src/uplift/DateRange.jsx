@@ -72,7 +72,7 @@ function Calendar({ from, to, onPick, onClose, labelledBy }) {
   );
 }
 
-export default function DateRange({ labels, from, to, onChange, errors = {} }) {
+export default function DateRange({ labels, from, to, onChange, errors = {}, calendar = true }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef(null);
   const btn = useRef(null);
@@ -103,13 +103,13 @@ export default function DateRange({ labels, from, to, onChange, errors = {} }) {
       <div className="dr-row">
         {field('from', labels.from, from)}
         {field('to', labels.to, to)}
-        <button ref={btn} type="button" className="dr-btn" aria-expanded={open} aria-controls="dr-cal" id="dr-cal-btn"
+        {calendar && <button ref={btn} type="button" className="dr-btn" aria-expanded={open} aria-controls="dr-cal" id="dr-cal-btn"
           aria-label={f && t ? `Choose dates from a calendar. Selected ${fmtDay(f)} to ${fmtDay(t)}` : 'Choose dates from a calendar'}
           onClick={() => setOpen(!open)}>
           <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
-        </button>
+        </button>}
       </div>
-      {open && <div id="dr-cal"><Calendar from={f} to={t} labelledBy="dr-cal-btn" onPick={pick} onClose={() => { setOpen(false); btn.current?.focus(); }} /></div>}
+      {calendar && open && <div id="dr-cal"><Calendar from={f} to={t} labelledBy="dr-cal-btn" onPick={pick} onClose={() => { setOpen(false); btn.current?.focus(); }} /></div>}
     </div>
   );
 }
