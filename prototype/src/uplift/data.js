@@ -29,6 +29,7 @@ export const PROGRAMS = {
   RLSC: 'Red light speed camera',
   FDSC: 'Fixed speed camera',
   ASC: 'Average speed (point to point)',
+  MPDC: 'Mobile phone detection camera',
 };
 export const LOCATIONS = [
   { code: '1234', address: 'Example St & Sample Ave, Testville', program: 'RLSC' },
@@ -36,6 +37,7 @@ export const LOCATIONS = [
   { code: '3456', address: 'Placeholder Hwy (northbound), Fakeham', program: 'ASC' },
   { code: '4567', address: 'Specimen Pde & Trial St, Testville', program: 'RLSC', note: 'Has a withdrawn and a re-issued certificate, and a missing quarterly certificate' },
   { code: '9999', address: 'Fault Test Lane, Errorton', program: 'RLSC', note: 'Simulates a system fault' },
+  { code: '5678', address: 'Sample Hwy (southbound), Mockton', program: 'MPDC', note: 'The invented fine used in both entry flows' },
 ];
 export const locByCode = (code) => LOCATIONS.find((l) => l.code === String(code || '').trim());
 export const locLabel = (l) => `${l.code} · ${l.address}`;
@@ -44,7 +46,7 @@ export const FAULT_CODES = new Set(['9999']);
 // Certificates. status: Draft | Approved | Published | Withdrawn. Only Approved and Published appear (owner, U2).
 // Withdrawn ones are shown marked, pending U22. reissueOf: the certificate this one replaces (BRD BR_09).
 const DESC = 'Approved Traffic Enforcement Device';
-const TYPE = { RLSC: 'Red Light Speed Camera', FDSC: 'Fixed Speed Camera', ASC: 'Average Speed Camera' };
+const TYPE = { RLSC: 'Red Light Speed Camera', FDSC: 'Fixed Speed Camera', ASC: 'Average Speed Camera', MPDC: 'Mobile Phone Detection Camera' };
 let seq = 0;
 const c = (loc, period, certified, expiry, status = 'Published', extra = {}) => ({
   id: `c${++seq}`, loc, desc: DESC, type: TYPE[locByCode(loc).program], period, certified, expiry, status, ...extra,
@@ -75,7 +77,24 @@ export const CERTIFICATES = [
   c('4567', 'QUARTERLY', '15/12/2025', '28/02/2026', 'Published', { reissueOf: 'c22' }),
   c('4567', 'QUARTERLY', '15/03/2026', '12/06/2026'),
   c('4567', 'QUARTERLY', '13/06/2026', '10/09/2026', 'Draft'),
+  c('5678', 'QUARTERLY', '02/03/2026', '31/05/2026'),
+  c('5678', 'QUARTERLY', '25/11/2025', '23/02/2026'),
 ];
+
+// The signed link both apps open today: certificateDetails.jsf?p=&d=&s=&i=&m= (owner, 25 Nov 2026).
+// p notice number, d offence date-time yyyyMMddTHHmmss, s site or camera, i unknown (U29), m signature (U30).
+// One invented fine is used for both entry flows so they can be compared. All values are fictitious.
+export const OFFENCES = [
+  { p: '4000000001', d: '20260314T083000', s: '5678', i: '1', program: 'Mobile Phone Detection Camera', offence: 'Driver use mobile phone when not permitted - camera detected - Individual', amount: '$000.00' },
+  { p: '4000000002', d: '20260308T171500', s: '4567', i: '1', program: 'Red Light Speed Camera', offence: 'Proceed through red traffic light - camera detected - Individual', amount: '$000.00' },
+];
+export const DEMO_SIGNATURE = '0000demo0signature0not0real0000';
+export const signedLink = (o) => `/uplift/record?p=${o.p}&d=${o.d}&s=${o.s}&i=${o.i}&m=${DEMO_SIGNATURE}`;
+export const offenceFromLink = (q) => {
+  const o = OFFENCES.find((x) => x.p === q.p && x.d === q.d && x.s === q.s && x.i === q.i);
+  return o && q.m === DEMO_SIGNATURE ? o : null;
+};
+export const ENTRY_LINK = signedLink(OFFENCES[0]);
 export const VISIBLE = (x) => x.status === 'Approved' || x.status === 'Published' || x.status === 'Withdrawn';
 export const COUNTS = (x) => x.status === 'Approved' || x.status === 'Published'; // in force only if not withdrawn
 
@@ -177,6 +196,12 @@ export const QUESTIONS = [
   { id: 'U26', topic: 'Days, not times', at: ['search', 'record'], q: 'Is a day enough, given the legacy page used date and time?', why: 'Certified dates have no time; an offence on the morning of the certified day could fall before certification.', assume: 'Days are enough (owner). Edge case: same-day certification to confirm.', who: 'Transport, Legal', status: 'Assumption to validate', source: OWNER, action: 'Confirm the same-day rule.', impact: 'S2, S11.' },
   { id: 'U27', topic: 'Date range picker', at: ['search'], q: 'How do staff pick a date range?', why: 'The NSW Design System date picker has no start-to-end range mode.', assume: 'One calendar: first click sets From, second sets To, with From and To still typeable. Follows the NSW picker’s format (dd/mm/yyyy), look and keyboard pattern.', who: 'Product owner', status: 'Confirmed requirement', source: OWNER + '; designsystem.nsw.gov.au/components/date-picker', action: 'None.', impact: 'S2.' },
   { id: 'U28', topic: 'New label names', at: ['search', 'fields'], q: 'Are the proposed new names right?', why: 'The label switch lets reviewers compare legacy and new names side by side.', assume: 'As listed on the field delta page.', who: 'Revenue NSW and Transport users', status: 'Assumption to validate', source: OWNER, action: 'Test with users.', impact: 'Labels.' },
+  { id: 'U29', topic: 'Signed link: parameter i', at: ['record', 'entry'], q: 'What does the i parameter in the signed certificateDetails link mean?', why: 'The link carries p (notice number), d (offence date and time), s (site or camera), i and m (signature). We must reproduce it exactly for both apps.', assume: 'Unknown, possibly an image or incident index.', who: 'CEVOC technical owner', status: 'Assumption to validate', source: OWNER, action: 'Confirm from the CEVOC code or the link builders in Revenue NSW.', impact: 'Link contract (U15).' },
+  { id: 'U30', topic: 'Signed link: how m is signed and checked', at: ['record', 'entry'], q: 'How is the signature m made, and what does CEVOC do when it does not match?', why: 'A tampered link must never show another person’s offence details.', assume: 'A keyed hash over p, d, s and i; on mismatch the page shows the wrong-link message.', who: 'CEVOC technical owner, Cyber', status: 'Assumption to validate', source: OWNER, action: 'Confirm the algorithm, key holder and rotation.', impact: 'Wrong-link state (S14).' },
+  { id: 'U31', topic: 'Two Revenue NSW fine sites', at: ['entry', 'journey'], q: 'Do the Service NSW path (fines.digital) and the public myPenalty path (apps09) link to CEVOC the same way?', why: 'They are different websites that look alike.', assume: 'Verified by the owner: both give the identical signed certificateDetails link, so one CEVOC page serves both.', who: 'Product owner', status: 'Confirmed requirement', source: OWNER, action: 'None.', impact: 'One end-user page for both entry points.' },
+  { id: 'U32', topic: 'Service NSW to Revenue NSW sign-on', at: ['entry', 'journey'], q: 'Does the single sign-on from Service NSW into Revenue NSW’s fines site affect the CEVOC link?', why: 'The logged-in path never asks for the registration; the public path does.', assume: 'No: the link is signed and needs no session, so CEVOC needs no login.', who: 'Service NSW, Revenue NSW', status: 'Assumption to validate', source: OWNER, action: 'Confirm with both agencies.', impact: 'No login on the record page (U14).' },
+  { id: 'U33', topic: 'Outdated wording on myPenalty', at: ['entry'], q: 'myPenalty still says “Roads and Maritime Services (RMS) website” and “contact RMS”. Who updates it?', why: 'RMS no longer exists; the wording now points people to CEVOC under Transport.', assume: 'Out of scope for the CEVOC uplift; raise with Revenue NSW.', who: 'Revenue NSW', status: 'Out of scope', source: OWNER, action: 'Raise with Revenue NSW.', impact: 'None on CEVOC.' },
+  { id: 'U34', topic: 'Copy for the end-user page', at: ['record'], q: 'Which wording works best for the static and dynamic text?', why: 'People arrive worried; each variant answers a different worry.', assume: 'Three variants to test: A reassurance, B plain summary, C what next.', who: 'Transport communications, customers in testing', status: 'Proposed UX improvement', source: OWNER, action: 'Test the variants with customers.', impact: 'Record page copy.' },
 ];
 export const qById = (id) => QUESTIONS.find((q) => q.id === id);
 
@@ -259,7 +284,7 @@ export const JOURNEY = {
     { id: 'j1', name: 'Letter arrives', who: 'Person', note: 'Penalty notice in the post.', kind: 'person' },
     { id: 'j2', name: 'Finds the notice', who: 'Service NSW app or myPenalty', note: 'In whichever app they use.', kind: 'ext', fork: ['Service NSW app', 'myPenalty (Revenue NSW)'] },
     { id: 'j3', name: 'Sees what happened', who: 'Same app', note: 'Time, place, photos.', kind: 'ext' },
-    { id: 'j4', name: 'Checks it’s fair', who: 'CEVOC certificate record', note: 'Link with location code and offence date; only the certificates in force that day.', kind: 'ours', to: '/uplift/record?loc=1234&at=14%2F03%2F2026', qs: ['U15', 'U5'] },
+    { id: 'j4', name: 'Checks it’s fair', who: 'CEVOC certificate record', note: 'Link with location code and offence date; only the certificates in force that day.', kind: 'ours', to: '/uplift/record?p=4000000001&d=20260314T083000&s=5678&i=1&m=0000demo0signature0not0real0000', qs: ['U15', 'U31', 'U5'] },
     { id: 'j5', name: 'Decides', who: 'Back in the app (Revenue NSW)', note: 'Pay, request a review or elect to go to court.', kind: 'ext', fork: ['Pay', 'Request a review', 'Elect court'] },
   ],
   staff: [

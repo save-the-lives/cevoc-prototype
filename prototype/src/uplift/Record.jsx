@@ -1,105 +1,133 @@
 import { useEffect, useState } from 'react';
 import { Button, Callout, Header, HeaderBrand, Masthead } from '@nswds/ui';
-import { CERTIFICATES, FAULT_CODES, RECORD_SAMPLES, certificatesAt, fmtDay, locByCode, parseDay, recordLink } from './data.js';
-import { ProtoBar, Q, StoriesBar, useLabels } from './kit.jsx';
-import { Details } from './Search.jsx';
+import {
+  CERTIFICATES, COUNTS, FAULT_CODES, OFFENCES, RECORD_SAMPLES, certificatesAt, fmtDay, locByCode, offenceFromLink, parseDay, recordLink, signedLink,
+} from './data.js';
+import { COPY } from './tour.js';
+import TourLayer, { useTour } from './Tour.jsx';
+import { SupportBar } from './Search.jsx';
 import { go } from '../lib/router.js';
 
-// PHASE 1 UPLIFT (#/uplift/record): what a person reaches from the link on their notice in the Service NSW app or
-// myPenalty. No login. Only the certificates in force on the offence day; a withdrawn certificate is shown as
-// withdrawn; a genuinely missing certificate and a system fault each have their own message (U22 to U24).
-// ?loc=&at=dd/mm/yyyy (end user), or ?loc=&id= (one certificate opened directly).
+// PHASE 1 UPLIFT (#/uplift/record): the legacy end-user certificate page (certificateDetails.jsf), lifted and
+// shifted. Reached from "View camera certification" on the Revenue NSW fines site (Service NSW path) or from
+// myPenalty: both give the same signed link ?p=&d=&s=&i=&m= (owner verified, U31). Same sections and wording as
+// the legacy page: Offence Details, Camera certificate details for this offence, Enforcement cameras and
+// certification requirements, Close. New: distinct messages for a missing or withdrawn certificate and a fault.
+// No login. Older links ?loc=&at=dd/mm/yyyy still open the page (record 0006). Values are invented.
 
-function Card({ r, L }) {
-  return (
-    <article className={`up-card${r.status === 'Withdrawn' ? ' is-withdrawn' : ''}`}>
-      <h2>{r.desc}{r.status === 'Withdrawn' && <span className="uh-tag is-warn">Withdrawn</span>}{r.reissueOf && <span className="uh-tag">Re-issued</span>}</h2>
-      <dl>
-        <dt>{L.type}</dt><dd>{r.type}</dd>
-        <dt>{L.period}</dt><dd>{r.period}</dd>
-        <dt>{L.certified}</dt><dd>{r.certified}</dd>
-        <dt>{L.expiry}</dt><dd>{r.expiry}</dd>
-      </dl>
-      <Details r={r} />
-    </article>
-  );
+const PROGRAM = { RLSC: 'Red Light Speed Camera', FDSC: 'Fixed Speed Camera', ASC: 'Average Speed Camera', MPDC: 'Mobile Phone Detection Camera' };
+const fromD = (d) => {
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/.exec(d || '');
+  return m ? { day: new Date(+m[1], +m[2] - 1, +m[3]), time: `${m[4]}:${m[5]}` } : null;
+};
+const longDay = (d) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+function Dyn({ src, children }) {
+  return <span className="tr-dynv" data-dyn={src}>{children}</span>;
 }
 
 export default function Record({ query = {} }) {
-  const { L } = useLabels();
+  const { copy } = useTour();
+  const C = COPY[copy] || COPY.legacy;
+  const [busy, setBusy] = useState(false);
   const [nonce, setNonce] = useState(0);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => { document.title = 'Camera certificate for your offence (uplift prototype)'; }, []);
-  const code = (query.loc || '').trim();
+  useEffect(() => { document.title = 'Certificate details | Customer Enquiry and Verification of Certificate'; }, []);
+
+  // Resolve the link: signed (p d s i m) or the older loc + at.
+  const signed = query.p !== undefined || query.m !== undefined;
+  const off = signed ? offenceFromLink(query) : null;
+  const code = signed ? (off ? off.s : String(query.s || '')) : String(query.loc || '').trim();
+  const when = signed ? (off ? fromD(off.d) : null) : (() => { const [d, t] = String(query.at || '').split(' '); const day = parseDay(d); return day ? { day, time: t || '' } : null; })();
   const loc = locByCode(code);
-  const day = parseDay((query.at || '').split(' ')[0]);
   const one = query.id ? CERTIFICATES.find((x) => x.id === query.id) : null;
-  const retry = () => { setLoading(true); setTimeout(() => { setLoading(false); setNonce(nonce + 1); }, 600); };
+  const badLink = signed ? !off : (!loc || (!when && !one));
+  const retry = () => { setBusy(true); setTimeout(() => { setBusy(false); setNonce(nonce + 1); }, 600); };
 
   let body;
-  if (loading) body = <p role="status">Checking again…</p>;
+  if (busy) body = <p role="status">Checking again…</p>;
   else if (FAULT_CODES.has(code)) {
     body = (
-      <Callout status="danger" title="We couldn’t get the certificate right now" role="alert">
+      <Callout status="danger" title="We couldn’t get the certificate details right now" role="alert">
         <p>This is a problem with our system. It does not mean the camera had no certificate. Please try again later.</p>
-        <Button type="button" variant="outline" onClick={retry}>Try again</Button> <Q id="U24" />
+        <Button type="button" variant="outline" onClick={retry}>Try again</Button>
       </Callout>
     );
-  } else if (!loc || (!day && !one)) {
+  } else if (badLink) {
     body = (
-      <Callout status="info" title="We couldn’t match this link to a camera">
-        <p>The link may be incomplete or out of date. Open your notice again in the Service NSW app or myPenalty and use the link there, or contact Revenue NSW.</p>
-        <Q id="U15" />
+      <Callout status="info" title="We couldn’t open the certificate details from this link">
+        <p>The link may be incomplete or out of date. Go back to your fine in the Service NSW app or myPenalty and select the camera certification link again, or call 13 22 13.</p>
       </Callout>
     );
-  } else if (one) {
-    body = <div className="up-cards"><Card r={one} L={L} /></div>;
   } else {
-    const { inForce, withdrawn, missing } = certificatesAt(code, day);
+    const day = one ? parseDay(one.certified) : when.day;
+    const { inForce, withdrawn, missing } = one ? { inForce: [one], withdrawn: [], missing: [] } : certificatesAt(code, day);
+    const tested = inForce.filter(COUNTS).map((x) => parseDay(x.certified)).sort((a, b) => b - a)[0];
     body = (
       <>
-        {missing.length > 0 && (
-          <Callout status="warning" title={`No ${missing.map((m) => m.toLowerCase()).join(' or ')} certificate was in force on ${fmtDay(day)}`}>
-            <p>Our records show a gap for this camera on that day. This is not a system problem. If this matters to your decision, contact Revenue NSW customer enquiries before you choose what to do.</p>
-            <Q id="U23" /> <Q id="U16" />
-          </Callout>
-        )}
-        {withdrawn.length > 0 && (
-          <Callout status="info" title="A certificate covering this day was withdrawn">
-            <p>It is shown below, marked Withdrawn. It does not count as in force. <Q id="U22" /></p>
-          </Callout>
-        )}
-        {inForce.length > 1 && <p className="up-note">{inForce.length} certificates were in force that day. <Q id="U5" /></p>}
-        <div className="up-cards">{[...inForce, ...withdrawn].map((r) => <Card key={r.id} r={r} L={L} />)}</div>
+        <section className="cd-sec" data-tour="offence" aria-labelledby="cd-off">
+          <h2 id="cd-off">Offence Details</h2>
+          <dl className="cd-dl">
+            <dt>Penalty notice number</dt><dd><Dyn src="Signed link: p">{off ? off.p : 'Not in this link'}</Dyn></dd>
+            <dt>Program type</dt><dd><Dyn src="CMCS site record">{off ? off.program : PROGRAM[loc.program]}</Dyn></dd>
+            <dt>Site, zone or camera number</dt><dd><Dyn src="Signed link: s">{loc.code}</Dyn></dd>
+            <dt>Site location</dt><dd><Dyn src="CMCS site record">{loc.address}</Dyn></dd>
+            {!one && <><dt>Date of offence</dt><dd><Dyn src="Signed link: d">{fmtDay(when.day)}</Dyn></dd></>}
+            {!one && when.time && <><dt>Time of offence</dt><dd><Dyn src="Signed link: d">{when.time}</Dyn></dd></>}
+          </dl>
+        </section>
+
+        <section className="cd-sec" data-tour="cert" aria-labelledby="cd-cert">
+          <h2 id="cd-cert">Camera certificate details for this offence</h2>
+          {tested && <p className="cd-lead">{renderCert(C, tested, one ? null : when.day)}</p>}
+          <div data-tour="states" className="cd-states">
+            {missing.length > 0 && (
+              <Callout status="warning" title={`No ${missing.map((m) => m.toLowerCase()).join(' or ')} certificate was in force on ${fmtDay(day)}`}>
+                <p>Our records show a gap in certification for this camera on that day. This is not a system problem. If this affects your decision, call 13 22 13 before you choose what to do.</p>
+              </Callout>
+            )}
+            {withdrawn.length > 0 && (
+              <Callout status="info" title="A certificate covering this day was withdrawn">
+                <p>The {withdrawn.map((w) => w.period.toLowerCase()).join(' and ')} certificate certified on {withdrawn.map((w) => w.certified).join(', ')} was withdrawn on {withdrawn.map((w) => w.withdrawn).join(', ')} and does not count.</p>
+              </Callout>
+            )}
+          </div>
+        </section>
       </>
     );
   }
 
   return (
-    <div className="pub up uh" key={nonce}>
+    <div className="pub up uh cd" key={nonce}>
+      <a className="skip" href="#up-main" onClick={(e) => { e.preventDefault(); document.getElementById('up-main')?.focus(); }}>Skip to content</a>
       <div role="region" aria-label="NSW Government"><Masthead container="contained" /></div>
-      <Header color="white" border container="contained"><HeaderBrand href="#/uplift" sitename="Customer Enquiry and Verification of Certificate" /></Header>
-      <ProtoBar>
-        <label className="uh-pick">Sample link{' '}
-          <select value="" onChange={(e) => e.target.value && go(e.target.value)}>
-            <option value="">Choose…</option>
-            {RECORD_SAMPLES.map((s) => <option key={s.label} value={recordLink(s)}>{s.label}</option>)}
-          </select>
-        </label>
-      </ProtoBar>
-      <main id="up-main" tabIndex={-1} className="pub-wrap pub-page up-page">
-        <h1>{one ? 'Certificate' : 'Camera certificate for your offence'}</h1>
-        {loc && (
-          <p className="up-ctx">
-            Camera at <strong>{loc.address}</strong> (location {loc.code}){day && !one ? <> on <strong>{fmtDay(day)}</strong></> : null}.
-            {!one && ' Only the certificates for that day are shown.'} <Q id="U14" />
-          </p>
-        )}
+      <Header color="white" border container="contained"><HeaderBrand href={window.location.hash || '#/uplift/record'} sitename="Customer Enquiry and Verification of Certificate" /></Header>
+      <SupportBar />
+      <main id="up-main" tabIndex={-1} className="pub-wrap pub-page up-page cd-main">
+        <h1 data-tour="title">Certificate details</h1>
         {body}
-        <p className="up-foot">No download, save or print. <Q id="U1" /> Disclaimer to come from Legal. <Q id="U8" /> Explanatory text to come. <Q id="U13" /></p>
-        <p className="up-foot">When you are ready, go back to the Service NSW app or myPenalty to pay, request a review or elect to go to court.</p>
+        <section className="cd-sec cd-req" data-tour="requirements" aria-labelledby="cd-req">
+          <h2 id="cd-req">Enforcement cameras and certification requirements</h2>
+          {C.req.map((para) => <p key={para}>{para}</p>)}
+        </section>
+        <div className="uh-actions" data-tour="close"><Button type="button" variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : go('/uplift/hub')}>Close</Button></div>
       </main>
-      <StoriesBar screen="record" />
+      <TourLayer screen="record" controls={(
+        <section>
+          <h3>Sample links</h3>
+          <ul className="tr-list">
+            {OFFENCES.map((o) => <li key={o.p}><button type="button" className="tr-link" onClick={() => go(signedLink(o))}>Signed link: {o.program}</button></li>)}
+            {RECORD_SAMPLES.slice(1).map((s) => <li key={s.label}><button type="button" className="tr-link" onClick={() => go(recordLink(s))}>{s.label}</button> <small>{s.note}</small></li>)}
+            <li><button type="button" className="tr-link" onClick={() => go(`${signedLink(OFFENCES[0]).replace(/m=[^&]+/, 'm=tampered')}`)}>Tampered link</button> <small>Wrong signature</small></li>
+          </ul>
+        </section>
+      )} />
     </div>
   );
+}
+
+function renderCert(C, tested, offenceDay) {
+  const t = longDay(tested);
+  const text = C.cert('\u0000', offenceDay ? longDay(offenceDay) : null);
+  const [a, b] = text.split('\u0000');
+  return <>{a}<Dyn src="CMCS certificate in force">{t}</Dyn>{b}</>;
 }

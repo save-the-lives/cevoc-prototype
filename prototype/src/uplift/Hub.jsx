@@ -2,9 +2,11 @@ import '../styles/uplift-hub.css';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
 import {
-  FIELDS, JOURNEY, LABELS, LABEL_KEYS, OPEN, QUESTIONS, RECORD_SAMPLES, SAMPLES, STATUS, STORIES, qById, recordLink, searchLink, storyReady,
+  ENTRY_LINK, FIELDS, JOURNEY, LABELS, LABEL_KEYS, OPEN, QUESTIONS, RECORD_SAMPLES, SAMPLES, STATUS, STORIES, qById, recordLink, searchLink, storyReady,
 } from './data.js';
 import { HUB_TABS, LabelSwitch, Q } from './kit.jsx';
+import Content from './Content.jsx';
+import EntryFlows from './Entry.jsx';
 
 // CERTIFICATE UPLIFT HUB (#/uplift/hub): the phase 1 uplift's own hub, modelled on enf-site-onboarding.
 // Start here, screens to try, and a companion layer (journey, entry from the apps, legacy and target, field delta,
@@ -20,7 +22,7 @@ function Shell({ tab, title, lede, children }) {
           <nav aria-label="Uplift hub" className="uh-tabs">
             {HUB_TABS.map(([id, label]) => <Link key={id} to={`/uplift/hub${id ? `/${id}` : ''}`} className={tab === id ? 'on' : ''} aria-current={tab === id ? 'page' : undefined}>{label}</Link>)}
             <Link to="/uplift" className="uh-tabs__go">Search screen ↗</Link>
-            <Link to={recordLink(RECORD_SAMPLES[0])} className="uh-tabs__go">Record screen ↗</Link>
+            <Link to={ENTRY_LINK} className="uh-tabs__go">Record screen ↗</Link>
           </nav>
         </div>
       </header>
@@ -49,7 +51,7 @@ function Home() {
           <h3>Who it is for</h3>
           <p>Revenue NSW and Transport users, the CMCS data owner, Legal, and the delivery team.</p>
           <h3>How to read it</h3>
-          <p><span className="uh-q__b" aria-hidden="true">?</span> marks an open question exactly where it matters; click it. <em>Show labels</em> switches every screen between the legacy names and the proposed new names. Each screen’s footer lists its stories.</p>
+          <p>The screens look exactly as a real user would see them. Press the small <strong>Tour</strong> button (bottom right) on any screen for the reviewer’s overlay: numbered notes on each area with the legacy and new names, its stories and open questions, sample searches and links, the label switch, and on the record page “Highlight dynamic data” and the copy variants. Escape closes it.</p>
           <p className="uh-meta">{STORIES.length} stories, {ready} ready for dev · {QUESTIONS.length} questions, {open} open</p>
         </section>
         <section className="uh-card">
@@ -65,12 +67,13 @@ function Home() {
       <h2 className="uh-h2">Screens</h2>
       <div className="uh-tiles">
         <Link to="/uplift" className="uh-tile"><h3>Certificate search (Revenue NSW staff)</h3><p>Several locations by code or address, day range, sortable results that expand in place, gap and fault messages.</p></Link>
-        <Link to={recordLink(RECORD_SAMPLES[0])} className="uh-tile"><h3>Certificate record (person with a notice)</h3><p>Reached from the Service NSW app or myPenalty. Only the certificates in force on the offence day.</p></Link>
+        <Link to={ENTRY_LINK} className="uh-tile"><h3>Certificate details (person with a fine)</h3><p>The legacy end-user page, lifted and shifted. Reached from the same signed link in the Service NSW path and myPenalty.</p></Link>
       </div>
       <h2 className="uh-h2">Companion layer</h2>
       <div className="uh-tiles">
         <Link to="/uplift/hub/journey" className="uh-tile"><h3>Journey</h3><p>The public user first, forked by app, then staff.</p></Link>
-        <Link to="/uplift/hub/entry" className="uh-tile"><h3>Entry from the apps</h3><p>Step by step from the Service NSW app or myPenalty to the record and back. Waiting on screenshots.</p></Link>
+        <Link to="/uplift/hub/entry" className="uh-tile"><h3>Entry from the apps</h3><p>The two current journeys, Service NSW (logged in) and myPenalty (no login), recreated step by step. Only the CEVOC page changes.</p></Link>
+        <Link to="/uplift/hub/content" className="uh-tile"><h3>Page content</h3><p>The end-user page split into dynamic data and static copy, and copy variants to test.</p></Link>
         <Link to="/uplift/hub/compare" className="uh-tile"><h3>Legacy and target</h3><p>Each part of the page, side by side.</p></Link>
         <Link to="/uplift/hub/fields" className="uh-tile"><h3>Field delta</h3><p>Fields on the legacy page against what the BRD asks for, and the label changes.</p></Link>
         <Link to="/uplift/hub/stories" className="uh-tile"><h3>Stories</h3><p>Given/When/Then acceptance criteria, ready or not.</p></Link>
@@ -110,28 +113,9 @@ function Journey() {
 }
 
 function Entry() {
-  const steps = [
-    ['Their notice in the app', 'The Service NSW app or myPenalty shows the notice: time, place, photos.'],
-    ['The link or button', 'A link such as “Check the camera’s certificate” carries the location code and the offence date.'],
-    ['The CEVOC record', 'Only the certificates in force that day.', recordLink(RECORD_SAMPLES[0])],
-    ['Back to decide', 'Pay, request a review or elect to go to court, in the same app.'],
-  ];
   return (
-    <Shell tab="entry" title="Entry from the apps" lede="How someone gets from the Service NSW app or myPenalty to the certificate record and back. The app screens will be recreated from the owner’s screenshots once they arrive; the screenshots themselves are never stored in this public repo.">
-      {['Service NSW app', 'myPenalty (Revenue NSW)'].map((app) => (
-        <section key={app} className="uh-lane">
-          <h2>{app}</h2>
-          <ol className="uh-steps">
-            {steps.map(([t, d, to], i) => (
-              <li key={t} className={`uh-step is-${i === 2 ? 'ours' : 'ext'}`}>
-                <span className="uh-step__n">{i + 1}</span><strong>{t}</strong><small>{d}</small>
-                {to ? <Link to={to}>Open ↗</Link> : <span className="uh-pending">Mock screen waiting on the owner’s screenshot</span>}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ))}
-      <p><Q id="U15" /> How each app links to the record, and what the link carries.</p>
+    <Shell tab="entry" title="Entry from the apps" lede="The two journeys that reach the CEVOC certificate page today, recreated as mock screens with one invented fine. Only the CEVOC page is uplifted; every other step stays as it is.">
+      <EntryFlows />
     </Shell>
   );
 }
@@ -250,6 +234,7 @@ export default function Hub({ page, query = {} }) {
   if (page === 'entry') return <Entry />;
   if (page === 'compare') return <Compare />;
   if (page === 'fields') return <Fields />;
+  if (page === 'content') return <Shell tab="content" title="Page content" lede="The end-user certificate page split into dynamic data and static copy, with copy variants to test."><Content /></Shell>;
   if (page === 'stories') return <Stories query={query} />;
   if (page === 'questions') return <Questions query={query} />;
   return <Home />;

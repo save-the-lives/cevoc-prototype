@@ -1,7 +1,7 @@
 import '../styles/uplift.css';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
-import { LABELS, OPEN, qById, questionsFor, storiesFor, storyReady } from './data.js';
+import { LABELS, OPEN, qById } from './data.js';
 
 // Shared pieces of the certificate uplift hub: the label switch, in-context question badges, the
 // "Stories for this screen" bar and the hub tabs. Modelled on enf-site-onboarding's companion layer.
@@ -26,20 +26,6 @@ export function LabelSwitch() {
         <label key={v}><input type="radio" name="uh-labels" value={v} checked={m === v} onChange={() => setMode(v)} /> {t}</label>
       ))}
     </fieldset>
-  );
-}
-
-// The amber prototype bar under the header: what this is, the label switch, links back to the hub.
-export function ProtoBar({ children }) {
-  return (
-    <div className="uh-bar">
-      <div className="pub-wrap uh-bar__in">
-        <span className="uh-bar__what">Prototype · phase 1 certificate uplift · sample data only</span>
-        {children}
-        <LabelSwitch />
-        <Link to="/uplift/hub" className="uh-bar__hub">Uplift hub</Link>
-      </div>
-    </div>
   );
 }
 
@@ -73,38 +59,7 @@ export function Q({ id }) {
   );
 }
 
-// Bottom bar on each screen: stories and questions that govern it, in a drawer.
-export function StoriesBar({ screen }) {
-  const [open, setOpen] = useState(false);
-  const list = storiesFor(screen);
-  const qs = questionsFor(screen);
-  return (
-    <>
-      <nav className="uh-foot" aria-label="Prototype companion">
-        <button type="button" onClick={() => setOpen(true)}>Stories for this screen ({list.length})</button>
-        <Link to={`/uplift/hub/questions?screen=${screen}`}>Questions for this screen ({qs.filter(OPEN).length} open)</Link>
-        <Link to="/uplift/hub">Uplift hub</Link>
-      </nav>
-      {open && (
-        <div className="uh-drawer" role="dialog" aria-modal="true" aria-labelledby="uh-drawer-h">
-          <div className="uh-drawer__in">
-            <header><h2 id="uh-drawer-h">Stories for this screen</h2><button type="button" onClick={() => setOpen(false)} aria-label="Close">✕</button></header>
-            {list.map((s) => (
-              <article key={s.id} className="uh-story">
-                <p><strong>{s.id}</strong> <span className={`uh-tag ${storyReady(s) ? 'is-done' : 'is-open'}`}>{storyReady(s) ? 'Ready for dev' : 'Not ready'}</span></p>
-                <p>As a {s.role}, I want to {s.want}, so {s.so}.</p>
-                {s.qs.length > 0 && <p className="uh-story__qs">Questions: {s.qs.map((id) => <Q key={id} id={id} />)}</p>}
-                <Link to={`/uplift/hub/stories?s=${s.id}`}>Acceptance criteria</Link>
-              </article>
-            ))}
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 export const HUB_TABS = [
-  ['', 'Hub'], ['journey', 'Journey'], ['entry', 'Entry from the apps'], ['compare', 'Legacy and target'],
+  ['', 'Hub'], ['journey', 'Journey'], ['entry', 'Entry from the apps'], ['compare', 'Legacy and target'], ['content', 'Page content'],
   ['fields', 'Field delta'], ['stories', 'Stories'], ['questions', 'Questions'],
 ];
