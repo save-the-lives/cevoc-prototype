@@ -263,3 +263,13 @@
 .uh-card.is-deleted { border-style: dashed; }
 .uh-qref.is-gone { text-decoration: line-through; color: #64748b; }
 .ls-edit .ls-meta.is-wide { flex: 1 1 100%; }
+/* Location chips: a long address wraps inside the box instead of widening the page at 320 px (acceptance X4). */
+.uh-chips [data-slot="combobox-chip"] { max-width: 100%; height: auto; min-height: calc(var(--spacing, .25rem) * 4.75); white-space: normal; overflow-wrap: anywhere; text-align: left; }
+/* Acceptance criteria: automated / manual and BRD per criterion; Definition of Done (owner, 26 Nov 2026) */
+.ls-ac li { margin-bottom: 6px; }
+.ls-acmeta { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+.ls-chip.is-auto { background: #e6f6ea; color: #14532d; border: 1px solid #9fd5ad; }
+.ls-chip.is-manual { background: #fff4cf; color: #6b4e00; border: 1px solid #e0b84a; }
+.ls-chip code { font-size: 12px; overflow-wrap: anywhere; }
+.ls-dod summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.ls-dod ol { padding-left: 22px; }

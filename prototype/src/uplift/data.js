@@ -301,7 +301,7 @@ export const STORIES = [
   { id: 'S22', priority: 'Medium', user: 'person with a fine', path: 'happy path', brd: [], screen: 'record', role: 'person with a fine', want: 'get back to the service I came from when I’m done', so: 'I can pay, request a review or elect court without hunting for the page', qs: ['U9', 'U30'],
     ac: [ac('I opened the record page from a signed link with source X', 'I finish reading', 'I see “Return to X”, linking to X’s page from the app settings'), ac('the link has no source or an unknown source', 'I finish reading', 'there is no return button, only “You can close this tab”'), ac('the source in the link was changed', 'I open it', 'the signature check fails and I see the wrong-link message')] },
   { id: 'S19', priority: 'Medium', user: 'the business', path: 'happy path', brd: [], screen: 'search', role: 'the business', want: 'the page restyled to the NSW Design System and accessible', so: 'phase 1 is a low-risk uplift', qs: ['U11', 'U1'],
-    ac: [ac('any control', 'it is used by keyboard or screen reader', 'it meets WCAG 2.2 AA'), ac('a phone', 'the page is shown', 'there is no sideways page scrolling; the table scrolls in its box')] },
+    ac: [ac('the search and record pages in every state (results, empty, missing, withdrawn, fault, wrong link)', 'axe-core checks them against the WCAG 2.2 A and AA rules', 'no violations are reported, and the cross-cutting criteria X1 to X4 pass'), ac('a phone 320 to 390 px wide', 'the page is shown', 'there is no sideways page scrolling; the results table scrolls inside its own box')] },
 ];
 export const USERS = ['person with a fine', 'Revenue NSW officer', 'Transport', 'reviewer', 'the business', 'other agencies / API'];
 export const PRIORITIES = ['High', 'Medium', 'Low'];

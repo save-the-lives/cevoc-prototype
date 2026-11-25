@@ -110,7 +110,7 @@ export default function Record({ query = {} }) {
         <p className="cd-disclaimer" data-tour="disclaimer">{DISCLAIMER.before}<a href={GIPA_URL} target="_blank" rel="noreferrer">{DISCLAIMER.link}</a>{DISCLAIMER.after}</p>
         <div className="uh-actions" data-tour="close">
           {off && query.r && SOURCES[query.r]
-            ? <a className="cd-return" href={SOURCES[query.r].url} target="_blank" rel="noreferrer">Return to <Dyn src="Signed link: r, app setting record.returnLinks">{SOURCES[query.r].name}</Dyn></a>
+            ? <a className="cd-return" href={SOURCES[query.r].url} target="_blank" rel="noreferrer"><span>Return to <Dyn src="Signed link: r, app setting record.returnLinks">{SOURCES[query.r].name}</Dyn></span></a>
             : <p className="cd-closetab">You can close this tab.</p>}
         </div>
       </main>

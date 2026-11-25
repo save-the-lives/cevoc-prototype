@@ -1,0 +1,34 @@
+name: Acceptance checks
+# Named Playwright checks for the uplift stories' acceptance criteria and the cross-cutting criteria
+# (prototype/src/uplift/acceptance.js; checks in prototype/tests/acceptance/run.cjs). Owner, 26 Nov 2026.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+        working-directory: prototype
+      - run: npm run build
+        working-directory: prototype
+      - name: Install Playwright
+        run: |
+          npm install --no-save --prefix /tmp/pw playwright@1.49.1
+          npx --prefix /tmp/pw playwright install --with-deps chromium
+      - name: Run the acceptance checks
+        working-directory: prototype
+        run: NODE_PATH=/tmp/pw/node_modules npm run test:acceptance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acceptance-results
+          path: prototype/tests/acceptance/results.json

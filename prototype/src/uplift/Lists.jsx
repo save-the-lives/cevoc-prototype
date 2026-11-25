@@ -4,6 +4,7 @@ import { OPEN, PATHS, PRIORITIES, QUESTIONS, STATUS, STORIES, USERS } from './da
 import { ADRS, ADR_STATUS } from './adrs.js';
 import { compile, suggest, unknownField } from './jql.js';
 import { exportXlsx, idNum, importXlsx, useItemState } from './state.js';
+import { AC_BRD, CROSS, DOD, checkFor } from './acceptance.js';
 
 // Hub Stories, Questions and ADRs pages (owner, 25-26 Nov 2026): tagged, filterable, JQL-style searchable with
 // autocomplete, sortable; a pencil button edits each item in place; Add creates a new item with the next free ID;
@@ -26,7 +27,31 @@ const STORY_NEW = { role: '', want: '', so: '', screen: 'search', acText: '', qs
 const Q_NEW = { topic: '', q: '', why: '', assume: '', who: '', action: '', at: [], status: 'Assumption to validate', priority: '', tags: '', answer: '', noStoryReason: '' };
 const ADR_NEW = { title: '', context: '', options: [], decision: '', consequences: '', qs: [], stories: [], status: 'Proposed', tags: '', notes: '' };
 
-const acOf = (s) => (Array.isArray(s.ac) && s.ac.length ? s.ac.map((a) => `Given ${a.g}, when ${a.w}, then ${a.t}.`) : String(s.acText || '').split(/\n+/).map((x) => x.trim()).filter(Boolean));
+// Criteria as text, one per line. An edited or imported text (acText) wins over the published Given/When/Then list.
+const acOf = (s) => (String(s.acText || '').trim() ? String(s.acText).split(/\n+/).map((x) => x.trim().replace(/^\d+\.\s*/, '')).filter(Boolean)
+  : Array.isArray(s.ac) ? s.ac.map((a) => `Given ${a.g}, when ${a.w}, then ${a.t}.`) : []);
+const acBrd = (s, n) => AC_BRD[`${s.id}.${n}`] || split(s.brd).join(', ') || '—';
+const coverage = (s) => { const n = acOf(s).length; const k = acOf(s).filter((_, i) => checkFor(s.id, i + 1)).length; return { n, k }; };
+
+// Definition of Done and cross-cutting criteria, shown above the stories (owner, 26 Nov 2026).
+function DoneAndCross() {
+  return (
+    <details className="uh-card ls-dod">
+      <summary><strong>Definition of Done</strong> and cross-cutting acceptance criteria (X1 to X{CROSS.length})</summary>
+      <ol>{DOD.map((x) => <li key={x}>{x}</li>)}</ol>
+      <h3 className="uh-h3">Cross-cutting criteria (every story, every screen)</h3>
+      <ol className="uh-ac ls-ac">{CROSS.map((c) => (
+        <li key={c.id} id={c.id}><strong>{c.id} {c.area}.</strong> <b>Given</b> {c.g}, <b>when</b> {c.w}, <b>then</b> {c.t}. <AcCheck name={c.check} brd={c.brd} />{c.note && <span className="ls-meta"> {c.note}</span>}</li>
+      ))}</ol>
+    </details>
+  );
+}
+const AcCheck = ({ name, brd }) => (
+  <span className="ls-acmeta">
+    {name ? <span className="ls-chip is-auto" title="Automated: Playwright check in tests/acceptance/run.cjs">✓ Automated: <code>{name}</code></span> : <span className="ls-chip is-manual">Manual</span>}
+    {brd && brd !== '—' && <span className="ls-chip is-brd">{brd}</span>}
+  </span>
+);
 const byId = (list) => Object.fromEntries(list.map((x) => [x.id, x]));
 const readyOf = (s, qmap) => {
   if (s.readyOverride === 'Ready') return true;
@@ -266,7 +291,10 @@ export function StoriesPage({ query = {} }) {
     { header: 'I want to', nkey: 'want', get: (s) => s.want },
     { header: 'So that', nkey: 'so', get: (s) => s.so },
     { header: 'Story', get: (s) => `As a ${s.role}, I want to ${s.want}, so ${s.so}.` },
-    { header: 'Acceptance criteria', nkey: 'acText', get: (s) => acOf(s).join('\n') },
+    { header: 'Acceptance criteria', key: 'acText', get: (s) => acOf(s).map((a, i) => `${i + 1}. ${a}`).join('\n') },
+    { header: 'Criteria BRD', get: (s) => acOf(s).map((_, i) => `${i + 1}. ${acBrd(s, i + 1)}`).join('\n') },
+    { header: 'Automated checks', get: (s) => acOf(s).map((_, i) => `${i + 1}. ${checkFor(s.id, i + 1) || 'manual'}`).join('\n') },
+    { header: 'Coverage', get: (s) => { const c = coverage(s); return `${c.k} of ${c.n} automated`; } },
     { header: 'Related questions', key: 'qs', get: (s) => split(s.qs).join(', ') },
     { header: 'Related ADRs', get: (s) => all.adrsFor('stories', s.id).map((a) => a.id).join(', ') },
     { header: 'Ready (computed)', get: (s) => (readyOf({ ...s, readyOverride: '' }, all.qmap) ? 'Ready' : 'Not ready') },
@@ -289,7 +317,8 @@ export function StoriesPage({ query = {} }) {
         <Select label="Priority" value={f.priority} onChange={(v) => setF({ ...f, priority: v })} options={PRIORITIES} />
         <span className="ls-sortby">Sort: {sortBtn('id', 'ID')} {sortBtn('user', 'User')} {sortBtn('path', 'Path')} {sortBtn('ready', 'Ready')} {sortBtn('priority', 'Priority')}</span>
       </div>
-      <p className="ls-meta">{rows.length} of {st.items.length} stories · BRD requirements with no story: {BRDS.filter((b) => !st.items.some((s) => split(s.brd).includes(b))).join(', ') || 'none'}</p>
+      <DoneAndCross />
+      <p className="ls-meta">{rows.length} of {st.items.length} stories · acceptance criteria automated: {st.items.reduce((n, s) => n + coverage(s).k, 0)} of {st.items.reduce((n, s) => n + coverage(s).n, 0)} · stories fully covered: {st.items.filter((s) => { const c = coverage(s); return c.n && c.k === c.n; }).length} · BRD requirements with no story: {BRDS.filter((b) => !st.items.some((s) => split(s.brd).includes(b))).join(', ') || 'none'}</p>
       {rows.map((s) => {
         const adrs = all.adrsFor('stories', s.id);
         const ac = acOf(s);
@@ -297,6 +326,7 @@ export function StoriesPage({ query = {} }) {
           <article key={s.id} id={s.id} className={`uh-card uh-st${query.s === s.id ? ' is-hl' : ''}${s.deleted ? ' is-deleted' : ''}`}>
             <p className="uh-st__h">
               <strong>{s.id}</strong> <Tag open={!ready(s)}>{ready(s) ? 'Ready for dev' : 'Not ready'}</Tag>
+              {(() => { const c = coverage(s); return <span className={`ls-chip ${c.n && c.k === c.n ? 'is-auto' : 'is-manual'}`}>{c.n && c.k === c.n ? 'Covered' : c.k ? 'Partly covered' : 'Not covered'}: {c.k} of {c.n} automated</span>; })()}
               {s.priority && <span className={`ls-chip is-prio is-${String(s.priority).toLowerCase()}`}>{s.priority} priority</span>}{s.user && <span className="ls-chip is-user">{s.user}</span>}{s.path && <span className={`ls-chip is-path is-${String(s.path).split(' ')[0]}`}>{s.path}</span>}
               {split(s.brd).map((b) => <span key={b} className="ls-chip is-brd">{b}</span>)}
               <Tags tags={s.tags} />
@@ -305,7 +335,7 @@ export function StoriesPage({ query = {} }) {
             </p>
             <DeletedBar it={s} restore={restore} />
             <p>As a <strong>{s.role || '…'}</strong>, I want to {s.want || '…'}, so {s.so || '…'}.</p>
-            {ac.length ? <ol className="uh-ac">{ac.map((a) => <li key={a}>{a}</li>)}</ol> : <p className="ls-meta">No acceptance criteria yet.</p>}
+            {ac.length ? <ol className="uh-ac ls-ac">{ac.map((a, i) => <li key={a}>{a.replace(/^Given /, '').length !== a.length ? <><b>Given</b> {a.slice(6).replace(/, when /, '\u0001').replace(/, then /, '\u0002').split(/(\u0001|\u0002)/).map((p, j) => (p === '\u0001' ? <Fragment key={j}>, <b>when</b> </Fragment> : p === '\u0002' ? <Fragment key={j}>, <b>then</b> </Fragment> : p))}</> : a} <AcCheck name={checkFor(s.id, i + 1)} brd={acBrd(s, i + 1)} /></li>)}</ol> : <p className="ls-meta">No acceptance criteria yet.</p>}
             <p className="uh-meta">Related questions: {split(s.qs).length ? <Refs ids={s.qs} kind="q" map={all.qmap} open /> : 'none'}
               {adrs.length > 0 && <> · Related ADRs: {adrs.map((a) => <Ref key={a.id} id={a.id} kind="a" map={all.amap} />)}</>}</p>
             {s.comment && <p className="ls-ans"><strong>Comment:</strong> {s.comment}</p>}
@@ -316,9 +346,9 @@ export function StoriesPage({ query = {} }) {
                   <label>As a (role)<input defaultValue={s.role} onBlur={(e) => st.edit(s.id, { role: e.target.value })} /></label>
                   <label className="is-wide">I want to<input defaultValue={s.want} onBlur={(e) => st.edit(s.id, { want: e.target.value })} /></label>
                   <label className="is-wide">So that<input defaultValue={s.so} onBlur={(e) => st.edit(s.id, { so: e.target.value })} /></label>
-                  <label className="is-wide">Acceptance criteria (one per line)<textarea rows={3} defaultValue={s.acText || ''} onBlur={(e) => st.edit(s.id, { acText: e.target.value })} /></label>
                   <label>Screen<select defaultValue={s.screen} onChange={(e) => st.edit(s.id, { screen: e.target.value })}>{['search', 'record', 'fields'].map((u) => <option key={u}>{u}</option>)}</select></label>
                 </>}
+                <label className="is-wide">Acceptance criteria, one per line: Given …, when …, then …<textarea rows={4} defaultValue={acOf(s).join('\n')} onBlur={(e) => { const v = e.target.value.trim(); if (v !== acOf(s).join('\n')) st.edit(s.id, { acText: v }); }} /></label>
                 <label className="is-wide">Comment<textarea rows={3} defaultValue={s.comment || ''} onBlur={(e) => st.edit(s.id, { comment: e.target.value })} /></label>
                 <label>Ready<select defaultValue={s.readyOverride || ''} onChange={(e) => st.edit(s.id, { readyOverride: e.target.value })}><option value="">Computed ({readyOf({ ...s, readyOverride: '' }, all.qmap) ? 'Ready' : 'Not ready'})</option><option>Ready</option><option>Not ready</option></select></label>
                 <label>Priority<select defaultValue={s.priority} onChange={(e) => st.edit(s.id, { priority: e.target.value })}>{PRIORITIES.map((u) => <option key={u}>{u}</option>)}</select></label>
