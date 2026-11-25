@@ -1,0 +1,7 @@
+# CEVOC site on Apache (XAMPP). Needs AllowOverride All (XAMPP's default for htdocs).
+# Never serve git internals or database files, wherever they are.
+RedirectMatch 404 (?i)/\.git(/|$)
+<FilesMatch "(?i)\.(sqlite|sqlite3|db|gitignore)$">
+  Require all denied
+</FilesMatch>
+DirectoryIndex index.html

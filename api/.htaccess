@@ -1,0 +1,7 @@
+# Only state.php is served from this folder.
+<FilesMatch ".*">
+  Require all denied
+</FilesMatch>
+<Files "state.php">
+  Require all granted
+</Files>

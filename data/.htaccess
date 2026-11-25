@@ -1,0 +1,2 @@
+# The shared SQLite database lives here. Never serve it.
+Require all denied
