@@ -57,4 +57,18 @@ export const ADRS = [
     consequences: 'CMCS must send the status with each certificate. The Lifecycle tab shows how each status looks on both screens.',
     qs: ['U2', 'U22', 'U23', 'U24'], stories: ['S9', 'S12', 'S15'],
   },
+  {
+    id: 'ADR-005',
+    title: 'How long a signed certificate link stays valid',
+    status: 'Proposed',
+    context: 'The Service NSW app and myPenalty open the record page with a signed link: p (notice number), d (offence date and time), s (site), i, r (source) and m (signature). There is no login. For one notice the link is the same every time it is made and never expires, so a link that is forwarded, screenshotted, left in browser history on a shared computer, or written to a proxy log keeps working for good. What a leaked link shows is limited: notice number, offence date and time, camera site and offence, no name or number plate, and the certificate information itself is public through the search. The risk is low, but it is not nothing, and today the only way to turn off a leaked link is to change the signing key for everyone.',
+    options: [
+      { name: 'A. Never expires (legacy)', how: 'Keep today’s behaviour: a correctly signed link works forever.', pros: ['No change for Service NSW or Revenue NSW', 'Pure lift and shift'], cons: ['A leaked link works for good', 'No way to turn off one link; changing the key breaks every link at once'] },
+      { name: 'B. Expires a set time after the offence (d)', how: 'CEVOC refuses links whose offence date is older than an app setting, for example 12 months.', pros: ['No change for the apps'], cons: ['Still a long window for a leaked link', 'Blocks people who need the certificate late, for example for a court date'] },
+      { name: 'C. Short life from when the link is made', how: 'The apps add t, the time they made the link, and a key version k, both inside the signature. CEVOC accepts the link for a set time after t (app setting, proposed 24 hours, with a few minutes’ allowance for clock differences). The apps already make the link when the person taps, so a fresh one is made every time.', pros: ['A leaked link stops working within a day', 'The person never notices: tapping again makes a new link', 'A leaked key can be retired by version without breaking new links'], cons: ['Service NSW and Revenue NSW must add t and k to their link builders', 'Needs an expired-link message (S14)'] },
+    ],
+    decision: 'Proposed: C, phased. Phase 1 (lift and shift): accept legacy links without t as today (app setting link.requireIssuedAt = off), so nothing breaks, and add the baseline controls below. Once both apps send t and k, turn the app setting on so links last 24 hours. Baseline controls in every phase: HTTPS only; Referrer-Policy no-referrer so the link is not passed on to other sites; Cache-Control no-store; noindex so search engines never list a record; server logs keep the path but drop or mask the signature and notice number; repeated wrong signatures from one address are slowed; the signing key is kept in a secrets store, rotated each year and at once if it leaks.',
+    consequences: 'An expired link shows a plain message: “This link has expired. Open it again from the Service NSW app or myPenalty”, with the return link for its source (S22). The validity period, the legacy switch, the clock allowance and the accepted key versions are app settings. Cyber to confirm the 24-hour default; Service NSW and Revenue NSW to confirm when they can add t and k.',
+    qs: ['U38', 'U15', 'U29', 'U30', 'U9', 'U14'], stories: ['S11', 'S14', 'S22'],
+  },
 ];

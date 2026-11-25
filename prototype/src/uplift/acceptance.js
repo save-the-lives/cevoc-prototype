@@ -32,6 +32,8 @@ export const AC_CHECKS = {
   'S12.2': 'record.withdrawn-notice',
   'S13.1': 'record.fault',
   'S14.1': 'record.bad-link',
+  'S15.1': 'lifecycle.draft-hidden',
+  'S20.5': 'record.disclaimer-gipa',
   'S17.1': 'search.error-summary',
   'S18.1': 'search.clear',
   'S19.1': 'a11y.axe',
