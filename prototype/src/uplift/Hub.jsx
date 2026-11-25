@@ -6,6 +6,7 @@ import {
 } from './data.js';
 import { HUB_TABS, LabelSwitch, Q } from './kit.jsx';
 import Content from './Content.jsx';
+import Settings from './Settings.jsx';
 import { QuestionsPage, StoriesPage } from './Lists.jsx';
 import EntryFlows from './Entry.jsx';
 import JourneyViews from './JourneyViews.jsx';
@@ -192,6 +193,7 @@ export default function Hub({ page, query = {} }) {
   if (page === 'entry') return <Entry />;
   if (page === 'compare') return <Compare />;
   if (page === 'fields') return <Fields />;
+  if (page === 'settings') return <Shell tab="settings" title="App settings" lede="Every configurable value the uplift relies on, its default and who owns it."><Settings /></Shell>;
   if (page === 'content') return <Shell tab="content" title="Page content" lede="The end-user certificate page split into dynamic data and static copy, with copy variants to test."><Content /></Shell>;
   if (page === 'stories') return <Shell tab="stories" title="Stories" lede="Tagged by user type, path and BRD requirement. Search, filter, sort, comment on GitHub or edit here, and export or import the latest state. A story is ready for dev only when it has acceptance criteria and none of its questions is open."><StoriesPage query={query} /></Shell>;
   if (page === 'questions') return <Shell tab="questions" title="Questions" lede="Everything still undecided, who can answer it, and what it changes. Search, filter and sort; answer on GitHub or edit here; export or import the latest state."><QuestionsPage query={query} /></Shell>;

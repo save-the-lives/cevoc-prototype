@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Callout, Header, HeaderBrand, Masthead } from '@nswds/ui';
 import {
-  CERTIFICATES, COUNTS, FAULT_CODES, OFFENCES, RECORD_SAMPLES, certificatesAt, fmtDay, locByCode, offenceFromLink, parseDay, recordLink, signedLink,
+  CERTIFICATES, COUNTS, SOURCES, FAULT_CODES, OFFENCES, RECORD_SAMPLES, certificatesAt, fmtDay, locByCode, offenceFromLink, parseDay, recordLink, signedLink,
 } from './data.js';
 import { COPY, DISCLAIMER, GIPA_URL } from './tour.js';
 import TourLayer, { useTour } from './Tour.jsx';
@@ -110,7 +110,11 @@ export default function Record({ query = {} }) {
           {C.req.map((para) => <p key={para}>{para}</p>)}
         </section>
         <p className="cd-disclaimer" data-tour="disclaimer">{DISCLAIMER.before}<a href={GIPA_URL} target="_blank" rel="noreferrer">{DISCLAIMER.link}</a>{DISCLAIMER.after}</p>
-        <div className="uh-actions" data-tour="close"><Button type="button" variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : go('/uplift/hub')}>Close</Button></div>
+        <div className="uh-actions" data-tour="close">
+          {off && query.r && SOURCES[query.r]
+            ? <a className="cd-return" href={SOURCES[query.r].url} target="_blank" rel="noreferrer">Return to {SOURCES[query.r].name}</a>
+            : <p className="cd-closetab">You can close this tab.</p>}
+        </div>
       </main>
       <TourLayer screen="record" controls={(
         <section>

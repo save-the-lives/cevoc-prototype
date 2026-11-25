@@ -6,7 +6,7 @@ import {
 } from '@nswds/ui';
 import { go } from '../lib/router.js';
 import DateRange from './DateRange.jsx';
-import { CERTIFICATES, FAULT_CODES, LOCATIONS, SAMPLES, fmtDay, locByCode, locLabel, parseDay, searchCertificates } from './data.js';
+import { APP_SETTINGS, CERTIFICATES, FAULT_CODES, LOCATIONS, SAMPLES, fmtDay, locByCode, locLabel, parseDay, searchCertificates } from './data.js';
 import { useLabels } from './kit.jsx';
 import TourLayer, { useTour } from './Tour.jsx';
 
@@ -16,6 +16,8 @@ import TourLayer, { useTour } from './Tour.jsx';
 // Nothing prototype-specific sits on the page: samples, labels, notes, stories and questions are in the Tour overlay.
 
 const ITEMS = LOCATIONS.map(locLabel);
+// Default range: the last search.defaultRangeMonths months (app setting, U10).
+const DEFAULT_RANGE = () => { const t = new Date(); t.setHours(0, 0, 0, 0); const f = new Date(t.getFullYear(), t.getMonth() - Number(APP_SETTINGS.find((x) => x.key === 'search.defaultRangeMonths').value), t.getDate()); return { from: fmtDay(f), to: fmtDay(t) }; };
 const codeOf = (label) => label.split(' · ')[0];
 const COLS = ['location', 'desc', 'type', 'period', 'certified', 'expiry'];
 const SORTABLE = new Set(['location', 'type', 'period', 'certified', 'expiry']);
@@ -60,7 +62,7 @@ export function Details({ r }) {
 
 export default function Search({ query = {} }) {
   const { L, mode } = useLabels();
-  const init = () => ({ locs: (query.locs || '').split(',').map(locByCode).filter(Boolean).map(locLabel), from: query.from || '', to: query.to || '' });
+  const init = () => ({ locs: (query.locs || '').split(',').map(locByCode).filter(Boolean).map(locLabel), from: query.from || DEFAULT_RANGE().from, to: query.to || DEFAULT_RANGE().to });
   const [v, setV] = useState(init);
   const [errs, setErrs] = useState({});
   const [res, setRes] = useState(null);
@@ -88,7 +90,7 @@ export default function Search({ query = {} }) {
   };
   useEffect(() => { if (query.run === '1') run(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const clear = () => { setV({ locs: [], from: '', to: '' }); setErrs({}); setRes(null); setOpen(new Set()); };
+  const clear = () => { setV({ locs: [], ...DEFAULT_RANGE() }); setErrs({}); setRes(null); setOpen(new Set()); };
   const rows = useMemo(() => {
     if (!res?.rows) return [];
     const base = res.rows.map((r) => ({ ...r, location: r.loc }));
