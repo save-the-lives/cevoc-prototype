@@ -223,3 +223,9 @@
 .ls-more summary { cursor: pointer; color: #0f766e; font-size: 14px; margin-top: 4px; }
 .ls-more p { margin: 4px 0; font-size: 14px; }
 .ls-tbl td { vertical-align: top; }
+
+.ct-disc { font-size: 14px; color: #495054; border-top: 1px solid #dee3e5; padding-top: 12px; }
+.ct-proposed { display: inline-block; font: 700 11px/1.3 system-ui, sans-serif; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 3px; padding: 1px 6px; margin-right: 6px; }
+.ls-chip.is-prio { color: #334155; background: #f1f5f9; border-color: #cbd5e1; }
+.ls-chip.is-prio.is-high { color: #9a3412; background: #fff7ed; border-color: #fed7aa; }
+.ls-chip.is-prio.is-low { color: #64748b; background: #f8fafc; border-color: #e2e8f0; }

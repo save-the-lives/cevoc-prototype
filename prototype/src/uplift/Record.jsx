@@ -3,7 +3,7 @@ import { Button, Callout, Header, HeaderBrand, Masthead } from '@nswds/ui';
 import {
   CERTIFICATES, COUNTS, FAULT_CODES, OFFENCES, RECORD_SAMPLES, certificatesAt, fmtDay, locByCode, offenceFromLink, parseDay, recordLink, signedLink,
 } from './data.js';
-import { COPY } from './tour.js';
+import { COPY, DISCLAIMER, GIPA_URL } from './tour.js';
 import TourLayer, { useTour } from './Tour.jsx';
 import { SupportBar } from './Search.jsx';
 import { go } from '../lib/router.js';
@@ -109,6 +109,7 @@ export default function Record({ query = {} }) {
           <h2 id="cd-req">Enforcement cameras and certification requirements</h2>
           {C.req.map((para) => <p key={para}>{para}</p>)}
         </section>
+        <p className="cd-disclaimer" data-tour="disclaimer">{DISCLAIMER.before}<a href={GIPA_URL} target="_blank" rel="noreferrer">{DISCLAIMER.link}</a>{DISCLAIMER.after}</p>
         <div className="uh-actions" data-tour="close"><Button type="button" variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : go('/uplift/hub')}>Close</Button></div>
       </main>
       <TourLayer screen="record" controls={(

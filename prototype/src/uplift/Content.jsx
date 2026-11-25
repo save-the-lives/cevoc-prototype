@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
 import { ENTRY_LINK, OFFENCES, locByCode } from './data.js';
-import { COPY, COPY_KEYS, DYNAMIC, STATIC } from './tour.js';
+import { COPY, COPY_KEYS, DISCLAIMER, DYNAMIC, GIPA_URL, STATIC } from './tour.js';
 
 // Hub page: the end-user certificate page as it will look for a real offence (invented values), one tab per copy
 // variant, with dynamic data and static copy colour-coded; then the dynamic data lined up with the BRD (new items
@@ -38,6 +38,7 @@ function Preview({ k, colours }) {
         <p className="ct-lead"><S>{a}</S><D src="CMCS / CES (FAES)">{CERT_DATE}</D><S>{b}</S></p>
         <h4><S>Enforcement cameras and certification requirements</S></h4>
         {C.req.map((p) => <p key={p}><S>{p}</S></p>)}
+        <p className="ct-disc"><span className="ct-proposed">Proposed legal text (U8)</span> <S>{DISCLAIMER.before}<a href={GIPA_URL} target="_blank" rel="noreferrer">{DISCLAIMER.link}</a>{DISCLAIMER.after}</S></p>
         <span className="ct-btn"><S>Close</S></span>
       </div>
     </div>

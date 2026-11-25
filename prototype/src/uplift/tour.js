@@ -19,6 +19,7 @@ export const NOTES = {
     { key: 'cert', title: 'Camera certificate details for this offence', legacy: '“The approved traffic enforcement device used at the location above was tested on [date] and its image capture performance certified.”', next: 'Same sentence by default; copy variants A, B and C to test. The date is dynamic.', stories: ['S11', 'S12'], qs: ['U5', 'U26', 'U34'] },
     { key: 'states', title: 'Missing, withdrawn or fault', legacy: 'Not shown on the legacy page', next: 'A genuinely missing certificate, a withdrawn one and a system fault each get their own message', stories: ['S12', 'S13'], qs: ['U22', 'U23', 'U24'] },
     { key: 'requirements', title: 'Enforcement cameras and certification requirements', legacy: 'Explanatory text: four camera categories, how often each is certified, the Road Transport Act 2013, 13 22 13', next: 'Same content by default (static copy); variants to test. Partly covers the BRD’s help text (BR_06).', stories: ['S19', 'S20'], qs: ['U13', 'U34', 'U8', 'U35'] },
+    { key: 'disclaimer', title: 'Legal disclaimer (proposed)', legacy: 'None on the legacy page', next: 'Proposed GIPA notice with a link to Transport’s access application page; from the template; Legal to confirm', stories: ['S20'], qs: ['U8'] },
     { key: 'close', title: 'CLOSE', legacy: 'CLOSE button', next: 'Close, returns the person to the app they came from', stories: ['S18'], qs: ['U9'] },
   ],
 };
@@ -51,7 +52,7 @@ export const STATIC = [
   { block: 'Certification frequency', what: 'Speed measuring devices at least every 12 months; fixed image capture at least every 90 days; mobile cameras before each deployment', brd: 'BR_06 (partly)', status: 'On page' },
   { block: 'Legal basis', what: 'Road Transport Act 2013', brd: '—', status: 'On page' },
   { block: 'Contact', what: 'Transport for NSW customer service centre, 13 22 13', brd: '—', status: 'On page' },
-  { block: 'Disclaimer', what: 'Wording to come from Legal', brd: 'BR_05', status: 'New' },
+  { block: 'Disclaimer (proposed, U8)', what: 'This page is not a legal document… make an access application under the GIPA Act to Transport for NSW (linked). A fee may apply. Legal to confirm.', brd: 'BR_05', status: 'New' },
   { block: 'Help reading a certificate', what: 'Plain-English explanation of the certificate’s parts', brd: 'BR_06', status: 'New' },
   { block: 'Court matters', what: 'Directs people with a court matter to customer enquiries', brd: 'BR_08', status: 'New' },
   { block: 'No download, save or print', what: 'No such function offered (not text, a rule)', brd: 'BR_03', status: 'On page' },
@@ -96,3 +97,12 @@ export const COPY = {
   },
 };
 export const COPY_KEYS = ['legacy', 'A', 'B', 'C'];
+
+// Proposed legal disclaimer (U8, owner 25 Nov 2026): same in every variant, part of the configurable template (S20).
+// Confirmation required from Legal. The fee amount is deliberately not shown.
+export const GIPA_URL = 'https://www.transport.nsw.gov.au/about-us/access-to-information/access-application';
+export const DISCLAIMER = {
+  before: 'This page is not a legal document. If you need the certificate for legal purposes, you can make an ',
+  link: 'access application',
+  after: ' under the GIPA Act to Transport for NSW. A fee may apply as part of the GIPA process.',
+};

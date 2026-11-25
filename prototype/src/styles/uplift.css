@@ -173,3 +173,5 @@ body.tr-dyn .tr-dynv::after { content: attr(data-dyn); position: absolute; left:
 .cd-states:empty { display: none; }
 .cd-req p { max-width: 72ch; margin: 0 0 12px; }
 @media (max-width: 640px) { .cd-dl { grid-template-columns: 1fr; gap: 2px; } .cd-dl dd { margin-bottom: 8px; } }
+
+.cd-disclaimer { font-size: 15px; color: #495054; border-top: 1px solid #dee3e5; padding-top: 16px; margin: 0; max-width: 72ch; }

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
-import { OPEN, PATHS, QUESTIONS, STATUS, STORIES, USERS, qById, storyReady } from './data.js';
+import { OPEN, PATHS, PRIORITIES, QUESTIONS, STATUS, STORIES, USERS, qById, storyReady } from './data.js';
 import { compile } from './jql.js';
 import { exportXlsx, importXlsx, issueLink, useItemState } from './state.js';
 
@@ -88,7 +88,7 @@ const idNum = (id) => Number(String(id).slice(1));
 export function StoriesPage({ query = {} }) {
   const st = useItemState('stories', STORIES.map((s) => ({ ...s, comment: '' })));
   const [q, setQ] = useState('');
-  const [f, setF] = useState({ user: '', path: '', screen: query.screen || '', ready: '', brd: '' });
+  const [f, setF] = useState({ user: '', path: '', screen: query.screen || '', ready: '', brd: '', priority: '' });
   const [sort, setSort] = useState({ k: 'id', dir: 1 });
   const [editing, setEditing] = useState(query.s || null);
   const ready = (s) => {
@@ -97,17 +97,18 @@ export function StoriesPage({ query = {} }) {
     return storyReady(s);
   };
   const fields = {
-    id: (s) => s.id, user: (s) => s.user, path: (s) => s.path, screen: (s) => s.screen, brd: (s) => split(s.brd),
+    id: (s) => s.id, priority: (s) => s.priority, user: (s) => s.user, path: (s) => s.path, screen: (s) => s.screen, brd: (s) => split(s.brd),
     ready: (s) => (ready(s) ? 'yes' : 'no'), question: (s) => s.qs, role: (s) => s.role, text: (s) => `${s.want} ${s.so} ${s.ac.map((a) => `${a.g} ${a.w} ${a.t}`).join(' ')} ${s.comment || ''}`,
   };
   const { test, errors } = useMemo(() => compile(q, fields), [q]); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = st.items
-    .filter((s) => (!f.user || s.user === f.user) && (!f.path || s.path === f.path) && (!f.screen || s.screen === f.screen) && (!f.ready || (f.ready === 'Ready') === ready(s)) && (!f.brd || split(s.brd).includes(f.brd)))
+    .filter((s) => (!f.user || s.user === f.user) && (!f.path || s.path === f.path) && (!f.screen || s.screen === f.screen) && (!f.ready || (f.ready === 'Ready') === ready(s)) && (!f.brd || split(s.brd).includes(f.brd)) && (!f.priority || s.priority === f.priority))
     .filter(test)
-    .sort(sorter(sort.k === 'id' ? (s) => idNum(s.id) : sort.k === 'ready' ? (s) => (ready(s) ? 0 : 1) : (s) => String(s[sort.k] || ''), sort.dir));
+    .sort(sorter(sort.k === 'id' ? (s) => idNum(s.id) : sort.k === 'ready' ? (s) => (ready(s) ? 0 : 1) : sort.k === 'priority' ? (s) => PRIORITIES.indexOf(s.priority) : (s) => String(s[sort.k] || ''), sort.dir));
   useEffect(() => { if (query.s) document.getElementById(query.s)?.scrollIntoView({ block: 'center' }); }, [query.s]);
   const columns = [
     { header: 'ID', get: (s) => s.id },
+    { header: 'Priority', key: 'priority', get: (s) => s.priority },
     { header: 'User type', key: 'user', get: (s) => s.user },
     { header: 'Path', key: 'path', get: (s) => s.path },
     { header: 'BRD', key: 'brd', get: (s) => split(s.brd).join(', ') },
@@ -125,21 +126,22 @@ export function StoriesPage({ query = {} }) {
   return (
     <>
       <StateBar kind="stories" st={st} columns={columns} items={st.items} label="stories" />
-      <Search value={q} onChange={setQ} errors={errors} help={{ example: 'user = "Revenue NSW officer" AND path = exception AND ready = no', fields: 'id, user, path, screen, brd, ready (yes/no), question, role, text', extra: <>E.g. <code>brd = BR_01</code>.</> }} />
+      <Search value={q} onChange={setQ} errors={errors} help={{ example: 'user = "Revenue NSW officer" AND path = exception AND ready = no', fields: 'id, priority, user, path, screen, brd, ready (yes/no), question, role, text', extra: <>E.g. <code>brd = BR_01</code>.</> }} />
       <div className="ls-filters">
         <Select label="User type" value={f.user} onChange={(v) => setF({ ...f, user: v })} options={USERS} />
         <Select label="Path" value={f.path} onChange={(v) => setF({ ...f, path: v })} options={PATHS} />
         <Select label="Screen" value={f.screen} onChange={(v) => setF({ ...f, screen: v })} options={['search', 'record', 'fields']} />
         <Select label="Ready" value={f.ready} onChange={(v) => setF({ ...f, ready: v })} options={['Ready', 'Not ready']} />
         <Select label="BRD" value={f.brd} onChange={(v) => setF({ ...f, brd: v })} options={BRDS} />
-        <span className="ls-sortby">Sort: {sortBtn('id', 'ID')} {sortBtn('user', 'User')} {sortBtn('path', 'Path')} {sortBtn('ready', 'Ready')}</span>
+        <Select label="Priority" value={f.priority} onChange={(v) => setF({ ...f, priority: v })} options={PRIORITIES} />
+        <span className="ls-sortby">Sort: {sortBtn('id', 'ID')} {sortBtn('user', 'User')} {sortBtn('path', 'Path')} {sortBtn('ready', 'Ready')} {sortBtn('priority', 'Priority')}</span>
       </div>
       <p className="ls-meta">{rows.length} of {STORIES.length} stories · BRD requirements with no story: {BRDS.filter((b) => !STORIES.some((s) => s.brd.includes(b))).join(', ') || 'none'}</p>
       {rows.map((s) => (
         <article key={s.id} id={s.id} className={`uh-card uh-st${query.s === s.id ? ' is-hl' : ''}`}>
           <p className="uh-st__h">
             <strong>{s.id}</strong> <Tag open={!ready(s)}>{ready(s) ? 'Ready for dev' : 'Not ready'}</Tag>
-            <span className="ls-chip is-user">{s.user}</span><span className={`ls-chip is-path is-${s.path.split(' ')[0]}`}>{s.path}</span>
+            <span className={`ls-chip is-prio is-${String(s.priority).toLowerCase()}`}>{s.priority} priority</span><span className="ls-chip is-user">{s.user}</span><span className={`ls-chip is-path is-${s.path.split(' ')[0]}`}>{s.path}</span>
             {split(s.brd).map((b) => <span key={b} className="ls-chip is-brd">{b}</span>)}
             <span className="uh-meta">{s.screen === 'search' ? 'Search screen' : s.screen === 'record' ? 'Record screen' : 'API'}</span>
           </p>
@@ -158,6 +160,7 @@ export function StoriesPage({ query = {} }) {
               <label>Ready<select defaultValue={s.readyOverride || ''} onChange={(e) => st.edit(s.id, { readyOverride: e.target.value })}><option value="">Computed ({storyReady(s) ? 'Ready' : 'Not ready'})</option><option>Ready</option><option>Not ready</option></select></label>
               <label>User type<select defaultValue={s.user} onChange={(e) => st.edit(s.id, { user: e.target.value })}>{USERS.map((u) => <option key={u}>{u}</option>)}</select></label>
               <label>Path<select defaultValue={s.path} onChange={(e) => st.edit(s.id, { path: e.target.value })}>{PATHS.map((u) => <option key={u}>{u}</option>)}</select></label>
+              <label>Priority<select defaultValue={s.priority} onChange={(e) => st.edit(s.id, { priority: e.target.value })}>{PRIORITIES.map((u) => <option key={u}>{u}</option>)}</select></label>
               <label>BRD<input defaultValue={split(s.brd).join(', ')} onBlur={(e) => st.edit(s.id, { brd: split(e.target.value) })} /></label>
             </div>
           )}

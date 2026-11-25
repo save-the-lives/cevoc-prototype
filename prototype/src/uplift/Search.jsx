@@ -208,7 +208,7 @@ export default function Search({ query = {} }) {
                                 </button>
                               </td>
                               <td>{r.loc}</td>
-                              <td>{r.desc}{r.status === 'Withdrawn' && <span className="uh-tag is-warn">Withdrawn</span>}{r.reissueOf && <span className="uh-tag">Re-issued</span>}</td>
+                              <td>{r.desc}{r.status === 'Withdrawn' && <span className="uh-tag is-warn">Withdrawn</span>}{r.reissueOf && <span className="uh-tag">Re-issued</span>}{r.duplicates > 0 && <span className="uh-tag is-open" title="The source holds identical copies of this certificate">Duplicate in source ×{r.duplicates + 1}</span>}</td>
                               <td>{r.type}</td><td>{r.period}</td><td>{r.certified}</td><td>{r.expiry}</td>
                             </tr>
                             {isOpen && <tr className="uh-detail" id={`uh-d-${r.id}`}><td /><td colSpan={COLS.length}><Details r={r} /></td></tr>}
