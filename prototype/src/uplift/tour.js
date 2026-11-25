@@ -18,29 +18,43 @@ export const NOTES = {
     { key: 'offence', title: 'Offence Details', legacy: 'Penalty notice number, Program type, Site, zone or camera number, Site location, Date of offence, Time of offence', next: 'Same fields, same order. All dynamic, from the signed link and the CMCS site record.', stories: ['S11'], qs: ['U3'] },
     { key: 'cert', title: 'Camera certificate details for this offence', legacy: '“The approved traffic enforcement device used at the location above was tested on [date] and its image capture performance certified.”', next: 'Same sentence by default; copy variants A, B and C to test. The date is dynamic.', stories: ['S11', 'S12'], qs: ['U5', 'U26', 'U34'] },
     { key: 'states', title: 'Missing, withdrawn or fault', legacy: 'Not shown on the legacy page', next: 'A genuinely missing certificate, a withdrawn one and a system fault each get their own message', stories: ['S12', 'S13'], qs: ['U22', 'U23', 'U24'] },
-    { key: 'requirements', title: 'Enforcement cameras and certification requirements', legacy: 'Explanatory text: four camera categories, how often each is certified, the Road Transport Act 2013, 13 22 13', next: 'Same content by default (static copy); variants to test. Partly covers the BRD’s help text (BR_06).', stories: ['S19'], qs: ['U13', 'U34', 'U8'] },
+    { key: 'requirements', title: 'Enforcement cameras and certification requirements', legacy: 'Explanatory text: four camera categories, how often each is certified, the Road Transport Act 2013, 13 22 13', next: 'Same content by default (static copy); variants to test. Partly covers the BRD’s help text (BR_06).', stories: ['S19', 'S20'], qs: ['U13', 'U34', 'U8', 'U35'] },
     { key: 'close', title: 'CLOSE', legacy: 'CLOSE button', next: 'Close, returns the person to the app they came from', stories: ['S18'], qs: ['U9'] },
   ],
 };
 
-// Dynamic data on the end-user page, with where it comes from. Shown in the Page content tab and, with
-// "Highlight dynamic data" on, outlined on the page itself (data-dyn="source").
+// Dynamic data on the end-user page, with where it comes from, who owns it (owner, 25 Nov 2026) and how it
+// lines up with the BRD. status 'On page': on the legacy page today. 'New': asked for by the BRD, not on the page,
+// owner unknown until CMCS samples arrive (U3). Shown in the Page content tab and outlined by the tour.
 export const DYNAMIC = [
-  ['Penalty notice number', 'Signed link: p', 'Revenue NSW'],
-  ['Program type', 'CMCS site record (camera program) for the site in s', 'CMCS'],
-  ['Site, zone or camera number', 'Signed link: s', 'CMCS'],
-  ['Site location', 'CMCS site record for s', 'CMCS'],
-  ['Date of offence', 'Signed link: d (date part)', 'Revenue NSW'],
-  ['Time of offence', 'Signed link: d (time part)', 'Revenue NSW'],
-  ['Tested on (certified) date', 'Certificate in force at d for site s', 'CMCS'],
+  { field: 'Penalty notice number', source: 'Signed link: p', owner: 'Revenue NSW / Transport', brd: '—', status: 'On page' },
+  { field: 'Program type', source: 'CMCS site record for the site in s', owner: 'Transport', brd: 'BR_01 (device type)', status: 'On page' },
+  { field: 'Site, zone or camera number', source: 'Signed link: s', owner: 'Transport', brd: 'BR_01 (camera code)', status: 'On page' },
+  { field: 'Site location', source: 'CMCS site record for s', owner: 'Transport', brd: 'BR_01 (location)', status: 'On page' },
+  { field: 'Date of offence', source: 'Signed link: d (date part)', owner: 'Transport / Revenue NSW', brd: '—', status: 'On page' },
+  { field: 'Time of offence', source: 'Signed link: d (time part)', owner: 'Transport', brd: '—', status: 'On page' },
+  { field: 'Certification date (“tested on”)', source: 'Certificate in force at d for site s', owner: 'CMCS / CES (FAES)', brd: 'BR_01 (inspection date; the BRD also wants the time)', status: 'On page' },
+  { field: 'Inspection time', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New' },
+  { field: 'Device model', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New' },
+  { field: 'Gazette reference', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New' },
+  { field: 'Device approval scope (what it is approved for)', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New' },
+  { field: 'Inspection details (narrative)', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New' },
+  { field: 'Inspecting officer’s name and signature (masked)', source: 'Unknown', owner: 'Unknown', brd: 'BR_02', status: 'New' },
+  { field: 'Re-issued marker', source: 'Unknown', owner: 'Unknown', brd: 'BR_09', status: 'New' },
 ];
+// Static copy: held in a configurable template so wording can change without changing the application (owner,
+// 25 Nov 2026; story S20). 'BRD' rows are static text the BRD asks for that the legacy page does not have.
 export const STATIC = [
-  ['Section headings', 'Offence Details; Camera certificate details for this offence; Enforcement cameras and certification requirements'],
-  ['Certificate sentence', 'The fixed words around the tested-on date'],
-  ['Camera categories', 'Fixed cameras enforcing speed, or speed and red lights; fixed cameras for other offences; mobile cameras enforcing speed; mobile cameras for other offences'],
-  ['Certification frequency', 'Speed measuring devices at least every 12 months; fixed image capture at least every 90 days; mobile cameras before each deployment'],
-  ['Legal basis', 'Road Transport Act 2013'],
-  ['Contact', 'Transport for NSW customer service centre, 13 22 13'],
+  { block: 'Section headings', what: 'Offence Details; Camera certificate details for this offence; Enforcement cameras and certification requirements', brd: '—', status: 'On page' },
+  { block: 'Certificate sentence', what: 'The fixed words around the certification date', brd: '—', status: 'On page' },
+  { block: 'Camera categories', what: 'Fixed cameras enforcing speed, or speed and red lights; fixed cameras for other offences; mobile cameras enforcing speed; mobile cameras for other offences', brd: 'BR_06 (partly)', status: 'On page' },
+  { block: 'Certification frequency', what: 'Speed measuring devices at least every 12 months; fixed image capture at least every 90 days; mobile cameras before each deployment', brd: 'BR_06 (partly)', status: 'On page' },
+  { block: 'Legal basis', what: 'Road Transport Act 2013', brd: '—', status: 'On page' },
+  { block: 'Contact', what: 'Transport for NSW customer service centre, 13 22 13', brd: '—', status: 'On page' },
+  { block: 'Disclaimer', what: 'Wording to come from Legal', brd: 'BR_05', status: 'New' },
+  { block: 'Help reading a certificate', what: 'Plain-English explanation of the certificate’s parts', brd: 'BR_06', status: 'New' },
+  { block: 'Court matters', what: 'Directs people with a court matter to customer enquiries', brd: 'BR_08', status: 'New' },
+  { block: 'No download, save or print', what: 'No such function offered (not text, a rule)', brd: 'BR_03', status: 'On page' },
 ];
 
 // Copy variants for the end-user page. Each answers one worry; the tour shows which and why.

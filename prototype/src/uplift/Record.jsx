@@ -129,5 +129,5 @@ function renderCert(C, tested, offenceDay) {
   const t = longDay(tested);
   const text = C.cert('\u0000', offenceDay ? longDay(offenceDay) : null);
   const [a, b] = text.split('\u0000');
-  return <>{a}<Dyn src="CMCS certificate in force">{t}</Dyn>{b}</>;
+  return <>{a}<Dyn src="CMCS / CES (FAES): certification date">{t}</Dyn>{b}</>;
 }
