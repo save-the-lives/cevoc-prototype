@@ -71,13 +71,33 @@ export default function TourLayer({ screen, controls }) {
     document.body.classList.toggle('tr-dyn', t.on && t.dyn);
     return () => document.body.classList.remove('tr-dyn');
   }, [t.on, t.dyn]);
+  // Auto-hide (owner, 26 Nov 2026): the panel folds to a small tab at the edge so it never covers the content.
+  // It folds 4 s after the tour starts, or at once when the person clicks or scrolls the page outside the panel.
+  // Clicking the tab opens it again; it then stays open until the next click or scroll outside it.
+  const [folded, setFolded] = useState(false);
+  useEffect(() => {
+    if (!t.on) { setFolded(false); return undefined; }
+    const timer = setTimeout(() => setFolded(true), 4000);
+    return () => clearTimeout(timer);
+  }, [t.on]);
+  useEffect(() => {
+    if (!t.on || folded) return undefined;
+    const outside = (e) => { if (!e.target.closest?.('.tr-panel, .tr-tab, .tr-fab')) setFolded(true); };
+    const onScroll = () => setFolded(true);
+    let armed = false;                       // ignore the scroll a click on "On this screen" makes, until it settles
+    const arm = setTimeout(() => { armed = true; }, 300);
+    const scroll = () => { if (armed) onScroll(); };
+    document.addEventListener('pointerdown', outside, true);
+    window.addEventListener('scroll', scroll, { passive: true });
+    return () => { clearTimeout(arm); document.removeEventListener('pointerdown', outside, true); window.removeEventListener('scroll', scroll); };
+  }, [t.on, folded]);
   const stories = storiesFor(screen);
   const qs = questionsFor(screen);
   const note = pins.find((p) => p.key === active);
 
   return (
     <>
-      <button type="button" className={`tr-fab${t.on ? ' is-on' : ''}`} aria-pressed={t.on} onClick={() => { set({ on: !t.on }); setActive(null); }}>
+      <button type="button" className={`tr-fab${t.on && !folded ? ' is-on' : ''}`} aria-pressed={t.on} onClick={() => { set({ on: !t.on }); setActive(null); }}>
         {t.on ? 'Close tour' : 'Tour'}
       </button>
       {t.on && (
@@ -97,8 +117,13 @@ export default function TourLayer({ screen, controls }) {
               </div>
             )}
           </div>
-          <aside className="tr-panel" aria-label="Prototype tour">
-            <header><h2>Tour</h2><button type="button" aria-label="Close tour" onClick={() => set({ on: false })}>✕</button></header>
+          {folded && (
+            <button type="button" className="tr-tab" aria-expanded="false" aria-controls="tr-panel" onClick={() => setFolded(false)}>
+              <span aria-hidden="true">‹</span> Tour panel
+            </button>
+          )}
+          <aside id="tr-panel" className="tr-panel" aria-label="Prototype tour" hidden={folded}>
+            <header><h2>Tour</h2><span><button type="button" aria-label="Hide panel" title="Hide panel (pins stay)" onClick={() => setFolded(true)}>›</button><button type="button" aria-label="Close tour" onClick={() => set({ on: false })}>✕</button></span></header>
             <p className="tr-meta">Prototype only. The page itself is exactly what a user would see. All data is invented.</p>
             <section><h3>Labels</h3><LabelSwitch /></section>
             {controls}
