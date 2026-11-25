@@ -6,7 +6,9 @@ import {
 } from './data.js';
 import { HUB_TABS, LabelSwitch, Q } from './kit.jsx';
 import Content from './Content.jsx';
+import { QuestionsPage, StoriesPage } from './Lists.jsx';
 import EntryFlows from './Entry.jsx';
+import JourneyViews from './JourneyViews.jsx';
 
 // CERTIFICATE UPLIFT HUB (#/uplift/hub): the phase 1 uplift's own hub, modelled on enf-site-onboarding.
 // Start here, screens to try, and a companion layer (journey, entry from the apps, legacy and target, field delta,
@@ -27,7 +29,7 @@ function Shell({ tab, title, lede, children }) {
         </div>
       </header>
       <main className="pub-wrap uh-hub__main" id="main">
-        <div className="uh-hub__title"><h1>{title}</h1><LabelSwitch /></div>
+        <div className="uh-hub__title"><h1>{title}</h1></div>
         {lede && <p className="uh-lede">{lede}</p>}
         {children}
       </main>
@@ -60,12 +62,12 @@ function Home() {
             {SAMPLES.map((s) => <li key={s.label}><Link to={searchLink(s)}>{s.label}</Link>: {s.note.toLowerCase()}.</li>)}
             {RECORD_SAMPLES.slice(0, 4).map((s) => <li key={s.label}><Link to={recordLink(s)}>Person with a notice: {s.label.toLowerCase()}</Link>.</li>)}
             <li>On the search screen, type <em>Testville</em> in the locations box, pick both, open the calendar and click two days.</li>
-            <li>Switch <em>Show labels</em> to Legacy names and back.</li>
+            <li>On either key screen, press <em>Tour</em> and switch the labels between legacy and new names.</li>
           </ol>
         </section>
       </div>
-      <h2 className="uh-h2">Screens</h2>
-      <div className="uh-tiles">
+      <h2 className="uh-h2">Key screens: drive the demo and gather requirements here</h2>
+      <div className="uh-tiles uh-tiles--key">
         <Link to="/uplift" className="uh-tile"><h3>Certificate search (Revenue NSW staff)</h3><p>Several locations by code or address, day range, sortable results that expand in place, gap and fault messages.</p></Link>
         <Link to={ENTRY_LINK} className="uh-tile"><h3>Certificate details (person with a fine)</h3><p>The legacy end-user page, lifted and shifted. Reached from the same signed link in the Service NSW path and myPenalty.</p></Link>
       </div>
@@ -105,9 +107,8 @@ function Lane({ title, steps }) {
 
 function Journey() {
   return (
-    <Shell tab="journey" title="Journey" lede="Who reaches the certificate page and how. Dashed: existing services. Orange: CEVOC. The public user comes first.">
-      <Lane title="Public user: someone with a penalty notice" steps={JOURNEY.public} />
-      <Lane title="Staff: Revenue NSW officer" steps={JOURNEY.staff} />
+    <Shell tab="journey" title="Journey" lede="Who reaches the certificate page and how, shown three ways to compare. Dashed: existing, unchanged. Orange: CEVOC, the only uplifted step.">
+      <JourneyViews />
     </Shell>
   );
 }
@@ -184,50 +185,7 @@ function Fields() {
   );
 }
 
-function Stories({ query }) {
-  const [f, setF] = useState(query.screen || 'all');
-  const rows = STORIES.filter((s) => f === 'all' || s.screen === f);
-  return (
-    <Shell tab="stories" title="Stories" lede="A story is ready for dev only when it has acceptance criteria and none of its questions is open.">
-      <div className="seg2 uh-seg" role="group" aria-label="Filter by screen">
-        {[['all', 'All'], ['search', 'Search'], ['record', 'Record'], ['fields', 'API']].map(([k, t]) => <button key={k} type="button" aria-pressed={f === k} onClick={() => setF(k)}>{t}</button>)}
-      </div>
-      {rows.map((s) => (
-        <article key={s.id} className={`uh-card uh-st${query.s === s.id ? ' is-hl' : ''}`} id={s.id}>
-          <p className="uh-st__h"><strong>{s.id}</strong> <Tag open={!storyReady(s)}>{storyReady(s) ? 'Ready for dev' : 'Not ready'}</Tag> <span className="uh-meta">Phase 1 · {s.screen === 'search' ? 'Search screen' : s.screen === 'record' ? 'Record screen' : 'API'}</span></p>
-          <p>As a <strong>{s.role}</strong>, I want to {s.want}, so {s.so}.</p>
-          <ol className="uh-ac">{s.ac.map((a) => <li key={a.w + a.t}><b>Given</b> {a.g}, <b>when</b> {a.w}, <b>then</b> {a.t}.</li>)}</ol>
-          {s.qs.length > 0 && <p className="uh-meta">Questions: {s.qs.map((id) => <span key={id} className="uh-qref">{id} <Q id={id} />{OPEN(qById(id)) ? ' open' : ' settled'}</span>)}</p>}
-        </article>
-      ))}
-    </Shell>
-  );
-}
 
-function Questions({ query }) {
-  const [f, setF] = useState('All');
-  const rows = useMemo(() => QUESTIONS.filter((q) => (f === 'All' || q.status === f) && (!query.screen || (q.at || []).includes(query.screen))), [f, query.screen]);
-  useEffect(() => { if (query.q) document.getElementById(`q-${query.q}`)?.scrollIntoView({ block: 'center' }); }, [query.q]);
-  return (
-    <Shell tab="questions" title="Questions" lede={`Everything still undecided, who can answer it, and what it changes.${query.screen ? ` Showing questions for the ${query.screen} screen.` : ''}`}>
-      <div className="seg2 uh-seg" role="group" aria-label="Filter by status">
-        {['All', ...STATUS].map((s) => <button key={s} type="button" aria-pressed={f === s} onClick={() => setF(s)}>{s} ({s === 'All' ? QUESTIONS.length : QUESTIONS.filter((q) => q.status === s).length})</button>)}
-      </div>
-      <div className="up-scroll">
-        <table className="uh-tbl">
-          <thead><tr><th>#</th><th>Question</th><th>Why it matters</th><th>Current assumption</th><th>Who can answer</th><th>Status</th><th>Next step</th><th>Stories</th></tr></thead>
-          <tbody>{rows.map((q) => (
-            <tr key={q.id} id={`q-${q.id}`} className={query.q === q.id ? 'is-hl' : ''}>
-              <td>{q.id}</td><td><strong>{q.topic}</strong><br />{q.q}</td><td>{q.why}</td><td>{q.assume}</td><td>{q.who}</td>
-              <td><Tag open={OPEN(q)}>{q.status}</Tag></td><td>{q.action}</td>
-              <td>{STORIES.filter((s) => s.qs.includes(q.id)).map((s) => <Link key={s.id} to={`/uplift/hub/stories?s=${s.id}`}>{s.id} </Link>)}</td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
-    </Shell>
-  );
-}
 
 export default function Hub({ page, query = {} }) {
   if (page === 'journey') return <Journey />;
@@ -235,7 +193,7 @@ export default function Hub({ page, query = {} }) {
   if (page === 'compare') return <Compare />;
   if (page === 'fields') return <Fields />;
   if (page === 'content') return <Shell tab="content" title="Page content" lede="The end-user certificate page split into dynamic data and static copy, with copy variants to test."><Content /></Shell>;
-  if (page === 'stories') return <Stories query={query} />;
-  if (page === 'questions') return <Questions query={query} />;
+  if (page === 'stories') return <Shell tab="stories" title="Stories" lede="Tagged by user type, path and BRD requirement. Search, filter, sort, comment on GitHub or edit here, and export or import the latest state. A story is ready for dev only when it has acceptance criteria and none of its questions is open."><StoriesPage query={query} /></Shell>;
+  if (page === 'questions') return <Shell tab="questions" title="Questions" lede="Everything still undecided, who can answer it, and what it changes. Search, filter and sort; answer on GitHub or edit here; export or import the latest state."><QuestionsPage query={query} /></Shell>;
   return <Home />;
 }

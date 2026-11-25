@@ -175,3 +175,51 @@
 .ct-new td { background: #fffbeb; }
 .ct-req { margin: 0 0 12px; }
 @media (max-width: 640px) { .ct-dl { grid-template-columns: 1fr; gap: 2px; } .ct-dl dd { margin-bottom: 8px; } .ct-page.is-coloured .ct-src { white-space: normal; } }
+
+/* Re-theme (owner, 25 Nov 2026): the hub and reference pages use slate and teal so the two key screens, which use
+   the real NSW look, stand out as the screens that drive the demo. */
+.uh-hub__head { background: #1f2937 !important; }
+.uh-hub__kicker { color: #99f6e4 !important; }
+.uh-tabs a { color: #e5e7eb !important; }
+.uh-tabs a.on, .uh-tabs a[aria-current=page] { color: #fff !important; box-shadow: inset 0 -3px 0 #2dd4bf !important; border-color: #2dd4bf !important; }
+.uh-tabs__go, .uh-hub .uh-tabs a.uh-tabs__go { background: #c2410c !important; color: #fff !important; border-radius: 4px; padding: 6px 12px !important; font-weight: 700; }
+.uh-hub h1, .uh-hub .uh-h2, .uh-hub h2 { color: #134e4a; }
+.uh-hub a { color: #0f766e; }
+.uh-tiles--key .uh-tile { border: 3px solid #002664 !important; background: linear-gradient(180deg, #eef3fb, #fff) !important; box-shadow: 0 6px 18px rgba(0, 38, 100, .15); }
+.uh-tiles--key .uh-tile h3 { color: #002664; font-size: 20px; }
+.uh-tiles--key .uh-tile::before { content: 'KEY SCREEN · NSW look'; display: block; font: 700 11px/1 system-ui, sans-serif; letter-spacing: .06em; color: #fff; background: #002664; padding: 4px 8px; border-radius: 3px; width: max-content; margin-bottom: 8px; }
+
+/* Stories and Questions lists */
+.ls-state { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; margin: 8px 0 16px; }
+.ls-state__btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ls-state__btns button, .ls-btn { min-height: 40px; padding: 0 14px; border: 2px solid #0f766e; border-radius: 4px; background: #fff; color: #0f766e !important; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.ls-state__btns button:first-child { background: #0f766e; color: #fff !important; }
+.ls-state__btns button:focus-visible, .ls-btn:focus-visible, .ls-th:focus-visible, .ls-sort:focus-visible { outline: 3px solid #2dd4bf; outline-offset: 2px; }
+.ls-meta { color: #475569; font-size: 14px; margin: 4px 0; }
+.ls-search { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.ls-search label { font-weight: 700; }
+.ls-search input { height: 44px; padding: 0 12px; border: 2px solid #475569; border-radius: 4px; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; width: 100%; box-sizing: border-box; }
+.ls-search input:focus-visible { outline: 3px solid #2dd4bf; outline-offset: 1px; }
+.ls-err { color: #b91c1c; font-weight: 700; margin: 0; }
+.ls-filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; margin: 6px 0; }
+.ls-sel { display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 600; }
+.ls-sel select { min-height: 40px; border: 1px solid #94a3b8; border-radius: 4px; font: inherit; font-weight: 400; padding: 0 6px; background: #fff; max-width: 260px; }
+.ls-sortby { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; font-weight: 600; }
+.ls-sort { min-height: 36px; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; font: inherit; font-weight: 500; padding: 0 10px; cursor: pointer; }
+.ls-sort.on { background: #134e4a; color: #fff; border-color: #134e4a; }
+.ls-th { border: 0; background: none; font: inherit; font-weight: 700; padding: 0; cursor: pointer; color: inherit; text-align: left; }
+.ls-chip { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; margin-left: 6px; border: 1px solid; vertical-align: middle; }
+.ls-chip.is-user { color: #1e3a8a; background: #eff6ff; border-color: #bfdbfe; }
+.ls-chip.is-path { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+.ls-chip.is-path.is-exception, .ls-chip.is-path.is-edge { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.ls-chip.is-path.is-error { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+.ls-chip.is-brd { color: #5b21b6; background: #f5f3ff; border-color: #ddd6fe; }
+.ls-ans { background: #f8fafc; border-left: 4px solid #0f766e; padding: 6px 10px; margin: 6px 0; font-size: 14px; white-space: pre-wrap; }
+.ls-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.ls-edit { display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 10px 12px; background: #f0fdfa; border-radius: 6px; margin-top: 8px; }
+.ls-edit label { display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 600; min-width: 180px; }
+.ls-edit label.is-wide { flex: 1 1 320px; }
+.ls-edit textarea, .ls-edit select, .ls-edit input { font: inherit; font-weight: 400; border: 1px solid #94a3b8; border-radius: 4px; padding: 6px 8px; min-height: 40px; }
+.ls-more summary { cursor: pointer; color: #0f766e; font-size: 14px; margin-top: 4px; }
+.ls-more p { margin: 4px 0; font-size: 14px; }
+.ls-tbl td { vertical-align: top; }

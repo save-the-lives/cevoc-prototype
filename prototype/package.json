@@ -13,7 +13,9 @@
     "@nswds/ui": "^9.3.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "sonner": "^2.0.8"
+    "read-excel-file": "9.3.14",
+    "sonner": "^2.0.8",
+    "write-excel-file": "4.1.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

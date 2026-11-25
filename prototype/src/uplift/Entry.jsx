@@ -143,3 +143,8 @@ export default function EntryFlows() {
     </div>
   );
 }
+
+// Shared with the Journey views (JourneyViews.jsx): the same steps and mock screens.
+export const STEPS_A = A;
+export const STEPS_B = B;
+export const CevocMock = Cevoc;
