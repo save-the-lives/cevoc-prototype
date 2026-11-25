@@ -120,7 +120,7 @@ export const UPLIFT_USER_STORIES = [
       'Given none applies, the page says “No records found.”.',
       'No download, save or print function.',
     ],
-    blockers: ['U5', 'U3'],
+    blockers: ['U5', 'U3', 'U15'],
   },
   {
     id: 'US9', title: 'Open one record from the list (Revenue)',
@@ -165,6 +165,7 @@ export const UPLIFT_REGISTER = [
   { id: 'U11', topic: 'Contact us and Help', q: 'Where do Contact us and Help go?', now: 'Shown on the legacy page; destinations not known.', source: SHOTS, owner: 'Product owner', status: 'Assumption to validate', action: 'Capture the current destinations.', impact: 'Header links.' },
   { id: 'U12', topic: 'Location code format', q: 'What is a valid location code?', now: 'Assumed digits only. The mock-up rejects anything else.', source: 'Prototype behaviour', owner: 'CMCS data owner', status: 'Assumption to validate', action: 'Confirm the format and length.', impact: 'Validation message.' },
   { id: 'U14', topic: 'Login', q: 'Do the end-user and Revenue views need a login?', now: 'No. The information is no more sensitive in one view than the other. The difference is scope: one record for the offence, or the list for a location.', source: OWNER, owner: 'Product owner', status: 'Confirmed requirement', action: 'None for the prototype; confirm with Cyber before build.', impact: 'No sign-in on either view.' },
+  { id: 'U15', topic: 'Link from the Service NSW app and myPenalty', q: 'How do the Service NSW app and myPenalty link a person to the certificate record?', now: 'The person finds the notice and sees what happened in either app. Assumed: the app links to the certificate record carrying the location code and the offence date and time, then the person returns to the app to pay, request a review or elect court.', source: OWNER, owner: 'Service NSW, Revenue NSW', status: 'Assumption to validate', action: 'Agree the link and what it carries with both app owners.', impact: 'Entry point for the end-user record view (US8).' },
   { id: 'U13', topic: 'Help text for customers', q: 'What explanatory text helps people read a certificate?', now: 'The BRD asks for it (BR_06) and for directing court matters to customer enquiries (BR_08). Not part of the staff lift and shift.', source: BRD + ' BR_06, BR_08', owner: 'Transport', status: 'Out of scope', action: 'Revisit for the public phase.', impact: 'None in phase 1.' },
 ];
 

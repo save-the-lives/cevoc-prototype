@@ -2,6 +2,7 @@ import { Link } from '../../shared/ui.jsx';
 import { UPLIFT_COMPARE, UPLIFT_REGISTER, UPLIFT_SAMPLES, UPLIFT_STORIES, UPLIFT_USER_STORIES, upliftLink } from '../uplift.js';
 import { Framing } from './Parts.jsx';
 import Register from './Register.jsx';
+import { UpliftJourney } from './Reference.jsx';
 
 // Certificate uplift (phase 1) sections of the demo hub, in the same shape as the other scenarios and register.
 
@@ -14,6 +15,8 @@ export function UpliftScenarios() {
         <Link to="/uplift" className="demo-go">Open the uplift page ↗</Link>
         {UPLIFT_SAMPLES.map((s) => <Link key={s.label} to={upliftLink(s)} className="demo-go">{s.label} ({s.note}) ↗</Link>)}
       </div>
+      <UpliftJourney />
+      <h2>Scenarios</h2>
       <div className="demo-stories">
         {UPLIFT_STORIES.map((s) => (
           <article key={s.title} className="demo-story is-staff">
