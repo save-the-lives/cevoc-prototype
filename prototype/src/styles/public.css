@@ -403,3 +403,15 @@ html { scroll-padding-top: var(--pub-stack, 0px); }
   .pub-act .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .pub-act svg { width: 24px; height: 24px; } .certs-act { gap: 10px; }
 }
+
+/* #/uplift: phase 1 lift-and-shift mock-up of the legacy certificate search */
+.up-flag { font-size: 13px; color: #6b4e00; background: #fff8e1; border-bottom: 1px dashed #e0a800; padding-top: 6px; padding-bottom: 6px; }
+.up-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 24px; }
+.up-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.up-results { margin-top: 32px; }
+.up-results h2 { color: #002664; margin: 0 0 4px; }
+.up-scroll { overflow-x: auto; }
+.up-note { color: #495054; margin: 12px 0; }
+.up-empty { text-align: center; }
+.up-foot { color: #495054; font-size: 15px; margin-top: 32px; }
+.up-actions button { min-height: 48px; }
