@@ -36,7 +36,7 @@ function Shell({ tab, title, lede, children }) {
         {lede && <p className="uh-lede">{lede}</p>}
         {children}
       </main>
-      <footer className="pub-wrap uh-hub__foot">Mockup only. All locations and certificates are invented. Legacy wording comes from the owner’s screenshots, which are not stored here. <Link to="/demo">Main CEVOC demo hub</Link></footer>
+      <footer className="pub-wrap uh-hub__foot">Mockup only. All locations and certificates are invented. Legacy wording comes from the owner’s screenshots, which are not stored here. <Link to="/demo">Main CEVOC demo hub</Link> · <a href="https://github.com/save-the-lives/cevoc-prototype/releases/download/site-latest/cevoc-site.zip">Download this site (zip)</a>: unzip, then serve the folder (for example <code>npx serve .</code>) and open it; opening index.html straight from disk won’t work.</footer>
     </div>
   );
 }

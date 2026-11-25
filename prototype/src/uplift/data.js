@@ -131,8 +131,8 @@ export const APP_SETTINGS = [
   { key: 'copy.templates', purpose: 'Static copy of the record page, per camera program with a default', value: 'Legacy wording (default template)', owner: 'Transport communications, Legal', q: 'U35' },
   { key: 'copy.gipaUrl', purpose: 'Link in the legal disclaimer', value: 'Transport access application page', owner: 'Legal', q: 'U8' },
 ];
-// Lifecycle label for display (U22): Withdrawn, Re-issued, In force (covers today) or Expired.
-export const lifecycle = (x) => (x.status === 'Withdrawn' ? 'Withdrawn' : x.reissueOf ? 'Re-issued' : (() => { const t = new Date(); t.setHours(0, 0, 0, 0); return parseDay(x.expiry) < t ? 'Expired' : parseDay(x.certified) > t ? 'Not yet in force' : 'In force'; })());
+// Lifecycle label for display (U22): Withdrawn, Re-issued, Current (covers today) or Expired.
+export const lifecycle = (x) => (x.status === 'Withdrawn' ? 'Withdrawn' : x.reissueOf ? 'Re-issued' : (() => { const t = new Date(); t.setHours(0, 0, 0, 0); return parseDay(x.expiry) < t ? 'Expired' : parseDay(x.certified) > t ? 'Not yet in force' : 'Current'; })());
 export const VISIBLE = (x) => x.status === 'Approved' || x.status === 'Published' || x.status === 'Withdrawn';
 export const COUNTS = (x) => x.status === 'Approved' || x.status === 'Published'; // in force only if not withdrawn
 

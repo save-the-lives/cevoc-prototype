@@ -182,7 +182,7 @@ body.tr-dyn .tr-dynv::after { content: attr(data-dyn); position: absolute; left:
 
 /* Lifecycle status tags (U22): text plus colour, NSW-style. */
 .st-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; border-radius: 4px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; border: 1px solid; white-space: nowrap; }
-.st-tag.is-in-force { color: #00672b; background: #dbfadf; border-color: #00aa45; }
+.st-tag.is-current { color: #00672b; background: #dbfadf; border-color: #00aa45; }
 .st-tag.is-expired { color: #3a3f43; background: #ebebeb; border-color: #8a9196; }
 .st-tag.is-withdrawn { color: #6b4b00; background: #fff4cf; border-color: #e0a800; }
 .st-tag.is-re-issued { color: #002664; background: #e6f1ff; border-color: #146cfd; }

@@ -5,7 +5,7 @@ import { StatusTag } from './Search.jsx';
 // of truth. Owner's rule: an unapproved certificate is never displayed. The rest is proposed, to be confirmed.
 const RULES = [
   ['Unapproved (issued, not approved) / draft', 'No', 'Treated as “no certificate yet”. Owner’s rule.', null],
-  ['Approved / in force', 'Yes', 'Shown normally.', { status: 'Published', certified: '01/09/2026', expiry: '01/09/2027' }],
+  ['Approved / current', 'Yes', 'Shown normally.', { status: 'Published', certified: '01/09/2026', expiry: '01/09/2027' }],
   ['Expired (valid on the offence date)', 'Yes', 'Shown normally for offences inside its period.', { status: 'Published', certified: '01/09/2024', expiry: '01/09/2025' }],
   ['Withdrawn', 'Proposed: yes, if it covered the offence date', 'Shown with a Withdrawn tag and the date, so the record is transparent; does not count as in force.', { status: 'Withdrawn', withdrawn: '12/12/2025', certified: '01/12/2025', expiry: '28/02/2026' }],
   ['Re-issued', 'Yes', 'The replacement shows with a Re-issued marker (BRD BR_09); the original shows as withdrawn.', { status: 'Published', reissueOf: 'x', certified: '15/12/2025', expiry: '28/02/2026' }],
@@ -44,7 +44,7 @@ export default function Lifecycle() {
           ))}</tbody>
         </table>
       </div>
-      <p className="uh-meta">“In force” and “Expired” are worked out against today; a certificate that has expired still counts for offences inside its period. Try it live: <Link to="/uplift?locs=1234,4567&from=01%2F11%2F2025&to=30%2F06%2F2026&run=1">search with withdrawn, re-issued and duplicate rows ↗</Link></p>
+      <p className="uh-meta">“Current” and “Expired” are worked out against today; a certificate that has expired still counts for offences inside its period. Try it live: <Link to="/uplift?locs=1234,4567&from=01%2F11%2F2025&to=30%2F06%2F2026&run=1">search with withdrawn, re-issued and duplicate rows ↗</Link></p>
     </>
   );
 }

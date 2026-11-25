@@ -25,6 +25,22 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: prototype/dist
+      # Downloadable copy of the same build, for hosting locally (relative paths and hash routing, so any folder works).
+      - name: Package the site as a zip
+        run: |
+          cat > prototype/dist/HOW-TO-RUN.txt <<'TXT'
+          CEVOC prototype: downloaded copy of the site.
+          Serve this folder with a small local web server, then open the address it prints:
+            npx serve .            (needs Node.js)
+            python3 -m http.server (needs Python; then open http://localhost:8000/)
+          Opening index.html straight from disk (file://) does not work: browsers block the page's scripts there.
+          All data in it is invented.
+          TXT
+          (cd prototype/dist && zip -qr ../../cevoc-site.zip .)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cevoc-site
+          path: cevoc-site.zip
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -34,3 +50,37 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # Serve the zip, check it in a browser, then publish it as a release asset and on the `site` branch
+  # (a local `git pull` of that branch is a deploy, with no build needed).
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: cevoc-site
+      - name: Check the zip works when served from a folder
+        run: |
+          mkdir -p /tmp/serve/copy && unzip -q cevoc-site.zip -d /tmp/serve/copy
+          (cd /tmp/serve && python3 -m http.server 4180 >/dev/null 2>&1 &)
+          npm install --no-save --prefix /tmp/pw playwright@1.49.1
+          npx --prefix /tmp/pw playwright install --with-deps chromium
+          NODE_PATH=/tmp/pw/node_modules node prototype/scripts/check-site.cjs http://127.0.0.1:4180/copy/
+      - name: Publish the zip as the site-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view site-latest >/dev/null 2>&1 || gh release create site-latest --title "Latest built site" --notes "Built from main on every deploy. Unzip, serve the folder (see HOW-TO-RUN.txt) and open it." --latest=false
+          gh release upload site-latest cevoc-site.zip --clobber
+      - name: Push the built site to the site branch
+        run: |
+          rm -rf /tmp/site && mkdir /tmp/site && unzip -q cevoc-site.zip -d /tmp/site
+          cd /tmp/site
+          git init -q -b site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Built site from ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" site
