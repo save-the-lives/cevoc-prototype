@@ -50,10 +50,24 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # The "exam": install and update the site exactly as on the XAMPP server (Apache + PHP + SQLite,
+  # /MSCR/cevoc-site/ subfolder, git clone -b site then git pull after each deploy) and check it.
+  exam:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq apache2 libapache2-mod-php php-sqlite3
+      - run: npm install && npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
+        working-directory: prototype
+      - run: bash exam/run-exam.sh
+        working-directory: prototype
   # Serve the zip, check it in a browser, then publish it as a release asset and on the `site` branch
   # (a local `git pull` of that branch is a deploy, with no build needed).
   package:
-    needs: build
+    needs: [build, exam]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -76,11 +90,7 @@ jobs:
           gh release view site-latest >/dev/null 2>&1 || gh release create site-latest --title "Latest built site" --notes "Built from main on every deploy. Unzip, serve the folder (see HOW-TO-RUN.txt) and open it." --latest=false
           gh release upload site-latest cevoc-site.zip --clobber
       - name: Push the built site to the site branch
+        # Commits on top of the branch (no force push), so the server's plain `git pull` keeps working.
         run: |
           rm -rf /tmp/site && mkdir /tmp/site && unzip -q cevoc-site.zip -d /tmp/site
-          cd /tmp/site
-          git init -q -b site
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A && git commit -qm "Built site from ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" site
+          bash prototype/scripts/publish-site-branch.sh /tmp/site "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" "Built site from ${GITHUB_SHA::7}"
