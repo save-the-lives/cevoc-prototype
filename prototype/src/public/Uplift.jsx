@@ -1,71 +1,126 @@
-import { useEffect, useRef, useState } from 'react';
-import { Button, Field, FieldDescription, FieldError, FieldLabel, Header, HeaderBrand, Input, Masthead, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nswds/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Field, FieldError, FieldLabel, Header, HeaderBrand, Input, Masthead } from '@nswds/ui';
 
-// PHASE 1 UPLIFT MOCK-UP (#/uplift): the legacy certificate search page, lifted and shifted.
-// Same fields, labels, buttons, columns and messages as the legacy page; only the look changes.
-// No new functions: no PDF download, no links in the results. Sample data only.
+// PHASE 1 UPLIFT MOCK-UP (#/uplift): the legacy certificate search page (Customer Enquiry and Verification of
+// Certificate), lifted and shifted. Same page, fields, defaults, buttons, columns and sorting as the legacy page;
+// only the look changes. No new functions: no PDF download, no links in the results. Sample data only.
+//
+// Legacy behaviour kept: Date/Time from starts empty, Date/Time to defaults to now; SEARCH, CLEAR, CLOSE under the
+// form; after a search, "Search results" with five columns (the last four sortable) and CLOSE moves below the table.
 
 const FORMAT = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/;
-
-// Fictitious rows in the legacy results shape. Period is "from - to".
-const ROWS = [
-  { desc: 'Sample camera certificate A', type: 'Camera', from: '01/01/2026 00:00', to: '30/06/2026 23:59', certified: '02/01/2026', expiry: '30/06/2027' },
-  { desc: 'Sample camera certificate B', type: 'Camera', from: '01/07/2025 00:00', to: '31/12/2025 23:59', certified: '02/07/2025', expiry: '31/12/2026' },
-  { desc: 'Sample speed certificate C', type: 'Speed', from: '10/03/2026 08:00', to: '20/03/2026 06:00', certified: '10/03/2026', expiry: '10/03/2027' },
-  { desc: 'Sample speed certificate D', type: 'Speed', from: '25/03/2026 00:00', to: '25/03/2026 23:59', certified: '24/03/2026', expiry: '24/03/2027' },
-];
-
-const toTime = (s) => {
-  const m = FORMAT.exec(s.trim());
+const pad = (n) => String(n).padStart(2, '0');
+const fmt = (d) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const day = (d) => fmt(d).slice(0, 10);
+const parse = (s) => {
+  const m = FORMAT.exec(String(s).trim());
   if (!m) return null;
   const [, d, mo, y, h, mi] = m.map(Number);
   const t = new Date(y, mo - 1, d, h, mi);
-  return t.getDate() === d && t.getMonth() === mo - 1 ? t.getTime() : null;
+  return t.getDate() === d && t.getMonth() === mo - 1 && h < 24 && mi < 60 ? t : null;
 };
+const parseDay = (s) => parse(`${s} 00:00`);
+// <input type="datetime-local"> value <-> DD/MM/YYYY HH:MM
+const toLocal = (s) => { const t = parse(s); return t ? `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}` : ''; };
+const fromLocal = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : ''; };
 
-const EMPTY = { loc: '', from: '', to: '' };
+// Sample certificates in the legacy results shape (invented dates). Same description and type wording as the
+// legacy page; Period is the certificate cycle.
+const DESC = 'Approved Traffic Enforcement Device';
+const TYPE = 'Red Light Speed Camera';
+const SAMPLE = [
+  ['YEARLY', '12/08/2025', '12/08/2026'],
+  ['QUARTERLY', '02/10/2025', '31/12/2025'],
+  ['QUARTERLY', '22/12/2025', '21/03/2026'],
+  ['QUARTERLY', '18/03/2026', '16/06/2026'],
+  ['QUARTERLY', '12/06/2026', '10/09/2026'],
+  ['YEARLY', '10/08/2026', '10/08/2027'],
+  ['QUARTERLY', '07/09/2026', '06/12/2026'],
+];
+const ROWS = SAMPLE.map(([period, certified, expiry], i) => ({ id: i, desc: DESC, type: TYPE, period, certified, expiry }));
+
+const COLS = [
+  { key: 'desc', label: 'Certificate Description', sortable: false },
+  { key: 'type', label: 'Certificate type', sortable: true },
+  { key: 'period', label: 'Period', sortable: true },
+  { key: 'certified', label: 'Certified date', sortable: true, date: true },
+  { key: 'expiry', label: 'Expiry date', sortable: true, date: true },
+];
+
+function DateTimeField({ id, label, value, onChange, error }) {
+  const picker = useRef(null);
+  const open = () => {
+    const p = picker.current;
+    if (!p) return;
+    p.value = toLocal(value);
+    if (typeof p.showPicker === 'function') { try { p.showPicker(); return; } catch { /* fall through */ } }
+    p.focus();
+  };
+  return (
+    <Field className="pub-field" invalid={!!error}>
+      <FieldLabel htmlFor={id}>{label} <span className="up-req" aria-hidden="true">*</span></FieldLabel>
+      {error && <FieldError match>{error}</FieldError>}
+      <div className="up-dt">
+        <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} autoComplete="off" required inputMode="numeric"
+          aria-describedby={`${id}-fmt`} aria-invalid={!!error || undefined} />
+        <button type="button" className="up-cal" onClick={open} aria-label={`Choose ${label} from a calendar`}>
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
+        </button>
+        <input ref={picker} type="datetime-local" className="up-picker" tabIndex={-1} aria-hidden="true"
+          onChange={(e) => { const v = fromLocal(e.target.value); if (v) onChange(v); }} />
+      </div>
+      <span id={`${id}-fmt`} className="up-hint">DD/MM/YYYY HH:MM</span>
+    </Field>
+  );
+}
 
 export default function Uplift() {
-  const [v, setV] = useState(EMPTY);
+  const fresh = () => ({ loc: '', from: '', to: fmt(new Date()) });
+  const [v, setV] = useState(fresh);
   const [errs, setErrs] = useState({});
   const [result, setResult] = useState(null);
-  const [closed, setClosed] = useState(false);
+  const [sort, setSort] = useState(null); // { key, dir: 1 | -1 }
+  const [note, setNote] = useState('');
   const sumRef = useRef(null);
+  const resRef = useRef(null);
+  const today = useMemo(() => new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), []);
 
   useEffect(() => { document.title = 'Customer Enquiry and Verification of Certificate (uplift mock-up)'; }, []);
 
-  const set = (k) => (e) => { setV({ ...v, [k]: e.target.value }); setClosed(false); };
+  const set = (k) => (val) => { setV((x) => ({ ...x, [k]: val })); setNote(''); };
 
   const search = (e) => {
     e.preventDefault();
     const x = {};
     if (!v.loc.trim()) x.loc = 'Location code is required.';
-    const f = toTime(v.from); const t = toTime(v.to);
+    else if (!/^\d+$/.test(v.loc.trim())) x.loc = 'Location code must be a number.';
+    const f = parse(v.from); const t = parse(v.to);
     if (!v.from.trim()) x.from = 'Date/Time from is required.';
-    else if (f === null) x.from = 'Date/Time from must be DD/MM/YYYY HH:MM.';
+    else if (!f) x.from = 'Date/Time from must be DD/MM/YYYY HH:MM.';
     if (!v.to.trim()) x.to = 'Date/Time to is required.';
-    else if (t === null) x.to = 'Date/Time to must be DD/MM/YYYY HH:MM.';
-    if (!x.from && !x.to && f > t) x.to = 'Date/Time to must be after Date/Time from.';
-    setErrs(x);
+    else if (!t) x.to = 'Date/Time to must be DD/MM/YYYY HH:MM.';
+    if (f && t && f > t) x.to = 'Date/Time to must be after Date/Time from.';
+    setErrs(x); setNote('');
     if (Object.keys(x).length) { setResult(null); setTimeout(() => sumRef.current?.focus(), 0); return; }
-    const rows = v.loc.trim() === '0000' ? [] : ROWS.filter((r) => toTime(r.from) <= t && toTime(r.to) >= f);
-    setResult({ rows, loc: v.loc.trim(), from: v.from.trim(), to: v.to.trim() });
+    // A certificate is listed when it was in force at any time in the range.
+    const rows = v.loc.trim() === '0000' ? [] : ROWS.filter((r) => parseDay(r.certified) <= t && parseDay(r.expiry) >= f);
+    setResult({ rows, loc: v.loc.trim() }); setSort(null);
+    setTimeout(() => resRef.current?.focus(), 0);
   };
-  const clear = () => { setV(EMPTY); setErrs({}); setResult(null); setClosed(false); };
-  const close = () => { clear(); setClosed(true); };
+  const clear = () => { setV(fresh()); setErrs({}); setResult(null); setSort(null); setNote(''); };
+  const close = () => { clear(); setNote('CLOSE leaves the search and returns to the page that opened it. In this mock-up it starts a new search.'); };
+
+  const rows = useMemo(() => {
+    if (!result) return [];
+    if (!sort) return result.rows;
+    const col = COLS.find((c) => c.key === sort.key);
+    const val = (r) => (col.date ? parseDay(r[sort.key]).getTime() : r[sort.key]);
+    return [...result.rows].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : a.id - b.id) * sort.dir);
+  }, [result, sort]);
+  const toggle = (key) => setSort((s) => (s && s.key === key ? { key, dir: -s.dir } : { key, dir: 1 }));
 
   const problems = ['loc', 'from', 'to'].filter((k) => errs[k]).map((k) => ({ id: `up-${k}`, msg: errs[k] }));
-
-  const field = (k, label, extra = {}) => (
-    <Field className="pub-field" invalid={!!errs[k]}>
-      <FieldLabel htmlFor={`up-${k}`}>{label} *</FieldLabel>
-      {extra.hint && <FieldDescription id={`up-${k}-hint`}>{extra.hint}</FieldDescription>}
-      {errs[k] && <FieldError match>{errs[k]}</FieldError>}
-      <Input id={`up-${k}`} value={v[k]} onChange={set(k)} autoComplete="off" required
-        aria-describedby={extra.hint ? `up-${k}-hint` : undefined} aria-invalid={!!errs[k] || undefined}
-        />
-    </Field>
-  );
+  const closeBtn = <Button type="button" variant="outline" className="up-close" onClick={close}>CLOSE</Button>;
 
   return (
     <div className="pub up">
@@ -74,10 +129,19 @@ export default function Uplift() {
       <Header color="white" border container="contained">
         <HeaderBrand href="#/uplift" sitename="Customer Enquiry and Verification of Certificate" />
       </Header>
-      <div className="up-flag pub-wrap">Phase 1 uplift mock-up · same page and fields as today, new look only · sample data</div>
-      <main id="up-main" tabIndex={-1} className="pub-wrap pub-page">
-        <h1>Search certificates</h1>
-        <p className="pub-lede">Enter the camera location code and the date and time range. Fields marked * are required.</p>
+      <div className="up-bar">
+        <div className="pub-wrap up-bar__in">
+          <nav aria-label="Support" className="up-bar__nav"><a href="#/uplift">Contact us</a><a href="#/uplift">Help</a></nav>
+          <span>{today}</span>
+        </div>
+      </div>
+      <div className="up-flag"><div className="pub-wrap">Phase 1 uplift mock-up · same page, fields and results as today, new look only · sample data</div></div>
+
+      <main id="up-main" tabIndex={-1} className="pub-wrap pub-page up-page">
+        <h1>Search</h1>
+        <p className="up-lede">Please enter the search parameters</p>
+        <p className="up-mand"><span className="up-req" aria-hidden="true">*</span> indicates mandatory fields.</p>
+
         <form className="pub-form up-form" onSubmit={search} noValidate>
           {problems.length > 0 && (
             <div className="pub-errsum" role="alert" tabIndex={-1} ref={sumRef} aria-labelledby="up-err-h">
@@ -86,52 +150,56 @@ export default function Uplift() {
             </div>
           )}
           <div className="up-grid">
-            {field('loc', 'Location code')}
-            {field('from', 'Date/Time from', { hint: 'DD/MM/YYYY HH:MM, for example 14/03/2026 08:30' })}
-            {field('to', 'Date/Time to', { hint: 'DD/MM/YYYY HH:MM, for example 14/03/2026 08:30' })}
+            <Field className="pub-field up-loc" invalid={!!errs.loc}>
+              <FieldLabel htmlFor="up-loc">Location code <span className="up-req" aria-hidden="true">*</span></FieldLabel>
+              {errs.loc && <FieldError match>{errs.loc}</FieldError>}
+              <Input id="up-loc" value={v.loc} onChange={(e) => set('loc')(e.target.value)} inputMode="numeric" autoComplete="off" required aria-invalid={!!errs.loc || undefined} />
+            </Field>
+            <DateTimeField id="up-from" label="Date/Time from" value={v.from} onChange={set('from')} error={errs.from} />
+            <DateTimeField id="up-to" label="Date/Time to" value={v.to} onChange={set('to')} error={errs.to} />
           </div>
           <div className="up-actions">
             <Button type="submit">SEARCH</Button>
             <Button type="button" variant="outline" onClick={clear}>CLEAR</Button>
-            <Button type="button" variant="outline" onClick={close}>CLOSE</Button>
+            {!result && closeBtn}
           </div>
         </form>
 
-        {closed && <p role="status" className="up-note">CLOSE returns to the page that opened the search. In this mock-up it just clears the form.</p>}
+        {note && <p role="status" className="up-note">{note}</p>}
 
         {result && (
           <section aria-labelledby="up-res-h" className="up-results">
-            <h2 id="up-res-h">Results</h2>
-            <p role="status" className="up-note">{result.rows.length} certificate{result.rows.length === 1 ? '' : 's'} for location {result.loc}, {result.from} to {result.to}.</p>
+            <h2 id="up-res-h" tabIndex={-1} ref={resRef}>Search results</h2>
+            <p role="status" className="up-note">{result.rows.length} certificate{result.rows.length === 1 ? '' : 's'} for location code {result.loc}.</p>
             <div className="up-scroll">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Certificate Description</TableHead>
-                    <TableHead>Certificate type</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead>Certified date</TableHead>
-                    <TableHead>Expiry date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {result.rows.map((r) => (
-                    <TableRow key={r.desc}>
-                      <TableCell>{r.desc}</TableCell>
-                      <TableCell>{r.type}</TableCell>
-                      <TableCell>{r.from} - {r.to}</TableCell>
-                      <TableCell>{r.certified}</TableCell>
-                      <TableCell>{r.expiry}</TableCell>
-                    </TableRow>
+              <table className="up-table">
+                <thead>
+                  <tr>
+                    {COLS.map((c) => (
+                      <th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}>
+                        {c.sortable ? (
+                          <button type="button" className="up-sort" onClick={() => toggle(c.key)}>
+                            {c.label}
+                            <span aria-hidden="true" className="up-sort__ico">{sort?.key === c.key ? (sort.dir === 1 ? '▲' : '▼') : '⇅'}</span>
+                          </button>
+                        ) : c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id}>{COLS.map((c) => <td key={c.key}>{r[c.key]}</td>)}</tr>
                   ))}
-                  {result.rows.length === 0 && <TableRow><TableCell colSpan={5} className="up-empty">No records found.</TableCell></TableRow>}
-                </TableBody>
-              </Table>
+                  {rows.length === 0 && <tr><td colSpan={COLS.length} className="up-empty">No records found.</td></tr>}
+                </tbody>
+              </table>
             </div>
+            <div className="up-actions up-actions--after">{closeBtn}</div>
           </section>
         )}
 
-        <p className="up-foot">Try any location code with 01/03/2026 00:00 to 31/03/2026 23:59. Location code 0000 shows the no-records case.</p>
+        <p className="up-foot">Mock-up: any numeric location code returns the sample certificates in force in the range; 0000 shows the no-records case. Today’s date fills Date/Time to, as on the legacy page.</p>
       </main>
     </div>
   );
