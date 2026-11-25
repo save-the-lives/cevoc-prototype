@@ -1,0 +1,6 @@
+CEVOC prototype: downloaded copy of the site.
+Serve this folder with a small local web server, then open the address it prints:
+  npx serve .            (needs Node.js)
+  python3 -m http.server (needs Python; then open http://localhost:8000/)
+Opening index.html straight from disk (file://) does not work: browsers block the page's scripts there.
+All data in it is invented.
