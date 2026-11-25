@@ -6,7 +6,7 @@
 export const NOTES = {
   search: [
     { key: 'title', title: 'Page heading and instructions', legacy: '“Search” · “Please enter the search parameters” · “* indicates mandatory fields.”', next: '“Find camera certificates” · “Search by camera location and a date range.” · “All fields are required.”', stories: ['S5', 'S19'], qs: ['U28'] },
-    { key: 'loc', title: 'Locations', legacy: 'Location code: one code, typed exactly', next: 'Camera locations: several, by code or any part of the address, as removable chips', stories: ['S1'], qs: ['U25'] },
+    { key: 'loc', title: 'Locations', legacy: 'Location code: one code, typed exactly', next: 'Camera locations: any number, by code or any part of the address, as removable chips that wrap, with “+N more” and Clear all; results grouped by location', stories: ['S1'], qs: ['U25'] },
     { key: 'dates', title: 'Date range', legacy: 'Date/Time from and Date/Time to, date and time, To defaults to now', next: 'From and To as days only, empty by default, one calendar picks both (airline style), still typeable', stories: ['S2', 'S17'], qs: ['U26', 'U27', 'U10'] },
     { key: 'actions', title: 'Buttons', legacy: 'SEARCH · CLEAR · CLOSE (small image buttons)', next: 'Search · Clear · Close, full size, one baseline', stories: ['S18'], qs: ['U9'] },
     { key: 'results', title: 'Results', legacy: '“Search results”: Certificate Description, Certificate type, Period, Certified date, Expiry date', next: '“Certificates”: adds Location; rows expand in place to show details; withdrawn and re-issued are tagged', stories: ['S3', 'S4', 'S9', 'S10', 'S15'], qs: ['U2', 'U3', 'U4', 'U22'] },

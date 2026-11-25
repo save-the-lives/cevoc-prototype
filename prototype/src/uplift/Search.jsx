@@ -16,6 +16,7 @@ import TourLayer, { useTour } from './Tour.jsx';
 // Nothing prototype-specific sits on the page: samples, labels, notes, stories and questions are in the Tour overlay.
 
 const ITEMS = LOCATIONS.map(locLabel);
+const CHIP_LIMIT = 6; // chips shown before “+N more” (display only; there is no limit on how many can be picked, U25)
 // Default range: the last search.defaultRangeMonths months (app setting, U10).
 const DEFAULT_RANGE = () => { const t = new Date(); t.setHours(0, 0, 0, 0); const f = new Date(t.getFullYear(), t.getMonth() - Number(APP_SETTINGS.find((x) => x.key === 'search.defaultRangeMonths').value), t.getDate()); return { from: fmtDay(f), to: fmtDay(t) }; };
 const codeOf = (label) => label.split(' · ')[0];
@@ -74,6 +75,7 @@ export default function Search({ query = {} }) {
   const [res, setRes] = useState(null);
   const [open, setOpen] = useState(() => new Set());
   const [sort, setSort] = useState(null);
+  const [allChips, setAllChips] = useState(false);
     const anchor = useComboboxAnchor();
   const sumRef = useRef(null);
   const resRef = useRef(null);
@@ -100,9 +102,10 @@ export default function Search({ query = {} }) {
   const rows = useMemo(() => {
     if (!res?.rows) return [];
     const base = res.rows.map((r) => ({ ...r, location: r.loc }));
-    if (!sort) return base;
-    const val = (r) => (DATE.has(sort.k) ? parseDay(r[sort.k]).getTime() : r[sort.k]);
-    return [...base].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * sort.dir);
+    // Grouped by location (U25): location order first, then the chosen sort within each location.
+    const order = (r) => res.codes.indexOf(r.loc);
+    const val = (r) => (!sort ? 0 : DATE.has(sort.k) ? parseDay(r[sort.k]).getTime() : r[sort.k]);
+    return [...base].sort((a, b) => (sort?.k === 'location' ? 0 : order(a) - order(b)) || (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * (sort?.dir || 1));
   }, [res, sort]);
   const toggle = (id) => setOpen((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const problems = [['locs', 'uh-loc'], ['from', 'dr-from'], ['to', 'dr-to']].filter(([k]) => errs[k]);
@@ -134,7 +137,12 @@ export default function Search({ query = {} }) {
             <Combobox items={ITEMS} multiple value={v.locs} onValueChange={(locs) => setV((x) => ({ ...x, locs }))}>
               <ComboboxChips ref={anchor} className="uh-chips">
                 <ComboboxValue>
-                  {(vals) => vals.map((item) => <ComboboxChip key={item} removeLabel={`Remove ${item}`}>{item}</ComboboxChip>)}
+                  {(vals) => (
+                    <>
+                      {(allChips ? vals : vals.slice(0, CHIP_LIMIT)).map((item) => <ComboboxChip key={item} removeLabel={`Remove ${item}`}>{item}</ComboboxChip>)}
+                      {vals.length > CHIP_LIMIT && <button type="button" className="uh-more" aria-expanded={allChips} onClick={(e) => { e.stopPropagation(); setAllChips(!allChips); }}>{allChips ? 'Show fewer' : `+${vals.length - CHIP_LIMIT} more`}</button>}
+                    </>
+                  )}
                 </ComboboxValue>
                 <ComboboxChipsInput id="uh-loc" aria-describedby="uh-loc-hint" placeholder={v.locs.length ? 'Add another' : 'e.g. 1234 or Example St'} />
               </ComboboxChips>
@@ -143,6 +151,7 @@ export default function Search({ query = {} }) {
                 <ComboboxList>{(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}</ComboboxList>
               </ComboboxContent>
             </Combobox>
+            {v.locs.length > 1 && <button type="button" className="uh-clearall" onClick={() => setV((x) => ({ ...x, locs: [] }))}>Clear all locations ({v.locs.length})</button>}
           </div>
           <div className="uh-dates" data-tour="dates">
             <DateRange labels={L} from={v.from} to={v.to} errors={errs} onChange={({ from, to }) => setV((x) => ({ ...x, from, to }))} />
@@ -205,10 +214,12 @@ export default function Search({ query = {} }) {
                       ))}
                     </tr></thead>
                     <tbody>
-                      {rows.map((r) => {
+                      {rows.map((r, idx) => {
                         const isOpen = open.has(r.id);
+                        const newGroup = res.codes.length > 1 && (idx === 0 || rows[idx - 1].loc !== r.loc);
                         return (
                           <Fragment key={r.id}>
+                            {newGroup && <tr className="uh-group"><th scope="rowgroup" colSpan={COLS.length + 1}>{locByCode(r.loc)?.address} <span className="uh-group__code">{r.loc} · {rows.filter((x) => x.loc === r.loc).length} certificate{rows.filter((x) => x.loc === r.loc).length === 1 ? '' : 's'}</span></th></tr>}
                             <tr className={`uh-row${isOpen ? ' is-open' : ''}${r.status === 'Withdrawn' ? ' is-withdrawn' : ''}`} onClick={() => toggle(r.id)}>
                               <td>
                                 <button type="button" className="uh-exp" aria-expanded={isOpen} aria-controls={`uh-d-${r.id}`} onClick={(e) => { e.stopPropagation(); toggle(r.id); }}>

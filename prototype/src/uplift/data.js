@@ -38,6 +38,8 @@ export const LOCATIONS = [
   { code: '4567', address: 'Specimen Pde & Trial St, Testville', program: 'RLSC', note: 'Has a withdrawn and a re-issued certificate, and a missing quarterly certificate' },
   { code: '9999', address: 'Fault Test Lane, Errorton', program: 'RLSC', note: 'Simulates a system fault' },
   { code: '5678', address: 'Sample Hwy (southbound), Mockton', program: 'MPDC', note: 'The invented fine used in both entry flows' },
+  ...['Example Pde', 'Demo St', 'Sample Rd', 'Mock Ave', 'Trial Cres', 'Placeholder Way', 'Specimen Lane', 'Test Blvd', 'Dummy Dr', 'Proto Pl', 'Fixture Ct', 'Stub Tce']
+    .map((st, i) => ({ code: String(6001 + i), address: `${st} & ${['Wattle', 'Banksia', 'Waratah'][i % 3]} Ave, ${['Testville', 'Mockton', 'Fakeham'][i % 3]}`, program: ['RLSC', 'FDSC', 'ASC', 'MPDC'][i % 4] })),
 ];
 export const locByCode = (code) => LOCATIONS.find((l) => l.code === String(code || '').trim());
 export const locLabel = (l) => `${l.code} · ${l.address}`;
@@ -80,6 +82,16 @@ export const CERTIFICATES = [
   c('4567', 'QUARTERLY', '13/06/2026', '10/09/2026', 'Draft'),
   c('5678', 'QUARTERLY', '02/03/2026', '31/05/2026'),
   c('5678', 'QUARTERLY', '25/11/2025', '23/02/2026'),
+  // Generated, invented: a yearly certificate and rolling quarterlies for 6001 to 6012 (many-locations example, U25).
+  ...Array.from({ length: 12 }, (_, i) => String(6001 + i)).flatMap((code, i) => {
+    const d = 1 + (i * 2) % 27;
+    const p = (n) => String(n).padStart(2, '0');
+    return [
+      c(code, 'YEARLY', `${p(d)}/07/2025`, `${p(d)}/07/2026`),
+      c(code, 'QUARTERLY', `${p(d)}/11/2025`, `${p(d)}/02/2026`),
+      c(code, 'QUARTERLY', `${p(d)}/02/2026`, `${p(d)}/05/2026`),
+    ];
+  }),
 ];
 
 // The signed link both apps open today: certificateDetails.jsf?p=&d=&s=&i=&m= (owner, 25 Nov 2026).
@@ -105,7 +117,7 @@ export const ENTRY_LINK = signedLink(OFFENCES[0]);
 export const SOURCES = { SNSW: { name: 'Service NSW', url: 'https://account.service.nsw.gov.au/overview' }, RNSW: { name: 'myPenalty (Revenue NSW)', url: 'https://www.revenue.nsw.gov.au' } };
 export const APP_SETTINGS = [
   { key: 'search.defaultRangeMonths', purpose: 'Default date range on the staff search: the last N months', value: '6', owner: 'Product owner', q: 'U10' },
-  { key: 'search.maxLocations', purpose: 'Most camera locations in one search', value: '10', owner: 'Revenue NSW, CMCS data owner', q: 'U25' },
+  { key: 'api.maxLocationsPerRequest', purpose: 'Cap on locations per API request, only if load ever needs it (enforced by the API, with paging)', value: 'None', owner: 'Enterprise architecture, CMCS data owner', q: 'U25' },
   { key: 'certificate.visibleStatuses', purpose: 'Lifecycle statuses that make a certificate visible', value: 'Approved, Published', owner: 'CMCS data owner', q: 'U2' },
   { key: 'certificate.bufferDays', purpose: 'Days to wait before showing a certificate (not used now)', value: '0', owner: 'Product owner', q: 'U2' },
   { key: 'certificate.rulesPerProgram', purpose: 'Which certificate types apply per camera program, and which wins when several are in force', value: 'All in force, one per cycle', owner: 'Transport, CMCS / CES data owners', q: 'U5' },
@@ -224,7 +236,7 @@ export const QUESTIONS = [
   { id: 'U22', topic: 'Certificate lifecycle status', at: ['search', 'record'], q: 'How does each certificate lifecycle status (from CMCS, the source of truth) show on the search and the record page?', why: 'Hiding a real event silently would mislead; so would showing an unvalidated or withdrawn certificate as valid.', assume: 'Rule (owner): an unapproved certificate (issued but not approved) is never displayed. Proposed for the rest (see the Lifecycle tab): approved or in force shown normally; expired shown for offences inside its period; withdrawn shown with a Withdrawn tag and date if it covered the offence date; the re-issue shown with a Re-issued marker and the original shown as withdrawn; cancelled not shown and logged as a data error; duplicates collapsed to one row and flagged. Each status is a visible tag with text and colour, never colour alone. Each status-to-behaviour rule is an app setting.', who: 'CMCS data owner (statuses); Transport, Legal (behaviour)', status: 'Confirmation required', source: OWNER, action: 'Ask CMCS for the full list of lifecycle statuses and their meanings; confirm the behaviour table.', impact: 'S9, S12; app setting certificate.statusRules.', see: { to: '/uplift/hub/lifecycle', label: 'Lifecycle tab (behaviour table and status mock)' } },
   { id: 'U23', topic: 'Genuinely missing certificate', at: ['search', 'record'], q: 'When no certificate covered an enforced day, what do the pages show?', why: 'We expect a certificate for everything we enforce at all times, so a gap is a real problem and must never be hidden.', assume: 'Staff: a warning naming the location, cycle and dates. Public: “No certificate of this kind was in force on that day” with who to contact.', who: 'Transport, Legal', status: 'Assumption to validate', source: OWNER, action: 'Agree the wording and who is told when a gap is found.', impact: 'S8, S12.' },
   { id: 'U24', topic: 'System fault versus missing certificate', at: ['search', 'record'], q: 'What exactly do the fault, missing and no-match messages say?', why: 'A fault must never look like “no certificate”, and “no certificate” must never look like a fault.', assume: 'Fault: “We couldn’t get certificates right now. This is a problem with our system, not a missing certificate. Try again later.” Missing: as U23. No match: NSW empty state with a way forward.', who: 'Transport communications, Legal', status: 'Confirmation required', source: OWNER, action: 'Owner likes the current wording and keeps it; to be confirmed.', impact: 'S6, S7, S12, S13.' },
-  { id: 'U25', topic: 'Location search', at: ['search'], q: 'What can staff search by, and how many locations at once?', why: 'Power users search several cameras and by address, not only by code.', assume: 'Code or any part of the address, from CMCS site records; up to 10 locations.', who: 'CMCS data owner, Revenue NSW', status: 'Assumption to validate', source: OWNER, action: 'Confirm the address source and a sensible maximum.', impact: 'S1, API parameters.' },
+  { id: 'U25', topic: 'Location search', at: ['search'], q: 'What can staff search by, and how many locations at once?', why: 'Power users search several cameras and by address, not only by code.', assume: 'Code or any part of the address, from CMCS site records. Proposed: no limit on the page; chips wrap with a “+N more” collapse and Clear all, and results are grouped by location. The only reasons for a cap are API and database load on a public, unauthenticated endpoint and very large result sets; if one is ever needed it is an app setting enforced by the API (with paging), not a hard-coded limit in the page.', who: 'CMCS data owner, Revenue NSW', status: 'Confirmation required', source: OWNER, action: 'Confirm no page limit and the address source.', impact: 'S1, API parameters; app setting api.maxLocationsPerRequest.' },
   { id: 'U26', topic: 'Days, not times', at: ['search', 'record'], q: 'Is a day enough, given the legacy page used date and time?', why: 'Certified dates have no time; an offence on the morning of the certified day could fall before certification.', assume: 'Days are enough (owner). Edge case: same-day certification to confirm.', who: 'Transport, Legal', status: 'Assumption to validate', source: OWNER, action: 'Confirm the same-day rule.', impact: 'S2, S11.' },
   { id: 'U27', topic: 'Date range picker', at: ['search'], q: 'How do staff pick a date range?', why: 'The NSW Design System date picker has no start-to-end range mode.', assume: 'One calendar: first click sets From, second sets To, with From and To still typeable. Follows the NSW picker’s format (dd/mm/yyyy), look and keyboard pattern.', who: 'Product owner', status: 'Confirmed requirement', source: OWNER + '; designsystem.nsw.gov.au/components/date-picker', action: 'None.', impact: 'S2.' },
   { id: 'U28', topic: 'New label names', at: ['search', 'fields'], q: 'Are the proposed new names right?', why: 'The label switch lets reviewers compare legacy and new names side by side.', assume: 'As listed on the field delta page.', who: 'Revenue NSW and Transport users', status: 'Assumption to validate', source: OWNER, action: 'Test with users.', impact: 'Labels.' },
@@ -344,6 +356,7 @@ export const SAMPLES = [
   { label: 'One camera, a year', locs: ['1234'], from: '01/11/2025', to: '31/10/2026', note: 'Seven certificates' },
   { label: 'Two cameras, missing and withdrawn', locs: ['1234', '4567'], from: '01/11/2025', to: '30/06/2026', note: 'Gap warning, withdrawn and re-issued rows' },
   { label: 'Nothing in range', locs: ['2345'], from: '01/01/2024', to: '31/03/2024', note: 'Empty state' },
+  { label: 'Many locations', locs: ['1234', '2345', '3456', ...Array.from({ length: 12 }, (_, i) => String(6001 + i))], from: '01/12/2025', to: '31/03/2026', note: '15 locations: chips wrap, “+N more”, results grouped by location' },
   { label: 'System fault', locs: ['9999'], from: '01/11/2025', to: '30/06/2026', note: 'Fault, not missing' },
 ];
 export const searchLink = (s) => `/uplift?locs=${s.locs.join(',')}&from=${encodeURIComponent(s.from)}&to=${encodeURIComponent(s.to)}&run=1`;
