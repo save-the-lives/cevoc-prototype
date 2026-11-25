@@ -179,3 +179,15 @@ body.tr-dyn .tr-dynv::after { content: attr(data-dyn); position: absolute; left:
 .cd-return { display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border: 2px solid #002664; border-radius: 4px; color: #002664; font-weight: 700; text-decoration: none; }
 .cd-return:hover { background: #eef3fb; }
 .cd-closetab { margin: 0; color: #495054; }
+
+/* Lifecycle status tags (U22): text plus colour, NSW-style. */
+.st-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; border-radius: 4px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; border: 1px solid; white-space: nowrap; }
+.st-tag.is-in-force { color: #00672b; background: #dbfadf; border-color: #00aa45; }
+.st-tag.is-expired { color: #3a3f43; background: #ebebeb; border-color: #8a9196; }
+.st-tag.is-withdrawn { color: #6b4b00; background: #fff4cf; border-color: #e0a800; }
+.st-tag.is-re-issued { color: #002664; background: #e6f1ff; border-color: #146cfd; }
+.st-tag.is-not-yet-in-force { color: #3a3f43; background: #f4f4f4; border-color: #b0b5b9; }
+.st-tag.is-error { color: #8a1c1c; background: #fdecec; border-color: #d7153a; }
+.cd-status { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; color: #495054; }
+.cd-status__i { display: inline-flex; align-items: center; }
+.uh .up-page { min-width: 0; max-width: 100%; box-sizing: border-box; } .uh-results, .uh-results > * { min-width: 0; max-width: 100%; }

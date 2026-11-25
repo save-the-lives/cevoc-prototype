@@ -8,6 +8,7 @@ import { HUB_TABS, LabelSwitch, Q } from './kit.jsx';
 import Content from './Content.jsx';
 import Settings from './Settings.jsx';
 import Decisions from './Decisions.jsx';
+import Lifecycle from './Lifecycle.jsx';
 import { QuestionsPage, StoriesPage } from './Lists.jsx';
 import EntryFlows from './Entry.jsx';
 import JourneyViews from './JourneyViews.jsx';
@@ -194,6 +195,7 @@ export default function Hub({ page, query = {} }) {
   if (page === 'entry') return <Entry />;
   if (page === 'compare') return <Compare />;
   if (page === 'fields') return <Fields />;
+  if (page === 'lifecycle') return <Shell tab="lifecycle" title="Certificate lifecycle" lede="How each certificate status from CMCS shows on the search and the record page."><Lifecycle /></Shell>;
   if (page === 'decisions') return <Shell tab="decisions" title="Decisions" lede="Architecture decisions the uplift raises, with options and justification. Proposed until confirmed."><Decisions /></Shell>;
   if (page === 'settings') return <Shell tab="settings" title="App settings" lede="Every configurable value the uplift relies on, its default and who owns it."><Settings /></Shell>;
   if (page === 'content') return <Shell tab="content" title="Page content" lede="The end-user certificate page split into dynamic data and static copy, with copy variants to test."><Content /></Shell>;

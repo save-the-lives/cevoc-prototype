@@ -5,7 +5,7 @@ import {
 } from './data.js';
 import { COPY, DISCLAIMER, GIPA_URL } from './tour.js';
 import TourLayer, { useTour } from './Tour.jsx';
-import { SupportBar } from './Search.jsx';
+import { StatusTag, SupportBar } from './Search.jsx';
 import { go } from '../lib/router.js';
 
 // PHASE 1 UPLIFT (#/uplift/record): the legacy end-user certificate page (certificateDetails.jsf), lifted and
@@ -79,6 +79,7 @@ export default function Record({ query = {} }) {
         <section className="cd-sec" data-tour="cert" aria-labelledby="cd-cert">
           <h2 id="cd-cert">Camera certificate details for this offence</h2>
           {tested && <p className="cd-lead">{renderCert(C, tested, one ? null : when.day)}</p>}
+          {(inForce.length + withdrawn.length) > 0 && <p className="cd-status">Certificate status: {[...inForce, ...withdrawn].map((r) => <span key={r.id} className="cd-status__i">{r.period.toLowerCase()} <StatusTag r={r} /></span>)}</p>}
           <div data-tour="states" className="cd-states">
             {missing.length > 0 && (
               <Callout status="warning" title={`No ${missing.map((m) => m.toLowerCase()).join(' or ')} certificate was in force on ${fmtDay(day)}`}>

@@ -6,7 +6,7 @@ import {
 } from '@nswds/ui';
 import { go } from '../lib/router.js';
 import DateRange from './DateRange.jsx';
-import { APP_SETTINGS, CERTIFICATES, FAULT_CODES, LOCATIONS, SAMPLES, fmtDay, locByCode, locLabel, parseDay, searchCertificates } from './data.js';
+import { APP_SETTINGS, CERTIFICATES, FAULT_CODES, lifecycle, LOCATIONS, SAMPLES, fmtDay, locByCode, locLabel, parseDay, searchCertificates } from './data.js';
 import { useLabels } from './kit.jsx';
 import TourLayer, { useTour } from './Tour.jsx';
 
@@ -34,6 +34,12 @@ const TOUR_SAMPLES = (setV, run) => (
     ))}</ul>
   </section>
 );
+
+// Lifecycle status tag (U22): text and colour together, never colour alone.
+export function StatusTag({ r }) {
+  const s = lifecycle(r);
+  return <span className={`st-tag is-${s.toLowerCase().replace(/[^a-z]+/g, '-')}`}>{s}{s === 'Withdrawn' && r.withdrawn ? ` ${r.withdrawn}` : ''}</span>;
+}
 
 export function SupportBar() {
   const today = useMemo(() => new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), []);
@@ -210,7 +216,7 @@ export default function Search({ query = {} }) {
                                 </button>
                               </td>
                               <td>{r.loc}</td>
-                              <td>{r.desc}{r.status === 'Withdrawn' && <span className="uh-tag is-warn">Withdrawn</span>}{r.reissueOf && <span className="uh-tag">Re-issued</span>}{r.duplicates > 0 && <span className="uh-tag is-open" title="The source holds identical copies of this certificate">Duplicate in source ×{r.duplicates + 1}</span>}</td>
+                              <td>{r.desc}<StatusTag r={r} />{r.duplicates > 0 && <span className="st-tag is-error" title="The source holds identical copies of this certificate">Data error: duplicate ×{r.duplicates + 1}</span>}</td>
                               <td>{r.type}</td><td>{r.period}</td><td>{r.certified}</td><td>{r.expiry}</td>
                             </tr>
                             {isOpen && <tr className="uh-detail" id={`uh-d-${r.id}`}><td /><td colSpan={COLS.length}><Details r={r} /></td></tr>}
