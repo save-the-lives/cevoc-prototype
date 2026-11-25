@@ -226,7 +226,7 @@ export function QuestionsPage({ query = {} }) {
             <Fragment key={x.id}>
               <tr id={`q-${x.id}`} className={query.q === x.id ? 'is-hl' : ''}>
                 <td>{x.id}</td>
-                <td><strong>{x.topic}</strong><br />{x.q}<details className="ls-more"><summary>Why, assumption, next step</summary><p><b>Why it matters:</b> {x.why}</p><p><b>Current assumption:</b> {x.assume}</p><p><b>Next step:</b> {x.action}</p></details></td>
+                <td><strong>{x.topic}</strong><br />{x.q}{x.see && <><br /><Link to={x.see.to}>{x.see.label} ↗</Link></>}<details className="ls-more"><summary>Why, assumption, next step</summary><p><b>Why it matters:</b> {x.why}</p><p><b>Current assumption:</b> {x.assume}</p><p><b>Next step:</b> {x.action}</p></details></td>
                 <td><Tag open={OPEN(x)}>{x.status}</Tag>{x.local?.status && x.local.status !== x.base.status && <span className="ls-meta"> (was {x.base.status})</span>}</td>
                 <td>{x.who}</td>
                 <td>{x.answer && <p className="ls-ans"><strong>Here:</strong> {x.answer}</p>}<IssueNote it={x} />
