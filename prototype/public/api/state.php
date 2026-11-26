@@ -21,9 +21,9 @@ $ID = ['questions' => '/^U[1-9][0-9]{0,3}$/', 'stories' => '/^S[1-9][0-9]{0,3}$/
 $META = ['isNew' => 'bool', 'deleted' => 'bool', 'deletedAt' => 'text', 'updatedAt' => 'text', 'imported' => 'text'];
 $FIELDS = [
   'questions' => ['topic' => 'text', 'q' => 'text', 'why' => 'text', 'assume' => 'text', 'who' => 'text', 'action' => 'text', 'at' => 'list',
-                  'status' => 'text', 'priority' => 'text', 'tags' => 'text', 'answer' => 'text', 'noStoryReason' => 'text'],
+                  'status' => 'text', 'priority' => 'text', 'phase' => 'text', 'tags' => 'text', 'answer' => 'text', 'noStoryReason' => 'text'],
   'stories'   => ['role' => 'text', 'want' => 'text', 'so' => 'text', 'screen' => 'text', 'acText' => 'text', 'qs' => 'list',
-                  'priority' => 'text', 'user' => 'text', 'path' => 'text', 'brd' => 'list', 'tags' => 'text', 'readyOverride' => 'text', 'comment' => 'text'],
+                  'priority' => 'text', 'phase' => 'text', 'user' => 'text', 'path' => 'text', 'brd' => 'list', 'tags' => 'text', 'readyOverride' => 'text', 'comment' => 'text'],
   'adrs'      => ['title' => 'text', 'context' => 'text', 'qs' => 'list', 'stories' => 'list',
                   'status' => 'text', 'decision' => 'text', 'consequences' => 'text', 'tags' => 'text', 'notes' => 'text'],
 ];

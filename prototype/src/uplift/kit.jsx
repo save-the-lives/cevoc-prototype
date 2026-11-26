@@ -68,6 +68,13 @@ export const HUB_TABS = [
 // A value that comes from data or from the signed link (not fixed wording). The Tour's "Highlight dynamic data"
 // outlines it with its source; otherwise it renders as plain text. Every such value on the record page and the
 // staff search is wrapped, and listed in tour.js DYNAMIC (owner audit, 26 Nov 2026).
-export function Dyn({ src, children }) {
-  return <span className="tr-dynv" data-dyn={src}>{children}</span>;
+// isNew marks a value or label that is NEW against the legacy page (not on it today, built in phase 1): the Tour shows
+// it in green with a "New" label, so it differs from dynamic data the legacy page already had. Nothing changes on the
+// real screen: the attribute only matters under the Tour's body classes (owner, 26 Nov 2026).
+export function Dyn({ src, isNew, children }) {
+  return <span className="tr-dynv" data-dyn={src} data-new={isNew ? 'New' : undefined}>{children}</span>;
+}
+// A static label that is new against the legacy page; same Tour-only marking as Dyn isNew.
+export function NewMark({ as: Tag = 'span', children, ...rest }) {
+  return <Tag data-new="New" {...rest}>{children}</Tag>;
 }

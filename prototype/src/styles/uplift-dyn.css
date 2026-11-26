@@ -4,3 +4,4 @@ body.tr-dyn .tr-dynv::after { white-space: normal; width: max-content; max-width
 body.tr-dyn .cd-return .tr-dynv::after, body.tr-dyn td .tr-dynv::after { left: auto; right: 0; }
 /* A label near the right edge must not widen the page; clip it at the page edge instead. */
 body.tr-dyn .pub.up { overflow-x: clip; }
+body.tr-dyn .cd-certs li { margin: 6px 0 26px; } body.tr-dyn .cd-status { row-gap: 26px; }

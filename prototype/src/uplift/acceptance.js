@@ -41,12 +41,19 @@ export const AC_CHECKS = {
   'S22.1': 'record.return-link',
   'S22.2': 'record.close-tab',
   'S22.3': 'record.tampered-source',
+  'S23.1': 'record.copy-variants-cert-types',
+  'S23.2': 'record.copy-variants-cert-types',
+  'S23.3': 'record.cert-type-gap',
+  'S24.1': 'record.offence-type',
+  'S24.2': 'record.offence-type-per-offence',
+  'S24.3': 'record.offence-type-unknown',
+  'S24.4': 'record.phase1-no-extra-fields',
 };
 
 // BRD reference per criterion, where it differs from (or narrows) the story's own BRD list.
 export const AC_BRD = {
   'S10.1': 'BR_01, BR_02', 'S11.2': 'BR_03', 'S9.1': 'BR_09', 'S9.2': 'BR_09', 'S15.1': 'BR_04, BR_07', 'S15.2': 'BR_04, BR_07',
-  'S20.1': 'BR_05, BR_06, BR_08',
+  'S20.1': 'BR_05, BR_06, BR_08', 'S23.1': 'BR_01', 'S23.2': 'BR_01', 'S23.3': 'BR_01',
 };
 
 // Cross-cutting criteria: apply to every story and every screen.
@@ -66,16 +73,19 @@ export const CROSS = [
   x('X12', 'Performance', 'a mid-range phone (4× slower CPU, fast 3G)', 'I open the record page from a signed link', 'the certificate date is on screen within 3 seconds', '—', 'perf.record-phone'),
   x('X13', 'Offline and local hosting', 'the built site copied into any folder of any web server, with no internet', 'I open it', 'every page works from that folder (relative paths, hash routing) and nothing is fetched from elsewhere', '—', 'hosting.subfolder'),
   x('X14', 'Offline and local hosting', 'the site on Apache/XAMPP with PHP, installed by git clone of the site branch', 'a deploy is pulled with git pull', 'shared edits survive and the database cannot be downloaded', '—', 'exam/run-exam.sh', 'Run by the XAMPP exam in deploy.yml, not by the acceptance run.'),
+  x('X15', 'Scope', 'the phase 1 scope (no extra information fields; offence type is the only new one)', 'stories and questions are listed, or exported to Excel and imported back', 'each carries a Phase, the stories and criteria for the Backlog (Phase 2) extras (S10) show as Backlog, and the Excel file has a Phase column for stories and for questions', '—', 'hub.phase-scope'),
+  x('X16', 'New against the legacy page', 'the record page with the Tour off, then on', 'I look at Offence type and at a dynamic field the legacy page already had (Program type), and open the Field delta tab', 'with the Tour off nothing is marked; with it on, Offence type (a dynamic field that is also new) is green with a New label while Program type stays magenta; Field delta lists Offence type as New in phase 1, a legacy field as Existing and Gazette reference as Backlog (Phase 2)', '—', 'tour.new-vs-existing'),
 ];
 
 export const DOD = [
   'Every acceptance criterion is a Given/When/Then step, traced to its BRD reference where one exists.',
   'Criteria that can be automated have a named Playwright check, and it passes in CI (acceptance.yml).',
-  'The cross-cutting criteria X1 to X14 pass: accessibility (WCAG 2.2 AA), privacy, signed-link failures, phone performance, local hosting.',
+  'The cross-cutting criteria X1 to X16 pass: accessibility (WCAG 2.2 AA), privacy, signed-link failures, phone performance, local hosting, phase scope.',
   'No open question linked to the story is still “Assumption to validate” or “Confirmation required”.',
   'Manual criteria have been checked by a person, and the result is noted on the story.',
   'Invented data only; nothing prototype-specific on the two key screens (Tour overlay only).',
   'Docs, the Tour notes and app settings are updated in the same change.',
+  'Phase 1 scope: stories, criteria and questions marked Backlog (Phase 2) are not built or checked in phase 1; offence type is the only new information field (S24.4).',
 ];
 
 export const checkFor = (sid, n) => AC_CHECKS[`${sid}.${n}`] || null;

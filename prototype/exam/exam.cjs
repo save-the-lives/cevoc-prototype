@@ -35,8 +35,11 @@ async function page(browser, hash) {
       }
       // Person A saves (same call the page makes); person B, in a fresh browser, must see it.
       const w = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'questions', set: { U900: { isNew: true, q: MARK, status: 'Open', updatedAt: new Date().toISOString() } } }) });
+        body: JSON.stringify({ kind: 'questions', set: { U900: { isNew: true, q: MARK, status: 'Open', phase: 'Backlog (Phase 2)', updatedAt: new Date().toISOString() } } }) });
       ok(w.status === 200 && w.body?.items?.U900?.q === MARK, `save accepted (${w.status} ${w.body?.error || ''})`);
+      const ws = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'stories', set: { S901: { isNew: true, want: 'exam story', phase: 'Backlog (Phase 2)', updatedAt: new Date().toISOString() } } }) });
+      ok(ws.status === 200 && ws.body?.items?.S901?.phase === 'Backlog (Phase 2)' && w.body?.items?.U900?.phase === 'Backlog (Phase 2)', `Phase saved for stories and questions (${ws.status} ${ws.body?.error || ''})`);
+      await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'stories', set: { S901: null } }) });
       const bad = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'questions', set: { U901: { evil: 'x' } } }) });
       ok(bad.status === 400, `unknown field refused (${bad.status})`);
       const bad2 = await api('', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: '../x', set: {} }) });

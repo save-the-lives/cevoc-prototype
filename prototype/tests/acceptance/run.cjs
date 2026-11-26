@@ -64,27 +64,87 @@ const sydToday = () => new Date().toLocaleDateString('en-AU', { timeZone: 'Austr
     'search.empty-state': async () => { const p = await page(search(sample('Nothing in range'))); const t = await txt(p, '.uh-empty'); must(/No certificates found/.test(t) && t.includes('2345') && await p.locator('.uh-empty button:has-text("Change the dates")').count() === 1, 'empty state incomplete'); must(await p.locator('.uh-table').count() === 0, 'table shown'); },
     'search.fault': async () => { const p = await page(search(sample('System fault'))); const t = await txt(p, '[role=alert]'); must(/system/i.test(t) && /not a missing certificate/.test(t), 'fault wording'); must(await p.locator('.uh-table, .uh-empty').count() === 0, 'table or empty state shown on fault'); },
     'search.fault-retry': async () => { const p = await page(search(sample('System fault'))); await p.click('button:has-text("Try again")'); await p.waitForTimeout(200); must(await p.locator('[role=alert]:has-text("system")').count() === 1, 'retry did not run the search'); },
-    'search.gap-warning': async () => { const p = await page(search(sample('Two cameras, missing and withdrawn'))); const t = await txt(p, '.uh-gaps'); must(/Location 4567: no quarterly certificate from \d\d\/\d\d\/\d{4} to \d\d\/\d\d\/\d{4}/.test(t), `gap line: ${t}`); },
+    'search.gap-warning': async () => { const p = await page(search(sample('Two cameras, missing and withdrawn'))); const t = await txt(p, '.uh-gaps'); must(/Location 4567: no quarterly .*certificate from \d\d\/\d\d\/\d{4} to \d\d\/\d\d\/\d{4}/.test(t), `gap line: ${t}`); },
     'search.withdrawn-tag': async () => { const p = await page(search(sample('Two cameras, missing and withdrawn'))); must(/Withdrawn \d\d\/\d\d\/\d{4}/.test(await txt(p, '.uh-table')), 'withdrawn tag with date'); },
     'search.reissue-details': async () => { const p = await page(search(sample('Two cameras, missing and withdrawn'))); const row = p.locator('tr.uh-row:has(.st-tag:has-text("Re-issued"))').first(); await row.locator('.uh-exp').click(); must(/Re-issue of/.test(await txt(p, '.uh-detail')), 'details do not name the replaced certificate'); },
     'record.signed-link': async () => { const o = D.OFFENCES[0]; const p = await page(signed(o)); const t = await txt(p, 'main'); must(t.includes(o.p) && t.includes(o.s) && /Camera certificate details for this offence/.test(t), 'offence or certificate missing'); },
     'record.no-download': async () => { const p = await page(signed(D.OFFENCES[0])); must(await p.locator('main a[download], main button:has-text("Download"), main button:has-text("Print"), main button:has-text("Save")').count() === 0, 'download/print/save offered'); },
-    'record.missing-warning': async () => { const p = await page(rec('Genuinely missing')); must(/No quarterly certificate was in force on/.test(await txt(p, 'main')) && /13 22 13/.test(await txt(p, '.cd-states')), 'missing warning'); },
+    'record.missing-warning': async () => { const p = await page(rec('Genuinely missing')); must(/No image capture \(red light\) certificate was in force on/.test(await txt(p, 'main')) && /13 22 13/.test(await txt(p, '.cd-states')), 'missing warning'); },
     'lifecycle.draft-hidden': async () => {
-      const p = await page(search({ locs: ['4567'], from: '01/06/2026', to: '30/09/2026' })); const rows = await txt(p, '.uh-table'); must(!rows.includes('13/06/2026') && !/Draft/.test(rows), 'Draft certificate listed in search'); must(/no quarterly certificate from 13\/06\/2026/.test(await txt(p, 'main')), 'Draft period not reported as a gap');
+      const p = await page(search({ locs: ['4567'], from: '01/06/2026', to: '30/09/2026' })); const rows = await txt(p, '.uh-table'); must(!rows.includes('13/06/2026') && !/Draft/.test(rows), 'Draft certificate listed in search'); must(/no quarterly .*certificate from 13\/06\/2026/.test(await txt(p, 'main')), 'Draft period not reported as a gap');
       const r = await page(recordAt({ loc: '4567', at: '20/06/2026' })); const u = await txt(r, 'main'); must(!u.includes('13/06/2026') && !/Draft/.test(u), 'Draft certificate shown on record'); },
     'record.disclaimer-gipa': async () => { const p = await page(rec('Certified on the day')); const t = await txt(p, '.cd-disclaimer'); must(/not a legal document/i.test(t), 'no not-a-legal-document notice'); must(/access-to-information\/access-application/.test(await p.locator('.cd-disclaimer a').getAttribute('href')), 'no GIPA link'); },
     'record.withdrawn-notice': async () => { const p = await page(rec('Withdrawn, then re-issued')); must(/withdrawn on \d\d\/\d\d\/\d{4} and does not count/.test(await txt(p, '.cd-states')), 'withdrawn notice'); },
+    // S23: every copy variant (legacy, A, B, C) lists one line per certificate type, for one type and for several.
+    'record.copy-variants-cert-types': async () => {
+      const longDay = (s) => D.parseDay(s).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const cases = [['three types', rec('Red light speed: three types'), 'RLSC', '1234', '14/03/2026'], ['two types (average speed)', signed(D.OFFENCES[2]), 'ASC', '3456', '20/04/2026'], ['one type', rec('One type in force, two missing'), 'RLSC', '1234', '05/09/2025']];
+      const bad = [];
+      for (const [name, route, program, site, at] of cases) {
+        const present = D.certificatesAt(site, D.parseDay(at)).present;
+        for (const [i, k] of ['legacy', 'A', 'B', 'C'].entries()) {
+          const p = await page(route + '&tour=1'); await p.locator('.tr-copy input').nth(i).check({ force: true }); await p.waitForTimeout(150);
+          const lead = await txt(p, '.cd-lead > p:first-child'); const lis = await p.$$eval('.cd-lead li', (xs) => xs.map((x) => x.innerText.replace(/\s+/g, ' ').trim())); const all = await txt(p, '.cd-lead');
+          const at_ = `${k}, ${name}`;
+          if (lis.length !== present.length) { bad.push(`${at_}: ${lis.length} lines, expected ${present.length}`); continue; }
+          present.forEach((x, j) => { const label = D.typeOf(program, x.kind).label; if (!lis[j].includes(label) || !lis[j].includes(longDay(x.certified)) || !lis[j].includes(longDay(x.expiry))) bad.push(`${at_}: line ${j + 1} lacks type or dates: ${lis[j]}`); });
+          if (present.length === 1 ? !/this certificate/.test(lead) || /these certificates/.test(lead) : !/these certificates/.test(lead)) bad.push(`${at_}: lead-in number wrong: ${lead}`);
+          if ((k === 'legacy' || k === 'C') && present.length > 1 && lead !== 'On the day of your offence, these certificates were in force:') bad.push(`${at_}: lead ${lead}`);
+          if (/[{}]|undefined|null/.test(all)) bad.push(`${at_}: leftover placeholder: ${all}`);
+          if (k === 'C' && !/ask for a review/.test(all)) bad.push(`${at_}: tail missing`);
+          if (k === 'A' && !all.includes(longDay(at))) bad.push(`${at_}: offence date missing`);
+        }
+      }
+      must(!bad.length, bad.join(' | '));
+    },
+    // S12.3 / S23.3: one type has none in force: the existing warning names it, the other types are still listed.
+    'record.cert-type-gap': async () => { const p = await page(rec('Speed measurement in force, image capture missing')); const w = await txt(p, '.cd-states'); const lis = await p.$$eval('.cd-lead li', (xs) => xs.map((x) => x.innerText));
+      must(/No image capture \(red light\) certificate was in force on/.test(w), `warning: ${w}`); must(lis.length === 2 && lis.some((l) => /Speed measurement device/.test(l)) && lis.some((l) => /Image capture \(speed\)/.test(l)) && !lis.some((l) => /red light/.test(l)), `lines: ${lis.join(' / ')}`); },
+    // S24: offence type is the one new field of phase 1, in Offence Details after Program type.
+    'record.offence-type': async () => { const o = D.OFFENCES[1]; const p = await page(signed(o)); const dts = await p.$$eval('.cd-dl dt', (xs) => xs.map((x) => x.innerText.trim())); const dd = await txt(p, '.cd-dl dd:nth-of-type(3)');
+      must(dts.indexOf('Offence type') === dts.indexOf('Program type') + 1, `order: ${dts}`); must(dd === o.offenceType && o.offenceType === 'Red light offence', `value ${dd}`); },
+    'record.offence-type-per-offence': async () => { const a = D.OFFENCES[1]; const b = D.OFFENCES[3]; must(a.program === b.program && a.offenceType !== b.offenceType, 'sample offences should share a program and differ in type');
+      const got = []; for (const o of [a, b]) { const p = await page(signed(o)); got.push(await txt(p, '.cd-dl dd:nth-of-type(3)')); } must(got[0] === a.offenceType && got[1] === b.offenceType, `got ${got}`); },
+    'record.offence-type-unknown': async () => { const p = await page(rec('Certified on the day')); must(await txt(p, '.cd-dl dd:nth-of-type(3)') === 'Not in this link', 'unknown offence type not stated'); must(/Camera certificate details for this offence/.test(await txt(p, 'main')), 'rest of the page changed'); },
+    'record.phase1-no-extra-fields': async () => { const want = ['Penalty notice number', 'Program type', 'Offence type', 'Site, zone or camera number', 'Site location', 'Date of offence', 'Time of offence']; const bad = [];
+      for (const o of D.OFFENCES) { const p = await page(signed(o)); const dts = await p.$$eval('.cd-dl dt', (xs) => xs.map((x) => x.innerText.trim())); const t = await txt(p, 'main');
+        if (dts.join('|') !== want.join('|')) bad.push(`${o.p}: ${dts}`); if (/Gazette|Device model|Approved for|Approval scope|Inspection (date|time|details)/i.test(t)) bad.push(`${o.p}: a Phase 2 field is shown`); }
+      must(!bad.length, bad.join(' | ')); },
+    // X15: the phase 1 scope shows in the hub, and in the Excel export (a Phase column for stories and questions).
+    'hub.phase-scope': async () => {
+      const { readSheet } = await import('read-excel-file/node');
+      const p = await page('#/uplift/hub/stories');
+      must(/Backlog \(Phase 2\)/.test(await txt(p, 'article#S10')) && !/Backlog \(Phase 2\)/.test(await txt(p, 'article#S24')), 'S10 should be Backlog and S24 phase 1');
+      await p.selectOption('label:has-text("Phase") select', 'Backlog (Phase 2)'); await p.waitForTimeout(200); must(await p.locator('article.uh-st').count() >= 1 && (await p.$$eval('article.uh-st', (xs) => xs.map((x) => x.id))).every((id) => D.STORIES.find((s) => s.id === id).phase === 'Backlog (Phase 2)'), 'phase filter');
+      const sheet = async (route) => { const q = await page(route); const [dl] = await Promise.all([q.waitForEvent('download'), q.click('button:has-text("Export to Excel")')]); const f = await dl.path(); return readSheet(f); };
+      const st = await sheet('#/uplift/hub/stories'); const ci = st[0].indexOf('Phase'); must(ci >= 0, 'stories export has no Phase column'); const row = (id) => st.find((r) => r[st[0].indexOf('ID')] === id);
+      must(row('S10')[ci] === 'Backlog (Phase 2)' && row('S24')[ci] === 'Phase 1', 'stories export phases');
+      const qs = await sheet('#/uplift/hub/questions'); const qi = qs[0].indexOf('Phase'); must(qi >= 0 && qs.slice(1).every((r) => r[qi] === 'Phase 1' || r[qi] === 'Backlog (Phase 2)'), 'questions export Phase column');
+    },
+    // X16: the Tour marks what is new against the legacy page; the real screen is untouched; Field delta says new or existing.
+    'tour.new-vs-existing': async () => {
+      const off = D.OFFENCES[1]; const p = await page(signed(off));
+      const probe = () => p.evaluate(() => { const g = (sel, pseudo) => { const e = document.querySelector(sel); const c = getComputedStyle(e, pseudo || null); return { outline: c.outlineStyle + ' ' + c.outlineColor, content: pseudo ? c.content : '', bg: c.backgroundColor }; };
+        return { newDyn: g('.tr-dynv[data-new][data-dyn^="Offence type"]'), newDynBefore: g('.tr-dynv[data-new][data-dyn^="Offence type"]', '::before'), oldDyn: g('.cd-dl .tr-dynv:not([data-new])'), label: g('.cd-dl dt[data-new]') }; });
+      const off0 = await probe(); must(/^none/.test(off0.newDyn.outline) && off0.newDynBefore.content === 'none' && /^none/.test(off0.label.outline), `tour off should mark nothing: ${JSON.stringify(off0)}`);
+      const before = await txt(p, 'main'); await tourOn(p); await p.check('.tr-panel label:has-text("Highlight dynamic data") input', { force: true }); await p.waitForTimeout(150);
+      const on = await probe(); must(/^solid/.test(on.newDyn.outline) && /^solid/.test(on.oldDyn.outline) && on.newDyn.outline !== on.oldDyn.outline, `new and old dynamic data look the same: ${JSON.stringify(on)}`); must(/New/.test(on.newDynBefore.content), `no New label: ${on.newDynBefore.content}`);
+      must(/^none/.test(on.label.outline), 'static new label marked before the toggle'); await p.check('.tr-panel label:has-text("Mark what is new") input', { force: true }); await p.waitForTimeout(150);
+      must(/^solid/.test((await probe()).label.outline), 'static new label not marked'); must(await txt(p, 'main') === before, 'the Tour changed the text of the real screen');
+      const f = await page('#/uplift/hub/fields'); const row = async (name) => txt(f, `tr:has(td:first-child strong:text-is("${name}"))`);
+      const o = await row('Offence type'); const e = await row('Certificate Description'); const g = await row('Gazette reference');
+      must(/New/.test(o) && /Phase 1/.test(o) && !/Backlog/.test(o), `Offence type row: ${o}`); must(/Existing/.test(e) && !/New/.test(e), `legacy row: ${e}`); must(/Backlog \(Phase 2\)/.test(g), `Gazette row: ${g}`);
+    },
     'record.fault': async () => { const p = await page(rec('System fault')); must(/problem with our system/.test(await txt(p, '[role=alert]')) && await p.locator('button:has-text("Try again")').count() === 1, 'fault alert with Try again'); },
     'record.bad-link': async () => { const p = await page('#/uplift/record?loc=0000&at=99/99/2026'); must(/couldn’t open the certificate details from this link/.test(await txt(p, 'main')) && /13 22 13/.test(await txt(p, 'main')), 'bad link message'); },
     'search.error-summary': async () => { const p = await page('#/uplift'); await p.fill('#dr-from', ''); await p.click('button[type=submit]'); await p.waitForTimeout(200); const links = await p.$$eval('.pub-errsum a', (as) => as.map((a) => a.getAttribute('href'))); must(links.includes('#uh-loc') && links.includes('#dr-from'), `summary links ${links}`); must(await p.locator('.uh-results').count() === 0, 'search ran'); },
     'search.clear': async () => { const p = await page(search(sample('One camera, a year'))); await p.click('button:has-text("Clear")'); await p.waitForTimeout(200); must(await p.locator('.uh-results').count() === 0 && await p.locator('button[aria-label^="Remove "]').count() === 0, 'not cleared'); },
-    'a11y.axe': async () => { const routes = ['#/uplift', search(sample('Two cameras, missing and withdrawn')), search(sample('Nothing in range')), search(sample('System fault')), signed(D.OFFENCES[0]), signed(D.OFFENCES[1]), rec('Withdrawn, then re-issued'), rec('System fault'), '#/uplift/record?loc=0000&at=x'];
+    'a11y.axe': async () => { const routes = ['#/uplift', search(sample('Two cameras, missing and withdrawn')), search(sample('Nothing in range')), search(sample('System fault')), signed(D.OFFENCES[0]), signed(D.OFFENCES[1]), signed(D.OFFENCES[2]), rec('Red light speed: three types'), rec('Speed measurement in force, image capture missing'), rec('Withdrawn, then re-issued'), rec('System fault'), '#/uplift/record?loc=0000&at=x'];
       const bad = []; for (const r of routes) { const p = await page(r); const v = await axe(p); if (v.length) bad.push(`${r}: ${v.join(' ')}`); } must(!bad.length, bad.join(' | ')); },
     'a11y.keyboard': async () => { const p = await page('#/uplift'); const seen = []; for (let i = 0; i < 25; i++) { await p.keyboard.press('Tab'); const f = await p.evaluate(() => { const e = document.activeElement; const s = getComputedStyle(e); return { tag: e.tagName, outline: s.outlineStyle !== 'none' || s.boxShadow !== 'none' }; }); seen.push(f); }
       must(seen.some((s) => s.tag === 'BUTTON') && seen.some((s) => s.tag === 'INPUT'), 'inputs and buttons not reachable'); must(seen.filter((s) => s.tag !== 'BODY').every((s) => s.outline), 'a focused control has no visible focus style'); },
     'a11y.status-in-words': async () => { const p = await page(search(sample('Two cameras, missing and withdrawn'))); const tags = await p.$$eval('.st-tag', (xs) => xs.map((x) => x.innerText.trim())); must(tags.length && tags.every((t) => /^(Current|Expired|Withdrawn|Re-issued|Not yet in force|Data error)/.test(t)), `tags ${tags}`); },
-    'layout.phone-no-hscroll': async () => { const bad = []; for (const r of ['#/uplift', search(sample('Many locations')), signed(D.OFFENCES[0]), rec('Withdrawn, then re-issued')]) for (const w of [320, 390]) { const p = await page(r, { viewport: { width: w, height: 800 } }); const sw = await p.evaluate(() => document.documentElement.scrollWidth); if (sw > w) bad.push(`${r}@${w}:${sw}`); } must(!bad.length, bad.join(' ')); },
+    'layout.phone-no-hscroll': async () => { const bad = []; for (const r of ['#/uplift', search(sample('Many locations')), signed(D.OFFENCES[0]), rec('Red light speed: three types'), rec('Withdrawn, then re-issued')]) for (const w of [320, 390]) { const p = await page(r, { viewport: { width: w, height: 800 } }); const sw = await p.evaluate(() => document.documentElement.scrollWidth); if (sw > w) bad.push(`${r}@${w}:${sw}`); } must(!bad.length, bad.join(' ')); },
     'record.return-link': async () => { const o = D.OFFENCES[0]; const p = await page(signed(o)); const a = p.locator('a.cd-return'); must((await a.innerText()).replace(/\s+/g, ' ') === `Return to ${D.SOURCES[o.r].name}` && await a.getAttribute('href') === D.SOURCES[o.r].url, 'return link'); },
     'record.close-tab': async () => { const p = await page(signed(D.OFFENCES[0], null)); must(await p.locator('a.cd-return').count() === 0 && /You can close this tab/.test(await txt(p, 'main')), 'close-tab text'); },
     'record.tampered-source': async () => { const o = D.OFFENCES[0]; const p = await page(signed(o, o.r === 'SNSW' ? 'RNSW' : 'SNSW')); must(/couldn’t open the certificate details/.test(await txt(p, 'main')) && !(await txt(p, 'main')).includes(o.p), 'changed source accepted'); },

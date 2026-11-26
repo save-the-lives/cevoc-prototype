@@ -9,14 +9,14 @@ export const ADRS = [
     id: 'ADR-001',
     title: 'Where the rules for each camera program live',
     status: 'Proposed',
-    context: 'Each enforcement program (red light speed, fixed speed, average speed, mobile phone detection, and any added later) may need different certificate types, cycles and wording. The design must scale when a new program is added, without reworking the page each time. Several front ends will show the same certificates: this page, the later Transport facelift, and possibly Service NSW and Revenue NSW.',
+    context: 'Each enforcement program (red light speed, fixed speed, average speed, mobile phone detection, and any added later) may need different certificate types, cycles and wording, and one program can have several certificate types in force at once (for example image capture and speed measurement). The design must scale when a new program is added, without reworking the page each time. Several front ends will show the same certificates: this page, the later Transport facelift, and possibly Service NSW and Revenue NSW.',
     options: [
       { name: 'A. Program rules as app settings read by the page', how: 'Per program, app settings list which certificate types apply and show, on what cycle, and which wins when several are in force; another app setting turns each program on or off. The React page reads them and applies the rules itself.', pros: ['Visible and editable without a release', 'Simple backend'], cons: ['Rule logic is repeated in every front end that shows certificates', 'Each front end must change for a new kind of rule', 'Easy for the page and the API to disagree'] },
       { name: 'B. Decoupled: the API decides, the page only displays', how: 'The Java backend holds the per-program rules (as its own app settings) and returns, for a site and date range or a signed link, exactly what to show: certificates in force, which one counts, labels and the program’s template. The page has no program knowledge.', pros: ['One source of truth for every front end', 'Adding a program needs no page change', 'Rules are tested once, in the backend'], cons: ['API responses are richer (ready to display)', 'Rule changes need access to the backend’s app settings'] },
     ],
-    decision: 'Proposed: B. The rules are app settings held and applied by the backend, which returns results ready to display; an app setting per program turns it on or off.',
+    decision: 'Proposed: B. The rules are app settings held and applied by the backend, which returns results ready to display; an app setting per program turns it on or off. The certificate types per program (certificate.typesPerProgram) are part of those settings; the real list is pending (U16).',
     consequences: 'A new program is added in the backend’s app settings and every front end picks it up. Only a genuinely new kind of rule needs backend code, in one place. The API contract must carry labels and the template to use.',
-    qs: ['U16', 'U5', 'U36', 'U7', 'U37'], stories: ['S8', 'S16', 'S21'],
+    qs: ['U16', 'U5', 'U36', 'U7', 'U37'], stories: ['S8', 'S16', 'S21', 'S23'],
   },
   {
     id: 'ADR-002',

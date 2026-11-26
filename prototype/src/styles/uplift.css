@@ -18,6 +18,7 @@
 .uh-tag { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 4px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; border: 1px solid; white-space: nowrap; }
 .uh-tag.is-open { color: #8a1c1c; background: #fdecec; border-color: #e8a5a5; }
 .uh-tag.is-done { color: #14532d; background: #e6f6ea; border-color: #9fd5ad; }
+.uh-tag.is-new:not(.is-open):not(.is-done):not(.is-warn) { color: #fff; background: #0a6b34; border-color: #0a6b34; }
 .uh-tag.is-warn { color: #6b4e00; background: #fff4cf; border-color: #e0b84a; }
 .uh-tag:not(.is-open):not(.is-done):not(.is-warn) { color: #002664; background: #eef3fb; border-color: #a9bde0; }
 
@@ -162,6 +163,12 @@
 /* Highlight dynamic data (tour only) */
 body.tr-dyn .tr-dynv { outline: 2px solid #c026d3; outline-offset: 2px; background: rgba(192, 38, 211, .08); border-radius: 2px; position: relative; }
 body.tr-dyn .tr-dynv::after { content: attr(data-dyn); position: absolute; left: 0; top: calc(100% + 4px); white-space: nowrap; font: 600 11px/1.2 system-ui, sans-serif; color: #fff; background: #a21caf; padding: 2px 6px; border-radius: 3px; z-index: 5; }
+/* New against the legacy page (tour only): green with a New label, so a dynamic field that is also new differs from the
+   magenta dynamic data the legacy page already had. Nothing here applies unless the Tour switches the body class on. */
+body.tr-dyn .tr-dynv[data-new], body.tr-new [data-new] { outline: 2px solid #0a6b34; outline-offset: 2px; background: rgba(10, 107, 52, .1); border-radius: 2px; position: relative; }
+body.tr-dyn .tr-dynv[data-new]::after { background: #0a6b34; }
+body.tr-dyn .tr-dynv[data-new]::before, body.tr-new [data-new]::before { content: attr(data-new); display: inline-block; margin-right: 6px; padding: 0 6px; font: 700 11px/1.6 system-ui, sans-serif; color: #fff; background: #0a6b34; border-radius: 3px; vertical-align: 2px; }
+.tr-newtag { display: inline-block; padding: 0 6px; font: 700 11px/1.6 system-ui, sans-serif; color: #fff; background: #0a6b34; border-radius: 3px; }
 @media (max-width: 640px) { .tr-fab.is-on { right: 16px; bottom: auto; top: 12px; } }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -173,6 +180,8 @@ body.tr-dyn .tr-dynv::after { content: attr(data-dyn); position: absolute; left:
 .cd-dl dt { color: #495054; }
 .cd-dl dd { margin: 0; font-weight: 700; }
 .cd-lead { font-size: 18px; margin: 0; padding: 16px 20px; border-left: 6px solid #002664; background: #eef3fb; border-radius: 0 6px 6px 0; line-height: 1.6; }
+.cd-lead p { margin: 0; } .cd-lead p + p, .cd-lead ul + p { margin-top: 10px; }
+.cd-certs { margin: 10px 0 0; padding-left: 22px; } .cd-certs li { margin: 4px 0; }
 .cd-states { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .cd-states:empty { display: none; }
 .cd-req p { max-width: 72ch; margin: 0 0 12px; }

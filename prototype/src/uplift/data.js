@@ -9,6 +9,12 @@ export const SHOTS = 'Owner screenshots of the legacy page (25 Nov 2026)';
 export const OWNER = 'Owner decision (25 Nov 2026)';
 export const BRD = 'CEVOC Enhancement BRD v1.1';
 
+// MVP SCOPE (owner, 26 Nov 2026): phase 1 adds NO extra certificate information fields (no Gazette reference, device
+// model, approval scope, inspection details and so on: the BRD BR_01 extras). Offence type (section 2 of the record
+// page) is the only new field. Stories, criteria and questions about the extras are Backlog (Phase 2).
+export const PHASES = ['Phase 1', 'Backlog (Phase 2)'];
+export const isBacklog = (x) => x && x.phase === PHASES[1];
+
 // ---------------------------------------------------------------------------------------------------------------
 // Dates (day granularity, owner 25 Nov 2026). dd/mm/yyyy in, Date out.
 const pad = (n) => String(n).padStart(2, '0');
@@ -47,11 +53,37 @@ export const FAULT_CODES = new Set(['9999']);
 
 // Certificates. status: Draft | Approved | Published | Withdrawn. Only Approved and Published appear (owner, U2).
 // Withdrawn ones are shown marked, pending U22. reissueOf: the certificate this one replaces (BRD BR_09).
+// CERTIFICATE TYPES PER PROGRAM (app setting certificate.typesPerProgram; ADR-001, U16). A camera program can have
+// several certificate types in force at once, each on its own cycle. ILLUSTRATIVE ONLY: the real list per program is
+// pending (U16); the owner will supply it. Order is the order shown on the record page.
+export const CERT_TYPES = {
+  RLSC: [
+    { key: 'IC-RL', label: 'Image capture (red light)', cycle: 'QUARTERLY' },
+    { key: 'IC-SP', label: 'Image capture (speed)', cycle: 'QUARTERLY' },
+    { key: 'SM', label: 'Speed measurement device', cycle: 'YEARLY' },
+  ],
+  FDSC: [
+    { key: 'IC', label: 'Image capture', cycle: 'QUARTERLY' },
+    { key: 'SM', label: 'Speed measurement device', cycle: 'YEARLY' },
+  ],
+  ASC: [
+    { key: 'IC', label: 'Image capture', cycle: 'QUARTERLY' },
+    { key: 'SM', label: 'Speed measurement', cycle: 'YEARLY' },
+  ],
+  MPDC: [
+    { key: 'IC', label: 'Image capture', cycle: 'QUARTERLY' },
+    { key: 'DET', label: 'Phone detection', cycle: 'YEARLY' },
+  ],
+};
+export const typesFor = (program) => CERT_TYPES[program] || [];
+export const typeOf = (program, key) => typesFor(program).find((t) => t.key === key) || { key, label: key, cycle: '' };
+const defaultKind = (loc, period) => (typesFor(locByCode(loc).program).find((t) => t.cycle === period) || {}).key || period;
+
 const DESC = 'Approved Traffic Enforcement Device';
 const TYPE = { RLSC: 'Red Light Speed Camera', FDSC: 'Fixed Speed Camera', ASC: 'Average Speed Camera', MPDC: 'Mobile Phone Detection Camera' };
 let seq = 0;
 const c = (loc, period, certified, expiry, status = 'Published', extra = {}) => ({
-  id: `c${++seq}`, loc, desc: DESC, type: TYPE[locByCode(loc).program], period, certified, expiry, status, ...extra,
+  id: `c${++seq}`, loc, desc: DESC, type: TYPE[locByCode(loc).program], kind: defaultKind(loc, period), period, certified, expiry, status, ...extra,
 });
 export const CERTIFICATES = [
   c('1234', 'YEARLY', '12/08/2025', '12/08/2026'),
@@ -82,24 +114,46 @@ export const CERTIFICATES = [
   c('4567', 'QUARTERLY', '13/06/2026', '10/09/2026', 'Draft'),
   c('5678', 'QUARTERLY', '02/03/2026', '31/05/2026'),
   c('5678', 'QUARTERLY', '25/11/2025', '23/02/2026'),
-  // Generated, invented: a yearly certificate and rolling quarterlies for 6001 to 6012 (many-locations example, U25).
+  // Generated, invented: one certificate set per certificate type of the site's program, for 6001 to 6012
+  // (many-locations example, U25). Yearly types get a yearly certificate; quarterly types get rolling quarterlies.
   ...Array.from({ length: 12 }, (_, i) => String(6001 + i)).flatMap((code, i) => {
     const d = 1 + (i * 2) % 27;
     const p = (n) => String(n).padStart(2, '0');
-    return [
-      c(code, 'YEARLY', `${p(d)}/07/2025`, `${p(d)}/07/2026`),
-      c(code, 'QUARTERLY', `${p(d)}/11/2025`, `${p(d)}/02/2026`),
-      c(code, 'QUARTERLY', `${p(d)}/02/2026`, `${p(d)}/05/2026`),
-    ];
+    let q = 0;
+    return typesFor(['RLSC', 'FDSC', 'ASC', 'MPDC'][i % 4]).flatMap((t) => {
+      if (t.cycle === 'YEARLY') return [c(code, 'YEARLY', `${p(d)}/07/2025`, `${p(d)}/07/2026`, 'Published', { kind: t.key })];
+      const e = 3 * q++; // a second quarterly type is certified a few days apart, so its rows are not identical
+      return [
+        c(code, 'QUARTERLY', `${p(d + e)}/11/2025`, `${p(d + e)}/02/2026`, 'Published', { kind: t.key }),
+        c(code, 'QUARTERLY', `${p(d + e)}/02/2026`, `${p(d + e)}/05/2026`, 'Published', { kind: t.key }),
+      ];
+    });
   }),
+  // The other certificate types of the sites above (invented), added after the first set so ids c1 to c28 stay put.
+  c('1234', 'QUARTERLY', '10/10/2025', '08/01/2026', 'Published', { kind: 'IC-SP' }),
+  c('1234', 'QUARTERLY', '05/01/2026', '05/04/2026', 'Published', { kind: 'IC-SP' }),
+  c('1234', 'QUARTERLY', '02/04/2026', '01/07/2026', 'Published', { kind: 'IC-SP' }),
+  c('1234', 'QUARTERLY', '28/06/2026', '26/09/2026', 'Published', { kind: 'IC-SP' }),
+  c('1234', 'QUARTERLY', '23/09/2026', '22/12/2026', 'Published', { kind: 'IC-SP' }),
+  c('4567', 'QUARTERLY', '01/09/2025', '30/11/2025', 'Published', { kind: 'IC-SP' }),
+  c('4567', 'QUARTERLY', '28/11/2025', '26/02/2026', 'Published', { kind: 'IC-SP' }),
+  c('4567', 'QUARTERLY', '24/02/2026', '24/05/2026', 'Published', { kind: 'IC-SP' }),
+  c('4567', 'QUARTERLY', '22/05/2026', '20/08/2026', 'Published', { kind: 'IC-SP' }),
+  c('4567', 'QUARTERLY', '18/08/2026', '16/11/2026', 'Published', { kind: 'IC-SP' }),
+  c('4567', 'QUARTERLY', '13/11/2026', '11/02/2027', 'Published', { kind: 'IC-SP' }),
+  c('5678', 'YEARLY', '15/01/2026', '15/01/2027', 'Published', { kind: 'DET' }),
+  c('5678', 'YEARLY', '12/01/2025', '15/01/2026', 'Published', { kind: 'DET' }),
 ];
 
 // The signed link both apps open today: certificateDetails.jsf?p=&d=&s=&i=&m= (owner, 25 Nov 2026).
 // p notice number, d offence date-time yyyyMMddTHHmmss, s site or camera, i unknown (U29), m signature (U30).
 // One invented fine is used for both entry flows so they can be compared. All values are fictitious.
+// offenceType is the one new field of phase 1 (section 2 of the record page); where it comes from is open (U39).
 export const OFFENCES = [
-  { p: '4000000001', d: '20260314T083000', s: '5678', i: '1', r: 'SNSW', program: 'Mobile Phone Detection Camera', offence: 'Driver use mobile phone when not permitted - camera detected - Individual', amount: '$000.00' },
-  { p: '4000000002', d: '20260308T171500', s: '4567', i: '1', r: 'RNSW', program: 'Red Light Speed Camera', offence: 'Proceed through red traffic light - camera detected - Individual', amount: '$000.00' },
+  { p: '4000000001', d: '20260314T083000', s: '5678', i: '1', r: 'SNSW', program: 'Mobile Phone Detection Camera', offenceType: 'Mobile phone offence', offence: 'Driver use mobile phone when not permitted - camera detected - Individual', amount: '$000.00' },
+  { p: '4000000002', d: '20260308T171500', s: '4567', i: '1', r: 'RNSW', program: 'Red Light Speed Camera', offenceType: 'Red light offence', offence: 'Proceed through red traffic light - camera detected - Individual', amount: '$000.00' },
+  { p: '4000000003', d: '20260420T094500', s: '3456', i: '1', r: 'SNSW', program: 'Average Speed Camera', offenceType: 'Average speed offence', offence: 'Exceed speed limit - average speed camera detected - Individual', amount: '$000.00' },
+  { p: '4000000004', d: '20260314T120000', s: '1234', i: '1', r: 'RNSW', program: 'Red Light Speed Camera', offenceType: 'Speed offence', offence: 'Exceed speed limit - camera detected - Individual', amount: '$000.00' },
 ];
 export const DEMO_SIGNATURE = '0000demo0signature0not0real0000';
 export const signedLink = (o, r = o.r) => `/uplift/record?p=${o.p}&d=${o.d}&s=${o.s}&i=${o.i}${r ? `&r=${r}` : ''}&m=${DEMO_SIGNATURE}`;
@@ -129,10 +183,11 @@ export const APP_SETTINGS = [
   { key: 'link.acceptedKeyVersions', purpose: 'Signing key versions still accepted (remove one to retire a leaked key)', value: 'Current and previous', owner: 'Cyber, CEVOC technical owner', q: 'U38' },
   { key: 'links.contactUs', purpose: 'Contact us destination', value: 'Legacy destination (to capture)', owner: 'Product owner', q: 'U11' },
   { key: 'links.help', purpose: 'Help destination', value: 'Legacy destination (to capture)', owner: 'Product owner', q: 'U11' },
+  { key: 'certificate.typesPerProgram', purpose: 'Certificate types in force per camera program, each with its label and cycle (several can be in force at once). The record page lists one line per type and warns about a type with none in force. Held and applied by the backend (ADR-001). ILLUSTRATIVE until the real list arrives (U16: pending)', value: Object.entries(CERT_TYPES).map(([k, ts]) => `${k}: ${ts.map((t) => t.label).join(', ')}`).join('; '), owner: 'Transport, CMCS / CES data owners', q: 'U16' },
   { key: 'programs.enabled', purpose: 'Which camera programs the page shows (on or off per program)', value: 'RLSC, FDSC, ASC, MPDC on', owner: 'Product owner', q: 'U16' },
   { key: 'programs.rules', purpose: 'Per program: certificate types that apply, cycles, which wins (held and applied by the backend, ADR-001)', value: 'All in force, one per cycle', owner: 'Transport, CMCS / CES data owners', q: 'U16' },
   { key: 'certificate.statusRules', purpose: 'For each lifecycle status: shown or not, and how (tag, date, data-error flag)', value: 'As the Lifecycle tab', owner: 'CMCS data owner, Transport', q: 'U22' },
-  { key: 'copy.templates', purpose: 'Static copy of the record page, per camera program with a default', value: 'Legacy wording (default template)', owner: 'Transport communications, Legal', q: 'U35' },
+  { key: 'copy.templates', purpose: 'Static copy of the record page (including the certificate lead-in, singular and plural, and the line shown for each certificate type), per camera program with a default', value: 'Legacy wording (default template)', owner: 'Transport communications, Legal', q: 'U35' },
   { key: 'copy.gipaUrl', purpose: 'Link in the legal disclaimer', value: 'Transport access application page', owner: 'Legal', q: 'U8' },
 ];
 // Lifecycle label for display (U22): Withdrawn, Re-issued, Current (covers today) or Expired.
@@ -141,32 +196,40 @@ export const VISIBLE = (x) => x.status === 'Approved' || x.status === 'Published
 export const COUNTS = (x) => x.status === 'Approved' || x.status === 'Published'; // in force only if not withdrawn
 
 // Certificates touching [from, to] for the given locations, plus the gaps: days in the range when no certificate
-// of a cycle the location normally has (YEARLY, QUARTERLY) was in force. Which cycles are expected per program is
-// an open question (U23); the prototype expects every cycle seen at the location.
+// of an expected type was in force. The expected types are the program's certificate types (app setting
+// certificate.typesPerProgram, illustrative until U16 is answered), plus any other type seen at the location.
+// The certificate types expected at a site: its program's types, then any other type held there.
+function expectedTypes(code, held) {
+  const program = locByCode(code)?.program;
+  const listed = typesFor(program);
+  const extra = [...new Set(held.map((x) => x.kind))].filter((k) => !listed.some((t) => t.key === k))
+    .map((k) => ({ ...typeOf(program, k), cycle: held.find((x) => x.kind === k).period }));
+  return [...listed, ...extra];
+}
+
 export function searchCertificates(codes, from, to) {
   const rows = [];
   const gaps = [];
   codes.forEach((code) => {
     const mine = CERTIFICATES.filter((x) => x.loc === code && VISIBLE(x));
     const touching = mine.filter((x) => parseDay(x.certified) <= to && parseDay(x.expiry) >= from);
-    // One record per grouping key (U4): site + cycle + certification date. Identical current rows collapse to one,
+    // One record per grouping key (U4): site + certificate type + cycle + certification date. Identical current rows collapse to one,
     // flagged as a data error; a withdrawn row and its re-issue are different states and both stay.
     const groups = new Map();
     touching.forEach((x) => {
-      const k = `${x.loc}|${x.period}|${x.certified}|${x.status === 'Withdrawn' ? 'W' : 'C'}`;
+      const k = `${x.loc}|${x.kind}|${x.period}|${x.certified}|${x.status === 'Withdrawn' ? 'W' : 'C'}`;
       if (groups.has(k)) groups.get(k).duplicates += 1; else groups.set(k, { ...x, duplicates: 0 });
     });
     rows.push(...groups.values());
-    const cycles = [...new Set(mine.map((x) => x.period))];
-    cycles.forEach((cycle) => {
-      const live = mine.filter((x) => x.period === cycle && COUNTS(x));
+    expectedTypes(code, mine).forEach((t) => {
+      const live = mine.filter((x) => x.kind === t.key && COUNTS(x));
       let start = null;
       for (let d = from; d <= to; d = addDays(d, 1)) {
         const covered = live.some((x) => parseDay(x.certified) <= d && parseDay(x.expiry) >= d);
         if (!covered && !start) start = d;
-        if (covered && start) { gaps.push({ code, cycle, from: start, to: addDays(d, -1) }); start = null; }
+        if (covered && start) { gaps.push({ code, kind: t.key, label: t.label, cycle: t.cycle, from: start, to: addDays(d, -1) }); start = null; }
       }
-      if (start) gaps.push({ code, cycle, from: start, to });
+      if (start) gaps.push({ code, kind: t.key, label: t.label, cycle: t.cycle, from: start, to });
     });
   });
   // A gap that only runs past the last certificate into the future is not a missing certificate yet.
@@ -174,14 +237,17 @@ export function searchCertificates(codes, from, to) {
   return { rows, gaps: gaps.filter((g) => g.from <= today).map((g) => ({ ...g, to: g.to > today ? today : g.to })) };
 }
 
-// The record a person reaches from their notice: certificates in force at the offence day, per cycle.
+// The record a person reaches from their notice: the certificates in force at the offence day, one per certificate
+// type (the latest certified when a type has two in force). `types` lists every expected type with its certificate or
+// null; `missing` is the labels of the types with none in force (the per-type gap).
 export function certificatesAt(code, day) {
   const mine = CERTIFICATES.filter((x) => x.loc === code && VISIBLE(x));
-  const cycles = [...new Set(mine.map((x) => x.period))];
   const inForce = mine.filter((x) => COUNTS(x) && parseDay(x.certified) <= day && parseDay(x.expiry) >= day);
   const withdrawn = mine.filter((x) => x.status === 'Withdrawn' && parseDay(x.certified) <= day && parseDay(x.expiry) >= day);
-  const missing = cycles.filter((cy) => !inForce.some((x) => x.period === cy));
-  return { inForce, withdrawn, missing };
+  const types = expectedTypes(code, mine).map((t) => ({
+    type: t, cert: inForce.filter((x) => x.kind === t.key).sort((a, b) => parseDay(b.certified) - parseDay(a.certified))[0] || null,
+  }));
+  return { inForce, withdrawn, types, present: types.filter((t) => t.cert).map((t) => t.cert), missing: types.filter((t) => !t.cert).map((t) => t.type.label) };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -220,9 +286,9 @@ const PROGRAM_Q = (id, program) => ({
 export const QUESTIONS = [
   { id: 'U1', topic: 'No PDF or downloads', at: ['search', 'record'], q: 'Does the uplift add a certificate download?', why: 'The legacy page offers none; phase 1 adds no new functions.', assume: 'No download, save or print anywhere.', who: 'Product owner', status: 'Confirmed requirement', source: OWNER + '; ' + BRD + ' BR_03', action: 'None.', impact: 'No download controls.' },
   { id: 'U2', topic: 'When a certificate appears', at: ['search', 'record'], q: 'Which lifecycle status values make a certificate visible?', why: 'Replaces the BRD’s conflicting day delays (BR_04 five to six business days, BR_07 immediate).', assume: 'Visibility follows the certificate’s lifecycle status (e.g. Approved or Published), never a fixed delay: no magic number of days, easier to control when a certificate is ready, more maintainable. No buffer days for now; if ever needed, an app setting (configurable), not hard-coded. Principle: show what we have, exactly what the system holds, so there are no surprises such as “yesterday it was empty, today it isn’t”.', who: 'CMCS data owner', status: 'Confirmation required', source: OWNER, action: 'Arjan to get the exact status values confirmed.', impact: 'API filters on status.' },
-  { id: 'U3', topic: 'Value of each additional certificate field', at: ['search', 'record', 'fields'], q: 'What value does each additional field give the person with the fine, Revenue NSW or another user: device model, Gazette reference, device approval scope, inspection date and time, inspection details, certification date, the masked officer name and signature (BR_02) and the re-issued marker (BR_09)?', why: 'The BRD asks for these, but each adds data work and possibly API change; only fields with real user value should be built.', assume: 'Whether a certificate record exists in CMCS is the source of truth. Value per field not yet confirmed.', who: 'CMCS and CES data owners (what exists); the business (the value)', status: 'Assumption to validate', source: SHOTS + '; ' + BRD + ' BR_01', action: 'Confirm the user value of each field; ask CMCS for anonymised sample certificates showing every required field.', impact: 'Field delta; S10, S16 stay blocked.' },
-  { id: 'U4', topic: 'Duplicate rows', at: ['search'], q: 'Are identical rows in the legacy grid re-issued certificates or data errors, and how should the page group them?', why: 'The legacy screenshot shows rows with identical type, cycle and dates that nothing tells apart.', assume: 'More than one certificate for the same item is a system or data error unless they differ in state (withdrawn, re-issued). The page shows one record per grouping key: program + site + certificate cycle + certification date; lifecycle status decides which row wins (current beats withdrawn; a re-issue replaces the original and is marked). Examples (invented): two identical yearly rows for 1234 on 12/08/2025 show once, flagged as a data error; 4567’s withdrawn quarterly plus its re-issue show the re-issue with its marker and the withdrawn one as withdrawn (pending U22); the same site on two certification dates shows both.', who: 'CMCS data owner', status: 'Confirmation required', source: OWNER + '; ' + SHOTS + '; ' + BRD + ' BR_09', action: 'Confirm the grouping key and the data-error handling.', impact: 'Duplicate handling (S9).' },
-  { id: 'U5', topic: 'Camera programs and their certificate types', at: ['record'], q: 'What is the relationship between a camera program and its certificate types, and do the rules (which types apply, which wins when several are in force, e.g. yearly and quarterly) need to be configurable per program?', why: 'The end-user page shows only what applies to the offence; the rule may differ by program.', assume: 'All certificates in force on the offence day, one per cycle, until the per-program rules are known.', who: 'Transport, CMCS / CES data owners, Legal', status: 'Confirmation required', source: OWNER + '; ' + BRD + ' BR_01', action: 'Confirm the program-to-certificate-type rules and whether they must be configurable per program. See U36 and S21.', impact: 'End-user record (S11); program templates (S21).' },
+  { id: 'U3', topic: 'Value of each additional certificate field (Backlog for all but the certification date and the re-issued marker)', at: ['search', 'record', 'fields'], q: 'What value does each additional field give the person with the fine, Revenue NSW or another user: device model, Gazette reference, device approval scope, inspection date and time, inspection details, certification date, the masked officer name and signature (BR_02) and the re-issued marker (BR_09)?', why: 'The BRD asks for these, but each adds data work and possibly API change; only fields with real user value should be built.', assume: 'Whether a certificate record exists in CMCS is the source of truth. Value per field not yet confirmed. PHASE 1 SCOPE (owner, 26 Nov 2026): phase 1 has no extra information fields, so the device model, Gazette reference, approval scope, inspection time and details and the masked officer name and signature are Backlog (Phase 2) (S10). This question stays in phase 1 only for the two fields phase 1 already shows (the certification date and the re-issued marker) and for confirming the Backlog list; offence type is the one new phase 1 field and has its own question (U39).', who: 'CMCS and CES data owners (what exists); the business (the value)', status: 'Assumption to validate', source: SHOTS + '; ' + BRD + ' BR_01', action: 'Confirm the user value of each field; ask CMCS for anonymised sample certificates showing every required field.', impact: 'Field delta; S10 (Backlog) and S16 stay blocked.' },
+  { id: 'U4', topic: 'Duplicate rows', at: ['search'], q: 'Are identical rows in the legacy grid re-issued certificates or data errors, and how should the page group them?', why: 'The legacy screenshot shows rows with identical type, cycle and dates that nothing tells apart.', assume: 'More than one certificate for the same item is a system or data error unless they differ in state (withdrawn, re-issued). The page shows one record per grouping key: program + site + certificate type + certificate cycle + certification date; lifecycle status decides which row wins (current beats withdrawn; a re-issue replaces the original and is marked). Examples (invented): two identical yearly rows for 1234 on 12/08/2025 show once, flagged as a data error; 4567’s withdrawn quarterly plus its re-issue show the re-issue with its marker and the withdrawn one as withdrawn (pending U22); the same site on two certification dates shows both.', who: 'CMCS data owner', status: 'Confirmation required', source: OWNER + '; ' + SHOTS + '; ' + BRD + ' BR_09', action: 'Confirm the grouping key and the data-error handling.', impact: 'Duplicate handling (S9).' },
+  { id: 'U5', topic: 'Camera programs and their certificate types', at: ['record'], q: 'What is the relationship between a camera program and its certificate types, and do the rules (which types apply, which wins when several are in force, e.g. yearly and quarterly) need to be configurable per program?', why: 'The end-user page shows only what applies to the offence; the rule may differ by program.', assume: 'All certificates in force on the offence day, one line per certificate type, until the per-program rules are known. A program can have several types in force at once (for example average speed: image capture and speed measurement; red light speed: image capture for red light, image capture for speed, speed measurement device). The types per program are an app setting (certificate.typesPerProgram); the real list is pending (U16).', who: 'Transport, CMCS / CES data owners, Legal', status: 'Confirmation required', source: OWNER + '; ' + BRD + ' BR_01', action: 'Confirm the program-to-certificate-type rules and whether they must be configurable per program. See U36 and S21.', impact: 'End-user record (S11); program templates (S21).' },
   { id: 'U6', topic: 'One certificate view, two ways in', at: ['search', 'record'], q: 'Do the public record page and an expanded staff search row show the same details?', why: 'One component and one API instead of two.', assume: 'Both pages are public with no login (U14), so information cannot be compartmentalised: anything in the staff search view is public. With no login planned, staff-only detail must not be shown at all.', who: 'Product owner', status: 'Confirmation required', source: OWNER, action: 'Decide whether any staff-only detail exists; if so, decide on authentication.', impact: 'Shared detail component.' },
   { id: 'U7', topic: 'API for other government sites', at: ['fields'], q: 'How do Service NSW and Revenue NSW get certificate data?', why: 'They should call an API, never scrape a website. Today Service NSW and Revenue NSW have no way to display penalty or certificate details.', assume: 'Future scope, but designed for now: the APIs built for this uplift are reusable, not one-off, for the later broader Transport facelift (the earlier customer-facing mock-up) and for Service NSW and Revenue NSW. Versioned REST API, GET with query parameters (location codes, from, to).', who: 'Enterprise architecture', status: 'Future scope', source: OWNER, action: 'Design the API as reusable; see U37 for who consumes it.', impact: 'API contract (S16, low priority).' },
   { id: 'U8', topic: 'Legal disclaimer', at: ['record'], q: 'What disclaimer must the record show?', why: 'The BRD requires one (BR_05).', assume: 'Proposed: “This page is not a legal document. If you need the certificate for legal purposes, you can make an access application under the GIPA Act to Transport for NSW. A fee may apply as part of the GIPA process.” with “access application” linking to Transport’s access application page. Part of the configurable template (S20). The fee amount is not shown.', who: 'Legal', status: 'Confirmation required', source: OWNER + '; ' + BRD + ' BR_05', action: 'Legal to confirm the proposed wording.', impact: 'Disclaimer on the record page (S20).' },
@@ -232,14 +298,14 @@ export const QUESTIONS = [
   { id: 'U13', topic: 'Help text for customers (merged into U34)', at: ['record'], q: 'What explanatory text helps people read a certificate?', why: 'BR_06 asks for plain-English help on what the certificate means; BR_08 asks to point people with a court matter to customer enquiries.', assume: 'Merged into U34: the help text is part of the copy variants being tested.', who: 'Transport', status: 'Merged', source: OWNER + '; ' + BRD + ' BR_06, BR_08', action: 'See U34.', impact: 'Record page copy.', see: { to: '/uplift/hub/content', label: 'Copy variants (Page content tab)' } , noStoryReason: 'Merged into U34; its stories are U34’s.' },
   { id: 'U14', topic: 'Login', at: ['search', 'record'], q: 'Do the end-user view and the Revenue NSW staff search need a login?', why: 'The information is no more sensitive in one view than the other.', assume: 'No login on either. Staff use the search, but anyone on the internet could see this information, so the search is public too.', who: 'Product owner', status: 'Confirmation required', source: OWNER, action: 'Confirm; check with Cyber before build.', impact: 'No sign-in; see U6 and U32.' },
   { id: 'U15', topic: 'Link from the Service NSW app and myPenalty', at: ['record', 'journey'], q: 'How do the two apps link to the certificate record, and what does the link carry?', why: 'It is the only way the public reaches the record.', assume: 'Proposed, from the signed links the owner shared: the apps open the record page with a signed link carrying p (penalty notice number), d (offence date and time, yyyymmddThhmmss), s (site or camera number), i (meaning open, U29) and m (signature over the values), so a changed value shows the wrong-link message. No login and no search; it goes straight to one record. Going forward keep this format and add the source code inside the signature (U9). Port to the target stack: the signature is checked on the Java backend, the React front end only reads the result.', who: 'Service NSW, Revenue NSW, CEVOC technical owner', status: 'Confirmation required', source: OWNER, action: 'Confirm Service NSW and Revenue NSW can keep generating these links, and who holds the signing key.', impact: 'Entry flow page; S11, S14, S22.' },
-  { ...PROGRAM_Q('U16', 'Red light speed camera'), topic: 'Certificate types per camera program (ADR-001)', q: 'For each camera program, which certificates must be in force, on what cycle, and which wins; and where do those rules live so a new program can be added without reworking the page? Sub-points, merged here with their IDs kept: U16 red light speed; U17 fixed speed; U18 average speed (point to point); U19 mobile speed; U20 mobile phone and seatbelt detection; U21 any other programs (e.g. heavy vehicle, school zone).', at: ['search', 'record', 'fields'], status: 'Confirmation required', assume: 'Raised as ADR-001 (must scale when a new program is added): either the program rules are app settings read by the page (A), or the API decides and returns display-ready results so the page holds no program knowledge (B). Proposed: B, with the rules held as app settings in the backend and an app setting to turn each program on or off.', action: 'Confirm ADR-001, then list the certificate types and cycles per program from CMCS.', see: { to: '/uplift/hub/adr?a=ADR-001', label: 'ADR-001 on the ADRs tab' } },
+  { ...PROGRAM_Q('U16', 'Red light speed camera'), topic: 'Certificate types per camera program (ADR-001)', q: 'For each camera program, which certificates must be in force, on what cycle, and which wins; and where do those rules live so a new program can be added without reworking the page? Sub-points, merged here with their IDs kept: U16 red light speed; U17 fixed speed; U18 average speed (point to point); U19 mobile speed; U20 mobile phone and seatbelt detection; U21 any other programs (e.g. heavy vehicle, school zone).', at: ['search', 'record', 'fields'], status: 'Confirmation required', assume: 'Raised as ADR-001 (must scale when a new program is added): either the program rules are app settings read by the page (A), or the API decides and returns display-ready results so the page holds no program knowledge (B). Proposed: B, with the rules held as app settings in the backend and an app setting to turn each program on or off. The certificate types per program (several can be in force at once, shown one line per type on the record page, S23) are the app setting certificate.typesPerProgram. PENDING: the real certificate types per program. The types in the prototype are illustrative examples only; the owner will supply the real list.', tags: 'pending-real-types', action: 'Owner to supply the real certificate types per program (pending). Confirm ADR-001, then list the certificate types and cycles per program from CMCS.', see: { to: '/uplift/hub/adr?a=ADR-001', label: 'ADR-001 on the ADRs tab' } },
   { ...PROGRAM_Q('U17', 'Fixed speed camera'), topic: 'Certificate types: Fixed speed camera (merged into U16)', status: 'Merged', action: 'See U16.', see: { to: '/uplift/hub/questions?q=U16', label: 'U16 (ADR-001)' } },
   { ...PROGRAM_Q('U18', 'Average speed (point to point) camera'), topic: 'Certificate types: Average speed (point to point) camera (merged into U16)', status: 'Merged', action: 'See U16.', see: { to: '/uplift/hub/questions?q=U16', label: 'U16 (ADR-001)' } },
   { ...PROGRAM_Q('U19', 'Mobile speed camera'), topic: 'Certificate types: Mobile speed camera (merged into U16)', status: 'Merged', action: 'See U16.', see: { to: '/uplift/hub/questions?q=U16', label: 'U16 (ADR-001)' } },
   { ...PROGRAM_Q('U20', 'Mobile phone and seatbelt detection camera'), topic: 'Certificate types: Mobile phone and seatbelt detection camera (merged into U16)', status: 'Merged', action: 'See U16.', see: { to: '/uplift/hub/questions?q=U16', label: 'U16 (ADR-001)' } },
   { id: 'U21', topic: 'Other camera programs (merged into U16)', at: ['fields'], q: 'Are there other programs (for example heavy vehicle or school zone) with their own certificates?', why: 'Every enforced program needs its certificate list.', assume: 'The five programs above.', who: 'Camera program manager', status: 'Merged', source: OWNER, action: 'See U16.', impact: 'Gap detection.' , see: { to: '/uplift/hub/questions?q=U16', label: 'U16 (ADR-001)' } , noStoryReason: 'Merged into U16; its stories are U16’s.' },
   { id: 'U22', topic: 'Certificate lifecycle status', at: ['search', 'record'], q: 'How does each certificate lifecycle status (from CMCS, the source of truth) show on the search and the record page?', why: 'Hiding a real event silently would mislead; so would showing an unvalidated or withdrawn certificate as valid.', assume: 'Rule (owner): an unapproved certificate (issued but not approved) is never displayed. Proposed for the rest (see the Lifecycle tab): approved or in force shown normally; expired shown for offences inside its period; withdrawn shown with a Withdrawn tag and date if it covered the offence date; the re-issue shown with a Re-issued marker and the original shown as withdrawn; cancelled not shown and logged as a data error; duplicates collapsed to one row and flagged. Each status is a visible tag with text and colour, never colour alone. Each status-to-behaviour rule is an app setting.', who: 'CMCS data owner (statuses); Transport, Legal (behaviour)', status: 'Confirmation required', source: OWNER, action: 'Ask CMCS for the full list of lifecycle statuses and their meanings; confirm the behaviour table.', impact: 'S9, S12; app setting certificate.statusRules.', see: { to: '/uplift/hub/lifecycle', label: 'Lifecycle tab (behaviour table and status mock)' } },
-  { id: 'U23', topic: 'Genuinely missing certificate', at: ['search', 'record'], q: 'When no certificate covered an enforced day, what do the pages show?', why: 'We expect a certificate for everything we enforce at all times, so a gap is a real problem and must never be hidden.', assume: 'Staff: a warning naming the location, cycle and dates. Public: “No certificate of this kind was in force on that day” with who to contact.', who: 'Transport, Legal', status: 'Assumption to validate', source: OWNER, action: 'Agree the wording and who is told when a gap is found.', impact: 'S8, S12.' },
+  { id: 'U23', topic: 'Genuinely missing certificate', at: ['search', 'record'], q: 'When no certificate covered an enforced day, what do the pages show?', why: 'We expect a certificate for everything we enforce at all times, so a gap is a real problem and must never be hidden.', assume: 'Staff: a warning naming the location, certificate type (and cycle) and dates. Public: “No <certificate type> certificate was in force on <date>” with who to contact, while the other types in force are still listed (S23).', who: 'Transport, Legal', status: 'Assumption to validate', source: OWNER, action: 'Agree the wording and who is told when a gap is found.', impact: 'S8, S12.' },
   { id: 'U24', topic: 'System fault versus missing certificate', at: ['search', 'record'], q: 'What exactly do the fault, missing and no-match messages say?', why: 'A fault must never look like “no certificate”, and “no certificate” must never look like a fault.', assume: 'Fault: “We couldn’t get certificates right now. This is a problem with our system, not a missing certificate. Try again later.” Missing: as U23. No match: NSW empty state with a way forward.', who: 'Transport communications, Legal', status: 'Confirmation required', source: OWNER, action: 'Owner likes the current wording and keeps it; to be confirmed.', impact: 'S6, S7, S12, S13.' },
   { id: 'U25', topic: 'Location search', at: ['search'], q: 'What can staff search by, and how many locations at once?', why: 'Power users search several cameras and by address, not only by code.', assume: 'Code or any part of the address, from CMCS site records. Proposed: no limit on the page; chips wrap with a “+N more” collapse and Clear all, and results are grouped by location. The only reasons for a cap are API and database load on a public, unauthenticated endpoint and very large result sets; if one is ever needed it is an app setting enforced by the API (with paging), not a hard-coded limit in the page.', who: 'CMCS data owner, Revenue NSW', status: 'Confirmation required', source: OWNER, action: 'Confirm no page limit and the address source.', impact: 'S1, API parameters; app setting api.maxLocationsPerRequest.' },
   { id: 'U26', topic: 'Days, not times', at: ['search', 'record'], q: 'Is a day enough, given the legacy page used date and time?', why: 'Certified dates have no time; an offence on the morning of the certified day could fall before certification.', assume: 'Days are enough (owner). Edge case: same-day certification to confirm.', who: 'Transport, Legal', status: 'Assumption to validate', source: OWNER, action: 'Confirm the same-day rule.', impact: 'S2, S11.' },
@@ -254,6 +320,7 @@ export const QUESTIONS = [
   { id: 'U36', topic: 'Differences between camera programs', at: ['record', 'fields'], q: 'Do the camera programs (red light speed, fixed speed, average speed, mobile phone detection and others) differ in what the page shows, in dynamic fields or static copy?', why: 'If they differ, each program needs its own template (S21).', assume: 'Some copy differs (for example mobile phone detection has no speed measurement).', who: 'CMCS / CES data owners, camera program owners', status: 'Assumption to validate', source: OWNER, action: 'List the differences per program.', impact: 'S21 program templates.' },
   { id: 'U37', topic: 'Who consumes the API', at: ['fields'], q: 'Will Service NSW and Revenue NSW consume the certificate API, and who owns that agreement?', why: 'Designing the API for reuse only pays off if the agencies plan to use it.', assume: 'Not yet agreed.', who: 'Service NSW, Revenue NSW, Transport enterprise architecture', status: 'Assumption to validate', source: OWNER, action: 'Raise with both agencies and name the agreement owner.', impact: 'S16.' },
   { id: 'U38', topic: 'How long a signed link stays valid (ADR-005)', at: ['record', 'entry'], q: 'How long should a signed certificate link work after the Service NSW app or myPenalty creates it, and how do we turn off a leaked link?', why: 'Today the link for a notice is the same every time and never expires, so a forwarded, screenshotted or logged link keeps working for good. The page shows the notice number, offence date and time, site and offence, with no login.', assume: 'Proposed (ADR-005): the apps add the time they made the link (t) inside the signature, and CEVOC accepts it for 24 hours (app setting). The apps make a fresh link on every tap, so a person never notices; an old link shows a plain expired message with a way back to the app. Phase 1 keeps accepting legacy links without t (app setting) until both apps send it. A key version in the link lets a leaked key be retired without breaking new links.', who: 'Product owner, Cyber, Service NSW, Revenue NSW', status: 'Confirmation required', source: OWNER, action: 'Confirm the 24-hour default with Cyber; confirm Service NSW and Revenue NSW can add t and k to their link builders, and when.', impact: 'Expired-link message (S14); link contract (U15, U29, U30).', see: { to: '/uplift/hub/adr?a=ADR-005', label: 'ADR-005 on the ADRs tab' } },
+  { id: 'U39', topic: 'Source of the offence type', at: ['record', 'fields'], q: 'Where does the offence type (for example red light offence, speed offence, average speed offence) come from: CMCS, the offence code on the notice, or the notice system?', why: 'It is the only new field in phase 1 and shows in Offence Details. The signed link carries no offence type today (p, d, s, i, r, m), so the page must either get it from the link (which the apps would have to change, U15) or look it up from the notice number p or the site s. The same program can have more than one offence type (a red light speed camera can enforce a red light or a speed offence).', assume: 'Source unknown. Candidates: (a) CMCS, from the site and the camera program; (b) the offence code on the notice, mapped to a plain name; (c) the notice system (Revenue NSW). The prototype takes it from the invented offence record behind the signed link. The list of names is not agreed either: red light offence, speed offence and average speed offence are examples.', who: 'CMCS data owner, Revenue NSW (notice system), Transport', status: 'Assumption to validate', source: OWNER, action: 'Find out which system holds it and whether it can be fetched from the notice number or the site; agree the list of names.', impact: 'Offence Details on the record page (S24); the Field delta tab; the API response (S16, U7).' },
   { id: 'U34', topic: 'Copy for the end-user page', at: ['record'], q: 'Which wording works best for the static and dynamic text?', why: 'People arrive worried; each variant answers a different worry. Includes the help text the BRD asks for (BR_06, BR_08), merged from U13.', assume: 'Three variants to test: A reassurance, B plain summary, C what next.', who: 'Transport communications, customers in testing', status: 'Proposed UX improvement', source: OWNER, action: 'Test the variants with customers.', impact: 'Record page copy.', see: { to: '/uplift/hub/content', label: 'Copy variants (Page content tab)' } },
 ];
 export const qById = (id) => QUESTIONS.find((q) => q.id === id);
@@ -278,15 +345,15 @@ export const STORIES = [
   { id: 'S7', priority: 'Medium', user: 'Revenue NSW officer', path: 'error / fault', brd: [], screen: 'search', role: 'Revenue NSW officer', want: 'a system fault to look different from a missing certificate', so: 'I never tell a customer a certificate is missing when our system failed', qs: ['U24'],
     ac: [ac('the certificate service fails', 'I search', 'an error alert says it is a system problem, not a missing certificate, and no empty state or table is shown'), ac('a fault', 'I press Try again', 'the search runs again')] },
   { id: 'S8', priority: 'Medium', user: 'Revenue NSW officer', path: 'exception', brd: [], screen: 'search', role: 'Revenue NSW officer', want: 'see when a certificate was genuinely missing', so: 'gaps are dealt with, not hidden', qs: ['U23', 'U16', 'U17', 'U18', 'U19', 'U20'],
-    ac: [ac('a location with days in the range when no certificate of an expected cycle was in force', 'results load', 'a warning names the location, cycle and dates of each gap, above the table')] },
+    ac: [ac('a location with days in the range when no certificate of an expected type was in force', 'results load', 'a warning names the location, certificate type (and its cycle) and dates of each gap, above the table')] },
   { id: 'S9', priority: 'Medium', user: 'Revenue NSW officer', path: 'edge case', brd: ['BR_09'], screen: 'search', role: 'Revenue NSW officer', want: 'see withdrawn and re-issued certificates for what they are', so: 'identical-looking rows make sense', qs: ['U22', 'U4'],
     ac: [ac('a withdrawn certificate', 'it is listed', 'it is marked Withdrawn with the withdrawal date and is not counted as in force'), ac('a re-issued certificate', 'it is listed', 'it is marked Re-issued and its details name the certificate it replaces')] },
-  { id: 'S10', priority: 'Medium', user: 'Revenue NSW officer', path: 'happy path', brd: ['BR_01', 'BR_02'], screen: 'search', role: 'Revenue NSW officer', want: 'see the certificate details the BRD asks for', so: 'I can answer without opening another system', qs: ['U3'],
+  { id: 'S10', phase: 'Backlog (Phase 2)', priority: 'Medium', user: 'Revenue NSW officer', path: 'happy path', brd: ['BR_01', 'BR_02'], screen: 'search', role: 'Revenue NSW officer', want: 'see the extra certificate details the BRD asks for (BR_01 and BR_02 extras)', so: 'I can answer without opening another system', qs: ['U3'],
     ac: [ac('an expanded row or a public record', 'it shows', 'device model, Gazette reference, approval scope, location, camera code, inspection date and time and inspection details are shown when CMCS holds them')] },
   { id: 'S11', priority: 'Medium', user: 'person with a fine', path: 'happy path', brd: ['BR_01', 'BR_03'], screen: 'record', role: 'person with a notice', want: 'see only the certificates for my offence, without logging in', so: 'I can trust the camera was certified that day', qs: ['U5', 'U15', 'U26', 'U1', 'U6', 'U14', 'U31', 'U32', 'U38'],
-    ac: [ac('a link with a location code and offence date', 'I open it', 'only certificates in force on that day are shown, one card each'), ac('the record', 'it shows', 'no other certificate for the location is listed, and there is no download, save or print')] },
+    ac: [ac('a link with a location code and offence date', 'I open it', 'only certificates in force on that day are shown, one line per certificate type (S23)'), ac('the record', 'it shows', 'no other certificate for the location is listed, and there is no download, save or print')] },
   { id: 'S12', priority: 'Medium', user: 'person with a fine', path: 'exception', brd: ['BR_09'], screen: 'record', role: 'person with a notice', want: 'be told plainly when a certificate was missing or withdrawn on my offence day', so: 'nothing is hidden from me', qs: ['U22', 'U23', 'U24'],
-    ac: [ac('no certificate of an expected cycle was in force that day', 'I open the link', 'a warning says so for that cycle and who to contact'), ac('a certificate covering that day was withdrawn', 'I open the link', 'it is shown as withdrawn, with any re-issued replacement')] },
+    ac: [ac('no certificate of an expected type was in force that day', 'I open the link', 'a warning says so for that certificate type and who to contact'), ac('a certificate covering that day was withdrawn', 'I open the link', 'it is shown as withdrawn, with any re-issued replacement')] },
   { id: 'S13', priority: 'Medium', user: 'person with a fine', path: 'error / fault', brd: [], screen: 'record', role: 'person with a notice', want: 'know when the system failed', so: 'I don’t think the camera wasn’t certified', qs: ['U24'],
     ac: [ac('the certificate service fails', 'I open the link', 'an error alert says it is a system problem, not a missing certificate, with Try again')] },
   { id: 'S14', priority: 'Medium', user: 'person with a fine', path: 'exception', brd: [], screen: 'record', role: 'person with a notice', want: 'a clear message when my link is wrong', so: 'I know what to do next', qs: ['U15', 'U29', 'U38'],
@@ -305,6 +372,10 @@ export const STORIES = [
     ac: [ac('an offence from a program with its own template', 'the record page loads', 'that program’s template is used for both fields and copy'), ac('an offence from a program with no template of its own', 'the record page loads', 'the default template is used'), ac('a program template', 'it is edited', 'it changes without a code release, as in S20')] },
   { id: 'S22', priority: 'Medium', user: 'person with a fine', path: 'happy path', brd: [], screen: 'record', role: 'person with a fine', want: 'get back to the service I came from when I’m done', so: 'I can pay, request a review or elect court without hunting for the page', qs: ['U9', 'U30'],
     ac: [ac('I opened the record page from a signed link with source X', 'I finish reading', 'I see “Return to X”, linking to X’s page from the app settings'), ac('the link has no source or an unknown source', 'I finish reading', 'there is no return button, only “You can close this tab”'), ac('the source in the link was changed', 'I open it', 'the signature check fails and I see the wrong-link message')] },
+  { id: 'S23', priority: 'Medium', user: 'person with a fine', path: 'edge case', brd: ['BR_01'], screen: 'record', role: 'person with a notice', want: 'see every certificate type in force on my offence day, whether the camera program has one or several', so: 'I can see that each part of the camera (for example image capture and speed measurement) was certified', qs: ['U16', 'U5', 'U34', 'U35', 'U36'], tags: 'pending-real-types',
+    ac: [ac('a site whose program has several certificate types in force on the offence day', 'I open the record page in any copy variant (legacy, A, B or C)', 'the lead-in says “On the day of your offence, these certificates were in force:” (or the copy variant’s own wording) and there is one line per type with its certified and expiry dates'), ac('a site with only one certificate type in force on the offence day', 'I open the record page in any copy variant', 'the same template reads correctly for one certificate (singular lead-in, one line) with no empty lines or leftover plural wording'), ac('one type has none in force on that day (for example speed measurement in force but image capture missing)', 'I open the record page', 'the missing-certificate warning names the missing type, and the types that were in force are still listed'), ac('the certificate types per camera program', 'Transport changes them', 'the page lists the changed types with no code release (app setting certificate.typesPerProgram, ADR-001); the real types per program are pending (U16)')] },
+  { id: 'S24', priority: 'Medium', user: 'person with a fine', path: 'happy path', brd: [], screen: 'record', role: 'person with a notice', want: 'see the offence type in the offence details (for example red light offence, speed offence, average speed offence)', so: 'I can match the certificates to what I was fined for', qs: ['U39', 'U15', 'U36'],
+    ac: [ac('a signed link for an offence with a known offence type', 'I open the record page in any copy variant', 'Offence Details shows “Offence type” with that type (for example “Red light offence”), between Program type and Site, zone or camera number'), ac('a red light speed camera site', 'I open links for a red light offence and for a speed offence', 'each shows its own offence type, so the type is not worked out from the program alone'), ac('a link whose offence has no known offence type', 'I open it', 'the field says “Not in this link” and the rest of the page is unchanged'), ac('phase 1 scope', 'the record page and any export are reviewed', 'offence type is the only new field: no Gazette reference, device model, approval scope or inspection details (Backlog, Phase 2)')] },
   { id: 'S19', priority: 'Medium', user: 'the business', path: 'happy path', brd: [], screen: 'search', role: 'the business', want: 'the page restyled to the NSW Design System and accessible', so: 'phase 1 is a low-risk uplift', qs: ['U11', 'U1'],
     ac: [ac('the search and record pages in every state (results, empty, missing, withdrawn, fault, wrong link)', 'axe-core checks them against the WCAG 2.2 A and AA rules', 'no violations are reported, and the cross-cutting criteria X1 to X4 pass'), ac('a phone 320 to 390 px wide', 'the page is shown', 'there is no sideways page scrolling; the results table scrolls inside its own box')] },
 ];
@@ -324,17 +395,19 @@ export const FIELDS = [
   { field: 'Certificate Description', legacy: 'Yes', brd: 'BR_01', delta: 'Same', change: '', source: 'CMCS', q: '' },
   { field: 'Certificate type', legacy: 'Yes', brd: 'BR_01', delta: 'Same', change: '', source: 'CMCS', q: '' },
   { field: 'Period (YEARLY, QUARTERLY)', legacy: 'Yes', brd: '—', delta: 'Same', change: 'The certification cycle, not a date range.', source: 'CMCS', q: '' },
-  { field: 'Certified date', legacy: 'Yes (date)', brd: 'BR_01 (inspection date and time)', delta: 'Changed', change: 'BRD wants the inspection date and time.', source: 'Unknown', q: 'U3' },
+  { field: 'Certified date', legacy: 'Yes (date)', brd: 'BR_01 (inspection date and time)', delta: 'Changed', change: 'Day only in phase 1 (owner, U26). The time the BRD wants is Backlog (Phase 2).', source: 'Unknown', q: 'U3' },
   { field: 'Expiry date', legacy: 'Yes', brd: '—', delta: 'Same', change: '', source: 'CMCS', q: '' },
+  { field: 'Certificate lines on the record page (section 3)', legacy: 'One sentence, one certification date', brd: 'BR_01', delta: 'Changed', change: 'One line per certificate type in force on the offence day, each with its certified and expiry dates (S23). Same fields as a certificate row, listed per type.', source: 'CMCS; type names from app setting certificate.typesPerProgram', q: 'U16' },
+  { field: 'Offence type', legacy: 'No', brd: '— (owner request)', delta: 'New', change: 'Section 2, Offence Details, after Program type. Examples: red light offence, speed offence, average speed offence. The only new field in phase 1.', source: 'Unknown: CMCS, the offence code or the notice system', q: 'U39' },
   { field: 'Location (code) on each row', legacy: 'No (searched one location)', brd: '—', delta: 'New', change: 'Needed once several locations are searched.', source: 'CMCS', q: 'U25' },
   { field: 'Status (Approved, Published, Withdrawn)', legacy: 'No', brd: 'BR_04 / BR_07 (replaced)', delta: 'New', change: 'Visibility by status, not by days (owner).', source: 'CMCS', q: 'U2' },
-  { field: 'Device model', legacy: 'No', brd: 'BR_01', delta: 'New', change: '', source: 'Unknown, likely CMCS', q: 'U3' },
-  { field: 'Gazette reference', legacy: 'No', brd: 'BR_01', delta: 'New', change: '', source: 'Unknown', q: 'U3' },
-  { field: 'Device approval scope', legacy: 'No', brd: 'BR_01', delta: 'New', change: '', source: 'Unknown', q: 'U3' },
-  { field: 'Location (street or intersection)', legacy: 'No', brd: 'BR_01', delta: 'New', change: 'Also used for address search.', source: 'CMCS sites', q: 'U25' },
-  { field: 'Camera code', legacy: 'No', brd: 'BR_01', delta: 'New', change: 'May equal the location code.', source: 'CMCS', q: 'U3' },
-  { field: 'Inspection details', legacy: 'No', brd: 'BR_01', delta: 'New', change: 'Free-text narrative.', source: 'Unknown', q: 'U3' },
-  { field: 'Officer name and signature', legacy: 'No', brd: 'BR_02 (masked)', delta: 'New', change: 'Only matters if a certificate image is shown.', source: 'Unknown', q: 'U3' },
+  { field: 'Device model', legacy: 'No', brd: 'BR_01', delta: 'New', change: 'Not in phase 1.', source: 'Unknown, likely CMCS', q: 'U3', phase: 'Backlog (Phase 2)' },
+  { field: 'Gazette reference', legacy: 'No', brd: 'BR_01', delta: 'New', change: 'Not in phase 1.', source: 'Unknown', q: 'U3', phase: 'Backlog (Phase 2)' },
+  { field: 'Device approval scope', legacy: 'No', brd: 'BR_01', delta: 'New', change: 'Not in phase 1.', source: 'Unknown', q: 'U3', phase: 'Backlog (Phase 2)' },
+  { field: 'Location (street or intersection)', legacy: 'Yes (Site location on the record page)', brd: 'BR_01', delta: 'Same', change: 'Also used for address search on the staff search.', source: 'CMCS sites', q: 'U25' },
+  { field: 'Camera code', legacy: 'Yes (Site, zone or camera number on the record page)', brd: 'BR_01', delta: 'Same', change: 'Same as the location code; nothing extra in phase 1.', source: 'CMCS', q: 'U3' },
+  { field: 'Inspection details', legacy: 'No', brd: 'BR_01', delta: 'New', change: 'Free-text narrative. Not in phase 1.', source: 'Unknown', q: 'U3', phase: 'Backlog (Phase 2)' },
+  { field: 'Officer name and signature', legacy: 'No', brd: 'BR_02 (masked)', delta: 'New', change: 'Only matters if a certificate image is shown. Not in phase 1.', source: 'Unknown', q: 'U3', phase: 'Backlog (Phase 2)' },
   { field: 'Re-issued marker', legacy: 'No', brd: 'BR_09', delta: 'New', change: 'Needs a re-issue link in the data.', source: 'Unknown', q: 'U4' },
   { field: 'Withdrawn date', legacy: 'No', brd: '—', delta: 'New', change: 'For withdrawn certificates.', source: 'Unknown', q: 'U22' },
 ];
@@ -359,7 +432,7 @@ export const JOURNEY = {
 
 // Sample searches and links the presenter can run.
 export const SAMPLES = [
-  { label: 'One camera, a year', locs: ['1234'], from: '01/11/2025', to: '31/10/2026', note: 'Seven certificates' },
+  { label: 'One camera, a year', locs: ['1234'], from: '01/11/2025', to: '31/10/2026', note: 'All three certificate types for the year' },
   { label: 'Two cameras, missing and withdrawn', locs: ['1234', '4567'], from: '01/11/2025', to: '30/06/2026', note: 'Gap warning, withdrawn and re-issued rows' },
   { label: 'Nothing in range', locs: ['2345'], from: '01/01/2024', to: '31/03/2024', note: 'Empty state' },
   { label: 'Many locations', locs: ['1234', '2345', '3456', ...Array.from({ length: 12 }, (_, i) => String(6001 + i))], from: '01/12/2025', to: '31/03/2026', note: '15 locations: chips wrap, “+N more”, results grouped by location' },
@@ -367,10 +440,14 @@ export const SAMPLES = [
 ];
 export const searchLink = (s) => `/uplift?locs=${s.locs.join(',')}&from=${encodeURIComponent(s.from)}&to=${encodeURIComponent(s.to)}&run=1`;
 export const RECORD_SAMPLES = [
-  { label: 'Certified on the day', loc: '1234', at: '14/03/2026', note: 'Yearly and quarterly in force' },
+  { label: 'Certified on the day', loc: '1234', at: '14/03/2026', note: 'All three certificate types in force' },
   { label: 'Withdrawn, then re-issued', loc: '4567', at: '05/12/2025', note: 'Withdrawn shown; re-issue starts 15/12' },
-  { label: 'Genuinely missing', loc: '4567', at: '08/03/2026', note: 'No quarterly certificate in force' },
+  { label: 'Genuinely missing', loc: '4567', at: '08/03/2026', note: 'No image capture (red light) certificate in force' },
   { label: 'System fault', loc: '9999', at: '14/03/2026', note: 'Fault, not missing' },
   { label: 'Wrong link', loc: '0000', at: '14/03/2026', note: 'Unknown location' },
+  { label: 'Red light speed: three types', loc: '1234', at: '14/03/2026', note: 'Image capture (red light), image capture (speed), speed measurement device' },
+  { label: 'Average speed: two types', loc: '3456', at: '20/04/2026', note: 'Image capture and speed measurement' },
+  { label: 'One type in force, two missing', loc: '1234', at: '05/09/2025', note: 'Only the speed measurement device certificate; both image capture types missing' },
+  { label: 'Speed measurement in force, image capture missing', loc: '4567', at: '08/03/2026', note: 'Per-type gap: image capture (red light) missing; the other two are listed' },
 ];
 export const recordLink = (s) => `/uplift/record?loc=${s.loc}&at=${encodeURIComponent(s.at)}`;
