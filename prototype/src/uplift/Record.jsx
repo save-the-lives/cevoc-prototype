@@ -69,6 +69,7 @@ export default function Record({ query = {} }) {
           <dl className="cd-dl">
             <dt>Penalty notice number</dt><dd>{off ? <Dyn src="Signed link: p">{off.p}</Dyn> : 'Not in this link'}</dd>
             <dt>Program type</dt><dd><Dyn src="CMCS site record">{off ? off.program : PROGRAM[loc.program]}</Dyn></dd>
+            <dt>Offence type</dt><dd>{off ? <Dyn src="Offence type: source unknown (U39)">{off.offenceType || 'Not in this link'}</Dyn> : 'Not in this link'}</dd>
             <dt>Site, zone or camera number</dt><dd><Dyn src="Signed link: s">{loc.code}</Dyn></dd>
             <dt>Site location</dt><dd><Dyn src="CMCS site record">{loc.address}</Dyn></dd>
             {!one && <><dt>Date of offence</dt><dd><Dyn src="Signed link: d">{fmtDay(when.day)}</Dyn></dd></>}

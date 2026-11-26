@@ -38,6 +38,7 @@ function Preview({ k, colours, set }) {
         <dl className="ct-dl">
           <dt><S>Penalty notice number</S></dt><dd><D src="Signed link p · Revenue NSW / Transport">{O.p}</D></dd>
           <dt><S>Program type</S></dt><dd><D src="CMCS site · Transport">{O.program}</D></dd>
+          <dt><S>Offence type</S></dt><dd><D src="Source unknown (U39)">{O.offenceType}</D></dd>
           <dt><S>Site, zone or camera number</S></dt><dd><D src="Signed link s · Transport">{O.s}</D></dd>
           <dt><S>Site location</S></dt><dd><D src="CMCS site · Transport">{LOC.address}</D></dd>
           <dt><S>Date of offence</S></dt><dd><D src="Signed link d · Transport / Revenue NSW">14/03/2026</D></dd>

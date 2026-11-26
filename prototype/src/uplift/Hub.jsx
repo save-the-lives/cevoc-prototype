@@ -185,6 +185,7 @@ function Fields() {
       </div>
       <h2 className="uh-h2">API for other government sites <Q id="U7" /></h2>
       <p><code>GET /api/v1/certificates?locations=1234,4567&amp;from=2025-11-01&amp;to=2026-06-30</code> returns the rows the search shows, as JSON, including status, re-issue and gaps. Same answer for Service NSW, Revenue NSW and this page.</p>
+      <p>The record call (the offence behind a signed link) returns the Offence Details, including <code>offenceType</code> (the one new field in phase 1, source open: U39), and one entry per certificate type in force with its certified and expiry dates.</p>
     </Shell>
   );
 }

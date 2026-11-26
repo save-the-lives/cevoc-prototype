@@ -44,6 +44,10 @@ export const AC_CHECKS = {
   'S23.1': 'record.copy-variants-cert-types',
   'S23.2': 'record.copy-variants-cert-types',
   'S23.3': 'record.cert-type-gap',
+  'S24.1': 'record.offence-type',
+  'S24.2': 'record.offence-type-per-offence',
+  'S24.3': 'record.offence-type-unknown',
+  'S24.4': 'record.phase1-no-extra-fields',
 };
 
 // BRD reference per criterion, where it differs from (or narrows) the story's own BRD list.
