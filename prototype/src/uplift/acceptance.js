@@ -74,12 +74,13 @@ export const CROSS = [
   x('X13', 'Offline and local hosting', 'the built site copied into any folder of any web server, with no internet', 'I open it', 'every page works from that folder (relative paths, hash routing) and nothing is fetched from elsewhere', '—', 'hosting.subfolder'),
   x('X14', 'Offline and local hosting', 'the site on Apache/XAMPP with PHP, installed by git clone of the site branch', 'a deploy is pulled with git pull', 'shared edits survive and the database cannot be downloaded', '—', 'exam/run-exam.sh', 'Run by the XAMPP exam in deploy.yml, not by the acceptance run.'),
   x('X15', 'Scope', 'the phase 1 scope (no extra information fields; offence type is the only new one)', 'stories and questions are listed, or exported to Excel and imported back', 'each carries a Phase, the stories and criteria for the Backlog (Phase 2) extras (S10) show as Backlog, and the Excel file has a Phase column for stories and for questions', '—', 'hub.phase-scope'),
+  x('X16', 'New against the legacy page', 'the record page with the Tour off, then on', 'I look at Offence type and at a dynamic field the legacy page already had (Program type), and open the Field delta tab', 'with the Tour off nothing is marked; with it on, Offence type (a dynamic field that is also new) is green with a New label while Program type stays magenta; Field delta lists Offence type as New in phase 1, a legacy field as Existing and Gazette reference as Backlog (Phase 2)', '—', 'tour.new-vs-existing'),
 ];
 
 export const DOD = [
   'Every acceptance criterion is a Given/When/Then step, traced to its BRD reference where one exists.',
   'Criteria that can be automated have a named Playwright check, and it passes in CI (acceptance.yml).',
-  'The cross-cutting criteria X1 to X15 pass: accessibility (WCAG 2.2 AA), privacy, signed-link failures, phone performance, local hosting, phase scope.',
+  'The cross-cutting criteria X1 to X16 pass: accessibility (WCAG 2.2 AA), privacy, signed-link failures, phone performance, local hosting, phase scope.',
   'No open question linked to the story is still “Assumption to validate” or “Confirmation required”.',
   'Manual criteria have been checked by a person, and the result is noted on the story.',
   'Invented data only; nothing prototype-specific on the two key screens (Tour overlay only).',

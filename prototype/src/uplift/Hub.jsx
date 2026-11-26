@@ -166,15 +166,32 @@ function Compare() {
   );
 }
 
+// Field delta: existing (on the legacy page) against new, and phase 1 against Backlog (Phase 2). New rows use the same
+// green as the Tour's New marks, so the two views read together.
+const fieldGroup = (f) => (f.phase === 'Backlog (Phase 2)' ? 'backlog' : f.delta === 'New' ? 'new' : 'existing');
 function Fields() {
+  const rows = [...FIELDS].sort((a, b) => ['existing', 'new', 'backlog'].indexOf(fieldGroup(a)) - ['existing', 'new', 'backlog'].indexOf(fieldGroup(b)));
+  const n = (g) => FIELDS.filter((f) => fieldGroup(f) === g).length;
   return (
-    <Shell tab="fields" title="Field delta" lede="Every field on the legacy page against what the BRD asks for. “New” means the API or data may need to change; the source is to be confirmed from CMCS samples.">
+    <Shell tab="fields" title="Field delta" lede="Every field on the legacy page against what phase 1 builds. Existing means the legacy page has it; New means it does not; Backlog (Phase 2) means the BRD asks for it but phase 1 does not build it.">
+      <div className="uh-card ct-req">
+        <p><strong>Phase 1 scope (owner, 26 Nov 2026):</strong> no extra information fields (no Gazette reference, device model, approval scope or inspection details: the BRD BR_01 extras). <strong>Offence type</strong> (Offence Details, section 2) is the only new information field. The other New rows are columns and markers that phase 1 behaviours need (Location per row for several locations, Status, Withdrawn date, re-issue), not extra certificate information. The Tour marks New fields in green on both screens (“Mark what is new against the legacy page”). Where offence type comes from is open: <Q id="U39" />.</p>
+        <p className="fd-count"><span className="uh-tag is-done">Existing</span> {n('existing')} · <span className="uh-tag is-new">New</span> {n('new')} in phase 1 · <span className="uh-tag">Backlog (Phase 2)</span> {n('backlog')}</p>
+      </div>
       <div className="up-scroll">
         <table className="uh-tbl">
-          <thead><tr><th>Field</th><th>On legacy page</th><th>In the BRD</th><th>Delta</th><th>Change</th><th>Likely source</th><th>Question</th></tr></thead>
-          <tbody>{FIELDS.map((f) => (
-            <tr key={f.field}><td><strong>{f.field}</strong></td><td>{f.legacy}</td><td>{f.brd}</td><td><span className={`uh-tag ${f.delta === 'New' ? 'is-warn' : f.delta === 'Changed' ? 'is-open' : 'is-done'}`}>{f.delta}</span></td><td>{f.change}</td><td>{f.source}</td><td>{f.q && <Q id={f.q} />}</td></tr>
-          ))}</tbody>
+          <thead><tr><th>Field</th><th>Existing or new</th><th>Phase</th><th>On legacy page</th><th>In the BRD</th><th>Change</th><th>Likely source</th><th>Question</th></tr></thead>
+          <tbody>{rows.map((f) => {
+            const g = fieldGroup(f);
+            return (
+              <tr key={f.field} className={`fd-${g}`}>
+                <td><strong>{f.field}</strong></td>
+                <td>{g === 'backlog' ? <span className="uh-tag">Not built</span> : f.delta === 'New' ? <span className="uh-tag is-new">New</span> : <span className="uh-tag is-done">{f.delta === 'Same' ? 'Existing' : 'Existing, changed'}</span>}</td>
+                <td>{g === 'backlog' ? <span className="uh-tag">Backlog (Phase 2)</span> : 'Phase 1'}</td>
+                <td>{f.legacy}</td><td>{f.brd}</td><td>{f.change}</td><td>{f.source}</td><td>{f.q && <Q id={f.q} />}</td>
+              </tr>
+            );
+          })}</tbody>
         </table>
       </div>
       <h2 className="uh-h2">Label changes <Q id="U28" /></h2>

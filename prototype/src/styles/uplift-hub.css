@@ -275,3 +275,8 @@
 .ls-chip code { font-size: 12px; overflow-wrap: anywhere; }
 .ls-dod summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .ls-dod ol { padding-left: 22px; }
+
+/* Field delta: new (green, as the Tour marks it) and Backlog (Phase 2) rows */
+.fd-new td:first-child { box-shadow: inset 4px 0 0 #0a6b34; } .fd-new td { background: #f0fdf4; }
+.fd-backlog td { color: #52525b; background: #f4f4f5; } .fd-backlog td:first-child { box-shadow: inset 4px 0 0 #a1a1aa; }
+.fd-count { margin: 8px 0 0; }

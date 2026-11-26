@@ -121,6 +121,20 @@ const sydToday = () => new Date().toLocaleDateString('en-AU', { timeZone: 'Austr
       must(row('S10')[ci] === 'Backlog (Phase 2)' && row('S24')[ci] === 'Phase 1', 'stories export phases');
       const qs = await sheet('#/uplift/hub/questions'); const qi = qs[0].indexOf('Phase'); must(qi >= 0 && qs.slice(1).every((r) => r[qi] === 'Phase 1' || r[qi] === 'Backlog (Phase 2)'), 'questions export Phase column');
     },
+    // X16: the Tour marks what is new against the legacy page; the real screen is untouched; Field delta says new or existing.
+    'tour.new-vs-existing': async () => {
+      const off = D.OFFENCES[1]; const p = await page(signed(off));
+      const probe = () => p.evaluate(() => { const g = (sel, pseudo) => { const e = document.querySelector(sel); const c = getComputedStyle(e, pseudo || null); return { outline: c.outlineStyle + ' ' + c.outlineColor, content: pseudo ? c.content : '', bg: c.backgroundColor }; };
+        return { newDyn: g('.tr-dynv[data-new][data-dyn^="Offence type"]'), newDynBefore: g('.tr-dynv[data-new][data-dyn^="Offence type"]', '::before'), oldDyn: g('.cd-dl .tr-dynv:not([data-new])'), label: g('.cd-dl dt[data-new]') }; });
+      const off0 = await probe(); must(/^none/.test(off0.newDyn.outline) && off0.newDynBefore.content === 'none' && /^none/.test(off0.label.outline), `tour off should mark nothing: ${JSON.stringify(off0)}`);
+      const before = await txt(p, 'main'); await tourOn(p); await p.check('.tr-panel label:has-text("Highlight dynamic data") input', { force: true }); await p.waitForTimeout(150);
+      const on = await probe(); must(/^solid/.test(on.newDyn.outline) && /^solid/.test(on.oldDyn.outline) && on.newDyn.outline !== on.oldDyn.outline, `new and old dynamic data look the same: ${JSON.stringify(on)}`); must(/New/.test(on.newDynBefore.content), `no New label: ${on.newDynBefore.content}`);
+      must(/^none/.test(on.label.outline), 'static new label marked before the toggle'); await p.check('.tr-panel label:has-text("Mark what is new") input', { force: true }); await p.waitForTimeout(150);
+      must(/^solid/.test((await probe()).label.outline), 'static new label not marked'); must(await txt(p, 'main') === before, 'the Tour changed the text of the real screen');
+      const f = await page('#/uplift/hub/fields'); const row = async (name) => txt(f, `tr:has(td:first-child strong:text-is("${name}"))`);
+      const o = await row('Offence type'); const e = await row('Certificate Description'); const g = await row('Gazette reference');
+      must(/New/.test(o) && /Phase 1/.test(o) && !/Backlog/.test(o), `Offence type row: ${o}`); must(/Existing/.test(e) && !/New/.test(e), `legacy row: ${e}`); must(/Backlog \(Phase 2\)/.test(g), `Gazette row: ${g}`);
+    },
     'record.fault': async () => { const p = await page(rec('System fault')); must(/problem with our system/.test(await txt(p, '[role=alert]')) && await p.locator('button:has-text("Try again")').count() === 1, 'fault alert with Try again'); },
     'record.bad-link': async () => { const p = await page('#/uplift/record?loc=0000&at=99/99/2026'); must(/couldn’t open the certificate details from this link/.test(await txt(p, 'main')) && /13 22 13/.test(await txt(p, 'main')), 'bad link message'); },
     'search.error-summary': async () => { const p = await page('#/uplift'); await p.fill('#dr-from', ''); await p.click('button[type=submit]'); await p.waitForTimeout(200); const links = await p.$$eval('.pub-errsum a', (as) => as.map((a) => a.getAttribute('href'))); must(links.includes('#uh-loc') && links.includes('#dr-from'), `summary links ${links}`); must(await p.locator('.uh-results').count() === 0, 'search ran'); },

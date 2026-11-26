@@ -10,7 +10,7 @@ import { LabelSwitch } from './kit.jsx';
 // copy variants, stories and questions for this screen). Off by default; Escape closes it; turning it off leaves
 // the page untouched. Same spirit as enf-site-onboarding's annotation layer.
 
-const state = { on: false, dyn: false, copy: 'legacy' };
+const state = { on: false, dyn: false, isnew: false, copy: 'legacy' };
 const subs = new Set();
 const set = (patch) => { Object.assign(state, patch); subs.forEach((f) => f({ ...state })); };
 try { if (/[?&]tour=1/.test(window.location.hash)) state.on = true; } catch { /* no window */ }
@@ -40,12 +40,23 @@ function usePins(screen, on) {
   return pins;
 }
 
+// Tour-only control: marks what is new against the legacy page (green, with a New label). Used on both key screens.
+export function NewToggle({ t }) {
+  return (
+    <>
+      <label className="tr-check"><input type="checkbox" checked={t.isnew} onChange={(e) => t.set({ isnew: e.target.checked })} /> Mark what is new against the legacy page</label>
+      <p className="tr-meta"><span className="tr-newtag">New</span> in green: a label or value the legacy page does not have (for example Offence type). Dynamic data that is also new is green with a New label whenever “Highlight dynamic data” is on, so it differs from the magenta dynamic data the legacy page already had. <Link to="/uplift/hub/fields">Field delta</Link></p>
+    </>
+  );
+}
+
 function NoteBody({ n }) {
   return (
     <>
       <dl className="tr-note">
         <dt>Legacy</dt><dd>{n.legacy}</dd>
         <dt>Target</dt><dd>{n.next}</dd>
+        {n.isNew && <><dt>New</dt><dd><span className="tr-newtag">New</span> {n.isNew}</dd></>}
       </dl>
       <p className="tr-k">Stories</p>
       <ul className="tr-list">{n.stories.map((id) => <li key={id}><Link to={`/uplift/hub/stories?s=${id}`}>{id}</Link></li>)}</ul>
@@ -69,8 +80,9 @@ export default function TourLayer({ screen, controls }) {
   }, [active]);
   useEffect(() => {
     document.body.classList.toggle('tr-dyn', t.on && t.dyn);
-    return () => document.body.classList.remove('tr-dyn');
-  }, [t.on, t.dyn]);
+    document.body.classList.toggle('tr-new', t.on && t.isnew);
+    return () => document.body.classList.remove('tr-dyn', 'tr-new');
+  }, [t.on, t.dyn, t.isnew]);
   // Auto-hide (owner, 26 Nov 2026): the panel folds to a small tab at the edge so it never covers the content.
   // It folds 4 s after the tour starts, or at once when the person clicks or scrolls the page outside the panel.
   // Clicking the tab opens it again; it then stays open until the next click or scroll outside it.
@@ -133,6 +145,7 @@ export default function TourLayer({ screen, controls }) {
                   <h3>Content</h3>
                   <label className="tr-check"><input type="checkbox" checked={t.dyn} onChange={(e) => set({ dyn: e.target.checked })} /> Highlight dynamic data</label>
                   <p className="tr-meta">Outlines every value that comes from the link or CMCS, with its source. Everything else is static copy. <Link to="/uplift/hub/content">Page content analysis</Link></p>
+                  <NewToggle t={t} />
                 </section>
                 <section>
                   <h3>Copy to test</h3>
@@ -140,7 +153,7 @@ export default function TourLayer({ screen, controls }) {
                     <legend className="up-sr">Copy variant</legend>
                     {COPY_KEYS.map((k) => (
                       <label key={k}>
-                        <input type="radio" name="tr-copy" checked={t.copy === k} onChange={() => set({ copy: k })} />
+                        <input type="radio" name="tr-copy" value={k} checked={t.copy === k} onChange={() => set({ copy: k })} />
                         <span><strong>{COPY[k].label}</strong><small>{COPY[k].worry}</small></span>
                       </label>
                     ))}
