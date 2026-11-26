@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
-import { OPEN, qById, questionsFor, storiesFor, storyReady } from './data.js';
+import { OPEN, isBacklog, qById, questionsFor, storiesFor, storyReady } from './data.js';
 import { COPY, COPY_KEYS, NOTES } from './tour.js';
 import { LabelSwitch } from './kit.jsx';
 
@@ -154,7 +154,7 @@ export default function TourLayer({ screen, controls }) {
             </section>
             <section>
               <h3>Stories ({stories.length})</h3>
-              <ul className="tr-list">{stories.map((s) => <li key={s.id}><Link to={`/uplift/hub/stories?s=${s.id}`}>{s.id}</Link> {s.want} <span className={`uh-tag ${storyReady(s) ? 'is-done' : 'is-open'}`}>{storyReady(s) ? 'Ready' : 'Not ready'}</span></li>)}</ul>
+              <ul className="tr-list">{stories.map((s) => <li key={s.id}><Link to={`/uplift/hub/stories?s=${s.id}`}>{s.id}</Link> {s.want} <span className={`uh-tag ${isBacklog(s) || storyReady(s) ? 'is-done' : 'is-open'}`}>{isBacklog(s) ? 'Backlog (Phase 2)' : storyReady(s) ? 'Ready' : 'Not ready'}</span></li>)}</ul>
             </section>
             <section>
               <h3>Questions ({qs.filter(OPEN).length} open)</h3>

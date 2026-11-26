@@ -140,7 +140,7 @@ export async function importXlsx(file, columns) {
     const id = String(r[idx.ID] || '').trim();
     if (!id) return;
     const rec = {};
-    editable.forEach((c) => { if (idx[c.header] !== undefined) rec[c.key || c.nkey] = r[idx[c.header]] === null || r[idx[c.header]] === undefined ? '' : String(r[idx[c.header]]); });
+    editable.forEach((c) => { if (idx[c.header] !== undefined) { const v = r[idx[c.header]] === null || r[idx[c.header]] === undefined ? '' : String(r[idx[c.header]]); rec[c.key || c.nkey] = c.norm ? c.norm(v) : v; } });
     if (idx.Deleted !== undefined) rec.deleted = /^(yes|y|true|1|deleted)$/i.test(String(r[idx.Deleted] ?? '').trim());
     out[id] = rec;
   });

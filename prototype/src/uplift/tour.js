@@ -15,7 +15,7 @@ export const NOTES = {
   ],
   record: [
     { key: 'title', title: 'How people get here', legacy: 'Reached from “View camera certification” on the Revenue NSW fines site, or from myPenalty: the same signed link', next: 'Same link, same page, new look. No login.', stories: ['S11', 'S14'], qs: ['U15', 'U29', 'U30', 'U31', 'U14'] },
-    { key: 'offence', title: 'Offence Details', legacy: 'Penalty notice number, Program type, Site, zone or camera number, Site location, Date of offence, Time of offence', next: 'Same fields, same order, plus one new field: Offence type (for example red light offence, speed offence, average speed offence), after Program type. All dynamic. Where offence type comes from is open (U39). No other new fields in phase 1.', stories: ['S11', 'S24'], qs: ['U39', 'U3'] },
+    { key: 'offence', title: 'Offence Details', legacy: 'Penalty notice number, Program type, Site, zone or camera number, Site location, Date of offence, Time of offence', next: 'Same fields, same order, plus one new field: Offence type (for example red light offence, speed offence, average speed offence), after Program type. All dynamic. Where offence type comes from is open (U39). No other new fields in phase 1: Gazette reference, device model, approval scope and inspection details are Backlog (Phase 2).', stories: ['S11', 'S24'], qs: ['U39'] },
     { key: 'cert', title: 'Camera certificate details for this offence', legacy: '“The approved traffic enforcement device used at the location above was tested on [date] and its image capture performance certified.” One certificate, one date.', next: 'One lead-in, then one line per certificate type in force on the offence day, each with its certified and expiry dates (for example average speed: image capture and speed measurement). One template reads right for one type or several, in every copy variant (legacy, A, B, C). A type with none in force gets the missing-certificate warning. The types per program are an app setting, illustrative until the real list arrives (U16, pending).', stories: ['S11', 'S12', 'S23'], qs: ['U5', 'U26', 'U34', 'U16'] },
     { key: 'states', title: 'Missing, withdrawn or fault', legacy: 'Not shown on the legacy page', next: 'A genuinely missing certificate (named by type, while the other types in force are still listed), a withdrawn one and a system fault each get their own message', stories: ['S12', 'S13', 'S23'], qs: ['U22', 'U23', 'U24'] },
     { key: 'requirements', title: 'Enforcement cameras and certification requirements', legacy: 'Explanatory text: four camera categories, how often each is certified, the Road Transport Act 2013, 13 22 13', next: 'Same content by default (static copy); variants to test. Partly covers the BRD’s help text (BR_06).', stories: ['S19', 'S20'], qs: ['U13', 'U34', 'U8', 'U35'] },
@@ -25,8 +25,9 @@ export const NOTES = {
 };
 
 // Dynamic data on the end-user page, with where it comes from, who owns it (owner, 25 Nov 2026) and how it
-// lines up with the BRD. status 'On page': on the legacy page today. 'New': asked for by the BRD, not on the page,
-// owner unknown until CMCS samples arrive (U3). page: where it shows (Record, Search, Both). Shown in the Page content
+// lines up with the BRD. status 'On page': on the legacy page today. 'New': not on the legacy page and built in
+// phase 1 (the Tour marks these in green). 'Backlog': asked for by the BRD (BR_01, BR_02 extras) but NOT in phase 1
+// (owner, 26 Nov 2026): Backlog (Phase 2). page: where it shows (Record, Search, Both). Shown in the Page content
 // tab and outlined by the tour's Highlight dynamic data; every <Dyn> on those pages maps to a row here (audit 26 Nov 2026).
 export const DYNAMIC = [
   { field: 'Penalty notice number', source: 'Signed link: p', owner: 'Revenue NSW / Transport', brd: '—', status: 'On page', page: 'Record' },
@@ -38,12 +39,12 @@ export const DYNAMIC = [
   { field: 'Offence type', source: 'Unknown: CMCS, the offence code on the notice or the notice system (U39); the prototype reads the invented offence record behind the signed link', owner: 'Unknown', brd: '— (owner request)', status: 'New', page: 'Record' },
   { field: 'Certification date (“tested on”)', source: 'Certificate in force at d for site s', owner: 'CMCS / CES (FAES)', brd: 'BR_01 (inspection date; the BRD also wants the time)', status: 'On page', page: 'Record' },
   { field: 'Certificate type, certified and expiry dates: one line per type in force', source: 'CMCS certificate records in force at d for site s; type names from app setting certificate.typesPerProgram (illustrative until U16)', owner: 'CMCS / CES (FAES); Transport (type list)', brd: 'BR_01', status: 'New', page: 'Record' },
-  { field: 'Inspection time', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New', page: 'Record' },
-  { field: 'Device model', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New', page: 'Record' },
-  { field: 'Gazette reference', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New', page: 'Record' },
-  { field: 'Device approval scope (what it is approved for)', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New', page: 'Record' },
-  { field: 'Inspection details (narrative)', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'New', page: 'Record' },
-  { field: 'Inspecting officer’s name and signature (masked)', source: 'Unknown', owner: 'Unknown', brd: 'BR_02', status: 'New', page: 'Record' },
+  { field: 'Inspection time', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'Backlog', page: 'Record' },
+  { field: 'Device model', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'Backlog', page: 'Record' },
+  { field: 'Gazette reference', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'Backlog', page: 'Record' },
+  { field: 'Device approval scope (what it is approved for)', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'Backlog', page: 'Record' },
+  { field: 'Inspection details (narrative)', source: 'Unknown', owner: 'Unknown', brd: 'BR_01', status: 'Backlog', page: 'Record' },
+  { field: 'Inspecting officer’s name and signature (masked)', source: 'Unknown', owner: 'Unknown', brd: 'BR_02', status: 'Backlog', page: 'Record' },
   { field: 'Re-issued marker', source: 'Unknown', owner: 'Unknown', brd: 'BR_09', status: 'New', page: 'Record' },
   { field: 'Offence date inside the certificate sentence (variant A)', source: 'Signed link: d', owner: 'Transport / Revenue NSW', brd: '—', status: 'New', page: 'Record' },
   { field: 'Certificate period and status tag (Current, Expired, Withdrawn, Re-issued, Not yet in force)', source: 'CMCS certificate record; status worked out against today', owner: 'CMCS / CES (FAES)', brd: 'BR_09 (re-issued)', status: 'New', page: 'Both' },

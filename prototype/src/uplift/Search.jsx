@@ -79,7 +79,7 @@ export function Details({ r }) {
       <dt>Status</dt><dd><Dyn src="CMCS: certificate status">{r.status}{r.withdrawn ? `, withdrawn ${r.withdrawn}` : ''}</Dyn></dd>
       {replaced && <><dt>Re-issue of</dt><dd><Dyn src="CMCS: replaced certificate">{replaced.period} certificate {replaced.certified} to {replaced.expiry}, withdrawn {replaced.withdrawn}</Dyn></dd></>}
       {tour && ['Device model', 'Gazette reference', 'Approved for', 'Inspection date and time', 'Inspection details'].map((k) => (
-        <Fragment key={k}><dt className="tr-ghost">{k}</dt><dd className="tr-ghost">BRD BR_01 field, awaiting CMCS sample data (U3)</dd></Fragment>
+        <Fragment key={k}><dt className="tr-ghost">{k}</dt><dd className="tr-ghost">Backlog (Phase 2): BRD BR_01 extra, not in phase 1 (U3)</dd></Fragment>
       ))}
     </dl>
   );

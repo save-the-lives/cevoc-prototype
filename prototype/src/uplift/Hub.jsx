@@ -2,7 +2,7 @@ import '../styles/uplift-hub.css';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
 import {
-  ENTRY_LINK, FIELDS, JOURNEY, LABELS, LABEL_KEYS, OPEN, QUESTIONS, RECORD_SAMPLES, SAMPLES, STATUS, STORIES, qById, recordLink, searchLink, storyReady,
+  ENTRY_LINK, FIELDS, JOURNEY, LABELS, LABEL_KEYS, OPEN, QUESTIONS, RECORD_SAMPLES, SAMPLES, STATUS, STORIES, isBacklog, qById, recordLink, searchLink, storyReady,
 } from './data.js';
 import { HUB_TABS, LabelSwitch, Q } from './kit.jsx';
 import Content from './Content.jsx';
@@ -45,7 +45,8 @@ const Tag = ({ open, children }) => <span className={`uh-tag ${open ? 'is-open' 
 
 function Home() {
   const open = QUESTIONS.filter(OPEN).length;
-  const ready = STORIES.filter(storyReady).length;
+  const ready = STORIES.filter((s) => !isBacklog(s) && storyReady(s)).length;
+  const backlog = STORIES.filter(isBacklog).length;
   return (
     <Shell tab="" title="Certificate uplift hub" lede="Phase 1 uplifts the legacy certificate search (Customer Enquiry and Verification of Certificate) to the NSW Design System, for two kinds of user, neither of whom logs in: a person checking the camera on their notice, and Revenue NSW staff searching many cameras.">
       <div className="uh-grid2">
@@ -57,7 +58,7 @@ function Home() {
           <p>Revenue NSW and Transport users, the CMCS data owner, Legal, and the delivery team.</p>
           <h3>How to read it</h3>
           <p>The screens look exactly as a real user would see them. Press the small <strong>Tour</strong> button (bottom right) on any screen for the reviewer’s overlay: numbered notes on each area with the legacy and new names, its stories and open questions, sample searches and links, the label switch, and on the record page “Highlight dynamic data” and the copy variants. Escape closes it.</p>
-          <p className="uh-meta">{STORIES.length} stories, {ready} ready for dev · {QUESTIONS.length} questions, {open} open</p>
+          <p className="uh-meta">{STORIES.length - backlog} phase 1 stories, {ready} ready for dev, plus {backlog} in Backlog (Phase 2) · {QUESTIONS.length} questions, {open} open</p>
         </section>
         <section className="uh-card">
           <h2>Things to try</h2>

@@ -109,14 +109,14 @@ export default function Content() {
       <Tabs />
 
       <h2 className="uh-h2">Dynamic data, against the BRD</h2>
-      <p>Rows marked <span className="uh-tag is-warn">New</span> are asked for by the BRD but not on the page today; their source and owner are unknown until CMCS sample data arrives (U3).</p>
+      <p>Rows marked <span className="uh-tag is-warn">New</span> are not on the legacy page and are built in phase 1; the Tour marks them. Rows marked <span className="uh-tag">Backlog</span> are extra fields the BRD asks for (BR_01, BR_02) that are <strong>not in phase 1</strong>: Backlog (Phase 2). Offence type is the only new information field in phase 1; where it comes from is open (U39).</p>
       <div className="up-scroll">
         <table className="uh-tbl">
           <thead><tr><th>Field</th><th>Page</th><th>Where it comes from</th><th>Owner of the data</th><th>In the BRD</th><th>Status</th></tr></thead>
           <tbody>{DYNAMIC.map((r) => (
             <tr key={r.field} className={r.status === 'New' ? 'ct-new' : ''}>
               <td><strong>{r.field}</strong></td><td>{r.page}</td><td>{r.source}</td><td>{r.owner}</td><td>{r.brd}</td>
-              <td><span className={`uh-tag ${r.status === 'New' ? 'is-warn' : 'is-done'}`}>{r.status}</span></td>
+              <td><span className={`uh-tag ${r.status === 'New' ? 'is-warn' : r.status === 'Backlog' ? '' : 'is-done'}`}>{r.status}</span></td>
             </tr>
           ))}</tbody>
         </table>
@@ -132,7 +132,7 @@ export default function Content() {
           <tbody>{STATIC.map((r) => (
             <tr key={r.block} className={r.status === 'New' ? 'ct-new' : ''}>
               <td><strong>{r.block}</strong></td><td>{r.what}</td><td>{r.brd}</td>
-              <td><span className={`uh-tag ${r.status === 'New' ? 'is-warn' : 'is-done'}`}>{r.status}</span></td>
+              <td><span className={`uh-tag ${r.status === 'New' ? 'is-warn' : r.status === 'Backlog' ? '' : 'is-done'}`}>{r.status}</span></td>
             </tr>
           ))}</tbody>
         </table>

@@ -110,6 +110,17 @@ const sydToday = () => new Date().toLocaleDateString('en-AU', { timeZone: 'Austr
       for (const o of D.OFFENCES) { const p = await page(signed(o)); const dts = await p.$$eval('.cd-dl dt', (xs) => xs.map((x) => x.innerText.trim())); const t = await txt(p, 'main');
         if (dts.join('|') !== want.join('|')) bad.push(`${o.p}: ${dts}`); if (/Gazette|Device model|Approved for|Approval scope|Inspection (date|time|details)/i.test(t)) bad.push(`${o.p}: a Phase 2 field is shown`); }
       must(!bad.length, bad.join(' | ')); },
+    // X15: the phase 1 scope shows in the hub, and in the Excel export (a Phase column for stories and questions).
+    'hub.phase-scope': async () => {
+      const { readSheet } = await import('read-excel-file/node');
+      const p = await page('#/uplift/hub/stories');
+      must(/Backlog \(Phase 2\)/.test(await txt(p, 'article#S10')) && !/Backlog \(Phase 2\)/.test(await txt(p, 'article#S24')), 'S10 should be Backlog and S24 phase 1');
+      await p.selectOption('label:has-text("Phase") select', 'Backlog (Phase 2)'); await p.waitForTimeout(200); must(await p.locator('article.uh-st').count() >= 1 && (await p.$$eval('article.uh-st', (xs) => xs.map((x) => x.id))).every((id) => D.STORIES.find((s) => s.id === id).phase === 'Backlog (Phase 2)'), 'phase filter');
+      const sheet = async (route) => { const q = await page(route); const [dl] = await Promise.all([q.waitForEvent('download'), q.click('button:has-text("Export to Excel")')]); const f = await dl.path(); return readSheet(f); };
+      const st = await sheet('#/uplift/hub/stories'); const ci = st[0].indexOf('Phase'); must(ci >= 0, 'stories export has no Phase column'); const row = (id) => st.find((r) => r[st[0].indexOf('ID')] === id);
+      must(row('S10')[ci] === 'Backlog (Phase 2)' && row('S24')[ci] === 'Phase 1', 'stories export phases');
+      const qs = await sheet('#/uplift/hub/questions'); const qi = qs[0].indexOf('Phase'); must(qi >= 0 && qs.slice(1).every((r) => r[qi] === 'Phase 1' || r[qi] === 'Backlog (Phase 2)'), 'questions export Phase column');
+    },
     'record.fault': async () => { const p = await page(rec('System fault')); must(/problem with our system/.test(await txt(p, '[role=alert]')) && await p.locator('button:has-text("Try again")').count() === 1, 'fault alert with Try again'); },
     'record.bad-link': async () => { const p = await page('#/uplift/record?loc=0000&at=99/99/2026'); must(/couldn’t open the certificate details from this link/.test(await txt(p, 'main')) && /13 22 13/.test(await txt(p, 'main')), 'bad link message'); },
     'search.error-summary': async () => { const p = await page('#/uplift'); await p.fill('#dr-from', ''); await p.click('button[type=submit]'); await p.waitForTimeout(200); const links = await p.$$eval('.pub-errsum a', (as) => as.map((a) => a.getAttribute('href'))); must(links.includes('#uh-loc') && links.includes('#dr-from'), `summary links ${links}`); must(await p.locator('.uh-results').count() === 0, 'search ran'); },
