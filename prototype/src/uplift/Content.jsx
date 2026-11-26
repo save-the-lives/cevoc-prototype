@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link } from '../shared/ui.jsx';
-import { ENTRY_LINK, OFFENCES, locByCode } from './data.js';
-import { COPY, COPY_KEYS, DISCLAIMER, DYNAMIC, GIPA_URL, STATIC } from './tour.js';
+import { ENTRY_LINK, OFFENCES, certificatesAt, locByCode, parseDay, typeOf } from './data.js';
+import { COPY, COPY_KEYS, DISCLAIMER, DYNAMIC, GIPA_URL, STATIC, certLead, fillTemplate } from './tour.js';
 
 // Hub page: the end-user certificate page as it will look for a real offence (invented values), one tab per copy
 // variant, with dynamic data and static copy colour-coded; then the dynamic data lined up with the BRD (new items
@@ -9,15 +9,24 @@ import { COPY, COPY_KEYS, DISCLAIMER, DYNAMIC, GIPA_URL, STATIC } from './tour.j
 
 const O = OFFENCES[0];
 const LOC = locByCode(O.s);
-const CERT_DATE = '2 March 2026';
+const long = (d) => parseDay(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+// Sample certificate sets for the preview (invented): one type, and several types, in force on the offence day.
+const SAMPLE_SETS = {
+  several: { label: 'Several types', site: '1234', at: '14/03/2026' },
+  one: { label: 'One type', site: '1234', at: '05/09/2025' },
+};
 
 const D = ({ src, children }) => <span className="ct-dyn" data-src={src}>{children}<span className="ct-src">{src}</span></span>;
 const S = ({ children, as: Tag = 'span', ...rest }) => <Tag className="ct-static" {...rest}>{children}</Tag>;
 
-function Preview({ k, colours }) {
+function Preview({ k, colours, set }) {
   const C = COPY[k];
-  const sentence = C.cert('\u0000', '14 March 2026');
-  const [a, b] = sentence.split('\u0000');
+  const sample = SAMPLE_SETS[set];
+  const site = locByCode(sample.site);
+  const { present } = certificatesAt(sample.site, parseDay(sample.at));
+  const SRC = { type: 'CMCS · app setting certificate.typesPerProgram', certified: 'CMCS / CES (FAES)', expiry: 'CMCS / CES (FAES)', offenceDate: 'Signed link d · Transport / Revenue NSW' };
+  // Static words and dynamic values side by side, so each gets its own colour.
+  const fill = (tpl, vals) => fillTemplate(tpl, vals, (name, value, i) => (value ? <D key={i} src={SRC[name]}>{value}</D> : '')).map((part, i) => (typeof part === 'string' ? (part ? <S key={`s${i}`}>{part}</S> : null) : part));
   return (
     <div className={`ct-page${colours ? ' is-coloured' : ''}`}>
       <div className="ct-mast">A NSW Government website</div>
@@ -35,7 +44,11 @@ function Preview({ k, colours }) {
           <dt><S>Time of offence</S></dt><dd><D src="Signed link d · Transport">08:30</D></dd>
         </dl>
         <h4><S>Camera certificate details for this offence</S></h4>
-        <p className="ct-lead"><S>{a}</S><D src="CMCS / CES (FAES)">{CERT_DATE}</D><S>{b}</S></p>
+        <div className="ct-lead">
+          <p>{fill(certLead(C, present.length), { offenceDate: long(sample.at) })}</p>
+          <ul className="ct-certs">{present.map((x) => <li key={x.id}>{fill(C.cert.line, { type: typeOf(site.program, x.kind).label, certified: long(x.certified), expiry: long(x.expiry) })}</li>)}</ul>
+          {C.cert.tail && <p><S>{C.cert.tail}</S></p>}
+        </div>
         <h4><S>Enforcement cameras and certification requirements</S></h4>
         {C.req.map((p) => <p key={p}><S>{p}</S></p>)}
         <p className="ct-disc"><span className="ct-proposed">Proposed legal text (U8)</span> <S>{DISCLAIMER.before}<a href={GIPA_URL} target="_blank" rel="noreferrer">{DISCLAIMER.link}</a>{DISCLAIMER.after}</S></p>
@@ -48,6 +61,7 @@ function Preview({ k, colours }) {
 function Tabs() {
   const [tab, setTab] = useState('legacy');
   const [colours, setColours] = useState(true);
+  const [set, setSet] = useState('several');
   const refs = useRef({});
   const key = (e, i) => {
     const n = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? COPY_KEYS.length - 1 : null;
@@ -67,6 +81,9 @@ function Tabs() {
           ))}
         </div>
         <label className="ct-toggle"><input type="checkbox" checked={colours} onChange={(e) => setColours(e.target.checked)} /> Colour dynamic and static</label>
+        <fieldset className="ct-toggle ct-set"><legend className="up-sr">Certificate types in force</legend>
+          {Object.entries(SAMPLE_SETS).map(([v, x]) => <label key={v}><input type="radio" name="ct-set" checked={set === v} onChange={() => setSet(v)} /> {x.label}</label>)}
+        </fieldset>
       </div>
       {COPY_KEYS.map((k) => (
         <div key={k} role="tabpanel" id={`ct-panel-${k}`} aria-labelledby={`ct-tab-${k}`} hidden={tab !== k}>
@@ -77,7 +94,7 @@ function Tabs() {
               <span className="ct-sw ct-sw--static" /> Static copy, from the configurable template
             </p>
           )}
-          <Preview k={k} colours={colours} />
+          <Preview k={k} colours={colours} set={set} />
         </div>
       ))}
     </section>

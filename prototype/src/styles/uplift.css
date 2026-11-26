@@ -173,6 +173,8 @@ body.tr-dyn .tr-dynv::after { content: attr(data-dyn); position: absolute; left:
 .cd-dl dt { color: #495054; }
 .cd-dl dd { margin: 0; font-weight: 700; }
 .cd-lead { font-size: 18px; margin: 0; padding: 16px 20px; border-left: 6px solid #002664; background: #eef3fb; border-radius: 0 6px 6px 0; line-height: 1.6; }
+.cd-lead p { margin: 0; } .cd-lead p + p, .cd-lead ul + p { margin-top: 10px; }
+.cd-certs { margin: 10px 0 0; padding-left: 22px; } .cd-certs li { margin: 4px 0; }
 .cd-states { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 .cd-states:empty { display: none; }
 .cd-req p { max-width: 72ch; margin: 0 0 12px; }

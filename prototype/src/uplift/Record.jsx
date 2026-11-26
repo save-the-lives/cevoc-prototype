@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Button, Callout, Header, HeaderBrand, Masthead } from '@nswds/ui';
 import {
-  CERTIFICATES, COUNTS, SOURCES, FAULT_CODES, OFFENCES, RECORD_SAMPLES, certificatesAt, fmtDay, locByCode, offenceFromLink, parseDay, recordLink, signedLink,
+  CERTIFICATES, SOURCES, FAULT_CODES, OFFENCES, RECORD_SAMPLES, certificatesAt, fmtDay, locByCode, offenceFromLink, parseDay, recordLink, signedLink, typeOf,
 } from './data.js';
-import { COPY, DISCLAIMER, GIPA_URL } from './tour.js';
+import { COPY, DISCLAIMER, GIPA_URL, certLead, fillTemplate } from './tour.js';
 import TourLayer, { useTour } from './Tour.jsx';
 import { StatusTag, SupportBar } from './Search.jsx';
 import { go } from '../lib/router.js';
@@ -57,8 +57,11 @@ export default function Record({ query = {} }) {
     );
   } else {
     const day = one ? parseDay(one.certified) : when.day;
-    const { inForce, withdrawn, missing } = one ? { inForce: [one], withdrawn: [], missing: [] } : certificatesAt(code, day);
-    const tested = inForce.filter(COUNTS).map((x) => parseDay(x.certified)).sort((a, b) => b - a)[0];
+    // Section 3 lists every certificate type in force on the offence day (one line each); a type with none in force
+    // gets the missing-certificate warning. The types per program are an app setting (U16, ADR-001).
+    const { inForce, withdrawn, missing, present } = one ? { inForce: [one], withdrawn: [], missing: [], present: [one] } : certificatesAt(code, day);
+    const offenceDay = one ? null : when.day;
+    const label = (x) => typeOf(loc.program, x.kind).label;
     body = (
       <>
         <section className="cd-sec" data-tour="offence" aria-labelledby="cd-off">
@@ -75,17 +78,25 @@ export default function Record({ query = {} }) {
 
         <section className="cd-sec" data-tour="cert" aria-labelledby="cd-cert">
           <h2 id="cd-cert">Camera certificate details for this offence</h2>
-          {tested && <p className="cd-lead">{renderCert(C, tested, one ? null : when.day)}</p>}
-          {(inForce.length + withdrawn.length) > 0 && <p className="cd-status">Certificate status: {[...inForce, ...withdrawn].map((r) => <span key={r.id} className="cd-status__i"><Dyn src="CMCS: certificate period">{r.period.toLowerCase()}</Dyn> <Dyn src="CMCS: certificate status today"><StatusTag r={r} /></Dyn></span>)}</p>}
+          {present.length > 0 && (
+            <div className="cd-lead" data-testid="cert-lines">
+              <p>{renderTemplate(certLead(C, present.length, !!offenceDay), { offenceDate: offenceDay && longDay(offenceDay) })}</p>
+              <ul className="cd-certs">
+                {present.map((x) => <li key={x.id}>{renderTemplate(C.cert.line, { type: label(x), certified: longDay(parseDay(x.certified)), expiry: longDay(parseDay(x.expiry)) })}</li>)}
+              </ul>
+              {C.cert.tail && <p>{C.cert.tail}</p>}
+            </div>
+          )}
+          {(present.length + withdrawn.length) > 0 && <p className="cd-status">Certificate status: {[...present, ...withdrawn].map((r) => <span key={r.id} className="cd-status__i"><Dyn src="CMCS: certificate type">{label(r)}</Dyn>&nbsp;<Dyn src="CMCS: certificate status today"><StatusTag r={r} /></Dyn></span>)}</p>}
           <div data-tour="states" className="cd-states">
             {missing.length > 0 && (
-              <Callout status="warning" title={<>No <Dyn src="CMCS: missing certificate period">{missing.map((m) => m.toLowerCase()).join(' or ')}</Dyn> certificate was in force on <Dyn src="Signed link: d">{fmtDay(day)}</Dyn></>}>
-                <p>Our records show a gap in certification for this camera on that day. This is not a system problem. If this affects your decision, call 13 22 13 before you choose what to do.</p>
+              <Callout status="warning" title={<>No <Dyn src="CMCS: missing certificate type">{missing.map((m) => m.toLowerCase()).join(' or ')}</Dyn> certificate was in force on <Dyn src="Signed link: d">{fmtDay(day)}</Dyn></>}>
+                <p>Our records show a gap in certification for this camera on that day{present.length > 0 ? `, for the certificate ${missing.length > 1 ? 'types' : 'type'} named above. The certificates listed above were in force` : ''}. This is not a system problem. If this affects your decision, call 13 22 13 before you choose what to do.</p>
               </Callout>
             )}
             {withdrawn.length > 0 && (
               <Callout status="info" title="A certificate covering this day was withdrawn">
-                <p>The <Dyn src="CMCS: certificate period">{withdrawn.map((w) => w.period.toLowerCase()).join(' and ')}</Dyn> certificate certified on <Dyn src="CMCS: certification date">{withdrawn.map((w) => w.certified).join(', ')}</Dyn> was withdrawn on <Dyn src="CMCS: withdrawal date">{withdrawn.map((w) => w.withdrawn).join(', ')}</Dyn> and does not count.</p>
+                <p>The <Dyn src="CMCS: certificate type">{withdrawn.map((w) => label(w).toLowerCase()).join(' and ')}</Dyn> certificate certified on <Dyn src="CMCS: certification date">{withdrawn.map((w) => w.certified).join(', ')}</Dyn> was withdrawn on <Dyn src="CMCS: withdrawal date">{withdrawn.map((w) => w.withdrawn).join(', ')}</Dyn> and does not count.</p>
               </Callout>
             )}
           </div>
@@ -128,11 +139,13 @@ export default function Record({ query = {} }) {
   );
 }
 
-function renderCert(C, tested, offenceDay) {
-  const t = longDay(tested);
-  // Both values (certification date, and the offence date in variant A) are marked, whatever the wording.
-  const text = C.cert('\u0000', offenceDay ? '\u0001' : null);
-  return text.split(/(\u0000|\u0001)/).map((part, i) => (
-    part === '\u0000' ? <Dyn key={i} src="CMCS / CES (FAES): certification date">{t}</Dyn>
-      : part === '\u0001' ? <Dyn key={i} src="Signed link: d">{longDay(offenceDay)}</Dyn> : part));
+// Fills a copy variant's template (lead-in or line) and marks each value as dynamic data, whatever the wording.
+const DYN_SRC = {
+  type: 'CMCS: certificate type (names from app setting certificate.typesPerProgram)',
+  certified: 'CMCS / CES (FAES): certification date',
+  expiry: 'CMCS / CES (FAES): expiry date',
+  offenceDate: 'Signed link: d',
+};
+function renderTemplate(tpl, vals) {
+  return fillTemplate(tpl, vals, (name, value, key) => (value === null || value === undefined || value === false ? '' : <Dyn key={key} src={DYN_SRC[name]}>{value}</Dyn>));
 }

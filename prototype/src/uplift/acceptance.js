@@ -41,12 +41,15 @@ export const AC_CHECKS = {
   'S22.1': 'record.return-link',
   'S22.2': 'record.close-tab',
   'S22.3': 'record.tampered-source',
+  'S23.1': 'record.copy-variants-cert-types',
+  'S23.2': 'record.copy-variants-cert-types',
+  'S23.3': 'record.cert-type-gap',
 };
 
 // BRD reference per criterion, where it differs from (or narrows) the story's own BRD list.
 export const AC_BRD = {
   'S10.1': 'BR_01, BR_02', 'S11.2': 'BR_03', 'S9.1': 'BR_09', 'S9.2': 'BR_09', 'S15.1': 'BR_04, BR_07', 'S15.2': 'BR_04, BR_07',
-  'S20.1': 'BR_05, BR_06, BR_08',
+  'S20.1': 'BR_05, BR_06, BR_08', 'S23.1': 'BR_01', 'S23.2': 'BR_01', 'S23.3': 'BR_01',
 };
 
 // Cross-cutting criteria: apply to every story and every screen.

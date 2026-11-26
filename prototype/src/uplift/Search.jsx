@@ -6,7 +6,7 @@ import {
 } from '@nswds/ui';
 import { go } from '../lib/router.js';
 import DateRange from './DateRange.jsx';
-import { APP_SETTINGS, CERTIFICATES, FAULT_CODES, lifecycle, LOCATIONS, SAMPLES, fmtDay, locByCode, locLabel, parseDay, searchCertificates } from './data.js';
+import { APP_SETTINGS, CERTIFICATES, FAULT_CODES, lifecycle, LOCATIONS, SAMPLES, fmtDay, locByCode, locLabel, parseDay, searchCertificates, typeOf } from './data.js';
 import { Dyn, useLabels } from './kit.jsx';
 import TourLayer, { useTour } from './Tour.jsx';
 
@@ -75,6 +75,7 @@ export function Details({ r }) {
   return (
     <dl className="uh-dl">
       <dt>Location</dt><dd><Dyn src="CMCS site record">{locByCode(r.loc)?.address} ({r.loc})</Dyn></dd>
+      <dt>Certificate type</dt><dd><Dyn src="CMCS: certificate type (names from app setting certificate.typesPerProgram)">{typeOf(locByCode(r.loc)?.program, r.kind).label}</Dyn></dd>
       <dt>Status</dt><dd><Dyn src="CMCS: certificate status">{r.status}{r.withdrawn ? `, withdrawn ${r.withdrawn}` : ''}</Dyn></dd>
       {replaced && <><dt>Re-issue of</dt><dd><Dyn src="CMCS: replaced certificate">{replaced.period} certificate {replaced.certified} to {replaced.expiry}, withdrawn {replaced.withdrawn}</Dyn></dd></>}
       {tour && ['Device model', 'Gazette reference', 'Approved for', 'Inspection date and time', 'Inspection details'].map((k) => (
@@ -206,7 +207,7 @@ export default function Search({ query = {} }) {
 
             {!res.fault && res.gaps.length > 0 && (
               <Callout status="warning" title={`Missing certificate${res.gaps.length > 1 ? 's' : ''}: no certificate was in force on some days`}>
-                <ul className="uh-gaps">{res.gaps.map((g) => <li key={`${g.code}${g.cycle}${g.from}`}>Location <Dyn src="CMCS site record">{g.code}</Dyn>: no <Dyn src="CMCS: missing certificate period">{g.cycle.toLowerCase()}</Dyn> certificate from <Dyn src="CMCS: gap start">{fmtDay(g.from)}</Dyn> to <Dyn src="CMCS: gap end">{fmtDay(g.to)}</Dyn>.</li>)}</ul>
+                <ul className="uh-gaps">{res.gaps.map((g) => <li key={`${g.code}${g.kind}${g.from}`}>Location <Dyn src="CMCS site record">{g.code}</Dyn>: no <Dyn src="CMCS: missing certificate type and cycle">{`${g.cycle ? `${g.cycle.toLowerCase()} ` : ''}${g.label.toLowerCase()}`}</Dyn> certificate from <Dyn src="CMCS: gap start">{fmtDay(g.from)}</Dyn> to <Dyn src="CMCS: gap end">{fmtDay(g.to)}</Dyn>.</li>)}</ul>
                 <p className="uh-meta">This is a genuine gap in the records, not a search or system problem.</p>
               </Callout>
             )}

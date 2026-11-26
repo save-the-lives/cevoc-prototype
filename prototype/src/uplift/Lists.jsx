@@ -21,8 +21,8 @@ const split = (v) => (Array.isArray(v) ? v : String(v || '').split(/[,;]+|\s+(?=
 const uniq = (xs) => [...new Set(xs.filter(Boolean))].sort();
 
 // Published baselines and templates for new items (shared by all three pages, so links stay consistent).
-const STORY_BASE = STORIES.map((s) => ({ ...s, comment: '', tags: '' }));
-const Q_BASE = QUESTIONS.map((x) => ({ ...x, answer: '', tags: '', priority: x.priority || '' }));
+const STORY_BASE = STORIES.map((s) => ({ ...s, comment: '', tags: s.tags || '' }));
+const Q_BASE = QUESTIONS.map((x) => ({ ...x, answer: '', tags: x.tags || '', priority: x.priority || '' }));
 const ADR_BASE = ADRS.map((a) => ({ ...a, notes: '', tags: '' }));
 const STORY_NEW = { role: '', want: '', so: '', screen: 'search', acText: '', qs: [], priority: 'Medium', user: USERS[0], path: PATHS[0], brd: [], tags: '', comment: '' };
 const Q_NEW = { topic: '', q: '', why: '', assume: '', who: '', action: '', at: [], status: 'Assumption to validate', priority: '', tags: '', answer: '', noStoryReason: '' };
