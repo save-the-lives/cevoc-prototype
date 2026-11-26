@@ -111,9 +111,18 @@ const sydToday = () => new Date().toLocaleDateString('en-AU', { timeZone: 'Austr
         if (dts.join('|') !== want.join('|')) bad.push(`${o.p}: ${dts}`); if (/Gazette|Device model|Approved for|Approval scope|Inspection (date|time|details)/i.test(t)) bad.push(`${o.p}: a Phase 2 field is shown`); }
       must(!bad.length, bad.join(' | ')); },
     // X15: the phase 1 scope shows in the hub, and in the Excel export (a Phase column for stories and questions).
+    // X17: Revenue NSW officer stories are hidden by default, with a caveat, and can be shown.
+    'hub.revnsw-hidden': async () => {
+      const p = await page('#/uplift/hub/stories'); const ids = await p.$$eval('article.uh-st', (xs) => xs.map((x) => x.id));
+      const rev = D.STORIES.filter((s) => s.user === 'Revenue NSW officer').map((s) => s.id);
+      must(rev.length && ids.length && !ids.some((id) => rev.includes(id)), 'Revenue NSW stories listed by default');
+      must(/likely to be de-scoped/.test(await txt(p, 'main')), 'caveat missing');
+      await p.click('button:has-text("Show Revenue NSW stories")'); await p.waitForTimeout(200);
+      must(await p.locator('article#S3').count() === 1 && /Pending Revenue NSW confirmation/.test(await txt(p, 'article#S3')), 'Revenue NSW stories not shown on request');
+    },
     'hub.phase-scope': async () => {
       const { readSheet } = await import('read-excel-file/node');
-      const p = await page('#/uplift/hub/stories');
+      const p = await page('#/uplift/hub/stories?all=1');
       must(/Backlog \(Phase 2\)/.test(await txt(p, 'article#S10')) && !/Backlog \(Phase 2\)/.test(await txt(p, 'article#S24')), 'S10 should be Backlog and S24 phase 1');
       await p.selectOption('label:has-text("Phase") select', 'Backlog (Phase 2)'); await p.waitForTimeout(200); must(await p.locator('article.uh-st').count() >= 1 && (await p.$$eval('article.uh-st', (xs) => xs.map((x) => x.id))).every((id) => D.STORIES.find((s) => s.id === id).phase === 'Backlog (Phase 2)'), 'phase filter');
       const sheet = async (route) => { const q = await page(route); const [dl] = await Promise.all([q.waitForEvent('download'), q.click('button:has-text("Export to Excel")')]); const f = await dl.path(); return readSheet(f); };

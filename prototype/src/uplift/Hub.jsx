@@ -54,6 +54,7 @@ function Home() {
           <h2>Start here</h2>
           <h3>What this is</h3>
           <p>A clickable mock-up with invented data. It keeps every function of the legacy page and changes how it looks and works: several locations at once, a day range in one calendar, rows that expand in place, and clear messages when a certificate is missing or the system fails.</p>
+          <p className="uh-meta"><strong>Caveat (27 Nov 2026):</strong> the Revenue NSW staff search page may be little used. Its stories (user “Revenue NSW officer”) are hidden by default on the Stories tab and are likely to be de-scoped, pending confirmation from Revenue NSW.</p>
           <h3>Who it is for</h3>
           <p>Revenue NSW and Transport users, the CMCS data owner, Legal, and the delivery team.</p>
           <h3>How to read it</h3>
@@ -72,8 +73,8 @@ function Home() {
       </div>
       <h2 className="uh-h2">Key screens: drive the demo and gather requirements here</h2>
       <div className="uh-tiles uh-tiles--key">
-        <Link to="/uplift" className="uh-tile"><h3>Certificate search (Revenue NSW staff)</h3><p>Several locations by code or address, day range, sortable results that expand in place, gap and fault messages.</p></Link>
         <Link to={ENTRY_LINK} className="uh-tile"><h3>Certificate details (person with a fine)</h3><p>The legacy end-user page, lifted and shifted. Reached from the same signed link in the Service NSW path and myPenalty.</p></Link>
+        <Link to="/uplift" className="uh-tile"><h3>Certificate search (Revenue NSW staff)</h3><p>Several locations by code or address, day range, sortable results that expand in place, gap and fault messages.</p><p><strong>Pending Revenue NSW confirmation:</strong> this page appears to get few hits, so its stories are likely to be de-scoped.</p></Link>
       </div>
       <h2 className="uh-h2">Companion layer</h2>
       <div className="uh-tiles">

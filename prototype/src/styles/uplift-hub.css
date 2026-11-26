@@ -280,3 +280,5 @@
 .fd-new td:first-child { box-shadow: inset 4px 0 0 #0a6b34; } .fd-new td { background: #f0fdf4; }
 .fd-backlog td { color: #52525b; background: #f4f4f5; } .fd-backlog td:first-child { box-shadow: inset 4px 0 0 #a1a1aa; }
 .fd-count { margin: 8px 0 0; }
+.ls-revnsw { background: #fff4ce; border-left: 4px solid #b68d00; padding: 8px 12px; color: #232d3d; }
+.ls-linkbtn { background: none; border: 0; padding: 0; margin-left: 4px; color: #002664; text-decoration: underline; cursor: pointer; font: inherit; }

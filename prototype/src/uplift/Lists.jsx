@@ -35,6 +35,11 @@ const acBrd = (s, n) => AC_BRD[`${s.id}.${n}`] || split(s.brd).join(', ') || '�
 // Phase (owner, 26 Nov 2026): an imported or typed value is mapped to one of the two phases.
 const normPhase = (v) => (/backlog|phase\s*2|\b2\b/i.test(String(v)) ? PHASES[1] : PHASES[0]);
 const PhaseChip = ({ x }) => <span className={`ls-chip ${isBacklog(x) ? 'is-backlog' : 'is-phase1'}`}>{isBacklog(x) ? 'Backlog (Phase 2): not in phase 1' : 'Phase 1'}</span>;
+// Revenue NSW officer stories (owner, 27 Nov 2026): the page Revenue NSW staff are meant to use may get few or no hits, so these
+// stories are likely to be de-scoped pending Revenue NSW's confirmation. Hidden by default (an editable JQL query), shown on request.
+export const REVNSW_USER = 'Revenue NSW officer';
+const REVNSW_Q = `user != "${REVNSW_USER}"`;
+const REVNSW_NOTE = 'Pending Revenue NSW confirmation: likely to be de-scoped';
 const coverage = (s) => { const n = acOf(s).length; const k = acOf(s).filter((_, i) => checkFor(s.id, i + 1)).length; return { n, k }; };
 
 // Definition of Done and cross-cutting criteria, shown above the stories (owner, 26 Nov 2026).
@@ -301,7 +306,7 @@ const scrollTo = (id) => setTimeout(() => document.getElementById(id)?.scrollInt
 export function StoriesPage({ query = {} }) {
   const all = useAll();
   const st = all.stories;
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(query.s || query.all ? '' : REVNSW_Q);
   const [f, setF] = useState({ user: '', path: '', screen: query.screen || '', ready: '', brd: '', priority: '', phase: '' });
   const [sort, setSort] = useState({ k: 'id', dir: 1 });
   const [editing, setEditing] = useState(query.s && query.edit ? query.s : null);
@@ -365,6 +370,7 @@ export function StoriesPage({ query = {} }) {
         <span className="ls-sortby">Sort: {sortBtn('id', 'ID')} {sortBtn('user', 'User')} {sortBtn('path', 'Path')} {sortBtn('ready', 'Ready')} {sortBtn('priority', 'Priority')}</span>
       </div>
       <DoneAndCross />
+      <p className="ls-meta ls-revnsw" role="note"><strong>Revenue NSW stories are hidden by default.</strong> The page Revenue NSW staff are meant to use appears to get few hits, so these {st.items.filter((s) => s.user === REVNSW_USER).length} stories are likely to be de-scoped, pending confirmation from Revenue NSW. {q === REVNSW_Q ? <button type="button" className="ls-linkbtn" onClick={() => setQ('')}>Show Revenue NSW stories</button> : <button type="button" className="ls-linkbtn" onClick={() => setQ(REVNSW_Q)}>Hide them again</button>}</p>
       <p className="ls-meta">{rows.length} of {st.items.length} stories ({st.items.filter((s) => !isBacklog(s)).length} in phase 1, {st.items.filter(isBacklog).length} in Backlog{st.items.some(isBacklog) ? `: ${st.items.filter(isBacklog).map((s) => s.id).join(', ')}` : ''}) · phase 1 acceptance criteria automated: {st.items.filter((s) => !isBacklog(s)).reduce((n, s) => n + coverage(s).k, 0)} of {st.items.filter((s) => !isBacklog(s)).reduce((n, s) => n + coverage(s).n, 0)} · phase 1 stories fully covered: {st.items.filter((s) => { const c = coverage(s); return !isBacklog(s) && c.n && c.k === c.n; }).length} · BRD requirements with no phase 1 story: {BRDS.filter((b) => !st.items.some((s) => !isBacklog(s) && split(s.brd).includes(b))).join(', ') || 'none'}</p>
       {rows.map((s) => {
         const adrs = all.adrsFor('stories', s.id);
@@ -374,7 +380,7 @@ export function StoriesPage({ query = {} }) {
             <p className="uh-st__h">
               <strong>{s.id}</strong> <PhaseChip x={s} /> {isBacklog(s) ? <Tag open={false}>Backlog</Tag> : <Tag open={!ready(s)}>{ready(s) ? 'Ready for dev' : 'Not ready'}</Tag>}
               {(() => { const c = coverage(s); return <span className={`ls-chip ${c.n && c.k === c.n ? 'is-auto' : 'is-manual'}`}>{c.n && c.k === c.n ? 'Covered' : c.k ? 'Partly covered' : 'Not covered'}: {c.k} of {c.n} automated</span>; })()}
-              {s.priority && <span className={`ls-chip is-prio is-${String(s.priority).toLowerCase()}`}>{s.priority} priority</span>}{s.user && <span className="ls-chip is-user">{s.user}</span>}{s.path && <span className={`ls-chip is-path is-${String(s.path).split(' ')[0]}`}>{s.path}</span>}
+              {s.priority && <span className={`ls-chip is-prio is-${String(s.priority).toLowerCase()}`}>{s.priority} priority</span>}{s.user && <span className="ls-chip is-user">{s.user}</span>}{s.user === REVNSW_USER && <span className="ls-chip is-manual">{REVNSW_NOTE}</span>}{s.path && <span className={`ls-chip is-path is-${String(s.path).split(' ')[0]}`}>{s.path}</span>}
               {split(s.brd).map((b) => <span key={b} className="ls-chip is-brd">{b}</span>)}
               <Tags tags={s.tags} />
               <span className="uh-meta">{s.screen === 'search' ? 'Search screen' : s.screen === 'record' ? 'Record screen' : 'API'}</span>
