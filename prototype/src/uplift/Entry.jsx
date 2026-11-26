@@ -26,7 +26,7 @@ const Cevoc = () => (
     <Bar kind="cevoc">Customer Enquiry and Verification of Certificate</Bar>
     <div className="en-body">
       <strong>Offence details</strong>
-      <small>Penalty notice {F.p} · {F.program} · Site {F.s} · {WHERE} · {WHEN}</small>
+      <small>Penalty notice {F.p} · {F.program} · {F.offenceType} · Site {F.s} · {WHERE} · {WHEN}</small>
       <strong>Camera certificate details for this offence</strong>
       <small>Tested on [date] and its image capture performance certified.</small>
       <Link to={ENTRY_LINK} className="en-go">Open the uplifted page ↗</Link>

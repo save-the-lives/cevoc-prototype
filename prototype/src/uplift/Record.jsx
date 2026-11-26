@@ -28,6 +28,7 @@ export default function Record({ query = {} }) {
   const C = COPY[copy] || COPY.legacy;
   const [busy, setBusy] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [closedMsg, setClosedMsg] = useState(false);
   useEffect(() => { document.title = 'Certificate details | Customer Enquiry and Verification of Certificate'; }, []);
 
   // Resolve the link: signed (p d s i m) or the older loc + at.
@@ -123,7 +124,7 @@ export default function Record({ query = {} }) {
         <div className="uh-actions" data-tour="close">
           {off && query.r && SOURCES[query.r]
             ? <a className="cd-return" href={SOURCES[query.r].url} target="_blank" rel="noreferrer"><span>Return to <Dyn isNew src="Signed link: r, app setting record.returnLinks">{SOURCES[query.r].name}</Dyn></span></a>
-            : <p className="cd-closetab">You can close this tab.</p>}
+            : <><button type="button" className="cd-close" onClick={() => { window.close(); setClosedMsg(true); }}>Close</button>{closedMsg && <p className="cd-closetab">You can close this tab.</p>}</>}
         </div>
       </main>
       <TourLayer screen="record" controls={(

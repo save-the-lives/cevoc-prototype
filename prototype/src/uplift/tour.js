@@ -20,7 +20,7 @@ export const NOTES = {
     { key: 'states', title: 'Missing, withdrawn or fault', legacy: 'Not shown on the legacy page', next: 'A genuinely missing certificate (named by type, while the other types in force are still listed), a withdrawn one and a system fault each get their own message', isNew: 'The type, dates and status values in these messages.', stories: ['S12', 'S13', 'S23'], qs: ['U22', 'U23', 'U24'] },
     { key: 'requirements', title: 'Enforcement cameras and certification requirements', legacy: 'Explanatory text: four camera categories, how often each is certified, the Road Transport Act 2013, 13 22 13', next: 'Same content by default (static copy); variants to test. Partly covers the BRD’s help text (BR_06).', stories: ['S19', 'S20'], qs: ['U13', 'U34', 'U8', 'U35'] },
     { key: 'disclaimer', title: 'Legal disclaimer (proposed)', legacy: 'None on the legacy page', next: 'Proposed GIPA notice with a link to Transport’s access application page; from the template; Legal to confirm', stories: ['S20'], qs: ['U8'] },
-    { key: 'close', title: 'Close / return', legacy: 'CLOSE button', next: 'Proposed: “Return to <source>” from the signed link’s source (app setting record.returnLinks); otherwise “You can close this tab”', stories: ['S22', 'S18'], qs: ['U9'], isNew: 'The “Return to <source>” link.' },
+    { key: 'close', title: 'Close / return', legacy: 'CLOSE button', next: 'Proposed: “Return to <source>” from the signed link’s source (app setting record.returnLinks); otherwise a Close button that closes the tab (if the browser refuses: “You can close this tab”)', stories: ['S22', 'S18'], qs: ['U9'], isNew: 'The “Return to <source>” link.' },
   ],
 };
 

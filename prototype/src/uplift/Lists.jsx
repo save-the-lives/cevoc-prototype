@@ -492,7 +492,7 @@ export function QuestionsPage({ query = {} }) {
               <Fragment key={x.id}>
                 <tr id={`q-${x.id}`} className={`${query.q === x.id ? 'is-hl' : ''}${x.deleted ? ' is-deleted' : ''}`}>
                   <td>{x.id}</td>
-                  <td><strong>{x.topic || 'New question'}</strong><br />{x.q}{x.see && <><br /><Link to={x.see.to}>{x.see.label} ↗</Link></>} <Tags tags={x.tags} />{isBacklog(x) && <PhaseChip x={x} />}{x.priority && <span className={`ls-chip is-prio is-${x.priority.toLowerCase()}`}>{x.priority} priority</span>}
+                  <td><strong>{x.topic || 'New question'}</strong><br />{x.q}{x.see && <><br /><Link to={x.see.to}>{x.see.label} ↗</Link></>}{x.see2 && <><br /><Link to={x.see2.to}>{x.see2.label} ↗</Link></>} <Tags tags={x.tags} />{isBacklog(x) && <PhaseChip x={x} />}{x.priority && <span className={`ls-chip is-prio is-${x.priority.toLowerCase()}`}>{x.priority} priority</span>}
                     <details className="ls-more"><summary>Why, assumption, next step</summary><p><b>Why it matters:</b> {x.why}</p><p><b>Current assumption:</b> {x.assume}</p><p><b>Next step:</b> {x.action}</p></details>
                     <DeletedBar it={x} restore={restore} /></td>
                   <td><Tag open={OPEN(x)}>{x.status}</Tag>{x.base && x.local?.status && x.local.status !== x.base.status && <span className="ls-meta"> (was {x.base.status})</span>}</td>
