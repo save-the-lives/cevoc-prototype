@@ -35,9 +35,9 @@ jobs:
         with:
           name: cevoc-site
           path: cevoc-site.zip
-  # GitHub Pages is off while the repo is private. Set the repo variable PAGES_ENABLED=true to turn this back on.
+  # GitHub Pages deploys by default (owner, 27 Nov 2026; Pages source is GitHub Actions). Set the repo variable PAGES_ENABLED=false to turn it off.
   deploy:
-    if: vars.PAGES_ENABLED == 'true'
+    if: vars.PAGES_ENABLED != 'false'
     needs: build
     runs-on: ubuntu-latest
     environment:
